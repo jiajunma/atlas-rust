@@ -169,6 +169,43 @@ mod tests {
     }
 
     #[test]
+    fn constructor_structural_consumers_keep_the_concrete_arguments() {
+        let source = SourceText::new(include_str!("../../../tests/math/generics/constructor_structural_uses_spaced.atlas"));
+        let events = run_source(&source);
+        assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
+        // `prints` emits ReportLine through the typed command pipeline; Output
+        // is a different session event. Original capture3835245 fixes these
+        // complete lines, including their terminating newlines.
+        for expected in ["ROW3[3,5]3", "CHANGED[7,3,5]", "FUNCTION12", "NESTED13", "RESTORED17"] {
+            assert!(events.iter().any(|event| matches!(event,
+                SessionEvent::ReportLine { text, .. } if text == &format!("{expected}\n"))),
+                "missing {expected}: {events:?}");
+        }
+    }
+
+    #[test]
+    fn constructor_arity_rejects_before_conversion_and_recovers_scope() {
+        let events = run_source(&SourceText::new(concat!(
+            "set_type Pair<S,T> = (S,T) !\n",
+            "Pair<int>:(2,3)\n",
+            "Pair<int,int,int>:(2,3)\n",
+            "Pair<int,int>:(2,3)\n",
+            "set T=19\n", "T\n",
+        )));
+        let errors = events.iter().filter_map(|event| match event {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).collect::<Vec<_>>();
+        assert_eq!(errors.len(), 2, "{events:?}");
+        assert!(errors.iter().all(|d| d.kind == ErrorKind::Type), "{events:?}");
+        assert!(errors[0].message.contains("1 type arguments, expected 2"));
+        assert!(errors[1].message.contains("3 type arguments, expected 2"));
+        for expected in ["(2,3)", "19"] {
+            assert!(events.iter().any(|e| matches!(e, SessionEvent::Value { value, .. }
+                if value.to_string() == expected)), "{events:?}");
+        }
+    }
+
+    #[test]
     fn named_type_tokens_preserve_type_queries_and_redefinitions() {
         let source = SourceText::new(concat!(
             "set_type MathRow = [int]\n",

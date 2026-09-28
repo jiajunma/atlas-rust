@@ -543,7 +543,7 @@ impl OverloadState {
         types: &TypeTable,
         span: SourceSpan,
     ) -> Result<(usize, usize), Diagnostic> {
-        let Type::Function(parts) = function_type.expanded(types) else {
+        let Type::Function(parts) = &*function_type.expanded(types) else {
             unreachable!("only function-typed values enter the overload table")
         };
         let arg_type = parts.0.clone();
@@ -613,7 +613,7 @@ impl OverloadState {
     fn remove(&mut self, name: &str, arg_type: &Type, types: &TypeTable) -> bool {
         if let Some(users) = self.user.get_mut(name) {
             let position = users.iter().position(
-                |user| matches!(user.function_type.expanded(types), Type::Function(parts) if parts.0.equivalent(arg_type, types)),
+                |user| matches!(&*user.function_type.expanded(types), Type::Function(parts) if parts.0.equivalent(arg_type, types)),
             );
             if let Some(position) = position {
                 users.remove(position);
@@ -819,7 +819,7 @@ fn merged_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> 
         })
         .collect();
     for (user_index, user) in overloads.user_variants(name).iter().enumerate() {
-        let Type::Function(parts) = user.function_type.expanded(types) else {
+        let Type::Function(parts) = &*user.function_type.expanded(types) else {
             unreachable!("user overloads always hold a function type")
         };
         let variant = MergedVariant {
@@ -1384,13 +1384,7 @@ impl TypedContext {
             } => {
                 // parser.y:162: any type expression may ascribe a declared
                 // identifier (tuples, rows, function types included).
-                let type_ = value_type.resolve_in(&self.types).map_err(|unknown| {
-                    Diagnostic::new(
-                        ErrorKind::Name,
-                        format!("undefined type name '{}'", unknown.value),
-                        Some(unknown.span),
-                    )
-                })?;
+                let type_ = value_type.resolve_in(&self.types)?;
                 self.globals
                     .define(name.clone(), type_.clone(), crate::frames::unset_global());
                 self.note_completion_name(name);
@@ -1405,8 +1399,9 @@ impl TypedContext {
             Command::SetType {
                 definitions,
                 tabled,
+                arity,
                 span,
-            } => self.execute_set_type(definitions, *tabled, *span),
+            } => self.execute_set_type(definitions, *tabled, *arity, *span),
             Command::Whattype { target, span } => self.execute_whattype(target, *span),
             Command::Forget { name, span } => {
                 self.type_locations.remove(&name.value);
@@ -1426,13 +1421,7 @@ impl TypedContext {
                 // global_forget_overload (global.w:1253-1261): removes ONE
                 // overload, reporting either way; the printed type is the
                 // resolved signature, exactly as upstream prints `type`.
-                let resolved = signature.resolve_in(&self.types).map_err(|unknown| {
-                    Diagnostic::new(
-                        ErrorKind::Name,
-                        format!("undefined type name '{}'", unknown.value),
-                        Some(unknown.span),
-                    )
-                })?;
+                let resolved = signature.resolve_in(&self.types)?;
                 let removed = self.overloads.remove(&name.value, &resolved, &self.types);
                 let state = if removed { "forgotten" } else { "not known" };
                 Ok(vec![TypedCommandEvent::ReportLine {
@@ -1722,7 +1711,7 @@ impl TypedContext {
             debug_assert_eq!(slots.len(), leaves.len());
             for ((name, name_span, constant, leaf_type), slot) in leaves.into_iter().zip(slots) {
                 let value = Rc::try_unwrap(slot).unwrap_or_else(|rc| (*rc).clone());
-                let event = if matches!(leaf_type.expanded(&self.types), Type::Function(_)) {
+                let event = if matches!(&*leaf_type.expanded(&self.types), Type::Function(_)) {
                     self.add_overload(&name, leaf_type, value, name_span)?
                 } else {
                     self.define_variable(&name, leaf_type, value, constant, name_span)
@@ -1739,6 +1728,7 @@ impl TypedContext {
         &mut self,
         definitions: &[crate::syntax::TypeDefinition],
         tabled: bool,
+        arity: usize,
         span: SourceSpan,
     ) -> Result<Vec<TypedCommandEvent>, Diagnostic> {
         let mut targets = Vec::with_capacity(definitions.len());
@@ -1780,10 +1770,12 @@ impl TypedContext {
                 .expect("the single-name set_type form holds one equation");
             let (expansion, fields) = resolve_type_spec(&definition.spec, &types)?;
             reported.push(expansion.clone());
-            let number = types.add_simple(TypeBinding {
+            let number = types.add_simple_constructor(TypeBinding {
                 name: definition.name.value.clone(), definition: expansion, fields,
+            }, arity);
+            targets.push(if arity == 0 { Type::Tabled(number) } else {
+                Type::Applied(number, (0..arity).map(Type::Variable).collect())
             });
-            targets.push(Type::Tabled(number));
         }
         self.types = types;
         let mut events = Vec::with_capacity(definitions.len());
@@ -1804,10 +1796,7 @@ impl TypedContext {
         redefined: bool,
         reported: &Type,
     ) -> Result<String, Diagnostic> {
-        let expansion = match target {
-            Type::Tabled(number) => self.types.expansion(*number).clone(),
-            other => other.clone(),
-        };
+        let expansion = target.expanded(&self.types);
         let heading = format!(
             "Type name '{}' {}defined as {}\n",
             definition.name.value,
@@ -1818,7 +1807,7 @@ impl TypedContext {
             TypeSpec::Alias(_) => return Ok(heading),
             TypeSpec::Struct(fields) | TypeSpec::Union(fields) => fields,
         };
-        let components: &[Type] = match &expansion {
+        let components: &[Type] = match &*expansion {
             Type::Tuple(components) | Type::Union(components) => components,
             _ => &[],
         };
@@ -1876,7 +1865,7 @@ impl TypedContext {
                 if binding.fields.is_empty() {
                     text.push_str(&format!("{}\n", expansion.display(&self.types)));
                 } else {
-                    let (components, separator) = match expansion {
+                    let (components, separator) = match &*expansion {
                         Type::Tuple(parts) => (parts, ','),
                         Type::Union(parts) => (parts, '|'),
                         _ => unreachable!("fields belong to tuples or unions"),
@@ -1958,23 +1947,11 @@ fn resolve_type_spec(
     types: &TypeTable,
 ) -> Result<(Type, Vec<Option<String>>), Diagnostic> {
     fn field_type(field: &crate::syntax::TypeField, types: &TypeTable) -> Result<Type, Diagnostic> {
-        field.type_expr.resolve_in(types).map_err(|unknown| {
-            Diagnostic::new(
-                ErrorKind::Name,
-                format!("undefined type name '{}'", unknown.value),
-                Some(unknown.span),
-            )
-        })
+        field.type_expr.resolve_in(types)
     }
     match spec {
         TypeSpec::Alias(type_expr) => Ok((
-            type_expr.resolve_in(types).map_err(|unknown| {
-                Diagnostic::new(
-                    ErrorKind::Name,
-                    format!("undefined type name '{}'", unknown.value),
-                    Some(unknown.span),
-                )
-            })?,
+            type_expr.resolve_in(types)?,
             Vec::new(),
         )),
         TypeSpec::Struct(fields) => {
@@ -2087,7 +2064,7 @@ fn convert_list_expression(
         return conform_types(&Type::row(component), required, display, span, analysis)
             .map_err(BalanceConversionError::Diagnostic);
     }
-    let (mut component, coercion_tag) = match required.expanded(analysis.types) {
+    let (mut component, coercion_tag) = match &*required.expanded(analysis.types) {
         Type::Undetermined => (Type::Undetermined, None),
         Type::Row(component) => (component.as_ref().clone(), None),
         other => match row_coercion(other, analysis.types) {
@@ -2151,7 +2128,8 @@ fn conform_types(
 ) -> Result<TypedExpr, Diagnostic> {
     // Matching may need structural expansion; the requested named type is
     // still the observable type of a successfully converted expression.
-    let named_context = matches!(required, Type::Tabled(_)).then(|| required.clone());
+    let named_context = matches!(required, Type::Tabled(_) | Type::Applied(_, _))
+        .then(|| required.clone());
     if required.specialise(found, analysis.types) {
         if let Some(named) = named_context { *required = named; }
         return Ok(converted);
@@ -2249,7 +2227,7 @@ pub fn convert_expr(
             let converted = convert_expr(body, &mut body_type, analysis)?;
             // Named annotations survive structural specialisation of a
             // lambda, row or tuple during checking. Anonymous holes refine.
-            let found = if matches!(cast_type, Type::Tabled(_)) { cast_type } else { body_type };
+            let found = if matches!(cast_type, Type::Tabled(_) | Type::Applied(_, _)) { cast_type } else { body_type };
             conform_types(&found, required, converted, expression.span(), analysis)
         }
         Expr::Tuple { elements, span } => {
@@ -2419,16 +2397,16 @@ pub fn convert_expr(
             // two-int tuple subscripts a mat to the entry (parser.y:585-598,
             // axis.w matrix subscription). Anything else is the
             // analysis-time `not_so` error (axis.w:4101-4105).
-            let int_index = matches!(index_type.expanded(analysis.types), Type::Primitive(Prim::Int));
+            let int_index = matches!(&*index_type.expanded(analysis.types), Type::Primitive(Prim::Int));
             let pair_index = matches!(
-                index_type.expanded(analysis.types),
+                &*index_type.expanded(analysis.types),
                 Type::Tuple(parts)
                     if parts.len() == 2
                         && parts
                             .iter()
-                            .all(|part| matches!(part.expanded(analysis.types), Type::Primitive(Prim::Int)))
+                            .all(|part| matches!(&*part.expanded(analysis.types), Type::Primitive(Prim::Int)))
             );
-            let found = match array_type.expanded(analysis.types) {
+            let found = match &*array_type.expanded(analysis.types) {
                 Type::Row(component) if int_index => (**component).clone(),
                 Type::Primitive(Prim::String) if int_index => Type::Primitive(Prim::String),
                 Type::Primitive(Prim::Vec) if int_index => Type::Primitive(Prim::Int),
@@ -2556,7 +2534,7 @@ pub fn convert_expr(
             // Only row slicing is implemented; anything else is the
             // analysis-time error upstream raises from the `make_slice`
             // default case (axis.w:4171-4173).
-            let Type::Row(component) = array_type.expanded(analysis.types) else {
+            let Type::Row(component) = &*array_type.expanded(analysis.types) else {
                 return Err(type_error(
                     format!(
                         "Cannot slice value of type {}",
@@ -2777,7 +2755,7 @@ pub fn convert_expr(
             if let Expr::Identifier { name, .. } = callee.as_ref() {
                 let local = analysis.locals.get(name);
                 let local_function = local
-                    .is_some_and(|(type_, _, _)| matches!(type_.borrow().expanded(analysis.types), Type::Function(_)));
+                    .is_some_and(|(type_, _, _)| matches!(&*type_.borrow().expanded(analysis.types), Type::Function(_)));
                 let use_overloads = !local_function
                     && (!merged_variants(name, analysis.overloads, analysis.types).is_empty()
                         || (local.is_none() && analysis.globals.lookup(name).is_none()));
@@ -2980,7 +2958,7 @@ pub fn convert_expr(
             } = loop_.as_ref();
             let mut found = Type::Undetermined;
             let iterable = convert_expr(iterable, &mut found, analysis)?;
-            let Type::Row(component) = found.expanded(analysis.types) else {
+            let Type::Row(component) = &*found.expanded(analysis.types) else {
                 return Err(type_error(
                     format!(
                         "Cannot iterate over value of type {}",
@@ -3604,19 +3582,19 @@ fn component_type_for_assignment(
     span: SourceSpan,
     analysis: &Analysis<'_>,
 ) -> Result<Type, Diagnostic> {
-    let int_index = matches!(index_type.expanded(analysis.types), Type::Primitive(Prim::Int));
+    let int_index = matches!(&*index_type.expanded(analysis.types), Type::Primitive(Prim::Int));
     let pair_index = matches!(
-        index_type.expanded(analysis.types),
+        &*index_type.expanded(analysis.types),
         Type::Tuple(parts)
             if parts.len() == 2
                 && parts
                     .iter()
-                    .all(|part| matches!(part.expanded(analysis.types), Type::Primitive(Prim::Int)))
+                    .all(|part| matches!(&*part.expanded(analysis.types), Type::Primitive(Prim::Int)))
     );
     // axis.w:8163-8172 (`comp_ass_stat::assignability`): rows, vec, and mat
     // (column or two-index entry) admit component assignment; ratvec is
     // read-only upstream and falls to the generic diagnostic.
-    match aggregate_type.expanded(analysis.types) {
+    match &*aggregate_type.expanded(analysis.types) {
         Type::Row(component) if int_index => return Ok((**component).clone()),
         Type::Primitive(Prim::Vec) if int_index => return Ok(Type::Primitive(Prim::Int)),
         Type::Primitive(Prim::Mat) if int_index => return Ok(Type::Primitive(Prim::Vec)),
@@ -4348,7 +4326,7 @@ fn bind_pattern_leaves(
                     *span,
                 )
             };
-            let Type::Tuple(components) = found.expanded(types) else {
+            let Type::Tuple(components) = &*found.expanded(types) else {
                 return Err(mismatch());
             };
             if components.len() != elements.len() {
@@ -4371,11 +4349,7 @@ fn resolve_annotation(
     expression: &crate::syntax::TypeExpr,
     types: &TypeTable,
 ) -> Result<Type, Diagnostic> {
-    expression.resolve_in(types).map_err(|unknown| Diagnostic::new(
-        ErrorKind::Name,
-        format!("undefined type name '{}'", unknown.value),
-        Some(unknown.span),
-    ))
+    expression.resolve_in(types)
 }
 
 /// One lambda parameter (parser.y `id_spec`): the declared argument type,
@@ -4707,7 +4681,7 @@ fn convert_overload_application(
     let expected: Vec<Type> = if expressions.len() == 1 {
         vec![variant.arg_type.clone()]
     } else {
-        match variant.arg_type.expanded(analysis.types) {
+        match &*variant.arg_type.expanded(analysis.types) {
             Type::Tuple(components) => components.clone(),
             single => vec![single.clone()],
         }
@@ -10451,7 +10425,7 @@ fn hidden_special_variant(
     types: &TypeTable,
 ) -> Option<(usize, Type)> {
     match name {
-        "#" => match a_priori_type.expanded(types) {
+        "#" => match &*a_priori_type.expanded(types) {
             // sizeof_row (axis.w:2544-2548): the length of any row value.
             Type::Row(_) => {
                 let index = hidden_builtin_by_pattern("#", |arg| matches!(arg, Type::Row(_)))?;
@@ -10462,7 +10436,7 @@ fn hidden_special_variant(
                 // ([T],element) where T specialises the element type. A `*`
                 // component adopts the element type, so `[]#3` works
                 // (upstream mutates the a-priori component the same way).
-                if let Type::Row(component) = components[0].expanded(types) {
+                if let Type::Row(component) = &*components[0].expanded(types) {
                     let mut component = component.as_ref().clone();
                     if component.specialise(&components[1], types) {
                         let index = hidden_builtin_by_pattern(
@@ -10473,7 +10447,7 @@ fn hidden_special_variant(
                     }
                 }
                 // prefix_element (axis.w:2561-2569): (element,[T]).
-                if let Type::Row(component) = components[1].expanded(types) {
+                if let Type::Row(component) = &*components[1].expanded(types) {
                     let mut component = component.as_ref().clone();
                     if component.specialise(&components[0], types) {
                         let index = hidden_builtin_by_pattern(
@@ -10487,9 +10461,9 @@ fn hidden_special_variant(
             }
             _ => None,
         },
-        "##" => match a_priori_type.expanded(types) {
+        "##" => match &*a_priori_type.expanded(types) {
             // join_rows_row (axis.w:2577-2582): fold a row of rows.
-            Type::Row(component) if matches!(component.expanded(types), Type::Row(_)) => {
+            Type::Row(component) if matches!(&*component.expanded(types), Type::Row(_)) => {
                 let index = hidden_builtin_by_pattern(
                     "##",
                     |arg| matches!(arg, Type::Row(inner) if matches!(inner.as_ref(), Type::Row(_))),
@@ -10499,7 +10473,7 @@ fn hidden_special_variant(
             // join_rows (axis.w:2583-2595): two rows of the same type.
             Type::Tuple(components)
                 if components.len() == 2
-                    && matches!(components[0].expanded(types), Type::Row(_))
+                    && matches!(&*components[0].expanded(types), Type::Row(_))
                     && components[0].equivalent(&components[1], types) =>
             {
                 let index = hidden_builtin_by_pattern(

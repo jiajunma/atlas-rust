@@ -1,12 +1,12 @@
 {
   "schema": "atlas-constructor-build-submission-v1",
-  "stage": "/public/home/majj/atlas-constructor-build-r2-20260928.hoUj0ZQt",
-  "job": "3835267",
-  "status": "FAILED_SESSION_TEST_EVENT_CHANNEL",
-  "elapsed": "00:04:38",
-  "report": "tests/reference/hpc/math_constructor_r2_2026_09_28.json",
-  "report_sha256": "cd6fbcb13feacf29d451b9c748f785303332e3ad2f88280534eab5bbaf0f62e9",
-  "pin_sha256": "4eaeb6d8ce4be9911eaea0400f35143ff7cb1f547ed83c7b2fe1525a7d1a0f05",
+  "stage": "/public/home/majj/atlas-constructor-build-r3-20260928.WDBn6GSS",
+  "job": "3835776",
+  "status": "COMPLETE_FULL_CORE_GATE_AND_62_CASE_CAPTURE",
+  "elapsed": "00:08:34",
+  "report": "tests/reference/hpc/math_constructor_r3_2026_09_28.json",
+  "report_sha256": "cdd254bf8cafe5b01490d722b894e200ae3f1816a9b7fe0e72bad09563959824",
+  "pin_sha256": "b178d4d0449577858f0719957045c2a5a61bc7104fddd0a20da54d76e4803ebd",
   "pin": {
     "schema": "atlas-type-foundation-pin-v1",
     "parent_archive": "/public/home/majj/atlas-math-polymorphic-global-probe-20260928.wiD9I1kY/rust-probe.tar",
@@ -19,7 +19,7 @@
       "crates/atlas-core/src/grammar.lalrpop": "feed6e22c89e3f7eabbf452330e2ac8881b00d0ff66a7bfd7d474ef02e9a0799",
       "crates/atlas-core/src/syntax.rs": "6c6aee1ed44a06b553af185e70544fb925dcc71405ccc218417824f32abbc423",
       "crates/atlas-core/src/typed.rs": "7050fcca09b2e2e27851c42adb57d41fe66ce6e5a6aece1577acdfc523a13607",
-      "crates/atlas-core/src/session.rs": "9941914ff825e250dc3acb2124bc603b3985e6067cf234501c278d9d183ca83a",
+      "crates/atlas-core/src/session.rs": "22d5113cec121ad9df0cf0ec57f7cb083419983770494c2abaee261ebd27196b",
       "crates/atlas-core/src/session_frame.rs": "5aa198068e38fe26b209b49be411c32996be4d010c09145a8aaae23d68c31267",
       "crates/atlas-core/src/coercions.rs": "0f85424f441b6d76ef1099fe09a6d08d66334123ea8513f17ffd0d3b44874ef3",
       "tests/math/generics/named_redefinition_retains_old.atlas": "cf37d3cbbc8457fb5d2ae84ac25935231066e978401942bfe77bfd7f41bd0ade",
@@ -120,9 +120,9 @@
       "tests/math/generics/any_type_keyword_rejected.atlas": "4dd0e2b23026e30f8cd046094ef4caf36e16c3d14655b586336c06333391ca70",
       "tests/math/generics/constructor_structural_uses.atlas": "4f60c8567d4a36fa48550e99133cda4d0516f0427437913fc98179a850880dd0",
       "tests/math/generics/constructor_structural_uses_spaced.atlas": "1ca12ee7f3b74101c879abd7c09892a496d562fafa2abf23950c5402c3d677cd",
-      "candidate.patch": "ef6adc27f5537e1021a464671f4bbdd73e712dbe98f526b78717e1e50777c544"
+      "candidate.patch": "9ea82d3f7038427084e6ec0148384da282c37329f49a5c154bc7487e2e333ba0"
     },
-    "scope": "Constructor R2: retain first build3835225's stale-diagnostic assertion failure, keep bare TYPE_VAR rejection and add its binding-position rejection/recovery control. Preserve applied required contexts. Correct capture's exact original name-diagnostic envelope. Full413-test core inventory gate plus62 original-backed cases; generic scheme/any_type support not complete.",
+    "scope": "Constructor R3: preserve failed builds3835225/3835267. R2 session log executes all expected structural values, but new test mistakenly inspected Output instead of typed ReportLine. Only correct that event-channel assertion, now requiring whole lines including newline. Runtime unchanged from R2. Full413-test core inventory and62-case original-backed capture, no claim of complete generics.",
     "additional_test_filters": [
       [
         "syntax-units",
@@ -147,6 +147,6 @@
     },
     "full_core_review": true
   },
-  "expected_report": "/public/home/majj/atlas-constructor-build-r2-20260928.hoUj0ZQt/results/3835267/report.json",
-  "scope": "First candidate compiled; its stale diagnostic assertion failure retained. R2 keeps bare-T rejection, adds binding-position rejection/recovery, preserves Applied required contexts and uses verified62-case capture classifier. Full-core and CLI/capture pending; no generic-language acceptance yet."
+  "expected_report": "/public/home/majj/atlas-constructor-build-r3-20260928.WDBn6GSS/results/3835776/report.json",
+  "scope": "Constructor R3: preserve failed builds3835225/3835267. R2 session log executes all expected structural values, but new test mistakenly inspected Output instead of typed ReportLine. Only correct that event-channel assertion, now requiring whole lines including newline. Runtime unchanged from R2. Full413-test core inventory and62-case original-backed capture, no claim of complete generics."
 }

@@ -64,7 +64,7 @@ fn named(t: &Type) -> Option<super::TypeNumber> {
 /// Expose only the top constructor chain, not recursive children. A repeated
 /// complete application is an invalid unguarded cycle. Do not reject repeated
 /// constructor IDs alone: Identity<Identity<int>> is a finite valid chain.
-fn expanded_top(t: &Type, table: &TypeTable) -> Result<Type, TypeError> {
+pub(super) fn expanded_top(t: &Type, table: &TypeTable) -> Result<Type, TypeError> {
     let mut result = t.clone();
     let mut seen = Vec::new();
     while named(&result).is_some() {

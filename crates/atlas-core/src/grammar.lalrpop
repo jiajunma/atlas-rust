@@ -26,8 +26,9 @@ use super::{
 use crate::diagnostic::SourceSpan;
 use crate::formula::{FormulaOperator, FormulaStack};
 use malachite::Integer as BigInt;
+use super::type_scope::{ParserTypes, GroupKind};
 
-grammar;
+grammar<'scope, 'types>(scope: &'scope ParserTypes<'types>);
 
 pub Program: Program = {
     <first:Expr> <rest:("\n" <Expr>)*> "\n"? => {
@@ -49,10 +50,14 @@ pub Command: Command = {
     // bracketed form enters the tabled type map.
     <set_type:"set_type"> <name:TypeOrIdentifier> <_equals:"="> <spec:TypeSpecNode> => {
         let end = type_spec_span(&spec);
-        set_type_command(set_type, vec![type_definition(name, spec)], false, end)
+        set_type_command(set_type, vec![type_definition(name, spec)], false, 0, end)
+    },
+    <set_type:"set_type"> <name:TypeOrIdentifier> "<" <arity:ConstructorArgs>
+        ">" "=" <spec:ConstructorSpec> <bang:"!"> => {
+        set_type_command(set_type, vec![type_definition(name, spec)], false, arity, bang)
     },
     <set_type:"set_type"> <_open:"["> <definitions:TypeEquations> <close:"]"> => {
-        set_type_command(set_type, definitions, true, close)
+        set_type_command(set_type, definitions, true, 0, close)
     },
     // whattype id_op `?` (parser.y:187): list the overload instances of an
     // identifier or operator. The `?` cannot follow an expression or an
@@ -62,6 +67,9 @@ pub Command: Command = {
     },
     <whattype:"whattype"> <target:Expr> => whattype_command(whattype, target),
     <whattype:"whattype"> <name:"type_name"> <_question:"?"?> => {
+        whattype_command(whattype, Expr::Identifier { name: name.value, span: name.span })
+    },
+    <whattype:"whattype"> <name:"type_constructor"> <_question:"?"?> => {
         whattype_command(whattype, Expr::Identifier { name: name.value, span: name.span })
     },
     <showall:"showall"> => Command::ShowAll { span: showall },
@@ -100,6 +108,23 @@ ForgetTarget: SpannedValue<String> = {
 TypeOrIdentifier: SpannedValue<String> = {
     <name:"identifier"> => name,
     <name:"type_name"> => name,
+    <name:"type_constructor"> => name,
+};
+
+// parser.y type_args reduces on '>', before the body is scanned. Preserve
+// duplicate formal slots; lookup inside the body uses their first occurrence.
+ConstructorArgs: usize = {
+    <first:"identifier"> <rest:("," <"identifier">)*> => {
+        let mut names = vec![first.value];
+        names.extend(rest.into_iter().map(|name| name.value));
+        scope.push_group(GroupKind::Virtual);
+        scope.introduce(&names);
+        names.len()
+    },
+};
+
+ConstructorSpec: TypeSpec = {
+    <spec:TypeSpecNode> => { scope.pop_group(); spec },
 };
 
 pub Expr: Expr = {
@@ -195,6 +220,13 @@ Cast: Expr = {
 TypeExprNode: TypeExpr = {
     <prim:"primitive_type"> => type_primitive(prim),
     <name:"type_name"> => TypeExpr::Named { name: name.value, span: name.span },
+    <variable:"type_variable"> => TypeExpr::Variable { index: variable.value, span: variable.span },
+    <name:"type_constructor"> "<" <first:TypeExprNode> <rest:("," <TypeExprNode>)*> <close:">"> => {
+        let span = join_span(name.span, close);
+        let mut arguments = vec![first];
+        arguments.extend(rest);
+        TypeExpr::Applied { name, arguments, span }
+    },
     <span:"void"> => TypeExpr::Void { span },
     <open:"["> <inner:TypeUnionList> <close:"]"> => type_row(open, inner, close),
     <open:"["> <_star:"*"> <close:"]"> => type_wild_row(open, close),
@@ -239,9 +271,16 @@ TypeFieldNode: TypeField = {
 SpecTypeNode: TypeExpr = {
     <prim:"primitive_type"> => type_primitive(prim),
     <span:"void"> => TypeExpr::Void { span },
-    <name:TypeOrIdentifier> => TypeExpr::Named {
+    <name:SpecTypeName> => TypeExpr::Named {
         name: name.value,
         span: name.span,
+    },
+    <variable:"type_variable"> => TypeExpr::Variable { index: variable.value, span: variable.span },
+    <name:"type_constructor"> "<" <first:SpecTypeNode> <rest:("," <SpecTypeNode>)*> <close:">"> => {
+        let span = join_span(name.span, close);
+        let mut arguments = vec![first];
+        arguments.extend(rest);
+        TypeExpr::Applied { name, arguments, span }
     },
     <open:"["> <inner:SpecUnionList> <close:"]"> => type_row(open, inner, close),
     <open:"["> <_star:"*"> <close:"]"> => type_wild_row(open, close),
@@ -249,6 +288,11 @@ SpecTypeNode: TypeExpr = {
     <open:"("> <argument:SpecUnionList?> <_arrow:"->"> <result:SpecUnionList?> <close:")"> => {
         type_function(open, argument, result, close)
     },
+};
+
+SpecTypeName: SpannedValue<String> = {
+    <name:"identifier"> => name,
+    <name:"type_name"> => name,
 };
 
 SpecUnionList: Vec<TypeVariantSlot> = {
@@ -403,6 +447,8 @@ Operator: FormulaOperator = {
     <operator:"operator"> => operator.value,
     <span:"*"> => FormulaOperator::new("*", 6).with_span(span),
     <span:"="> => FormulaOperator::new("=", 2).with_span(span),
+    <span:"<"> => FormulaOperator::new("<", 2).with_span(span),
+    <span:">"> => FormulaOperator::new(">", 2).with_span(span),
 };
 
 Postfix: Expr = {
@@ -763,6 +809,8 @@ extern {
         "primitive_type" => ParserToken::PrimitiveType(<SpannedValue<Prim>>),
         ":=" => ParserToken::Becomes(<SourceSpan>),
         "=" => ParserToken::Equals(<SourceSpan>),
+        "<" => ParserToken::Less(<SourceSpan>),
+        ">" => ParserToken::Greater(<SourceSpan>),
         "*" => ParserToken::Star(<SourceSpan>),
         "void" => ParserToken::VoidType(<SourceSpan>),
         "|" => ParserToken::Bar(<SourceSpan>),

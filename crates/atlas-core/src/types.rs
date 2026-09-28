@@ -156,17 +156,22 @@ impl Type {
         Self::Row(Box::new(component))
     }
 
-    /// Inspect a monomorphic type's outer structure without losing its name
-    /// in the owning expression. Children keep their own named identities.
-    pub fn expanded<'a>(&'a self, table: &'a TypeTable) -> &'a Type {
+    /// Inspect outer structure without losing the owning expression's name.
+    /// Ordinary types borrow; constructor substitution owns only the expanded
+    /// result. Children retain names, including recursive applications.
+    pub fn expanded<'a>(&'a self, table: &'a TypeTable) -> std::borrow::Cow<'a, Type> {
         let mut current = self;
         // Well-formed entries have a structural top. The bound also makes a
         // malformed, directly cyclic placeholder inspectable without looping.
-        for _ in 0..table.bindings.len() {
+        for _ in 0..=table.bindings.len() {
+            if matches!(current, Type::Applied(_, _)) {
+                return std::borrow::Cow::Owned(polymorphic::expanded_top(current, table)
+                    .unwrap_or_else(|_| current.clone()));
+            }
             let Type::Tabled(number) = current else { break; };
             current = table.expansion(*number);
         }
-        current
+        std::borrow::Cow::Borrowed(current)
     }
 
     /// Semantic equality, distinct from textual/table-slot equality and from
@@ -428,19 +433,24 @@ impl TypeTable {
 
     /// Retain a simple type definition, including copied field metadata.
     /// Only the outer alias expands; names inside the body remain visible.
-    pub fn add_simple(&mut self, mut binding: TypeBinding) -> TypeNumber {
-        if let Type::Tabled(number) = &binding.definition {
+    pub fn add_simple(&mut self, binding: TypeBinding) -> TypeNumber {
+        self.add_simple_constructor(binding, 0)
+    }
+
+    pub fn add_simple_constructor(&mut self, mut binding: TypeBinding, arity: usize) -> TypeNumber {
+        if let Type::Tabled(number) | Type::Applied(number, _) = &binding.definition {
             binding.fields = self.binding(*number).fields.clone();
         }
-        binding.definition = binding.definition.expanded(self).clone();
-        if let Some(index) = self.bindings.iter().position(|old|
-            old.name == binding.name && old.definition == binding.definition)
+        binding.definition = binding.definition.expanded(self).into_owned();
+        if let Some(index) = self.bindings.iter().enumerate().position(|(index, old)|
+            old.name == binding.name && old.definition == binding.definition
+                && self.constructor_arity(TypeNumber(index)) == arity)
         {
             self.active.insert(binding.name.clone(), TypeNumber(index));
             self.bindings[index].fields = binding.fields;
             return TypeNumber(index);
         }
-        self.add_constructor(binding, 0, false)
+        self.add_constructor(binding, arity, false)
     }
 
     /// Convenience for a simple definition without explicitly named fields.
@@ -579,7 +589,7 @@ mod tests {
         table.add_alias("Saved", Type::row(Type::Primitive(Prim::String)));
         let new = table.resolve_name("Saved").unwrap();
         assert_ne!(old, new);
-        assert_eq!(old.expanded(&table), &Type::row(Type::Primitive(Prim::Int)));
+        assert_eq!(&*old.expanded(&table), &Type::row(Type::Primitive(Prim::Int)));
         assert!(copy.equivalent(&old, &table));
         assert!(!old.equivalent(&new, &table));
         assert!(!old.can_specialise(&new, &table));
@@ -587,6 +597,27 @@ mod tests {
         assert!(!table.is_type_name("Saved"));
         assert!(table.resolve_name("Saved").is_none());
         assert_eq!(old.display(&table).to_string(), "Saved");
+    }
+
+    #[test]
+    fn structural_view_borrows_ordinary_types_and_substitutes_applications() {
+        use std::borrow::Cow;
+        let mut table = TypeTable::new();
+        let row = table.add_simple(TypeBinding {
+            name: "Ints".into(), definition: Type::row(Type::Primitive(Prim::Int)), fields: vec![],
+        });
+        assert!(matches!(Type::Tabled(row).expanded(&table), Cow::Borrowed(_)));
+        let id = table.add_simple_constructor(TypeBinding {
+            name: "Identity".into(), definition: Type::Variable(0), fields: vec![],
+        }, 1);
+        let nested = (0..5).fold(Type::Primitive(Prim::Int), |arg, _| Type::Applied(id, vec![arg]));
+        assert_eq!(&*nested.expanded(&table), &Type::Primitive(Prim::Int));
+        let different_arity = table.add_simple_constructor(TypeBinding {
+            name: "Identity".into(), definition: Type::Variable(0), fields: vec![],
+        }, 2);
+        assert_ne!(id, different_arity);
+        assert_eq!(table.constructor_arity(id), 1);
+        assert_eq!(table.constructor_arity(different_arity), 2);
     }
 
     #[test]

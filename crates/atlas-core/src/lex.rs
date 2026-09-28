@@ -232,11 +232,21 @@ impl<'a> Lexer<'a> {
                 self.offset += 2;
                 self.finish_operator(start, "!=", '=')
             }
-            b'<' | b'>' if bytes.get(self.offset + 1) == Some(&b'=') => {
-                let operator = source.as_str()[start..self.offset + 2].to_owned();
-                self.offset += 2;
-                let symbol = operator.chars().next().expect("two-character operator");
-                self.finish_operator(start, &operator, symbol)
+            b'<' | b'>' | b'=' => {
+                // lexer.w:720-768: maximal relation runs are one operator.
+                // Single angles also delimit type arguments and must NOT
+                // suppress a newline. None of these fuse with ':='.
+                let first = bytes[self.offset];
+                self.offset += 1;
+                while bytes.get(self.offset).is_some_and(|b| b"<=>".contains(b)) {
+                    self.offset += 1;
+                }
+                if self.offset > start + 1 || first == b'=' {
+                    self.operator_termination(first as char);
+                }
+                Ok(token(source,
+                    TokenKind::Operator(source.as_str()[start..self.offset].to_owned()),
+                    start, self.offset))
             }
             b'-' if bytes.get(self.offset + 1) == Some(&b'>') => {
                 self.offset += 2;
@@ -266,7 +276,7 @@ impl<'a> Lexer<'a> {
                 self.offset += 2;
                 self.finish_operator(start, "##", '#')
             }
-            b'+' | b'-' | b'*' | b'/' | b'=' | b'!' | b'<' | b'>' | b'&' | b'%' | b'^' | b'#'
+            b'+' | b'-' | b'*' | b'/' | b'!' | b'&' | b'%' | b'^' | b'#'
             | b'\\' => {
                 self.offset += 1;
                 let operator = source.as_str()[start..self.offset].to_owned();
@@ -899,6 +909,17 @@ mod tests {
             })
             .collect();
         assert_eq!(operators, vec!["!=", "<=", ">=", ":"]);
+    }
+
+    #[test]
+    fn relation_runs_are_not_split_into_constructor_closers() {
+        let tokens = tokenize(&SourceText::new("X<int>>>\n1\nx >\n2\nx <=\n3\nx =:= 4\n")).unwrap();
+        let operators = tokens.iter().filter_map(|t| match &t.kind {
+            TokenKind::Operator(op) => Some(op.as_str()), _ => None,
+        }).collect::<Vec<_>>();
+        assert_eq!(operators, vec!["<", ">>>", ">", "<=", "=", ":="]);
+        assert_eq!(tokens.iter().filter(|t| t.kind == TokenKind::Newline).count(), 5);
+        assert!(!tokens.iter().any(|t| matches!(t.kind, TokenKind::OperatorBecomes(_))));
     }
 
     #[test]

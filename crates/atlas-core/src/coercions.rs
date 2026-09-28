@@ -190,7 +190,7 @@ pub fn coercion_table() -> &'static [Coercion] {
 }
 
 /// Expand a tabled type one level for structural comparison.
-fn expanded<'a>(type_: &'a Type, table: &'a TypeTable) -> &'a Type {
+fn expanded<'a>(type_: &'a Type, table: &'a TypeTable) -> std::borrow::Cow<'a, Type> {
     type_.expanded(table)
 }
 
@@ -225,6 +225,7 @@ pub fn row_coercion<'a>(final_type: &Type, table: &TypeTable) -> Option<(&'a Coe
 /// Equal types give 0x7; void and `*` are close to nothing.
 pub fn is_close(x: &Type, y: &Type, table: &TypeTable) -> u8 {
     let (x, y) = (expanded(x, table), expanded(y, table));
+    let (x, y) = (&*x, &*y);
     if x.is_void() || y.is_void() {
         return 0;
     }
@@ -263,6 +264,7 @@ pub fn broader_eq(a: &Type, b: &Type, table: &TypeTable) -> bool {
         if table.is_recursive(*x) && table.is_recursive(*y) { return false; }
     }
     let (a, b) = (expanded(a, table), expanded(b, table));
+    let (a, b) = (&*a, &*b);
     if a.is_void() {
         return true;
     }

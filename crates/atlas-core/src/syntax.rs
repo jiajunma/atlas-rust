@@ -418,6 +418,15 @@ pub struct TypedParam {
 /// [`crate::types::Type`]. `TYPE_ID` mentions arrive with typedefs (B5).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TypeExpr {
+    Variable {
+        index: usize,
+        span: SourceSpan,
+    },
+    Applied {
+        name: SpannedValue<String>,
+        arguments: Vec<TypeExpr>,
+        span: SourceSpan,
+    },
     Primitive {
         value: Prim,
         span: SourceSpan,
@@ -459,7 +468,9 @@ pub enum TypeExpr {
 impl TypeExpr {
     pub fn span(&self) -> SourceSpan {
         match self {
-            Self::Primitive { span, .. }
+            Self::Variable { span, .. }
+            | Self::Applied { span, .. }
+            | Self::Primitive { span, .. }
             | Self::Row { span, .. }
             | Self::WildRow { span }
             | Self::Void { span }
@@ -476,9 +487,23 @@ impl TypeExpr {
     pub fn resolve_in(
         &self,
         table: &crate::types::TypeTable,
-    ) -> Result<crate::types::Type, SpannedValue<String>> {
+    ) -> Result<crate::types::Type, Diagnostic> {
         use crate::types::Type;
         match self {
+            Self::Variable { index, .. } => Ok(Type::Variable(*index)),
+            Self::Applied { name, arguments, .. } => {
+                let number = table.lookup(&name.value).ok_or_else(|| Diagnostic::new(
+                    ErrorKind::Name, format!("undefined type name '{}'", name.value), Some(name.span)))?;
+                let expected = table.constructor_arity(number);
+                if expected != arguments.len() {
+                    return Err(Diagnostic::new(ErrorKind::Type,
+                        format!("Type constructor '{}' called with {} type arguments, expected {}",
+                            name.value, arguments.len(), expected), Some(name.span)));
+                }
+                let arguments = arguments.iter().map(|argument| argument.resolve_in(table))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Type::Applied(number, arguments))
+            }
             Self::Primitive { value, .. } => Ok(Type::Primitive(*value)),
             Self::Row { component, .. } => Ok(Type::row(component.resolve_in(table)?)),
             Self::WildRow { .. } => Ok(Type::row(Type::Undetermined)),
@@ -501,10 +526,8 @@ impl TypeExpr {
                 argument.resolve_in(table)?,
                 result.resolve_in(table)?,
             )),
-            Self::Named { name, span } => table.resolve_name(name).ok_or_else(|| SpannedValue {
-                value: name.clone(),
-                span: *span,
-            }),
+            Self::Named { name, span } => table.resolve_name(name).ok_or_else(|| Diagnostic::new(
+                ErrorKind::Name, format!("undefined type name '{name}'"), Some(*span))),
         }
     }
 
@@ -703,6 +726,7 @@ pub enum Command {
     SetType {
         definitions: Vec<TypeDefinition>,
         tabled: bool,
+        arity: usize,
         span: SourceSpan,
     },
     /// `whattype target` (parser.y:169-171): a type name prints its
@@ -817,6 +841,8 @@ pub enum ParserToken {
     PrimitiveType(SpannedValue<Prim>),
     Becomes(SourceSpan),
     Equals(SourceSpan),
+    Less(SourceSpan),
+    Greater(SourceSpan),
     Star(SourceSpan),
     Bar(SourceSpan),
     Arrow(SourceSpan),
@@ -890,6 +916,8 @@ impl ParserToken {
             Self::Unsupported(value) => value.span,
             Self::Becomes(span)
             | Self::Equals(span)
+            | Self::Less(span)
+            | Self::Greater(span)
             | Self::Star(span)
             | Self::Bar(span)
             | Self::Arrow(span)
@@ -961,6 +989,8 @@ impl fmt::Display for ParserToken {
             Self::PrimitiveType(_) => "primitive type",
             Self::Becomes(_) => ":=",
             Self::Equals(_) => "=",
+            Self::Less(_) => "<",
+            Self::Greater(_) => ">",
             Self::Star(_) => "*",
             Self::Bar(_) => "|",
             Self::Arrow(_) => "->",
@@ -1225,7 +1255,13 @@ fn parser_tokens_from_tokens(
 }
 
 fn parser_operator(symbol: String, span: SourceSpan) -> Result<ParserToken, String> {
+    match symbol.as_str() {
+        "<" => return Ok(ParserToken::Less(span)),
+        ">" => return Ok(ParserToken::Greater(span)),
+        _ => {}
+    }
     let priority = match symbol.as_str() {
+        relation if relation.bytes().all(|b| b"<=>".contains(&b)) && !relation.is_empty() => 2,
         "<" | "<=" | ">" | ">=" | "=" | "!=" => 2,
         "+" | "-" => 4,
         "*" | "%" | "/" | "&" | "\\" | "\\%" => 6,
@@ -1249,7 +1285,7 @@ pub fn parse(source: &SourceText) -> Result<Program, ParseError> {
     let table = crate::types::TypeTable::new();
     let scope = ParserTypes::new(&table);
     grammar::ProgramParser::new()
-        .parse(TokenStream::new(tokens, &scope))
+        .parse(&scope, TokenStream::new(tokens, &scope))
         .map_err(|error| syntax_error(error, source, &spans))
 }
 
@@ -1270,7 +1306,7 @@ pub fn parse_command_in(
     let spans: Vec<SourceSpan> = parsed.iter().map(|(_, span)| *span).collect();
     let scope = ParserTypes::new(types);
     grammar::CommandParser::new()
-        .parse(TokenStream::new(parsed, &scope))
+        .parse(&scope, TokenStream::new(parsed, &scope))
         .map_err(|error| syntax_error(error, source, &spans))
 }
 
@@ -1290,7 +1326,7 @@ pub fn parse_expression_in(
     let spans: Vec<SourceSpan> = parsed.iter().map(|(_, span)| *span).collect();
     let scope = ParserTypes::new(types);
     grammar::ExprParser::new()
-        .parse(TokenStream::new(parsed, &scope))
+        .parse(&scope, TokenStream::new(parsed, &scope))
         .map_err(|error| syntax_error(error, source, &spans))
 }
 
@@ -1438,6 +1474,7 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::TypeName(_) => Some("TYPE_ID"),
         ParserToken::TypeConstructor(_) => Some("TYPE_CONSTR"),
         ParserToken::TypeVariable(_) => Some("TYPE_VAR"),
+        ParserToken::Operator(_) => Some("OPERATOR"),
         ParserToken::Integer(_) => Some("INT"),
         ParserToken::Unsupported(_) => None, // maps to `$undefined` below
         ParserToken::If(_) => Some("IF"),
@@ -1477,6 +1514,8 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Quit(_) => Some("QUIT"),
         ParserToken::Colon(_) => Some("':'"),
         ParserToken::Equals(_) => Some("'='"),
+        ParserToken::Less(_) => Some("'<'"),
+        ParserToken::Greater(_) => Some("'>'"),
         ParserToken::RBracket(_) => Some("']'"),
         // `M~[0:1, 0:1]` / `M[0:1, 0:1, 0:1]`: the two-dimensional slice has
         // no `~[` form and no third axis upstream, so the offending token
@@ -2293,11 +2332,13 @@ fn set_type_command(
     set_type_span: SourceSpan,
     definitions: Vec<TypeDefinition>,
     tabled: bool,
+    arity: usize,
     close: SourceSpan,
 ) -> Command {
     Command::SetType {
         definitions,
         tabled,
+        arity,
         span: join_span(set_type_span, close),
     }
 }
@@ -3098,17 +3139,24 @@ mod tests {
 
     #[test]
     fn active_type_variables_are_not_accepted_as_expression_identifiers() {
-        let source = SourceText::new("T");
         let table = crate::types::TypeTable::new();
-        let scope = ParserTypes::new(&table);
-        scope.push_group(type_scope::GroupKind::Virtual);
-        scope.introduce(&["T".into()]);
-        let tokens = parser_tokens(&source).unwrap();
-        let spans = tokens.iter().map(|(_, span)| *span).collect::<Vec<_>>();
-        let failure = grammar::ExprParser::new().parse(TokenStream::new(tokens, &scope)).unwrap_err();
-        assert!(syntax_error(failure, &source, &spans).message.contains("TYPE_VAR"));
-        // A fresh command has no leaked formals after a parse failure.
-        assert!(parse(&source).is_ok());
+        for program in ["T", "let T=3 in T"] {
+            let source = SourceText::new(program);
+            let scope = ParserTypes::new(&table);
+            scope.push_group(type_scope::GroupKind::Virtual);
+            scope.introduce(&["T".into()]);
+            let tokens = parser_tokens(&source).unwrap();
+            let spans = tokens.iter().map(|(_, span)| *span).collect::<Vec<_>>();
+            let failure = grammar::ExprParser::new()
+                .parse(&scope, TokenStream::new(tokens, &scope)).unwrap_err();
+            let error = syntax_error(failure, &source, &spans);
+            assert_eq!(error.kind, ErrorKind::Syntax);
+            // TYPE_VAR now starts a type cast (parser.y type: TYPE_VAR),
+            // so bare T fails when ':' is missing, not when T is read.
+            // The oracle-backed value-binding fixture still fails at T.
+            if program.starts_with("let") { assert!(error.message.contains("TYPE_VAR")); }
+            assert!(parse(&source).is_ok(), "fresh command must restore T");
+        }
     }
 
     fn pattern_shape(pattern: &Pattern) -> String {
@@ -4227,6 +4275,56 @@ mod tests {
         assert!(
             matches!(command, Command::Whattype { target: Expr::Identifier { ref name, .. }, .. } if name == "IntList")
         );
+    }
+
+    #[test]
+    fn constructor_actions_classify_formals_after_complete_list() {
+        let Command::SetType { definitions, arity, tabled, .. } =
+            parse_one_command("set_type Pair<T,T> = (T first,T second) !") else {
+                panic!("expected constructor definition")
+            };
+        assert_eq!(arity, 2);
+        assert!(!tabled);
+        let TypeSpec::Struct(fields) = &definitions[0].spec else { panic!("struct") };
+        for field in fields {
+            assert!(matches!(field.type_expr, TypeExpr::Variable { index: 0, .. }));
+        }
+        let Command::SetType { definitions, arity, .. } =
+            parse_one_command("set_type Pair<S,T> = (S first,T second) !") else {
+                panic!("expected constructor definition")
+            };
+        assert_eq!(arity, 2);
+        let TypeSpec::Struct(fields) = &definitions[0].spec else { panic!("struct") };
+        assert!(matches!(fields[0].type_expr, TypeExpr::Variable { index: 0, .. }));
+        assert!(matches!(fields[1].type_expr, TypeExpr::Variable { index: 1, .. }));
+    }
+
+    #[test]
+    fn nested_constructor_applications_resolve_against_live_table() {
+        use crate::types::{Type, TypeBinding, TypeTable};
+        let mut table = TypeTable::new();
+        let id = table.add_constructor(TypeBinding {
+            name: "Identity".into(), definition: Type::Variable(0), fields: vec![],
+        }, 1, false);
+        let source = SourceText::new("Identity<Identity<Identity<int> > >:13");
+        let tokens = tokenize(&source).unwrap();
+        let Expr::Cast { target, .. } = parse_expression_in(&tokens, &source, &table).unwrap() else {
+            panic!("expected applied cast")
+        };
+        assert_eq!(target.resolve_in(&table).unwrap(), Type::Applied(id, vec![
+            Type::Applied(id, vec![Type::Applied(id, vec![Type::Primitive(Prim::Int)])])
+        ]));
+        let source = SourceText::new("Identity<int,rat>:13");
+        let Expr::Cast { target, .. } = parse_expression_in(&tokenize(&source).unwrap(), &source, &table).unwrap() else {
+            panic!("expected applied cast")
+        };
+        assert!(target.resolve_in(&table).unwrap_err().message.contains("2 type arguments, expected 1"));
+        let bad = SourceText::new("Identity<Identity<Identity<int>>>:13");
+        assert!(parse_expression_in(&tokenize(&bad).unwrap(), &bad, &table).is_err());
+        // Distinct '<'/'>' grammar terminals must still preserve operators.
+        assert_eq!(expression_shape(&parse_one("1<2")), "<@2(1,2)");
+        assert_eq!(expression_shape(&parse_one("2>1")), ">@2(2,1)");
+        assert_eq!(expression_shape(&parse_one("2>=1")), ">=@2(2,1)");
     }
 
     #[test]
