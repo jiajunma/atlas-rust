@@ -1,0 +1,19 @@
+{
+  "schema": "atlas-math-regression-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-e6-cayley-probe-20260928.7Toh96Iw",
+  "job": "3833616",
+  "status": "FAILED_SOURCE_PROVENANCE_BEFORE_COMPILATION",
+  "report_sha256": "bbd75ba330e0d811e7f677b8be171cb253bcea7c6ea61a326de2697c3c66209e",
+  "report_artifact": "math_e6_cayley_probe_staging_failure_2026_09_28.json",
+  "failure": "An offset patch generated domain_builtins.rs.orig; exact source-file comparison rejected the extra file. No compilation or unit execution. Preserve this stage and rebuild from the clean pinned parent with an exact patch and --no-backup-if-mismatch.",
+  "probe_sha256": "1d5fa7cdb180679e7383c69666c01a650a1737a11f42e321d8c6895d63f13d2c",
+  "source_archive_sha256": "e0d8d4fa38dc8547bd90debf0f8574860ac0dbb0b9e14728a5b6f6461b22c1e9",
+  "patch_sha256": "7cc2c1e529bfe332e6661e47755e042f1227f229079646c6cf7c071dbaef303b",
+  "module_sha256": "7931a175a48ae32018300c7ffbb86de75a076bd365bdd7ac35d94e149569c812",
+  "driver_sha256": "48c4c3641e6bd4ecc88b6c5c0fafa6a774f4b7d143743339f83e5120925da999",
+  "parent_build": "3833558",
+  "parent_build_sha256": "e15d6dc305a21079cbc316f52463652e22eb1305a6b7ded85892b0f630850888",
+  "scope": "E6 coordinate-repair runtime unchanged; adds only E6 partial-Cayley regression. Does not include the F4 endgame repair or F4 coefficient test; the local core additionally contains that separately frozen F4 test.",
+  "expectation": "Original case81 completes at integer and half scale. Inspect missing imaginary-II Cayley pairs, then require complete partial_KL_block execution with parameters equal to partial_block. Full mathematical coefficients remain in the original-backed differential.",
+  "acceptance": "Before must execute second-image panic, not a compile error. No runtime repair or after-pass yet."
+}

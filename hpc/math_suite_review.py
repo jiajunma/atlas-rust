@@ -5,7 +5,7 @@ from collections import Counter
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import tarfile
 
@@ -64,6 +64,28 @@ def independently_classify(case, entries, streams):
     return "MATH_MATCH" if left == right else "MATH_MISMATCH"
 
 
+def archive_source_manifest(archive):
+    """Use the same relative names as an extracted tree, rejecting aliases."""
+    archived = {}
+    with tarfile.open(archive) as tar:
+        for member in tar:
+            path = PurePosixPath(member.name)
+            if (path.is_absolute() or ".." in path.parts
+                    or not (member.isfile() or member.isdir())):
+                raise ValueError("unsupported archive member: " + member.name)
+            if member.isdir():
+                continue
+            name = str(path)
+            if name == "." or name in archived:
+                raise ValueError("empty or duplicate archive file: " + member.name)
+            with tar.extractfile(member) as stream:
+                h = hashlib.sha256()
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    h.update(chunk)
+                archived[name] = h.hexdigest()
+    return archived
+
+
 def review_build(path, expected_sha, lock):
     build = checked_json(path, expected_sha)
     if (build["baseline"] != lock or build["status"] != "BUILT_NOT_DIFFERENTIALLY_VERIFIED"
@@ -76,15 +98,7 @@ def review_build(path, expected_sha, lock):
         archive = stage / pin["archive"]
         if digest(archive) != pin["archive_sha256"]:
             raise ValueError("changed source archive")
-        archived = {}
-        with tarfile.open(archive) as tar:
-            for member in tar:
-                if member.isfile():
-                    with tar.extractfile(member) as stream:
-                        h = hashlib.sha256()
-                        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                            h.update(chunk)
-                        archived[member.name] = h.hexdigest()
+        archived = archive_source_manifest(archive)
         if archived != build["source_files"][engine]:
             raise ValueError("build source manifest does not describe pinned archive")
         for name, sha in archived.items():

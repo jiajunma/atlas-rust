@@ -6,7 +6,90 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
-ACTIVE COMBINED REPAIR: checked coroot sums are now staged together with the
+LATEST ACTIVE WAVE: E6 imaginary-II Cayley repair at
+/public/home/majj/atlas-math-cayley-repair-20260928.FFGcIkPi.
+Preflight3833713 PASS56 checker tests; build3833716 submitted and dependent
+15-case array3833718 submitted. Collect these exact jobs; independent review
+must be submitted after the exact build hash is available. Input pin
+545d1a3bf86d0d1a3871bdd41c6b041e5ee79727cae5d38088fb2eb2182a4c9a;
+review-code pin10478f30b2b00cd296abf3085b3abae638d97de47b86a62db00a7d5d406bae04.
+Before = endgame3833612 plus unchanged E6 regression; after changes ONLY
+optional upward imaginary-II Cayley polynomial terms to zero. Core
+4aa28dec...; KL beforef9226ab7.../aftera6d63837.... No after-pass yet.
+Before probe3833624 actually executes/fails at second image, logging absent
+second images (e.g. x1282,s5,Some1344/None). Report SHA
+afda003dfd27b6fd88b99afad00c173c5ba002501e66a996255f37e050c6f11c.
+Probe3833616 instead failed staging due to an extra.orig file; preserve it
+as a harness failure, not mathematical evidence.
+
+F4 ENDGAME VERIFIED ON RETAINED CASES: build3833612 COMPLETE9:40, same
+cold/history coefficient test fails before and passes after; previous targeted
+units and release build pass. Build SHA
+e2ce570826277bf24377b4e0b627f071f264c8ff8144ae789d04c9692e448b8f.
+Array3833613 and corrected independent review3833712 COMPLETE:
+13mathematical matches (including full F4 history case107),1rejection,
+1E6 second-image failure. Review SHA
+bddc64b66afb6e92edfc3037e8b52ca9ea3e39b81836c064aa69c84bd7dfd3bb.
+All606 original/1212 Rust files,264 scripts and full output streams rehashed.
+First review3833635 failed before mathematics because tar member names had
+./ prefixes. Corrected reviewer ran55 tests, canonicalizes only safe relative
+paths, rejects duplicate/unsafe members and rechecks UNCHANGED original
+archives/builds/results. It lives in atlas-math-endgame-review-r2-20260928.PtUN9kig;
+do not mutate the original endgame stage. No interpreter rerun was needed.
+
+E6 coordinate review3833590 remains retained: all8 KGB cases match;
+the constructor error is gone, but E6 full KL is not accepted until the
+current deeper Cayley regression and complete oracle comparison pass.
+FPP E7 resource/time limits and high-level generic-language gaps remain open.
+
+Next language frontier source audit: latest parser.y has ANY_TYPE command
+and expression productions, scoped TYPE_VAR and parameterized constructors;
+basic.at starts with Pair/One_of/Maybe/Iterator and many polymorphic scopes.
+Rust lex.rs still explicitly tests any_type as an ordinary identifier. The
+generic gap is not just one missing keyword. Preserve current oracle cases
+72-74; port scoping, type substitution and overload behavior with negative
+fixtures rather than rewriting upstream scripts. No language runtime edited.
+
+### Earlier wave snapshots (superseded by latest results above)
+
+E6 coordinate repair stage
+/public/home/majj/atlas-math-e6-form-repair-20260928.l7uK40QO;
+preflight3833556 PASS45checks; build3833558 COMPLETE9:26, before E6 test
+executes/fails, after passes; form-order6/KL6/locator10/F4-boundary1/FPP1 pass.
+Build SHAe15d6dc305a21079cbc316f52463652e22eb1305a6b7ded85892b0f630850888.
+Dependent array3833560 running (23cases,
+including every existing KGB group, E6 core KL and F4 history). Only
+real_form_order.rs differs from3833274 plus the unchanged E6 regression.
+It checks actual ordered ambient unit-vector representatives, retaining
+specialGrading's partition election. Pinned independent review3833590
+submitted afterany3833560. Collect its result; do not duplicate or accept
+the runtime on unit evidence alone.
+Parent review3833539 is now COMPLETE, SHA
+e2d648eaefd212e72863c64d034e5bd5c6f966e282ecc859330c0bcf8e4025d5:
+12mathmatches,1rejection,1F4 history mismatch,1E6 failure,1original E7 failure.
+F4 core outputs now match, but index107 exits0/empty stderr in both engines
+with different complete output. This is a genuine comparison failure, not
+an after-pass. Retain case107 and diagnose its sections; do not waive it.
+E7 now also allocation-aborts Rust under6GiB (exit134/6250992KiB), while
+original still std::bad_alloc. No completed ratio or mathematical verdict.
+
+F4 stored-output diagnoses3833562/3833564 are COMPLETE without interpreter
+reruns. R2 SHA9f3752fed4e751594560190f99c85556093ad26e17cf94825efe83509e72bd4b.
+All half/zero/unit cold/warm partial outputs match. Only unit-scale FULL
+pool102 at matrix(4,334) differs: original[0,0,2,3,3,2] versus
+Rust[0,0,4,6,5,3]; all336x336 indices, parameters and175other polynomials
+match. Current core adds a focused test of this coefficient in cold-full
+and exact prior-history contexts; probe3833589 is submitted, not yet reviewed.
+Static suspect: kl_table.rs::first_endgame_pair currently uses `cross?`
+(wrongly returning None for an absent cross) and returns Some(s,None) when
+an existing cross has no valid t (wrongly stopping the outer s search).
+Original kl.cpp:318-340 does the opposite distinction: absent cross gives
+Some(s,None); existing cross with no suitable t continues searching s.
+Do not claim this explains P(4,334) until before/after and full outputs prove
+it. Probe stage atlas-math-f4-full-kl-probe-20260928.pv3QKQOM is submitted
+against3833274 runtime, not the E6 repair; only the new core test is added.
+
+COMBINED REPAIR BUILD: checked coroot sums were staged together with the
 real-II KL boundary repair, retaining all integer/half-scale regressions.
 Stage /public/home/majj/atlas-math-kl-coroot-repair-20260928.vCEV2VU4;
 preflight3833256 COMPLETED(44checks); build3833274 COMPLETED7:57.
@@ -14,12 +97,12 @@ Identical before tests execute cross panic and both coroot failures; after
 F4 integer/half passes, coroot2 passes, KL-table6/locator10/FPP1 pass.
 Build SHA364a6b02f6cc4fb3bcf2e5762c20b5b32aeede31609c98e0585cbce154a01215;
 Rust binary SHAd1d648fb1eac8dd02c1059d3e5eb8939edb33e7c63341a79fc4faa101d0c3313.
-Dependent array3833289 is running; independently pinned review3833539 is
-submitted afterany3833289. Collect its result; do not wait idly or duplicate.
+Dependent array3833289 and independently pinned review3833539 are terminal;
+see the residual history mismatch above. Do not duplicate this wave.
 Indices75-82,89-91,103-107. Do not duplicate or mutate this frozen stage.
 Receipt math_kl_coroot_repair_submission_2026_09_28.json records every source
-and input pin. Build/unit evidence is retained; full-output differential
-review is still pending. Runtime is NOT yet accepted or committed.
+and input pin. Build/unit and differential evidence are retained. Runtime
+is NOT fully accepted or committed because F4 history remains unequal.
 While HPC executes, analyze E6 real-form ordering: verified_generator_map
 chooses the first flipped imaginary-subsystem root, which need not be a
 datum-simple root. Original partition indices instead use the adjoint fiber

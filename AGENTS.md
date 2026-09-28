@@ -91,6 +91,58 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### Compare archive paths in extracted-tree coordinates
+
+- Review3833635 failed before examining mathematics: tar stored ./crates/...
+  but file_manifest used crates/.... Bytes and archive pins had not changed.
+- Normalize safe relative tar member names before exact file/hash comparison;
+  reject traversal, absolute names, unsupported links and duplicate canonical
+  files. Keep regression tests for both spelling forms and rejected aliases.
+  Re-review existing frozen results with separately pinned checker code;
+  never alter their source archives, reports or numerical comparison rules.
+
+### Endgame search failure is not an absent cross
+
+- F4 probe3833589 computes the same wrong P(4,334) in cold and history
+  contexts. In first_endgame_pair, upstream kl.cpp:318-340 distinguishes
+  an absent cross (valid pair with no t needed) from a defined cross with
+  no suitable t (continue searching s). Rust had both branches wrong.
+- Build3833612's unchanged coefficient unit fails before and passes after
+  correcting only those branches. Review3833712 also verifies complete F4
+  history output, including every coefficient, while retaining the separate
+  E6 failure. Preserve both checks; one coefficient alone cannot establish
+  correctness of the full table or downstream associated cycles.
+
+### Keep patch backup files outside frozen source archives
+
+- E6 probe3833616 was rejected before compilation because an offset GNU
+  patch application created domain_builtins.rs.orig, changing the file set.
+- Generate patches against the exact pinned base and use
+  --no-backup-if-mismatch when staging into a fresh disposable tree. Keep
+  the baseline archive as the recovery copy and retain exact file-set checks;
+  never weaken the source guard to ignore accidental backup files.
+
+### Revalidate old language exclusions after an oracle upgrade
+
+- Latest original7e1b958c declares ANY_TYPE in parser.y and uses generic
+  constructors and any_type scopes in basic.at. The old Rust lexer unit
+  `oracle_non_keyword_is_scanned_as_an_identifier` asserts the opposite
+  for any_type; its historical expectation does not define the new oracle.
+- Keep the pinned old evidence, but use current original-backed positive
+  AND negative fixtures to migrate lexer, parser, type-variable scope and
+  overload/type-constructor semantics together. Do not preprocess away
+  generics or replace upstream scripts merely to pass high-level math tests.
+
+### Equal KL index matrices do not prove equal polynomials
+
+- F4 history review3833539 and diagnosis3833564 find identical parameters
+  and336x336 index matrices, yet pool entry102 at(4,334) differs:
+  original[0,0,2,3,3,2], Rust[0,0,4,6,5,3]. The other175 pool entries match.
+- Always compare complete coefficient vectors as well as parameter/index
+  data. Internal cold/warm equality can hold while both answers are wrong.
+  Preserve the full-output fixture and test the affected polynomial in both
+  cold-full and partial/full history contexts; do not bless matching shapes.
+
 ### Fundamental-fiber coordinates are not grading-shift positions
 
 - E6 probe3833407 reproduces the external-form constructor failure without

@@ -17990,6 +17990,220 @@ mod tests {
     use crate::diagnostic::{SourceId, SourcePosition};
     use crate::value::Matrix;
 
+    // Regression: partial E6 blocks can omit an imaginary-II Cayley image.
+    #[test]
+    fn e6_partial_kl_handles_missing_imaginary_two_cayley_image() {
+        // Original-pass/Rust-panic: case81, review3833590/raw3833584.
+        // The complete oracle comparison retains every KL coefficient.
+        let datum = fixture_datum("E6", true);
+        let mut negative_identity = vec![0; 36];
+        for i in 0..6 {
+            negative_identity[i * 6 + i] = -1;
+        }
+        let inner = call("inner_class", &[datum, matrix(6, 6, negative_identity)], span()).unwrap();
+        let real = call("quasisplit_form", &[inner], span()).unwrap();
+        let Value::Integer(size) = call("KGB_size", std::slice::from_ref(&real), span()).unwrap()
+        else { panic!("expected KGB size"); };
+        let element = call("KGB", &[real, int(i64::try_from(&size).unwrap() - 1)], span()).unwrap();
+        let mut missing_images = 0;
+        for denominator in [1, 2] {
+            let p = call("param", &[
+                element.clone(), Value::Vector(Vec32(vec![0; 6])),
+                Value::RatVector(RatVec::new(vec![1; 6], denominator).unwrap()),
+            ], span()).unwrap();
+            let Value::Domain(DomainValue::Param(parameter)) = &p
+            else { panic!("expected parameter"); };
+            let located = parameter.context.rep.lookup(&parameter.repr).unwrap();
+            located.with_kl_table(|table| {
+                let support = table.support();
+                let block = support.block();
+                for x in 0..support.size() {
+                    for s in 0..support.rank() {
+                        if block.descent(x, s) != Some(BlockDescent::ImaginaryTypeII) {
+                            continue;
+                        }
+                        let pair = BlockTopology::cayley(block, x, s).expect("imaginary Cayley pair");
+                        if pair.0.is_none() || pair.1.is_none() {
+                            if missing_images < 16 {
+                                println!("E6_PARTIAL_CAYLEY_REGRESSION denominator={denominator} x={x} s={s} pair={pair:?}");
+                            }
+                            missing_images += 1;
+                        }
+                    }
+                }
+                Ok(())
+            }).unwrap();
+            let expected = call("partial_block", std::slice::from_ref(&p), span()).unwrap();
+            let Value::Tuple(result) = call("partial_KL_block", &[p], span()).unwrap()
+            else { panic!("expected partial KL tuple"); };
+            assert_eq!(result.len(), 3);
+            assert_eq!(result[0], expected, "denominator={denominator}");
+        }
+        assert!(missing_images > 0, "must exercise missing imaginary-II Cayley images");
+    }
+
+    // Regression: the full F4 table has an incorrect P(4,334), even though
+    // every index and the other 175 pooled polynomials match the oracle.
+    #[test]
+    fn f4_full_kl_polynomial_matches_oracle_with_and_without_history() {
+        // Original7e1b, reviewed case107/job3833289 and diagnosis3833564:
+        // full block size336; its matrix(4,334) references pool102, whose
+        // coefficients must be [0,0,2,3,3,2], not [0,0,4,6,5,3].
+        let mut observed = Vec::new();
+        for history in [false, true] {
+            let datum = fixture_datum("F4", true);
+            let involution = matrix(
+                4, 4, vec![-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1],
+            );
+            let inner = call("inner_class", &[datum, involution], span()).unwrap();
+            let real = call("quasisplit_form", &[inner], span()).unwrap();
+            let Value::Integer(size) = call("KGB_size", std::slice::from_ref(&real), span()).unwrap()
+            else { panic!("expected KGB size"); };
+            let element = call("KGB", &[real, int(i64::try_from(&size).unwrap() - 1)], span()).unwrap();
+            let parameter = |numerator, denominator| {
+                call("param", &[
+                    element.clone(), Value::Vector(Vec32(vec![0; 4])),
+                    Value::RatVector(RatVec::new(vec![numerator; 4], denominator).unwrap()),
+                ], span()).unwrap()
+            };
+            if history {
+                for q in [parameter(1, 2), parameter(0, 1)] {
+                    for name in ["partial_KL_block", "partial_block", "KL_block", "partial_KL_block"] {
+                        call(name, std::slice::from_ref(&q), span()).unwrap();
+                    }
+                }
+            }
+            let p = parameter(1, 1);
+            if history {
+                call("partial_KL_block", std::slice::from_ref(&p), span()).unwrap();
+                call("partial_block", std::slice::from_ref(&p), span()).unwrap();
+            }
+            let Value::Tuple(output) = call("KL_block", std::slice::from_ref(&p), span()).unwrap()
+            else { panic!("expected KL tuple"); };
+            let Value::List(params) = &output[0] else { panic!("expected parameters"); };
+            let Value::Matrix(indices) = &output[2] else { panic!("expected index matrix"); };
+            let Value::List(pool) = &output[3] else { panic!("expected polynomial pool"); };
+            assert_eq!(params.len(), 336);
+            assert_eq!((indices.rows(), indices.cols()), (336, 336));
+            let index = usize::try_from(indices.entry(4, 334).unwrap()).unwrap();
+            println!("F4_FULL_KL_REGRESSION history={history} x={} y={} pool={index} polynomial={}",
+                     params[4], params[334], pool[index]);
+            observed.push(pool[index].clone());
+        }
+        assert_eq!(observed, vec![Value::Vector(Vec32(vec![0, 0, 2, 3, 3, 2])); 2]);
+    }
+
+    #[test]
+    fn f4_partial_kl_recursion_handles_interval_boundary_links() {
+        // Original-pass/Rust-panic reproducer: math case80, HPC3832508.
+        // The differential fixture preserves all parameters, indices and
+        // coefficients; this unit isolates the underlying partial topology.
+        let datum = fixture_datum("F4", true);
+        assert_eq!(
+            call("two_rho", std::slice::from_ref(&datum), span()).unwrap(),
+            Value::Vector(Vec32(vec![2; 4]))
+        );
+        let involution = matrix(
+            4, 4, vec![-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1, 0, 0, 0, 0, -1],
+        );
+        let inner = call("inner_class", &[datum, involution], span()).unwrap();
+        let real = call("quasisplit_form", &[inner], span()).unwrap();
+        let Value::Integer(size) = call("KGB_size", std::slice::from_ref(&real), span()).unwrap()
+        else {
+            panic!("KGB size must be an integer");
+        };
+        let element = call("KGB", &[real, int(i64::try_from(&size).unwrap() - 1)], span()).unwrap();
+        let mut boundary_links = 0;
+        for denominator in [1, 2] {
+            let p = call(
+                "param",
+                &[
+                    element.clone(),
+                    Value::Vector(Vec32(vec![0; 4])),
+                    Value::RatVector(RatVec::new(vec![1; 4], denominator).unwrap()),
+                ],
+                span(),
+            )
+            .unwrap();
+            let Value::Domain(DomainValue::Param(parameter)) = &p else {
+                panic!("expected parameter");
+            };
+            let located = parameter.context.rep.lookup(&parameter.repr).unwrap();
+            located.with_kl_table(|table| {
+                let support = table.support();
+                let block = support.block();
+                for y in 0..support.size() {
+                    let Some(s) = (0..support.rank()).find(|&s| matches!(
+                        block.descent(y, s),
+                        Some(BlockDescent::ComplexDescent | BlockDescent::RealTypeI)
+                    )) else { continue; };
+                    for x in 0..support.length_floor(y) {
+                        if support.is_extremal(x, support.descent_set(y))
+                            && BlockTopology::cross(block, x, s).is_none()
+                        {
+                            boundary_links += 1;
+                            eprintln!(
+                                "F4 partial KL boundary: denominator={denominator}, x={x}, y={y}, s={s}, descent={:?}",
+                                block.descent(x, s).unwrap()
+                            );
+                        }
+                    }
+                }
+                Ok(())
+            }).unwrap();
+            let expected = call("partial_block", std::slice::from_ref(&p), span()).unwrap();
+            let Value::Tuple(output) = call("partial_KL_block", &[p], span()).unwrap() else {
+                panic!("partial KL result must be a tuple");
+            };
+            assert_eq!(output.len(), 3);
+            assert_eq!(output[0], expected, "denominator={denominator}");
+        }
+        assert!(boundary_links > 0, "the regression must exercise missing interval links");
+    }
+
+    #[test]
+    fn alcove_reflection_words_act_as_exact_root_reflections() {
+        // Regression for D4 FPP wall representatives (HPC 3832137).
+        // Compare the actual helper used by alcove/FPP code against
+        // s_alpha(beta) = beta - <beta, alpha^vee> alpha, not against
+        // another word-building implementation or a printed word.
+        for name in ["A2", "B2", "C2", "D4", "D6", "D8", "G2", "F4", "E6", "E7"] {
+            for prefer_coroots in [false, true] {
+                let value = call(
+                    "simply_connected",
+                    &[relation_lie_type(name), Value::Boolean(prefer_coroots)],
+                    span(),
+                )
+                .expect("simply connected root datum");
+                let handle = as_root_datum(&value, span()).expect("root datum");
+                let system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+                    .expect("finite root system");
+                let numbering = RootNumbering::new(&system, handle.prefers_coroots());
+                for alpha in 0..system.roots().len() {
+                    let aid = numbering.id(alpha);
+                    let root = system.root(aid).expect("root vector");
+                    let word = reflection_word(&system, &numbering, alpha);
+                    for beta in 0..system.roots().len() {
+                        let bid = numbering.id(beta);
+                        let pairing = system.bracket(bid, aid).expect("root-coroot pairing");
+                        let expected = Weight::new(
+                            system.root(bid).expect("root vector").as_slice().iter()
+                                .zip(root.as_slice())
+                                .map(|(&b, &a)| b - pairing * a)
+                                .collect(),
+                        );
+                        let expected_id = system.id_of(&expected).expect("reflected root");
+                        assert_eq!(
+                            word_act_root(&system, &numbering, &word, beta),
+                            numbering.nbr(expected_id),
+                            "{name}: prefer_coroots={prefer_coroots}, alpha={alpha}, beta={beta}, word={word:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     #[test]
     fn strong_components_probe() {
         let g1 = vec![vec![1], vec![2], vec![0]];

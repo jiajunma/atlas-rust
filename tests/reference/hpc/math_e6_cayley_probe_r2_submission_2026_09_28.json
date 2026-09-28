@@ -1,0 +1,22 @@
+{
+  "schema": "atlas-math-regression-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-e6-cayley-probe-r2-20260928.V4nEwF7o",
+  "job": "3833624",
+  "status": "EXECUTED_SECOND_IMAGE_PANIC_REPRODUCED",
+  "report_sha256": "afda003dfd27b6fd88b99afad00c173c5ba002501e66a996255f37e050c6f11c",
+  "report_artifact": "math_e6_cayley_probe_r2_2026_09_28.json",
+  "unit_log_sha256": "b0eefe33da69c620fd05cd02c1277ef0eef6c4b8b29bd635745fcbf5b369a495",
+  "observed": "Test executes0pass1fail at second image after logging missing imaginary-II Cayley images (for example x1282,s5,pair(Some1344,None)) at denominator1. No after-pass yet.",
+  "probe_sha256": "a6f7967c7ad093ce4389f3896d3aada4eaf3b305382bdb67781031e986fcd673",
+  "source_archive_sha256": "dc521c1544c744050bfc1b811399255c604d1b4593a88e1332718e84e115a386",
+  "patch_sha256": "c029d33149f97e277161c4981d9a09247c07fc94bc44b84c4a7850c5967e368b",
+  "module_sha256": "7931a175a48ae32018300c7ffbb86de75a076bd365bdd7ac35d94e149569c812",
+  "driver_sha256": "48c4c3641e6bd4ecc88b6c5c0fafa6a774f4b7d143743339f83e5120925da999",
+  "parent_build": "3833558",
+  "parent_build_sha256": "e15d6dc305a21079cbc316f52463652e22eb1305a6b7ded85892b0f630850888",
+  "scope": "E6 coordinate-repair runtime unchanged; adds only E6 partial-Cayley regression. Does not include the F4 endgame repair or F4 coefficient test; the local core additionally contains that separately frozen F4 test.",
+  "expectation": "Original case81 completes at integer and half scale. Inspect missing imaginary-II Cayley pairs, then require complete partial_KL_block execution with parameters equal to partial_block. Full mathematical coefficients remain in the original-backed differential.",
+  "acceptance": "Before must execute second-image panic, not a compile error. No runtime repair or after-pass yet.",
+  "previous_job": "3833616",
+  "previous_failure": "Source guard rejected an extra .orig backup before compilation. R2 regenerates the same exact module bytes from a clean pinned parent with no backup artifacts; no test or runtime change."
+}

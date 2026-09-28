@@ -4,6 +4,40 @@ Baseline: Rust main05625c5d, original7e1b958c, build3831844. All executions
 below are HPC compute jobs. Do not substitute old optimized Rust candidates,
 normalize away the differences or modify the frozen original scripts.
 
+## Latest F4 coefficient and E6 recursion frontier
+
+F4 original-backed regression3833589 executes and fails in BOTH cold-full
+and partial/full history contexts: P(4,334) is[0,0,4,6,5,3] instead of
+[0,0,2,3,3,2]. This refutes a history-only explanation. Preserve the test
+and complete case107 comparison. Static source difference: first_endgame_pair
+must return(s,None) when the cross is undefined; when the cross is defined
+but no suitable t exists, continue searching s. Rust had these control-flow
+outcomes wrong. Minimal candidate changes only these branches; causal proof
+still requires the unchanged test after-pass and exact complete output.
+
+E6 review3833590 confirms construction no longer fails, but raw3833584
+panics at kl_table.rs:561 `second image` during core partial KL. Original
+completes in0.895s/77344KiB; Rust panics in1.493s/135776KiB. These are failure
+diagnostics, not speedup measurements. Investigate partial-block imaginary-II
+Cayley images: original KLSupport::prim_index(UndefBlock) returns a zero
+sentinel slot in the working column (klsupport.h:102-105). Do not drop link
+invariants globally; isolate the exact topology and add a regression first.
+Probe3833624 now executes the same second-image panic with missing imaginary-II
+Cayley pairs logged at integer scale (e.g. x1282,s5 has(Some1344,None)).
+Report afda003dfd27b6fd88b99afad00c173c5ba002501e66a996255f37e050c6f11c.
+Its predecessor3833616 only failed staging due to a .orig backup and is not
+a mathematical test. New candidate changes only these optional upward
+imaginary-II polynomial contributions to zero; all required downward links
+remain checked. Unchanged before/after proof and full E6 comparison pending.
+
+F4 build3833612 proves the same coefficient assertion fails before and passes
+after the minimal endgame repair. Its first independent review3833635 failed
+on ./-prefixed tar member names versus extracted relative names, BEFORE
+mathematical classification. Original build, outputs and archive remain frozen;
+a separately pinned corrected review normalizes only safe relative path names
+and tests rejection of duplicate/unsafe members. Do not silently mark the
+first review passed or rerun interpreters to replace existing evidence.
+
 ## D4 FPP Weyl representatives
 
 R3 case32/job3832088 finishes successfully in both engines with empty stderr.
@@ -152,6 +186,23 @@ locator10 and FPP exact-root test. Release CLI built, build SHA
 364a6b02f6cc4fb3bcf2e5762c20b5b32aeede31609c98e0585cbce154a01215.
 Full-output array3833289 and its pinned independent review3833539 are still
 pending; no mathematical acceptance from avoiding the two panics alone.
+UPDATE: review3833539 is complete, SHA
+e2d648eaefd212e72863c64d034e5bd5c6f966e282ecc859330c0bcf8e4025d5.
+All six A2/B2/C2/D4/G2/F4 core KL cases match completely, as do earlier
+targeted regressions. But F4 history case107/job3833289 is MATH_MISMATCH:
+both exit0 with empty stderr, original0.2282s/9524KiB, Rust2.2402s/20716KiB.
+Internal cold/warm equality does not prove oracle equality. Diagnose the
+full retained output; do not remove the history or compare only dimensions.
+Stored-output diagnosis3833564 (four checker tests pass) isolates pool102
+referenced only at full matrix(4,334): original[0,0,2,3,3,2], Rust
+[0,0,4,6,5,3]. Parameters, start index,336x336 index matrix and other175
+polynomials match; all half/zero/unit partial results also match. Artifact
+SHA9f3752fed4e751594560190f99c85556093ad26e17cf94825efe83509e72bd4b.
+Static endgame discrepancy: Rust stops searching generators with Some(s,None)
+when cross exists but no valid t is found, while original continues; Rust
+returns None immediately on missing cross, while original returns(s,rank).
+Preserve a focused before-failure test; this has not yet been runtime-fixed
+or shown to explain the coefficient discrepancy.
 
 E6's core KLV probe fails earlier in Rust with `real-form order twist-fixed
 generator coordinate invariant was violated`, while the original succeeds.

@@ -1,0 +1,612 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-kl-coroot-repair-20260928.vCEV2VU4/results/3833274/oracle-source/atlas",
+      "sha256": "093066582e908115022188debf348f77535e10cc7bfb2e06bb32ee5b3a03b71b"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-kl-coroot-repair-20260928.vCEV2VU4/results/3833274/target-after/release/atlas-cli",
+      "sha256": "d1d648fb1eac8dd02c1059d3e5eb8939edb33e7c63341a79fc4faa101d0c3313"
+    }
+  },
+  "build_report_sha256": "364a6b02f6cc4fb3bcf2e5762c20b5b32aeede31609c98e0585cbce154a01215",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "A2",
+      "id": "A2_core_klv",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 75,
+      "input_sha256": "f2652f0760a7b36ee2b58575f3575e00f038fcdfaaaf2116e420806b7523b744",
+      "job": "3833531",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4548,
+          "seconds": 0.03637207899009809
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7704,
+          "seconds": 0.020236634998582304
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "7f1d6748c27f0318d90857e39365092f7ed0ad28da742a27edc2dad64e7bde3e",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "B2",
+      "id": "B2_core_klv",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 76,
+      "input_sha256": "be7ac95108b45e6434cb07d9d97df3967fbdf70b2d9b025f22913ac4d154db41",
+      "job": "3833532",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4568,
+          "seconds": 0.02479982696240768
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7780,
+          "seconds": 0.016535848029889166
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "6a3e040f664b7f320fb43a5fcf475dbbc848fb0199c10a17cf45e08269babf45",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "C2",
+      "id": "C2_core_klv",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 77,
+      "input_sha256": "d33c8202a1262549461572ad5b1af402b1b82b50cfb2e20e4eaf596b842f2993",
+      "job": "3833534",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4576,
+          "seconds": 0.013629667984787375
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7780,
+          "seconds": 0.014400137995835394
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "cfbb1686a68c05bdc5a7c679d48d7ecc22d5d3bbbc9eac146825d782d946d9cd",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "D4",
+      "id": "D4_core_klv",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 78,
+      "input_sha256": "f0b61879a7b3a2f1a5b6292510684f4c11ccc76823f83d812f3b67aa678cff63",
+      "job": "3833535",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5008,
+          "seconds": 0.13227699510753155
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7036,
+          "seconds": 0.06788836885243654
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "f4285f804027e6d7bf0dceee2cafe1ee02c4830f8e5f0d5fa9bbe9dc58d1542e",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "G2",
+      "id": "G2_core_klv",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 79,
+      "input_sha256": "5248b6eefb15374fee1c97ff941fed5ea0fadab47e54aae2ab9ee81471c1b478",
+      "job": "3833536",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4572,
+          "seconds": 0.011243738001212478
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7808,
+          "seconds": 0.014010546961799264
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "bd3631e94a3c79f1c87a80833ec884c992d08eacfff7602e314dfec84bbc1b39",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "F4",
+      "id": "F4_core_klv",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 80,
+      "input_sha256": "8e36fd96bb9ef553a6857c665f93427964e78a757dc521f184e63e189633b73e",
+      "job": "3833537",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7672,
+          "seconds": 0.06840436498168856
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 14100,
+          "seconds": 0.10090184799628332
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "a4a3d2b0fe7b9f62de82227cf431c506b04a65627c158f45daa7ff3acf2c960e",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Runtime error at <stdin>:4:23: real-form order twist-fixed generator coordinate invariant was violated",
+          "  | set G=quasisplit_form(inner_class(rd,0-id_mat(6)))",
+          "  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "Name error at <stdin>:5:17: Undefined identifier 'G'",
+          "  | set p=param(KGB(G,KGB_size(G)-1),null(6),two_rho(rd)/2)"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E6",
+      "id": "E6_core_klv",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 81,
+      "input_sha256": "495938296ae2d6b30d55063ad77c9ed6eb493e05a41a41818d117a64ba78a574",
+      "job": "3833538",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 77352,
+          "seconds": 0.8924231870332733
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 30124,
+          "seconds": 0.3099496610229835
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "1b597e799b7f6da12d0ce535d578faa7553ce7b069f4156217550d5fc72b5a28",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  std::bad_alloc",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "memory allocation of 572808 bytes failed",
+          "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",
+          "timeout: the monitored command dumped core"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E7",
+      "id": "E7_core_klv",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 82,
+      "input_sha256": "19e0a0cdff473408fd2a960522691371d35c2ad0ef7c980c9907c09907b9a901",
+      "job": "3833540",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 198236,
+          "seconds": 6.865953775995877
+        },
+        "rust": {
+          "exit_status": 134,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6250992,
+          "seconds": 91.07962030702038
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "38af6f8519467015eb48369834558edd3cb579116f9b0736c11f36a9cb330d6c",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "D4",
+      "id": "D4_fpp_wall_regression",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 89,
+      "input_sha256": "2636f061ea033905052fddb360a598830790efb3fc363b1548b8160975b89167",
+      "job": "3833541",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4068,
+          "seconds": 0.06392712006345391
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4800,
+          "seconds": 0.05636348482221365
+        }
+      },
+      "operation": "fpp_wall_regression",
+      "report_sha256": "413ef9cf738a9712470cf48afbd6aec4958914a515c640ef1fdd7ad555614d0b",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "A2",
+      "id": "A2_partial_kl_regression",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 90,
+      "input_sha256": "843ec6f11c04ae98d31d00b085fe1fde19e399ddc9919ee1f6cf02946d4b4084",
+      "job": "3833542",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4580,
+          "seconds": 0.0358960481826216
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5816,
+          "seconds": 0.04696416901424527
+        }
+      },
+      "operation": "partial_kl_regression",
+      "report_sha256": "3090e4829c11626cf4a1a11c208cc21e69108d20703b218c6e6eb823855410e5",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "G2",
+      "id": "G2_partial_kl_regression",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 91,
+      "input_sha256": "be74bd929e0e84d52f96df4efb64dc18dfa118cc1d84e86232b32460201532b5",
+      "job": "3833543",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4608,
+          "seconds": 0.05633589904755354
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5916,
+          "seconds": 0.039356420980766416
+        }
+      },
+      "operation": "partial_kl_regression",
+      "report_sha256": "251368171d8885f2449ccdb85c4eb8d4b783721052fd9ea0cea81ae84b9f2e35",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "A2",
+      "id": "A2_partial_kl_history",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 103,
+      "input_sha256": "b434cab2951f281cbd6b9f65b1241d144428276aaad408a24752a9ddb2e6a3c2",
+      "job": "3833544",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4656,
+          "seconds": 0.06979169184342027
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 8080,
+          "seconds": 0.05179343814961612
+        }
+      },
+      "operation": "partial_kl_history",
+      "report_sha256": "0f5db64098a7515a183306e2991b1f47d764fd99ca02cf8119ef379e8e97fa8f",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "G2",
+      "id": "G2_partial_kl_history",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 104,
+      "input_sha256": "03139138e4fa10ce836c1e33a066fd44a7c148592d9856c4635e87b87dadd3b5",
+      "job": "3833545",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4664,
+          "seconds": 0.013058449956588447
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 8184,
+          "seconds": 0.014781585021410137
+        }
+      },
+      "operation": "partial_kl_history",
+      "report_sha256": "dc283990602afdcc4cac98c82d78da26ee0ea6c29989ac0407772703b21bc0e9",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "B2",
+      "id": "B2_partial_kl_containment",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 105,
+      "input_sha256": "817331f425c2125e28e7e630c5b7c0a894df8294280e04f1f3ef2c8537fdf8dd",
+      "job": "3833546",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4564,
+          "seconds": 0.010961300984490663
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7932,
+          "seconds": 0.01434963202336803
+        }
+      },
+      "operation": "partial_kl_containment",
+      "report_sha256": "f22e3a2040742c9aa4fae0349bdf18900698b1f90fe45c80554b32bf5e53413b",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  partial_KL_block requires a standard parameter:",
+          "  non-standard parameter(x=0,lambda=[-1]/1,nu=[0]/1)",
+          "  Parameter not standard",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:9:1: partial_KL_block requires a standard parameter:",
+          "  non-standard parameter(x=0,lambda=[-1]/1,nu=[0]/1)",
+          "  Parameter not standard",
+          "  | partial_KL_block(p)",
+          "  | ^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "A1",
+      "id": "A1_partial_kl_nonstandard_rejected",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 106,
+      "input_sha256": "0b3144b796aa1c5affb0eba8c636f2c2f968f34efd54b3c33d41e6cf11a8ea61",
+      "job": "3833547",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4448,
+          "seconds": 0.011462266033049673
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7172,
+          "seconds": 0.010424084030091763
+        }
+      },
+      "operation": "partial_kl_nonstandard_rejected",
+      "report_sha256": "e8c1c1963bdffb673895903ebb715fc244132b554c357e451d5fbc98614b1e88",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "F4",
+      "id": "F4_partial_kl_history",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 107,
+      "input_sha256": "6600daf378650171d69ce6233e5ea92a30c0b665048f99aa2d7b85aacb279202",
+      "job": "3833289",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 9524,
+          "seconds": 0.22818449209444225
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 20716,
+          "seconds": 2.240175043931231
+        }
+      },
+      "operation": "partial_kl_history",
+      "report_sha256": "2a238be5e85959c983d866dab48f3bd1932b4a0630884bb2464fdc1a0ba18f01",
+      "status": "MATH_MISMATCH"
+    }
+  ],
+  "counts": {
+    "MATH_MATCH": 12,
+    "MATH_MISMATCH": 1,
+    "ORACLE_FAILURE": 1,
+    "REJECTION_CATEGORY_MATCH": 1,
+    "RUST_FAILURE": 1
+  },
+  "input_manifest_sha256": "b572ce9c23c4a43405ff6eb6b517f4ae00c9bd1b09dfc4ea3338059167343435",
+  "job": "3833539",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-kl-coroot-repair-20260928.vCEV2VU4",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

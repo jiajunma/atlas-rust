@@ -1,0 +1,23 @@
+{
+  "schema": "atlas-kl-history-diagnosis-submission-v1",
+  "review_sha256": "e2d648eaefd212e72863c64d034e5bd5c6f966e282ecc859330c0bcf8e4025d5",
+  "report_sha256": "2a238be5e85959c983d866dab48f3bd1932b4a0630884bb2464fdc1a0ba18f01",
+  "runs": [
+    {
+      "job": "3833562",
+      "stage": "/public/home/majj/atlas-math-f4-history-diagnose-20260928.1DLh2MtW",
+      "pin_sha256": "9f62e3f66c669ca143cff688f7174bc46ad3e38b742d4b71545a2e10efd2e3d9",
+      "status": "COMPLETED_3_CHECKER_TESTS",
+      "diagnosis_sha256": "a469849c5c2f6af7a3f10cb2ebafbe542b42b4c4cf52cee06f046cce6e11ce08"
+    },
+    {
+      "job": "3833564",
+      "stage": "/public/home/majj/atlas-math-f4-history-diagnose-r2-20260928.mBSpw4dj",
+      "pin_sha256": "b6b3bf815778b5ed57e4bdaaa73d5649e15db1e10bbd1bef745819d6a40977ee",
+      "status": "COMPLETED_4_CHECKER_TESTS",
+      "diagnosis_sha256": "9f3752fed4e751594560190f99c85556093ad26e17cf94825efe83509e72bd4b"
+    }
+  ],
+  "finding": "All three cold/warm partial outputs match. Only unit-scale FULL pool102 at matrix(4,334) differs: original[0,0,2,3,3,2], Rust[0,0,4,6,5,3]. Parameters and336x336 indices match; the other175 pool entries match. Raw full-output failure retained.",
+  "scope": "Read and rehash already-reviewed stored streams on compute nodes; no interpreter rerun and no normalization or acceptance override."
+}

@@ -2,6 +2,9 @@ from pathlib import Path
 import unittest
 
 import math_kl_boundary_probe
+import math_form_order_repair_build
+import math_endgame_repair_build
+import math_cayley_repair_build
 from math_kl_repair_build import build_environments, without_added_regression
 
 
@@ -21,6 +24,15 @@ class KlRepairBuildTests(unittest.TestCase):
 
     def test_probe_is_importable_without_running_a_build(self):
         self.assertTrue(callable(math_kl_boundary_probe.main))
+
+    def test_form_order_builder_is_importable_without_running_a_build(self):
+        self.assertTrue(callable(math_form_order_repair_build.main))
+
+    def test_endgame_builder_is_importable_without_running_a_build(self):
+        self.assertTrue(callable(math_endgame_repair_build.main))
+
+    def test_cayley_builder_is_importable_without_running_a_build(self):
+        self.assertTrue(callable(math_cayley_repair_build.main))
 
     def test_regression_phases_have_independent_sanitized_targets(self):
         inherited = {"PATH": "/toolchain", "CARGO_TARGET_DIR": "/shared",

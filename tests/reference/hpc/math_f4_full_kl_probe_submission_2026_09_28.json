@@ -1,0 +1,20 @@
+{
+  "schema": "atlas-math-regression-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-f4-full-kl-probe-20260928.pv3QKQOM",
+  "job": "3833589",
+  "status": "EXECUTED_COEFFICIENT_ASSERTION_FAILURE_BOTH_CONTEXTS",
+  "report_sha256": "565e9084bbfb0702adc983a288092a199e52f949b0c8441246f880f50a73c73f",
+  "report_artifact": "math_f4_full_kl_probe_2026_09_28.json",
+  "unit_log_sha256": "75a3020765442ad263645b702c50a56bb36df46d68629802f714fb7b15b8ed4f",
+  "observed": "Both cold-full and partial/full history compute [0,0,4,6,5,3] instead of original [0,0,2,3,3,2]. The exact test executes0pass1fail; this is not merely cache-history contamination.",
+  "probe_sha256": "a7a570c9fcbf6879a2327c6365f1366e037245426773fffd7bee6688d7920e8b",
+  "source_archive_sha256": "307e5865443e4a0859c2bbd4afe51e63a655eb7386c86c00a86f7e860029e09d",
+  "patch_sha256": "06141fef337ed3cc1f66a8e70431ea0acad8fcfa8318eb5eba596ffe4f8094f0",
+  "module_sha256": "6651151f51d1746e33a9e757023db5e24264f3772449c97452149102c453e0d6",
+  "driver_sha256": "803f840dc0f0b8807bb26f5c302b29efa0188f39e7b5d59320dfa46c1cec9002",
+  "parent_build": "3833274",
+  "parent_build_sha256": "364a6b02f6cc4fb3bcf2e5762c20b5b32aeede31609c98e0585cbce154a01215",
+  "scope": "Runtime unchanged from combined KL/coroot3833274; only core F4 full-polynomial regression added. E6 runtime repair is not included.",
+  "expectation": "Original-backed full matrix(4,334) polynomial [0,0,2,3,3,2], checked in fresh full-only and half/zero/unit partial/full history contexts. Do not hardcode pool102 as the mathematical key; read through the matrix entry.",
+  "acceptance": "Must execute and fail coefficient equality, not compilation. Both contexts print before asserting. Root cause and after-fix/full differential still required."
+}

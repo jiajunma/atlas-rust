@@ -2,6 +2,46 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+CURRENT: F4 endgame build3833612 and corrected review3833712 COMPLETE:
+13mathmatches/1rejection/1E6 failure. F4 case107's full coefficients now
+match the original, not just its matrix. Before/after coefficient regression
+also passes. First review3833635 was a retained archive-path harness failure.
+E6 Cayley probe3833624 executes the second-image panic; candidate preflight
+3833713 passes56checks, build3833716 and array3833718 submitted at
+atlas-math-cayley-repair-20260928.FFGcIkPi. Collect them; no after-pass yet.
+Do not duplicate jobs. See the latest HANDOFF and exact submission receipts.
+
+The following records preserve the earlier progression.
+
+NEWEST: E6 review3833590 completed:20mathmatches/1rejection/1F4 mismatch/
+1E6 failure. All8 KGB cases match. The E6 constructor repair exposes a
+deeper partial-KL `second image` panic (raw3833584), not whole-E6 acceptance.
+F4 coefficient probe3833589 executes the same wrong result with AND without
+history; report565e9084... is retained. A minimal first_endgame_pair control-
+flow repair is staged at atlas-math-endgame-repair-20260928.IMRdjiLk, with
+the unchanged regression and independent before/after targets. No after-pass
+or full-output acceptance yet. Preflight3833611 PASS50; build3833612 and
+dependent15-case array3833613 submitted. The unchanged F4 coefficient unit
+now fails before and passes after in both contexts; release/full review pending.
+E6 probe3833616 failed source staging (extra.orig, no tests); corrected
+same-module probe3833624 is submitted. Collect these exact jobs, do not duplicate.
+
+### Earlier wave snapshots (latest status is above)
+
+Review3833539 completed with12mathmatches/1rejection, residual F4
+history MATH_MISMATCH, E6 constructor failure and original E7 allocation
+failure (Rust also allocation-aborts). F4 core KL is now fully equal; do not
+equate that with case107 acceptance. A stored-output diagnosis is being
+staged without rerunning the interpreters. E6 coordinate repair is frozen
+at atlas-math-e6-form-repair-20260928.l7uK40QO; preflight3833556,
+build3833558 COMPLETE with unchanged before-failure/after-pass proof and
+release CLI;23-case array3833560 running, review3833590 submitted. See receipts.
+F4 diagnosis3833564 now isolates exactly pool102/P(4,334): original
+[0,0,2,3,3,2], Rust[0,0,4,6,5,3]. All partial results and complete index
+matrices match. Focused cold/history probe3833589 is submitted; audit
+first_endgame_pair's inverted missing-cross/no-valid-t control flow against
+original kl.cpp:318-340. This is a source-backed suspect, not a verified fix.
+
 CURRENT WAVE: combined KL boundary + coroot closure candidate is staged at
 atlas-math-kl-coroot-repair-20260928.vCEV2VU4. Preflight3833256 PASSES44checks;
 build3833274 COMPLETED with unchanged before-fail/after-pass tests and release

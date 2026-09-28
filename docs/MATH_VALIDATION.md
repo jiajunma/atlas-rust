@@ -49,6 +49,28 @@ cases with easier inputs under the same ID.
 
 ## Repair candidates (not remote main)
 
+F4 endgame candidate3833612 now has unchanged-unit before-failure/after-pass
+AND complete retained original-backed history equality. Corrected independent
+review3833712 verifies13mathmatches/1rejection/1E6 failure across15cases,
+rechecking all source files, scripts and raw streams. First review3833635
+failed archive-path spelling before mathematics and is retained. Only safe
+relative archive names were canonicalized; no numerical output was normalized.
+E6 still panics on a missing second imaginary-II Cayley image; probe3833624
+reproduces it. Its minimal candidate3833716/array3833718 is submitted after
+56 passing checker tests, with no after-pass claimed yet.
+
+Latest review3833590 (E6 coordinate candidate3833558) independently confirms
+20mathematical matches,1expected rejection,1F4 coefficient mismatch and1E6
+KL failure. All8 KGB cases match, but E6 core KL now reaches a deeper
+`second image` panic, so removing its constructor failure is not blanket
+acceptance. F4 probe3833589 reproduces P(4,334)'s wrong coefficients in both
+fresh-full and history contexts. A minimal endgame control-flow candidate
+is being tested separately; before/after and full differential are required.
+Artifacts: `math_e6_form_repair_review_2026_09_28.json` and
+`math_f4_full_kl_probe_2026_09_28.json` in `tests/reference/hpc`.
+
+The following paragraphs retain the earlier repair progression.
+
 FPP reflection-word candidate build3832301 has an exact before-fail/after-pass
 root-reflection identity test for ten classical/exceptional Lie types and both
 root-numbering choices, using independent Cargo targets. Independent
@@ -81,6 +103,19 @@ regression then fails at half scale in the locator; there is no after-pass or
 release candidate. Its dependent differential array was cancelled without
 execution. The new failure remains mandatory, with an additional root/coroot
 closure regression being prepared; see HANDOFF and the repair receipts.
+
+Combined KL/coroot build3833274 executes the same before-fail/after-pass
+tests. Independent review3833539 confirms12mathmatches and1rejection,
+including now-complete F4 core KL output equality. F4 history case107 still
+has a full-output mismatch, E6 still fails construction, and both E7 legs
+fail allocation under the6GiB child cap. No full acceptance or failed-run
+speed ratio is claimed. Stored-output diagnosis3833562 isolates the F4
+difference: all three parameters' cold/warm partial results match; only
+unit-scale FULL differs, with identical336x336 indices and parameters but
+different polynomial coefficients. Retain the complete failing case.
+E6 probe3833407 independently proves that the external-order map confuses
+an imaginary-subsystem root position with an ambient coweight coordinate;
+a separate repair is under HPC before/after and differential verification.
 
 ## Current full initial grid
 

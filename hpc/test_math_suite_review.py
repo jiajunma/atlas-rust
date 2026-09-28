@@ -1,5 +1,50 @@
 import unittest
-from math_suite_review import complete_section, independently_classify
+import hashlib
+import io
+from pathlib import Path
+import tarfile
+import tempfile
+from math_suite_review import archive_source_manifest, complete_section, independently_classify
+
+
+class ArchiveSourceManifestTests(unittest.TestCase):
+    def manifest(self, names, entry_type=tarfile.REGTYPE):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "source.tar"
+            with tarfile.open(path, "w") as archive:
+                for name in names:
+                    member = tarfile.TarInfo(name)
+                    member.type = entry_type
+                    if member.isfile():
+                        member.size = 6
+                        archive.addfile(member, io.BytesIO(b"source"))
+                    else:
+                        member.linkname = "target"
+                        archive.addfile(member)
+            return archive_source_manifest(path)
+
+    def test_dot_prefix_matches_extracted_relative_paths(self):
+        expected = {"crates/core.rs": hashlib.sha256(b"source").hexdigest()}
+        self.assertEqual(self.manifest(["./crates/core.rs"]), expected)
+        self.assertEqual(self.manifest(["crates/core.rs"]), expected)
+
+    def test_duplicate_canonical_files_are_rejected(self):
+        for names in (["a", "a"], ["a", "./a"], ["./a", "a"]):
+            with self.assertRaisesRegex(ValueError, "duplicate archive file"):
+                self.manifest(names)
+
+    def test_unsafe_and_empty_file_names_are_rejected(self):
+        for name in ("/tmp/a", "../a", "safe/../a", ".", "./"):
+            with self.assertRaises(ValueError):
+                self.manifest([name])
+
+    def test_links_are_rejected_not_silently_ignored(self):
+        for entry_type in (tarfile.SYMTYPE, tarfile.LNKTYPE):
+            with self.assertRaisesRegex(ValueError, "unsupported archive member"):
+                self.manifest(["link"], entry_type)
+
+    def test_directories_do_not_become_source_files(self):
+        self.assertEqual(self.manifest([".", "./crates"], tarfile.DIRTYPE), {})
 
 
 class IndependentReviewTests(unittest.TestCase):

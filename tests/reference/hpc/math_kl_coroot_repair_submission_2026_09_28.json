@@ -22,7 +22,7 @@
   "unit_evidence": "Same core F4 test executes before panic and after passes both integer/half scales. Same two coroot tests execute before failures and after pass. After KL-table6, locator10, and FPP exact-root1 tests pass. Release CLI built; no full mathematical acceptance yet.",
   "differential_array": "3833289",
   "differential_dependency": "afterok:3833274",
-  "differential_status": "SUBMITTED",
+  "differential_status": "TERMINAL_ALL_16_CASES_REVIEWED",
   "indices": [
     75,
     76,
@@ -43,7 +43,10 @@
   ],
   "review_job": "3833539",
   "review_dependency": "afterany:3833289",
-  "review_status": "SUBMITTED_WITH_EXACT_BUILD_AND_INPUT_HASHES",
+  "review_status": "COMPLETED_ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS",
+  "review_sha256": "e2d648eaefd212e72863c64d034e5bd5c6f966e282ecc859330c0bcf8e4025d5",
+  "review_counts": {"MATH_MATCH": 12, "MATH_MISMATCH": 1, "ORACLE_FAILURE": 1, "REJECTION_CATEGORY_MATCH": 1, "RUST_FAILURE": 1},
+  "review_finding": "A2/B2/C2/D4/G2/F4 core KL outputs match completely. F4 case107 now exits0 with empty stderr in both engines, but complete history output differs: preserve this mathematical mismatch. E6 constructor remains broken. E7 original fails allocation and Rust aborts allocation under the6GiB child cap; no mathematical comparison or completed speed ratio.",
   "scope": "Before runtime equals3832345 plus only unchanged F4 KL and B2/F4 coroot regressions. After changes only kl_table.rs and locator.rs runtime. Original source/scripts/binary reused unchanged from3832345.",
   "acceptance": "Separate targets; execute and retain before cross panic and both coroot failures, require unchanged after tests, all KL table and locator tests, prior FPP root identity. Then full-output comparison and independently pinned review of this exact array. No runtime acceptance from build/unit passes alone.",
   "parallel_work": "Analyze E6 external real-form numbering while compute jobs run; no duplicate/restarted jobs and no shared checkout mutation."
