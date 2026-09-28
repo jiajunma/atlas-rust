@@ -1,0 +1,15 @@
+{ Expected sizes captured from original7e1b958c on HPC3832138/3832142.
+  Full coefficients are still compared: size alone is not acceptance. }
+set rd=simply_connected(Lie_type("@TYPE@"),true)
+set G=quasisplit_form(inner_class(rd,0-id_mat(@RANK@)))
+set p=param(KGB(G,KGB_size(G)-1),null(@RANK@),two_rho(rd)/2)
+set sizes=[@FULL_SIZE@,2]
+prints("MATH_BEGIN @ID@")
+for q@i in [p,p*(1/2)] do
+ let (params,indices,polynomials)=partial_KL_block(q) in
+ prints("PARAMETER",q,"DECOMPOSED",%q);
+ prints("PARAMETERS",params,"INDICES",indices,"POLYNOMIALS",polynomials);
+ if #params!=sizes[i] then error("partial KL block lost Bruhat predecessors") fi;
+ if not (params[#params-1]=q) then error("partial KL block seed is not last") fi
+od
+prints("MATH_END @ID@")

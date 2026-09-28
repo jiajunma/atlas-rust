@@ -1,0 +1,17 @@
+<hodge_test.at
+hodge_test_verbose:=false
+set G=@FORM@
+set p=trivial(G)
+prints("MATH_BEGIN @ID@")
+prints("GROUP",G,"PARAMETER",p,"BOUND",@BOUND@)
+prints("HODGE_STD",rearrange(hodge_grading_std(p)))
+prints("HODGE_IRR",rearrange(hodge_grading_irreducible(p)))
+prints("HODGE_BRANCH_STD",rearrange(hodge_branch_std(p,@BOUND@)))
+prints("STD_BACK_TRACE",back_trace)
+prints("HODGE_BRANCH_IRR",rearrange(hodge_branch_irr(p,@BOUND@)))
+prints("IRR_BACK_TRACE",back_trace)
+set (checks,passed)=hodge_test(p,@BOUND@)
+prints("SPECIALIZATION_BACK_TRACE",back_trace)
+prints("SPECIALIZATIONS",checks)
+assert(passed,"Hodge specialization identity failed")
+prints("MATH_END @ID@")

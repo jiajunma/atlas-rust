@@ -2,6 +2,37 @@
 
 ## Current mathematical-validation frontier — 2026-09-28
 
+NEW: the latest catalog has92cases. R4 probe array3832118 and independent
+review3832122 are terminal/reviewed; preflight3832117 passed19tests. All six
+Hodge probes (split A2/G2 bounds4/20; complex A2/G2 bounds15/50) still fail
+in the original. Trace-backed causes are recorded in
+`docs/slices/math_failures_2026-09-28.md`. Do not edit the latest scripts.
+R4 core KLV initially failed on the script-only infinitesimal_character alias;
+R5 replaces that helper with `%Param` destructuring, keeping R4 frozen.
+
+R5 preflight3832134 passes20tests. Array3832137, indices75-82,89, and
+independent review3832147 are complete and verified. A2/G2 core KL
+outputs show original4/10 versus Rust1 parameters (half-scale2versus1).
+Raw D4 FPP regression3832137 confirms negative integral-simple images;
+the original succeeds. Three focused failing regressions now exist, not
+just a blanket note: fpp_d4_wall.atlas and A2/G2 partial_kl_regression.atlas.
+R5 counts:6complete core-KLV mismatches (A2/B2/C2/D4/G2/F4),2Rust failures
+(E6 real-form constructor and D4 FPP invariant),1original failure (E7
+std::bad_alloc under6GiB AS cap). No speed ratios from failures.
+No runtime fix, alternate script or changed baseline has been used.
+R5 stage `/public/home/majj/atlas-math-suite-r5-20260928.XoUEs2LH`;
+R6 stage `/public/home/majj/atlas-math-suite-r6-20260928.wmMKYzQR` adds the
+focused A2/G2 expected-size regressions at90/91. Preflight3832155 passes21tests;
+array3832163 and independent review3832167 are terminal: both original cases
+pass, both Rust cases fail the expected predecessor-count assertion. These
+are verified failing regressions, NOT fixed bugs; do not rerun unchanged.
+Full pins are in
+`math_suite_probe_submissions_2026_09_28.json`. R3 broad3832011 remains active.
+
+These findings supersede any inference that latest-main failures are only
+language-level. The older optimized branches and old-original measurements
+still describe distinct builds. See MATH_VALIDATION and LANGUAGE warnings.
+
 User objective: pull, update the original, establish a mathematical test AND
 benchmark library spanning classical/exceptional groups, basic/KGB, unitarity,
 Hodge filtration, FPP, associated cycles and annihilator varieties. **All testing

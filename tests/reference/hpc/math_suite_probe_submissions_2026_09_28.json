@@ -1,0 +1,62 @@
+{
+  "schema": "atlas-math-probe-progress-v1",
+  "baseline_build_job": "3831844",
+  "baseline_build_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "review_batch_sha256": "70562532f078b8ae1eb7112a008d3587c8a8c7096cfcd3e1879155f40ed9e28f",
+  "stages": [
+    {
+      "revision": "R4",
+      "path": "/public/home/majj/atlas-math-suite-r4-20260928.2ChnHNft",
+      "inputs_sha256": "0cfdb2f20b0137910051a486930b6c41b085d69d24c7274ce72cd8cef1d2d843",
+      "review_code_sha256": "e24d6e5161c240cbea183567f5cd7f34e9e84b9643d64657c2642b477e1ab519",
+      "preflight_job": "3832117",
+      "preflight_status": "PASSED_19_VERIFIER_TESTS",
+      "preflight_report_sha256": "590e6ad84fa4356d97eefb2cfd8c9f36751b0800ff4d67d9d73cde76c0a963bb",
+      "array_job": "3832118",
+      "indices": "75,79,83-88%2",
+      "review_job": "3832122",
+      "review_status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS",
+      "review_artifact": "math_suite_hodge_probe_review_2026_09_28.json",
+      "review_sha256": "b1640e0fd93877a80b68617bd74b727e61cdf2dfa430423b8a5e89d0fff0b384",
+      "findings": "Two core-KLV fixture alias failures; six Hodge original failures. No mathematical passes."
+    },
+    {
+      "revision": "R5",
+      "path": "/public/home/majj/atlas-math-suite-r5-20260928.XoUEs2LH",
+      "inputs_sha256": "f21fb5949f2a50b05ea9253971f0d794f6b10390ff0d25b0b3bb4a27fbc7778f",
+      "review_code_sha256": "3978111d64b49c48305b97fc719df9d5ea69fadef7d5a52184dd169d829ee03f",
+      "preflight_job": "3832134",
+      "preflight_status": "PASSED_20_VERIFIER_TESTS",
+      "preflight_report_sha256": "1afdc9954ed8608415e31cdcea750869c8deb8c1f8e7e3ebeab03a80d75bcbd0",
+      "array_job": "3832137",
+      "indices": "75-82,89%2",
+      "review_job": "3832147",
+      "review_dependency": "afterany:3832137",
+      "review_indices": "75,76,77,78,79,80,81,82,89",
+      "review_status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS",
+      "review_artifact": "math_suite_kernel_review_2026_09_28.json",
+      "review_sha256": "05c25e952be5cc74ab145cedb5457edc10e8d9a3cd7514e7e15485934ea0dc4b",
+      "findings": "6 core-KLV mismatches; E6 Rust construction failure; D4 Rust FPP invariant failure; E7 original bad_alloc under the6GiB address-space cap."
+    },
+    {
+      "revision": "R6",
+      "path": "/public/home/majj/atlas-math-suite-r6-20260928.wmMKYzQR",
+      "inputs_sha256": "d866f00cf8190c7b367843dcbcabc8bdd1bed7a0cb0bee2d22f0d2b4fb455e45",
+      "review_code_sha256": "0fd906525913edf772650f490f1df26b6abdcfcd5b21f91744c43157bf9a893b",
+      "preflight_job": "3832155",
+      "preflight_status": "PASSED_21_VERIFIER_TESTS",
+      "preflight_report_sha256": "618025da9dfd643c01f16d2444bf931f287b06fad07210d97972b86e6566c135",
+      "array_job": "3832163",
+      "indices": "90-91%2",
+      "review_job": "3832167",
+      "review_dependency": "afterany:3832163",
+      "review_indices": "90,91",
+      "review_status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS",
+      "review_artifact": "math_suite_kl_regression_review_2026_09_28.json",
+      "review_sha256": "fb146e4a4ef0805c615b1e8024701fb610fe4edf3b2ec5bc89120ca3d5cc7134",
+      "findings": "Both focused original cases pass; both Rust cases fail the expected lost-predecessors assertion. Before-repair regression proof only.",
+      "scope": "Focused A2/G2 partial-KL regression assertions. Not a source repair."
+    }
+  ],
+  "scope": "Testing on HPC only; no main, runtime, oracle-script, installation or default changes. General associated cycles and broad Hodge/benchmark requirements remain open."
+}

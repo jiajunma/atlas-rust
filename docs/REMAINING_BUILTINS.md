@@ -2,6 +2,23 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+New kernel findings (independently verified R5 review3832147): A2/G2
+partial_KL_block returns singletons instead of4/10entries (half-scale2versus1),
+and D4 FPP wall representatives can send integral simple roots negative.
+The catalog now has92cases including explicit regressions with original-backed
+expectations. See `slices/math_failures_2026-09-28.md`; never repair by changing
+goldens or dropping mismatching Weyl elements. Source leads: reversed conjugate
+reflection suffix and actual-parameter Rep_table/Bruhat closure, respectively.
+These are not yet fixed or fully source-repair verified.
+Full-output KLV differences also affect B2/C2/D4/F4. E6 instead fails Rust
+real-form construction; E7 original hits std::bad_alloc under6GiB AS cap.
+The latter is incomplete resource-limited evidence, not a mathematical verdict.
+
+R4 independent review3832122 confirms six preserved Hodge original failures,
+including increased bounds and complex-form examples. A2 traces reach an empty
+tensor product whose height-1 is passed to branch; G2 traces use ambient G2
+as owner of Levi K-types. Do not hide these by modifying the pinned oracle.
+
 Current objective is mathematical correctness, not merely builtin registration.
 All tests/builds/benchmarks run on HPC. `tests/math/catalog.json` tracks72 initial
 classical/exceptional cases plus3language prerequisite cases and explicit gaps.

@@ -25,6 +25,8 @@ def cases(root):
     grids = [(catalog["groups"], catalog["operations"] + catalog["rejections"]),
              ([{"type": "Language", "family": "language", "rank": 0, "tier": "small"}],
               catalog.get("language_operations", []))]
+    grids.extend((grid.get("groups", catalog["groups"]), grid["operations"])
+                 for grid in catalog.get("additional_grids", []))
     for groups, operations in grids:
         for group, operation in ((g, op) for g in groups for op in operations):
             case = dict(group, **operation)
@@ -37,6 +39,10 @@ def cases(root):
             if template.parent.resolve() != (root / "tests/math/templates").resolve():
                 raise ValueError("template must be in the catalog template directory")
             source = template.read_text()
+            for token, value in case.get("parameters", {}).items():
+                if not re.fullmatch(r"[A-Z_]+", token) or token in ("TYPE", "RANK", "ID"):
+                    raise ValueError("invalid additional template parameter")
+                source = source.replace("@" + token + "@", str(value))
             for token, value in [("TYPE", group["type"]), ("RANK", group["rank"]),
                                  ("ID", case["id"])]:
                 source = source.replace("@" + token + "@", str(value))

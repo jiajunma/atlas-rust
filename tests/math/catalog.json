@@ -28,6 +28,47 @@
     {"id": "generic_identity", "template": "generic_identity.atlas", "scope": "Minimal latest any_type scope and polymorphic function, without basic.at."},
     {"id": "basic_load", "template": "basic_load.atlas", "scope": "Load the exact unmodified latest basic.at before high-level mathematical scripts."}
   ],
+  "additional_grids": [
+    {
+      "operations": [
+        {"id": "core_klv", "template": "core_klv.atlas", "scope": "Same trivial/half-scaled parameters and full partial_KL_block as the script-backed KLV case, using original-backed builtin construction. Does not replace the latest-script compatibility case."}
+      ]
+    },
+    {
+      "groups": [
+        {"type": "A2", "family": "classical", "rank": 2, "tier": "small"},
+        {"type": "G2", "family": "exceptional", "rank": 2, "tier": "small"}
+      ],
+      "operations": [
+        {"id": "hodge_trace_bound4", "template": "hodge_trace.atlas", "parameters": {"BOUND": 4, "FORM": "split_form(Lie_type(\"@TYPE@\"))"}, "scope": "Diagnose preserved split-form bound4 Hodge failures via immediate back_trace after standard and irreducible branching; latest scripts unchanged."},
+        {"id": "hodge_trace_bound20", "template": "hodge_trace.atlas", "parameters": {"BOUND": 20, "FORM": "split_form(Lie_type(\"@TYPE@\"))"}, "scope": "Additional split-form bound20 Hodge probe, retaining bound4 failures rather than substituting a passing bound."}
+      ]
+    },
+    {
+      "groups": [
+        {"type": "A2", "family": "classical", "rank": 2, "tier": "medium", "parameters": {"BOUND": 15, "FORM": "complexification(split_form(Lie_type(\"@TYPE@\")))"}},
+        {"type": "G2", "family": "exceptional", "rank": 2, "tier": "medium", "parameters": {"BOUND": 50, "FORM": "complexification(split_form(Lie_type(\"@TYPE@\")))"}}
+      ],
+      "operations": [
+        {"id": "hodge_complex_trace", "template": "hodge_trace.atlas", "scope": "Additional complex-form Hodge standard/irreducible branches using bounds from upstream hodge_test.at examples; does not replace split-form failures."}
+      ]
+    },
+    {
+      "groups": [{"type": "D4", "family": "classical", "rank": 4, "tier": "small"}],
+      "operations": [
+        {"id": "fpp_wall_regression", "template": "fpp_d4_wall.atlas", "scope": "Regression from HPC3832088: gamma=[1,0,0,0]/100 has differing Weyl representatives despite equal orbit numerators. Check complete actions, positivity of the integral simple system, and exact oracle representatives."}
+      ]
+    },
+    {
+      "groups": [
+        {"type": "A2", "family": "classical", "rank": 2, "tier": "small", "parameters": {"FULL_SIZE": 4}},
+        {"type": "G2", "family": "exceptional", "rank": 2, "tier": "small", "parameters": {"FULL_SIZE": 10}}
+      ],
+      "operations": [
+        {"id": "partial_kl_regression", "template": "partial_kl_regression.atlas", "scope": "Regression from HPC3832138/3832142: original partial KL blocks have4/10 entries for trivial and2 for half-scaled parameters; Rust incorrectly returns singletons. Retain complete parameters, matrices and polynomial pools in addition to size assertions."}
+      ]
+    }
+  ],
   "open_requirements": [
     "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
     "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",

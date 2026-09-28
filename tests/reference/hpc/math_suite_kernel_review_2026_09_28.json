@@ -1,0 +1,324 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/target/release/atlas-cli",
+      "sha256": "be266b308e13110b357c2adf32f010b74cecf8ac4f8eccd9b5b66f0108e26104"
+    }
+  },
+  "build_report_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "A2",
+      "id": "A2_core_klv",
+      "index": 75,
+      "input_sha256": "f2652f0760a7b36ee2b58575f3575e00f038fcdfaaaf2116e420806b7523b744",
+      "job": "3832138",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4556,
+          "seconds": 0.01614360883831978
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7640,
+          "seconds": 0.013722563162446022
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "12c929b92a908276b515bfba1431d9c9f20860d039f4e459f8d2c58cd978eb86",
+      "status": "MATH_MISMATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "B2",
+      "id": "B2_core_klv",
+      "index": 76,
+      "input_sha256": "be7ac95108b45e6434cb07d9d97df3967fbdf70b2d9b025f22913ac4d154db41",
+      "job": "3832139",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4596,
+          "seconds": 0.024282339960336685
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5676,
+          "seconds": 0.030746160075068474
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "3a42da6901b2f42a9c8cf9346d1450b314ac965f54b4f4b77bc1779bafae96d7",
+      "status": "MATH_MISMATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "C2",
+      "id": "C2_core_klv",
+      "index": 77,
+      "input_sha256": "d33c8202a1262549461572ad5b1af402b1b82b50cfb2e20e4eaf596b842f2993",
+      "job": "3832140",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4596,
+          "seconds": 0.010668763890862465
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7716,
+          "seconds": 0.024382952600717545
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "2993ce8657b7f10f560dc247e8c332e7d67c0fd5d6f710f1d9f80f6b62a232f6",
+      "status": "MATH_MISMATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "D4",
+      "id": "D4_core_klv",
+      "index": 78,
+      "input_sha256": "f0b61879a7b3a2f1a5b6292510684f4c11ccc76823f83d812f3b67aa678cff63",
+      "job": "3832141",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5044,
+          "seconds": 0.020101750269532204
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 8780,
+          "seconds": 0.03654664009809494
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "d7e3786f6d62cfb86c150cecf8ce4afa09de673ebd1257ec2b86b05c096ae1af",
+      "status": "MATH_MISMATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "G2",
+      "id": "G2_core_klv",
+      "index": 79,
+      "input_sha256": "5248b6eefb15374fee1c97ff941fed5ea0fadab47e54aae2ab9ee81471c1b478",
+      "job": "3832142",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4580,
+          "seconds": 0.01070128008723259
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7736,
+          "seconds": 0.014655297622084618
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "166fb97e8da9243e9828d656ab6a64533e63b91afdc4c4637826a0d1d107adf8",
+      "status": "MATH_MISMATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "F4",
+      "id": "F4_core_klv",
+      "index": 80,
+      "input_sha256": "8e36fd96bb9ef553a6857c665f93427964e78a757dc521f184e63e189633b73e",
+      "job": "3832144",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7676,
+          "seconds": 0.057255569845438004
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 10840,
+          "seconds": 0.1507427617907524
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "ff2566017388d509f0aa79032e53fba01020484701cb129fac5e64e87f886f99",
+      "status": "MATH_MISMATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Runtime error at <stdin>:4:23: real-form order twist-fixed generator coordinate invariant was violated",
+          "  | set G=quasisplit_form(inner_class(rd,0-id_mat(6)))",
+          "  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "Name error at <stdin>:5:17: Undefined identifier 'G'",
+          "  | set p=param(KGB(G,KGB_size(G)-1),null(6),two_rho(rd)/2)"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E6",
+      "id": "E6_core_klv",
+      "index": 81,
+      "input_sha256": "495938296ae2d6b30d55063ad77c9ed6eb493e05a41a41818d117a64ba78a574",
+      "job": "3832145",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 77364,
+          "seconds": 0.8916359599679708
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 30104,
+          "seconds": 0.3035296928137541
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "b56949a06619c8d5d76d8335477b40a72f8bb71b7fa343aaa4bf6d2eb199ddff",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  std::bad_alloc",
+          "Evaluation aborted."
+        ],
+        "rust": []
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E7",
+      "id": "E7_core_klv",
+      "index": 82,
+      "input_sha256": "19e0a0cdff473408fd2a960522691371d35c2ad0ef7c980c9907c09907b9a901",
+      "job": "3832146",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 196180,
+          "seconds": 6.907333239912987
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 1460652,
+          "seconds": 161.62997242808342
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "ba84fc8e12000b281875fb6f8f33594a86bc5ccc4a1a6e2184e4ffc296a5baeb",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Runtime error at <stdin>:22:31: D4 FPP integral simple image is negative",
+          "  |   if action[npos+j]<npos then error(\"D4 FPP integral simple image is negative\") fi",
+          "  |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "D4",
+      "id": "D4_fpp_wall_regression",
+      "index": 89,
+      "input_sha256": "2636f061ea033905052fddb360a598830790efb3fc363b1548b8160975b89167",
+      "job": "3832137",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4072,
+          "seconds": 0.010208364576101303
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6860,
+          "seconds": 0.013792857527732849
+        }
+      },
+      "operation": "fpp_wall_regression",
+      "report_sha256": "614925935228df3b28cccd042c64419e98ea0810a663fa7dca5fecfaa31db80d",
+      "status": "RUST_FAILURE"
+    }
+  ],
+  "counts": {
+    "MATH_MISMATCH": 6,
+    "ORACLE_FAILURE": 1,
+    "RUST_FAILURE": 2
+  },
+  "input_manifest_sha256": "f21fb5949f2a50b05ea9253971f0d794f6b10390ff0d25b0b3bb4a27fbc7778f",
+  "job": "3832147",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-suite-r5-20260928.XoUEs2LH",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

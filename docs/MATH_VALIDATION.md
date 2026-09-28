@@ -36,10 +36,31 @@ Reviewed JSON artifacts:
 - `tests/reference/hpc/math_suite_corrective_review_2026_09_28.json`
 - `tests/reference/hpc/math_suite_r3_preflight_2026_09_28.json`
 
-The75-case catalog is a coverage plan, not75 verified successes. Additional
+The catalog now contains92 cases, not92 verified successes. Additional
 54 B2/C2/D4/F4/E6/E7 cases are running as array3832011; independent review
 3832103 is queued after that exact array. Do not infer acceptance from SLURM
 COMPLETED alone or replace timed-out cases with easier inputs under the same ID.
+
+## New kernel regressions and Hodge diagnostics
+
+R5 independent review3832147 confirms genuine problems beyond script loading:
+D4 FPP returns Weyl representatives that violate the positive integral-simple
+image invariant; A2/G2 partial KL blocks lose Bruhat predecessors, returning
+one parameter instead of4/10, and one instead of2 at half scale. Full original
+and Rust outputs are retained. Focused regression templates assert the
+original-backed expectations and preserve complete mathematical output.
+These failures are not fixed. Core KLV differs in A2/B2/C2/D4/G2/F4; E6 fails
+Rust real-form construction, and E7's original hits an allocation failure
+under the6GiB child cap. Neither failed comparison supplies a speed ratio.
+R6 review3832167 confirms both focused A2/G2 assertions pass in the original
+and fail in unchanged Rust, supplying explicit before-repair regression proof.
+
+R4 review3832122 has independently verified six further Hodge failures on
+the original. Raising split bounds from4 to20 does not help; complex A2/G2
+examples at15/50 also fail. Back traces distinguish an empty tensor-product
+sum with height-1 from a Levi/ambient real-form mismatch. Read
+`docs/slices/math_failures_2026-09-28.md` for exact sources and job handles.
+Original-side defects are not Rust mathematical passes or speed results.
 
 ## Requirements still open
 

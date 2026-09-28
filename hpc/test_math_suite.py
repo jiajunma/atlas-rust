@@ -11,14 +11,15 @@ class MathSuiteTests(unittest.TestCase):
 
     def test_catalog_cross_product(self):
         catalog, matrix = cases(Path(__file__).resolve().parents[1])
-        self.assertEqual(len(matrix), 75)
-        self.assertEqual(sum(x["family"] != "language" for x in matrix), 72)
+        self.assertEqual(len(matrix), 92)
+        self.assertEqual(sum(x["family"] != "language" for x in matrix), 89)
         self.assertEqual({x["family"] for x in matrix}, {"classical", "exceptional", "language"})
         self.assertTrue(catalog["open_requirements"])
         for case in matrix:
             self.assertNotIn("@TYPE@", case["source"])
             self.assertNotIn("@RANK@", case["source"])
             self.assertNotIn("@ID@", case["source"])
+            self.assertNotRegex(case["source"], r"@[A-Z_]+@")
             self.assertIn(case["id"], case["source"])
 
     def test_full_polynomial_not_just_count(self):
@@ -79,8 +80,47 @@ class MathSuiteTests(unittest.TestCase):
         self.assertEqual(matrix[0]["id"], "A2_root_data")
         self.assertEqual(matrix[36]["id"], "G2_root_data")
         self.assertEqual(matrix[71]["id"], "E7_fpp_rank_rejected")
-        self.assertEqual([x["id"] for x in matrix[72:]],
+        self.assertEqual([x["id"] for x in matrix[72:75]],
                          ["Language_generic_pair", "Language_generic_identity", "Language_basic_load"])
+
+    def test_core_klv_is_additive_and_same_parameters(self):
+        matrix = cases(Path(__file__).resolve().parents[1])[1]
+        self.assertEqual(matrix[75]["id"], "A2_core_klv")
+        self.assertEqual(matrix[82]["id"], "E7_core_klv")
+        self.assertTrue(matrix[2]["source"].startswith("<deform.at"))
+        for case in matrix[75:83]:
+            self.assertNotIn("<deform.at", case["source"])
+            self.assertIn("two_rho(rd)/2", case["source"])
+            self.assertIn("for q in [p,p*(1/2)]", case["source"])
+
+    def test_hodge_probes_preserve_failed_bounds(self):
+        matrix = cases(Path(__file__).resolve().parents[1])[1]
+        self.assertIn("hodge_branch_std(p,4)", matrix[4]["source"])
+        self.assertEqual([case["parameters"]["BOUND"] for case in matrix[83:89]],
+                         [4, 20, 4, 20, 15, 50])
+        self.assertEqual(matrix[88]["id"], "G2_hodge_complex_trace")
+        for case in matrix[83:89]:
+            self.assertIn('prints("STD_BACK_TRACE",back_trace)', case["source"])
+            self.assertIn('prints("IRR_BACK_TRACE",back_trace)', case["source"])
+
+    def test_d4_wall_regression_preserves_full_actions(self):
+        matrix = cases(Path(__file__).resolve().parents[1])[1]
+        case = matrix[89]
+        self.assertEqual(case["id"], "D4_fpp_wall_regression")
+        self.assertEqual(case["expected"], "accept")
+        self.assertIn("[1,0,0,0]/100", case["source"])
+        self.assertIn("root_permutation(w)", case["source"])
+        self.assertIn("w=W_elt(rd,expected[i])", case["source"])
+        self.assertIn("action[npos+j]<npos", case["source"])
+
+    def test_partial_kl_regressions_keep_complete_polynomials(self):
+        matrix = cases(Path(__file__).resolve().parents[1])[1]
+        self.assertEqual([case["id"] for case in matrix[90:]],
+                         ["A2_partial_kl_regression", "G2_partial_kl_regression"])
+        self.assertEqual([case["parameters"]["FULL_SIZE"] for case in matrix[90:]], [4, 10])
+        for case in matrix[90:]:
+            self.assertIn('"POLYNOMIALS",polynomials', case["source"])
+            self.assertIn("partial KL block lost Bruhat predecessors", case["source"])
 
 
 if __name__ == "__main__":

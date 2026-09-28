@@ -1,0 +1,106 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/target/release/atlas-cli",
+      "sha256": "be266b308e13110b357c2adf32f010b74cecf8ac4f8eccd9b5b66f0108e26104"
+    }
+  },
+  "build_report_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Runtime error at <stdin>:12:28: partial KL block lost Bruhat predecessors",
+          "  |  if #params!=sizes[i] then error(\"partial KL block lost Bruhat predecessors\") fi;",
+          "  |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "A2",
+      "id": "A2_partial_kl_regression",
+      "index": 90,
+      "input_sha256": "843ec6f11c04ae98d31d00b085fe1fde19e399ddc9919ee1f6cf02946d4b4084",
+      "job": "3832164",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4584,
+          "seconds": 0.02415982447564602
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7752,
+          "seconds": 0.011740593239665031
+        }
+      },
+      "operation": "partial_kl_regression",
+      "report_sha256": "afe55039b627d1b92c3e310f9d4a5c1b3e1b838caa2cda96813a1df40a0b850a",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Runtime error at <stdin>:12:28: partial KL block lost Bruhat predecessors",
+          "  |  if #params!=sizes[i] then error(\"partial KL block lost Bruhat predecessors\") fi;",
+          "  |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "G2",
+      "id": "G2_partial_kl_regression",
+      "index": 91,
+      "input_sha256": "be74bd929e0e84d52f96df4efb64dc18dfa118cc1d84e86232b32460201532b5",
+      "job": "3832163",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4592,
+          "seconds": 0.029745129868388176
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5832,
+          "seconds": 0.1264902539551258
+        }
+      },
+      "operation": "partial_kl_regression",
+      "report_sha256": "5c22fba2fb4ce9088bfa0aded9a1a98a5a12130c0f8cc8a4df10eaa41e7e789f",
+      "status": "RUST_FAILURE"
+    }
+  ],
+  "counts": {
+    "RUST_FAILURE": 2
+  },
+  "input_manifest_sha256": "d866f00cf8190c7b367843dcbcabc8bdd1bed7a0cb0bee2d22f0d2b4fb455e45",
+  "job": "3832167",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-suite-r6-20260928.wmMKYzQR",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

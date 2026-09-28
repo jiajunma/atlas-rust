@@ -1,5 +1,14 @@
 # Atlas source and language support
 
+## Current validation warning — 2026-09-28
+
+The historical support matrix below is not blanket acceptance against the
+latest original7e1b958c. The new HPC mathematical survey confirms a generic
+language-loading gap and exposes FPP/partial-KL regressions on current main
+05625c5d. Builtin registration coverage is not mathematical correctness.
+See `MATH_VALIDATION.md` and `slices/math_failures_2026-09-28.md` for pinned
+evidence and unresolved scope; keep the failing cases in the test library.
+
 ## Reference source tree
 
 The upstream [Atlas repository](https://github.com/jeffreyadams/atlasofliegroups)

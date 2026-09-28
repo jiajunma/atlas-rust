@@ -1,0 +1,26 @@
+{ Regression discovered in HPC3832088; no latest-script dependency.
+  Expected Weyl words come from the successful original7e1b958c run,
+  not from the Rust result. Preserve until the repaired binary passes. }
+set rd=simply_connected(Lie_type("D4"),true)
+set gamma=[1,0,0,0]/100
+set pairs=FPP_w_shifts(rd,gamma)
+set expected=[[int]:[],[1,3,2,1,0],[3,2,1,0],[1,0],[0],[0,1,3,2,1,0]]
+set npos=nr_of_posroots(rd)
+prints("MATH_BEGIN @ID@")
+prints("GAMMA",gamma,"NUMERS",FPP_numers(rd,gamma))
+prints("PAIRS",pairs)
+for (w,shifts)@i in pairs do
+ prints("ROW",i,"WORD",word(w),"ROOT_ACTION",root_permutation(w),
+        "BASIS_ACTION",for j:4 do w*id_mat(4)[j] od,"SHIFTS",shifts)
+od
+if #pairs!=#expected then error("D4 FPP wall representative count") fi
+{ Simple roots1,2,3 form the integral subsystem at this gamma.
+  Original FPP_w_shifts makes their images positive before returning w. }
+for (w,shifts)@i in pairs do
+ let action=root_permutation(w) in
+ for j in [1,2,3] do
+  if action[npos+j]<npos then error("D4 FPP integral simple image is negative") fi
+ od;
+ if not (w=W_elt(rd,expected[i])) then error("D4 FPP wall Weyl representative differs") fi
+od
+prints("MATH_END @ID@")

@@ -41,6 +41,32 @@ failed R2 inputs/results remain immutable. Its Hodge failures on the original
 are retained separately and are not waived because elementary specializations
 printed true before the branching failures.
 
+R4 appends14cases without moving the existing75indices: eight core KLV cases
+expand the original's split_form/trivial construction into builtin calls, and
+six Hodge diagnostic cases preserve split A2/G2 bound4, add bound20 and include
+the upstream complex A2/G2 examples at bounds15/50. Total catalog size is89.
+These are candidate probes pending HPC acceptance, not new support claims.
+Core KLV does not replace the failing latest-script case; Hodge back traces
+diagnose the original failures without editing upstream scripts or lowering
+the acceptance criteria. The original Hodge fixture remains unchanged.
+
+R4 review3832122 confirms all six Hodge probes fail in the original too;
+increasing the split bound to20 does not remove the observed failure. Its
+two core KLV probes exposed another fixture-only alias dependency:
+`infinitesimal_character` is script-defined. R5 replaces that alias by the
+exact builtin `%Param` destructuring from basic.at; R4 inputs remain frozen.
+R5 also appends index89, `D4_fpp_wall_regression` (90catalog cases total),
+from the differing FPP Weyl representatives in3832088. It preserves full
+actions and original representatives, and independently checks positivity of
+the integral simple roots; equal orbit numerators alone must not mask a bad
+Weyl element. Its baseline failure and source repair are not yet accepted.
+
+R6 appends A2/G2 `partial_kl_regression` at indices90/91 (92total), after
+R5 raw core probes returned complete original blocks of4/10 entries but only
+one Rust entry; half-scaled inputs had2versus1. The focused tests assert those
+original-backed sizes and retain every parameter, matrix entry and polynomial.
+They are explicitly failing regression candidates, not supported features.
+
 | Area | Output checked | Additional mathematical check |
 |---|---|---|
 | Basic root data | Full roots, coroots, Cartan matrix and dual | Double dual; exact rational identity |

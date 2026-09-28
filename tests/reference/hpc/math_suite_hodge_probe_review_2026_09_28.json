@@ -1,0 +1,368 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/target/release/atlas-cli",
+      "sha256": "be266b308e13110b357c2adf32f010b74cecf8ac4f8eccd9b5b66f0108e26104"
+    }
+  },
+  "build_report_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in expression infinitesimal_character at <standard input>:8:30-53",
+          "  Undefined identifier 'infinitesimal_character'",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Name error at <stdin>:8:31: Undefined identifier 'infinitesimal_character'",
+          "  |  prints(\"PARAMETER\",q,\"gamma\",infinitesimal_character(q));",
+          "  |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "A2",
+      "id": "A2_core_klv",
+      "index": 75,
+      "input_sha256": "e533a71bcd2dc0811a62d5b04cca0474a94fc5f83f7ce3a892ef5dfb578835f2",
+      "job": "3832119",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4388,
+          "seconds": 0.07542850502068177
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7112,
+          "seconds": 0.08528159197885543
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "4376e017f4db3a4281ede46610467b57b64e511d767921d44edc05728b29aa19",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in expression infinitesimal_character at <standard input>:8:30-53",
+          "  Undefined identifier 'infinitesimal_character'",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Name error at <stdin>:8:31: Undefined identifier 'infinitesimal_character'",
+          "  |  prints(\"PARAMETER\",q,\"gamma\",infinitesimal_character(q));",
+          "  |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "G2",
+      "id": "G2_core_klv",
+      "index": 79,
+      "input_sha256": "facfc091ea762df6d343dd8a68d9e20ce79c8a077b024aafb89831a87c0e5cef",
+      "job": "3832120",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4392,
+          "seconds": 0.08596004301216453
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7288,
+          "seconds": 0.08566810603952035
+        }
+      },
+      "operation": "core_klv",
+      "report_sha256": "44003e4f537f04c2f1520fdce5f6e12cb81c04f5191e00901df80285a604af74",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Maximum level in branch cannot be negative",
+          "Evaluation aborted.",
+          "Runtime error:",
+          "  Maximum level in branch cannot be negative"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "A2",
+      "id": "A2_hodge_trace_bound4",
+      "index": 83,
+      "input_sha256": "6272d017b05a650810999eee469029ee133726618edca9519f1420bea47a776c",
+      "job": "3832123",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13440,
+          "seconds": 0.35103837586939335
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5912,
+          "seconds": 0.020560307428240776
+        }
+      },
+      "operation": "hodge_trace_bound4",
+      "report_sha256": "59d9ba8a33278c762d5cb475ad9e148e919c23dbb24f6be9ad75279dae2d6410",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Maximum level in branch cannot be negative",
+          "Evaluation aborted.",
+          "Runtime error:",
+          "  Maximum level in branch cannot be negative"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "A2",
+      "id": "A2_hodge_trace_bound20",
+      "index": 84,
+      "input_sha256": "3f427757db8d1811e3234cba8f07fcaa1b4a0f2e619ce98856b1ad03e1686ced",
+      "job": "3832124",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13448,
+          "seconds": 0.40277768298983574
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3852,
+          "seconds": 0.04757826030254364
+        }
+      },
+      "operation": "hodge_trace_bound20",
+      "report_sha256": "89e2971c140525d57d43b91e8f2c3169e203d84aa14f86b2f05c3e511d06cbfb",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Real form mismatch when adding terms to a K_type",
+          "Evaluation aborted.",
+          "Runtime error:",
+          "  Real form mismatch when adding terms to a K_type"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "G2",
+      "id": "G2_hodge_trace_bound4",
+      "index": 85,
+      "input_sha256": "f45236d4b6cf20b45f20245e0deed8d8dc86bfcd5b83c0f649f7ce95318b4244",
+      "job": "3832125",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13728,
+          "seconds": 2.2902119122445583
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5892,
+          "seconds": 0.012424973770976067
+        }
+      },
+      "operation": "hodge_trace_bound4",
+      "report_sha256": "b14ffd8c7c903af05130764f423c747b38f36e6e0dae6dfd3823822a7fb989dd",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Real form mismatch when adding terms to a K_type",
+          "Evaluation aborted.",
+          "Runtime error:",
+          "  Real form mismatch when adding terms to a K_type"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "G2",
+      "id": "G2_hodge_trace_bound20",
+      "index": 86,
+      "input_sha256": "2c1e6e686fb899a3a4eab653f502fa1be4ca88e9f41bfc6eb7b12bfa4ed2e335",
+      "job": "3832126",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13780,
+          "seconds": 2.316260486841202
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5912,
+          "seconds": 0.011851070448756218
+        }
+      },
+      "operation": "hodge_trace_bound20",
+      "report_sha256": "56485bca1765a6edc803c05b0d3e10ef0d577e282217ce24f09a869cd1a1598e",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Maximum level in branch cannot be negative",
+          "Evaluation aborted.",
+          "Runtime error:",
+          "  Maximum level in branch cannot be negative"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "A2",
+      "id": "A2_hodge_complex_trace",
+      "index": 87,
+      "input_sha256": "698421524a732db391ad3ad6012828e7c6fd9ad5a1393f77a0532da66aa421cc",
+      "job": "3832127",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13448,
+          "seconds": 0.42110084742307663
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5912,
+          "seconds": 0.03349168784916401
+        }
+      },
+      "operation": "hodge_complex_trace",
+      "report_sha256": "615e47ad5cb0decee7bf002332540362363928c7fe8e513eb5592592de30e9f1",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Maximum level in branch cannot be negative",
+          "Evaluation aborted.",
+          "Runtime error:",
+          "  Maximum level in branch cannot be negative"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "G2",
+      "id": "G2_hodge_complex_trace",
+      "index": 88,
+      "input_sha256": "16d5a89eb287daf161fffb3efaeba12d5767805f847093b96f4ef2fd40a9913f",
+      "job": "3832118",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13596,
+          "seconds": 9.669099001213908
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5896,
+          "seconds": 0.011806728318333626
+        }
+      },
+      "operation": "hodge_complex_trace",
+      "report_sha256": "8ccbc216404f0f85f0cec09b10ad50267bee6f4d48798b39e6f46a745c60782a",
+      "status": "ORACLE_FAILURE"
+    }
+  ],
+  "counts": {
+    "ORACLE_FAILURE": 8
+  },
+  "input_manifest_sha256": "0cfdb2f20b0137910051a486930b6c41b085d69d24c7274ce72cd8cef1d2d843",
+  "job": "3832122",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-suite-r4-20260928.2ChnHNft",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

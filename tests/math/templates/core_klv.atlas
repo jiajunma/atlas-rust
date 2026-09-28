@@ -1,0 +1,12 @@
+{ Builtin expansion of basic.at split_form and trivial, not a replacement
+  for the separately retained test loading the unmodified latest scripts. }
+set rd=simply_connected(Lie_type("@TYPE@"),true)
+set G=quasisplit_form(inner_class(rd,0-id_mat(@RANK@)))
+set p=param(KGB(G,KGB_size(G)-1),null(@RANK@),two_rho(rd)/2)
+prints("MATH_BEGIN @ID@")
+for q in [p,p*(1/2)] do
+ let (,,gamma)=%q in
+ prints("PARAMETER",q,"gamma",gamma);
+ prints("PARTIAL_KL",partial_KL_block(q))
+od
+prints("MATH_END @ID@")
