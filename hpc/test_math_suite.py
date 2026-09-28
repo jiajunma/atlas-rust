@@ -11,8 +11,8 @@ class MathSuiteTests(unittest.TestCase):
 
     def test_catalog_cross_product(self):
         catalog, matrix = cases(Path(__file__).resolve().parents[1])
-        self.assertEqual(len(matrix), 92)
-        self.assertEqual(sum(x["family"] != "language" for x in matrix), 89)
+        self.assertEqual(len(matrix), 93)
+        self.assertEqual(sum(x["family"] != "language" for x in matrix), 90)
         self.assertEqual({x["family"] for x in matrix}, {"classical", "exceptional", "language"})
         self.assertTrue(catalog["open_requirements"])
         for case in matrix:
@@ -115,12 +115,22 @@ class MathSuiteTests(unittest.TestCase):
 
     def test_partial_kl_regressions_keep_complete_polynomials(self):
         matrix = cases(Path(__file__).resolve().parents[1])[1]
-        self.assertEqual([case["id"] for case in matrix[90:]],
+        self.assertEqual([case["id"] for case in matrix[90:92]],
                          ["A2_partial_kl_regression", "G2_partial_kl_regression"])
-        self.assertEqual([case["parameters"]["FULL_SIZE"] for case in matrix[90:]], [4, 10])
-        for case in matrix[90:]:
+        self.assertEqual([case["parameters"]["FULL_SIZE"] for case in matrix[90:92]], [4, 10])
+        for case in matrix[90:92]:
             self.assertIn('"POLYNOMIALS",polynomials', case["source"])
             self.assertIn("partial KL block lost Bruhat predecessors", case["source"])
+
+    def test_product_cycle_scope_and_independent_checker(self):
+        case = cases(Path(__file__).resolve().parents[1])[1][92]
+        self.assertEqual(case["id"], "A1.A1_cycle_product_ranks")
+        self.assertEqual(case["mathematical_check"], "sl2_su2_numerical_cycles")
+        for required in ('acf_map(acf_G,4)', 'acf_map(acf_G,6)', 'ACF_BIND',
+                         'tensor expectation', 'for m in [0,1,2]',
+                         'succeeds(v)', 'succeeds(solution0)'):
+            self.assertIn(required, case["source"])
+        self.assertNotIn("any(solution0)", case["source"])
 
 
 if __name__ == "__main__":

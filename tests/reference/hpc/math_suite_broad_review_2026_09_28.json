@@ -1,0 +1,1920 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/target/release/atlas-cli",
+      "sha256": "be266b308e13110b357c2adf32f010b74cecf8ac4f8eccd9b5b66f0108e26104"
+    }
+  },
+  "build_report_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "B2",
+      "id": "B2_root_data",
+      "index": 9,
+      "input_sha256": "df80c882e50ab82c29b4efde6d08bb8186afb6f4850e63cd5e5e8cc8e5403cd8",
+      "job": "3832012",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3884,
+          "seconds": 0.009476857259869576
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5980,
+          "seconds": 0.010023899376392365
+        }
+      },
+      "operation": "root_data",
+      "report_sha256": "b7bc6b94556cab42d5e59c8e89f8ed6a850d84629f27a48792b5b6215a5a01ab",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "B2",
+      "id": "B2_kgb",
+      "index": 10,
+      "input_sha256": "33bef7f7b53b1564014699c88dc555f8706cce3eb14bc981ac61de02ac0190c9",
+      "job": "3832013",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4284,
+          "seconds": 0.011055737035349011
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7504,
+          "seconds": 0.011328250169754028
+        }
+      },
+      "operation": "kgb",
+      "report_sha256": "d0b7a75b819d92de30f6e54bbd609ef63d09edd6a6c0de23ba08e67ee5b8a80c",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "B2",
+      "id": "B2_klv",
+      "index": 11,
+      "input_sha256": "284552b98e809082ade8a7a804853bc0ccc05e4d3e78e17071377a2cfaf5dae3",
+      "job": "3832015",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 11836,
+          "seconds": 0.22045124205760658
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5688,
+          "seconds": 0.010255557019263506
+        }
+      },
+      "operation": "klv",
+      "report_sha256": "c831a3f3b7073fe390021ed2ac5dd56acea7c51bdbefb9fe76608f5b95a39e15",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "B2",
+      "id": "B2_unitarity",
+      "index": 12,
+      "input_sha256": "0b99eef9996376be8403be9590925be5560438f57723f54e7cebeb395c91111b",
+      "job": "3832016",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 12052,
+          "seconds": 0.24721904611214995
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5704,
+          "seconds": 0.010064166970551014
+        }
+      },
+      "operation": "unitarity",
+      "report_sha256": "567195060827343b4442662a9474ac9d55c90fde159decc188a21f9e38cf414c",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Real form mismatch when adding terms to a K_type",
+          "Evaluation aborted.",
+          "Runtime error:",
+          "  Real form mismatch when adding terms to a K_type"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "B2",
+      "id": "B2_hodge",
+      "index": 13,
+      "input_sha256": "c374300adf01d7da090d317abf81fe96407ca8ceb2e41196046e639795592cba",
+      "job": "3832018",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13728,
+          "seconds": 1.192998619750142
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5912,
+          "seconds": 0.01235891506075859
+        }
+      },
+      "operation": "hodge",
+      "report_sha256": "3b303aa384861897139ad93f7fe2384c67c7f68e51f030e13674cfea9a7e1384",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "B2",
+      "id": "B2_fpp",
+      "index": 14,
+      "input_sha256": "a18abbc5211216f2406686d60aabed3489e9bfe7a12cf437f24e82c9f711c0db",
+      "job": "3832019",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4004,
+          "seconds": 0.07626004097983241
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6460,
+          "seconds": 0.022930387989617884
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "43c8c14375800af2fe063a1083ca12eb4dad628d2c6bf6aecc792b70bfdb7fbd",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'nilpotent_orbits.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "B2",
+      "id": "B2_annihilator_variety",
+      "index": 15,
+      "input_sha256": "2bebc2c8e9cf1880735a65f0a7c9438325d504236d48f599c98dc271d254f6e7",
+      "job": "3832035",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 14404,
+          "seconds": 0.3853875920176506
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6028,
+          "seconds": 0.012947950512170792
+        }
+      },
+      "operation": "annihilator_variety",
+      "report_sha256": "2fd2a20185fc83d21cd47c3576b1d17f15c378212a2744cd21d932a540c2f3a8",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'K_Nilpotent.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "B2",
+      "id": "B2_cycle_foundation",
+      "index": 16,
+      "input_sha256": "c02c9f5b410e0740e5a0070fc105c17a65f56273e75e8d8dddcd2ebca149883f",
+      "job": "3832036",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 12684,
+          "seconds": 0.9699681680649519
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5912,
+          "seconds": 0.010662566870450974
+        }
+      },
+      "operation": "cycle_foundation",
+      "report_sha256": "fc56cc26456b69ee261b38aff6341520853e0020c15864d7e5445a1ecfb15b20",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 2:3",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 2:3",
+          "  | FPP_numers(rd,null(2+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "B2",
+      "id": "B2_fpp_rank_rejected",
+      "index": 17,
+      "input_sha256": "ed05e02feb1f7de26fa43bf16b6c0ff648a3b679422f8e9c9538a8a94f4aff34",
+      "job": "3832038",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3976,
+          "seconds": 0.009851150214672089
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5812,
+          "seconds": 0.010197004303336143
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "eadbf50b48447b9a30f5c8e55b1888305907b1d61adc812976456eb1bfcf7cda",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "C2",
+      "id": "C2_root_data",
+      "index": 18,
+      "input_sha256": "f916b10bd84c5b1ffe8392425a56197196a67eabcaf5a7211a2411700843b781",
+      "job": "3832039",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3888,
+          "seconds": 0.01053585298359394
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5980,
+          "seconds": 0.00925728096626699
+        }
+      },
+      "operation": "root_data",
+      "report_sha256": "dab7d3726be63504ecc57380975b17fac62c1046f08b0e9aaa0217b7cf5e537a",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "C2",
+      "id": "C2_kgb",
+      "index": 19,
+      "input_sha256": "46295145a627bae44b1b5305e2212484f09261fde0424cce84dded35c2b74362",
+      "job": "3832040",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4284,
+          "seconds": 0.022732770070433617
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7508,
+          "seconds": 0.01267254538834095
+        }
+      },
+      "operation": "kgb",
+      "report_sha256": "03f1cdc6be23a1a3dfbbc317e4e7b40032eda17031f6443674349f14def9c29b",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "C2",
+      "id": "C2_klv",
+      "index": 20,
+      "input_sha256": "e701ca2e039bd18210036a9c9f5853ebc10e68900a748c99e4d4c125b1740ebe",
+      "job": "3832041",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 11836,
+          "seconds": 0.22774235508404672
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5708,
+          "seconds": 0.01094006490893662
+        }
+      },
+      "operation": "klv",
+      "report_sha256": "ce299e8caec09ee1ec158f83a62c83127813bcdfc90aad8de04c460501596a9d",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "C2",
+      "id": "C2_unitarity",
+      "index": 21,
+      "input_sha256": "3208cf671bee72fe656c6d34ced9c2f86d7ffa940184c3d389b5b4bfd2ee2c89",
+      "job": "3832042",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 12052,
+          "seconds": 0.28063035383820534
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5700,
+          "seconds": 0.014546755701303482
+        }
+      },
+      "operation": "unitarity",
+      "report_sha256": "563d7ba5aa1ba808ff9f6e7175ce1ce7e85878f2caa61373f16ccd9732f5fdcc",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Real form mismatch when adding terms to a K_type",
+          "Evaluation aborted.",
+          "Runtime error:",
+          "  Real form mismatch when adding terms to a K_type"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "C2",
+      "id": "C2_hodge",
+      "index": 22,
+      "input_sha256": "d084f0471d4c94bdd9cf6e26af0e5ff3f36cdecbf52bcd504f27f3e9dc351f86",
+      "job": "3832043",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13720,
+          "seconds": 1.207587816985324
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5916,
+          "seconds": 0.01223974791355431
+        }
+      },
+      "operation": "hodge",
+      "report_sha256": "8233c64c27ce01a86f9773891697163396bdaf99867edab7f5180b47680e5472",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "C2",
+      "id": "C2_fpp",
+      "index": 23,
+      "input_sha256": "4e6f6def3921176a4159048f939e0d672a2d4c92d2097bd14b06e0427521b03b",
+      "job": "3832044",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4020,
+          "seconds": 0.009960217401385307
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6476,
+          "seconds": 0.010772110894322395
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "222643218f85015350e116545ea0bcdea38a44de4f6f7227def310a33bcf3064",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'nilpotent_orbits.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "C2",
+      "id": "C2_annihilator_variety",
+      "index": 24,
+      "input_sha256": "6f8d664bd4dbadbe51e0f8be0c18d6d224f749ea9c39c4dbdc499a9c3d6ee02a",
+      "job": "3832045",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 14400,
+          "seconds": 0.3857648577541113
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6028,
+          "seconds": 0.012384267523884773
+        }
+      },
+      "operation": "annihilator_variety",
+      "report_sha256": "1a6bd869fb7ece5b68f744335f2e0cf820f7b1d3fe952157e32a370d1fe05e3c",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'K_Nilpotent.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "C2",
+      "id": "C2_cycle_foundation",
+      "index": 25,
+      "input_sha256": "44023838ff0d24f438097c0c1aa2f4c8d1f3fdbb421d25cacb8e8901aeff23ae",
+      "job": "3832046",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 12664,
+          "seconds": 0.9703402889426798
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5912,
+          "seconds": 0.011194852879270911
+        }
+      },
+      "operation": "cycle_foundation",
+      "report_sha256": "268e56e89f958b2255e500bb36fe4409cf8dbaafed2312672a3957b8b4608128",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 2:3",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 2:3",
+          "  | FPP_numers(rd,null(2+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "C2",
+      "id": "C2_fpp_rank_rejected",
+      "index": 26,
+      "input_sha256": "d75da19fa3c8973231f3ca98335fb84a12a9b1ba5b0d39d6670af6ea2a6e9791",
+      "job": "3832047",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3972,
+          "seconds": 0.01072462648153305
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5816,
+          "seconds": 0.009231187403202057
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "fa63f7794b39218f30ad1a91a53fd9e66512e668174f5c8104ac56ceca328113",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "D4",
+      "id": "D4_root_data",
+      "index": 27,
+      "input_sha256": "f164f9f1facb2d08ab451ecf2a2018ce66f5137512bfaf787f747b4a10d3ccb4",
+      "job": "3832049",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3896,
+          "seconds": 0.010271203937008977
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5984,
+          "seconds": 0.010821043979376554
+        }
+      },
+      "operation": "root_data",
+      "report_sha256": "21859d5f260de93ce27609079c927413e045bd29dfd23e238eb68cb0f70b6598",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "D4",
+      "id": "D4_kgb",
+      "index": 28,
+      "input_sha256": "b5f7bb5c46d944ce77ebe48497182065866f46313400e0d13343e90ca6381c28",
+      "job": "3832050",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4412,
+          "seconds": 0.017398400232195854
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 8592,
+          "seconds": 0.026198167353868484
+        }
+      },
+      "operation": "kgb",
+      "report_sha256": "1362e3a89ebc239d978bcfb9ad204a296c585ed19a3c49ff6a1abc6978eee31f",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "D4",
+      "id": "D4_klv",
+      "index": 29,
+      "input_sha256": "b31d2b350a25ee72c886a2ce76bbfe1817532f954094d640a225d2f33f20dce5",
+      "job": "3832051",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 12132,
+          "seconds": 0.23408459895290434
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5704,
+          "seconds": 0.011162370909005404
+        }
+      },
+      "operation": "klv",
+      "report_sha256": "7cde26146d10ce0a6313ffa2b43633ceac9f2db437a85777c1c0a69ecc0ca1ac",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "D4",
+      "id": "D4_unitarity",
+      "index": 30,
+      "input_sha256": "e7115905d0102c4a5c3890b92114bef908da5819092c8b5bbfc4ccc560c32867",
+      "job": "3832052",
+      "metrics": {
+        "oracle": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 19300,
+          "seconds": 300.00611954927444
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5700,
+          "seconds": 0.010861609131097794
+        }
+      },
+      "operation": "unitarity",
+      "report_sha256": "36d603f8cdc47be4232fde62e3dbffab5ed06e564560d4b27b9f4691fb9b6aaa",
+      "status": "ORACLE_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "D4",
+      "id": "D4_hodge",
+      "index": 31,
+      "input_sha256": "c013bb1ad8d4396520414d057454b1a3e63088b54dd925932aeba68b80fdf4cb",
+      "job": "3832053",
+      "metrics": {
+        "oracle": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 14648,
+          "seconds": 300.0060343001969
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5912,
+          "seconds": 0.01251028710976243
+        }
+      },
+      "operation": "hodge",
+      "report_sha256": "7457060f9a3c4f0de880fd5a9b1cfd669ce32d35e2af0cafbcc254c8fe07c527",
+      "status": "ORACLE_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "D4",
+      "id": "D4_fpp",
+      "index": 32,
+      "input_sha256": "d7095412408564f87c1ce239293a8aae6c194d977d7281907f10c3047e04cb5c",
+      "job": "3832088",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4084,
+          "seconds": 0.07827537320554256
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4640,
+          "seconds": 0.0405898243188858
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "06b0b4a6cfcf37ac41b8f14b4a49d4fa2b32773c2a3991e4727bd555ed062dec",
+      "status": "MATH_MISMATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'nilpotent_orbits.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "D4",
+      "id": "D4_annihilator_variety",
+      "index": 33,
+      "input_sha256": "b99185e7986f38c0b5589ae282a7fc2522f51a52083b3811b0b9c7778021d744",
+      "job": "3832090",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 14936,
+          "seconds": 0.5291992251295596
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6016,
+          "seconds": 0.012837788090109825
+        }
+      },
+      "operation": "annihilator_variety",
+      "report_sha256": "cc6560026a553153739297e9ae49dc7ded063e02996564949d9d6cb98c53530f",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'K_Nilpotent.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "D4",
+      "id": "D4_cycle_foundation",
+      "index": 34,
+      "input_sha256": "a07dd44f2cfaef5d2729d64dff16d1b3a178e85d1d83e1236bac000ce46a5088",
+      "job": "3832092",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13364,
+          "seconds": 66.5787551549729
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5916,
+          "seconds": 0.01085488498210907
+        }
+      },
+      "operation": "cycle_foundation",
+      "report_sha256": "4ef95372a9e20b7b21f7a77f64e5064f53be70a72dfe47cbe5af9600b7ec9266",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 4:5",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 4:5",
+          "  | FPP_numers(rd,null(4+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "D4",
+      "id": "D4_fpp_rank_rejected",
+      "index": 35,
+      "input_sha256": "c29ad86964f5a79fede604a07812bce8e12f351c1a223d14e76df7b835a6ab3c",
+      "job": "3832095",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3972,
+          "seconds": 0.009756918996572495
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5808,
+          "seconds": 0.010058095678687096
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "8ebb873bb2f0042211b9a1343bb6827a590becfcc5c1d5e556e4cf94008ec52f",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "F4",
+      "id": "F4_root_data",
+      "index": 45,
+      "input_sha256": "47beb5a9bb27c71b1e0b828c6b2e1aeb12f07ca3a024275ef22a4202252ac9f7",
+      "job": "3832096",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3928,
+          "seconds": 0.010012364014983177
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5980,
+          "seconds": 0.010043947026133537
+        }
+      },
+      "operation": "root_data",
+      "report_sha256": "91b67c41b596d5fbeead205e7dbfefd24497485da530484b14dc5d293cbb9a17",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "F4",
+      "id": "F4_kgb",
+      "index": 46,
+      "input_sha256": "3bdc2a75eb2c70617f46ecd6d3c03ce5d19c13e84bd8ddbbf23356bebc6fbec7",
+      "job": "3832098",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4604,
+          "seconds": 0.019289705902338028
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 10224,
+          "seconds": 0.06673002615571022
+        }
+      },
+      "operation": "kgb",
+      "report_sha256": "7e9a9fa24554e16958ba9b2bdf2113402de87d81c22e64c30b319e9708aba8f4",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "F4",
+      "id": "F4_klv",
+      "index": 47,
+      "input_sha256": "618363da3ea70b1bf3df1f4de29b0b640bc6b9bd09c2610a59f66088aa5207a2",
+      "job": "3832099",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 14984,
+          "seconds": 0.26378990709781647
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5708,
+          "seconds": 0.026326453313231468
+        }
+      },
+      "operation": "klv",
+      "report_sha256": "f68abaecfb9417a1916ebf32ac4b017d1346b26e1f49c4e687bac41068415eb7",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "F4",
+      "id": "F4_unitarity",
+      "index": 48,
+      "input_sha256": "5fdc2b3f7e21fc6374cfc836c51e77f65ad29c3cac3037b54645569ab4f8e834",
+      "job": "3832100",
+      "metrics": {
+        "oracle": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13408,
+          "seconds": 300.00652750581503
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5700,
+          "seconds": 0.010818831622600555
+        }
+      },
+      "operation": "unitarity",
+      "report_sha256": "e59a6699de557efaa68c3e8c863189336c1bd860547e192d18e2192207cbddc3",
+      "status": "ORACLE_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "F4",
+      "id": "F4_hodge",
+      "index": 49,
+      "input_sha256": "2c4beff4ea8e26685b307536ab6045a88ef99bee1f992aa5793dce1ea34b537d",
+      "job": "3832102",
+      "metrics": {
+        "oracle": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 22528,
+          "seconds": 300.0060476968065
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5908,
+          "seconds": 0.026245448039844632
+        }
+      },
+      "operation": "hodge",
+      "report_sha256": "ce7abccb622f4bda26a7584c615c3591d4dce159653f03be950d98ba79cd53f2",
+      "status": "ORACLE_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "F4",
+      "id": "F4_fpp",
+      "index": 50,
+      "input_sha256": "4c3ce42d5443a5a594e4701d484e93fa14a2b83906af8c26e36e667f919502ff",
+      "job": "3832106",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4724,
+          "seconds": 0.020073063671588898
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 8716,
+          "seconds": 0.21361388638615608
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "d29528c3a34a780fcf3f1a26c7e9b92f3adc265062784ce6fa80682edd036f5e",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'nilpotent_orbits.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "F4",
+      "id": "F4_annihilator_variety",
+      "index": 51,
+      "input_sha256": "26b53807d6a37c92a35526a7767fd1f7a0450b86564adde81f04e694b5ae68af",
+      "job": "3832107",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 16136,
+          "seconds": 0.892561286687851
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6024,
+          "seconds": 0.012521333992481232
+        }
+      },
+      "operation": "annihilator_variety",
+      "report_sha256": "2cf32ab5587444cbea48d7b84eb03b30ef5391598ceec661f7682f6998fa38d9",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'K_Nilpotent.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "F4",
+      "id": "F4_cycle_foundation",
+      "index": 52,
+      "input_sha256": "46aad2ca9e85be51d9f5cdc5ea57f2be1f22849d4376e7db9177b158d5e23498",
+      "job": "3832108",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13272,
+          "seconds": 146.72080122679472
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5912,
+          "seconds": 0.010971374809741974
+        }
+      },
+      "operation": "cycle_foundation",
+      "report_sha256": "0e9f00b98cb38b1744b2a4eb2525bcbfa25d96605922351da290588cb187a5ec",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 4:5",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 4:5",
+          "  | FPP_numers(rd,null(4+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "F4",
+      "id": "F4_fpp_rank_rejected",
+      "index": 53,
+      "input_sha256": "2b12a49f61a3614cd9f173bd6539a54c290bf6a3b79de403e32d65457d1d767c",
+      "job": "3832110",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4000,
+          "seconds": 0.009686331963166595
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5820,
+          "seconds": 0.009852838004007936
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "e06b3cc705bb74c3703a368e65c127573699ec1ef20606e29baf89e2ecbfdf60",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "E6",
+      "id": "E6_root_data",
+      "index": 54,
+      "input_sha256": "9c6f7fc8203ba692a80adf62c4b19e98a8e6b3880bfb85e5253f4d1872617727",
+      "job": "3832111",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3976,
+          "seconds": 0.011297014076262712
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5988,
+          "seconds": 0.009313696064054966
+        }
+      },
+      "operation": "root_data",
+      "report_sha256": "12006f926ef2233c276fc12a4c7505b5bc29686df30905294df56cd71fd8a7e4",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Runtime error at <stdin>:4:23: real-form order twist-fixed generator coordinate invariant was violated",
+          "  | set G=quasisplit_form(inner_class(rd,0-id_mat(6)))",
+          "  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "Name error at <stdin>:6:16: Undefined identifier 'G'",
+          "  | prints(\"GROUP\",G,\"KGB_SIZE\",KGB_size(G))"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E6",
+      "id": "E6_kgb",
+      "index": 55,
+      "input_sha256": "f02794aa08dc387354bc88f41b0bff5f5cb183ab263f00946a2dc14316f363da",
+      "job": "3832113",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6120,
+          "seconds": 0.06225598696619272
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 29916,
+          "seconds": 0.30383370188064873
+        }
+      },
+      "operation": "kgb",
+      "report_sha256": "a87d62c203ee7007006547b9cd0efacac8c2cec7b531f15ae41c0d664fe5ffd7",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E6",
+      "id": "E6_klv",
+      "index": 56,
+      "input_sha256": "9ee326abb05f8634c6ceead3688104ef1aa572741d47989e0a6b6d21be9a6a90",
+      "job": "3832114",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 84532,
+          "seconds": 1.1050611860118806
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5704,
+          "seconds": 0.01106740697287023
+        }
+      },
+      "operation": "klv",
+      "report_sha256": "6b20ef80880bad20ecf005fb42132f2bb5f7c7fd39a4afce9523278e643c437a",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E6",
+      "id": "E6_unitarity",
+      "index": 57,
+      "input_sha256": "b86135accd3dd63d6b031171fd73794d93756829049b6ea1a8c8844c115d1b4b",
+      "job": "3832115",
+      "metrics": {
+        "oracle": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 410472,
+          "seconds": 300.01943823089823
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5700,
+          "seconds": 0.010739607037976384
+        }
+      },
+      "operation": "unitarity",
+      "report_sha256": "d9978be071f78ae96f90320164105892b5037964b8082db940a4e4be4f2c75fe",
+      "status": "ORACLE_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E6",
+      "id": "E6_hodge",
+      "index": 58,
+      "input_sha256": "960de2ea0df8f8f2f59a036c720986238bbd01400fd47edf1420f75ddf8431d5",
+      "job": "3832121",
+      "metrics": {
+        "oracle": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 85704,
+          "seconds": 300.0120342299924
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5904,
+          "seconds": 0.0361447999603115
+        }
+      },
+      "operation": "hodge",
+      "report_sha256": "42b4a75c1d03b21573579ac31813073a24f4e5d986d4eeb46eb9fdaf5ca34de4",
+      "status": "ORACLE_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "E6",
+      "id": "E6_fpp",
+      "index": 59,
+      "input_sha256": "575edbb259ff2faa389c5978157f621f95b8501c87f3a8e5120e5e51be332c15",
+      "job": "3832129",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 16308,
+          "seconds": 0.27989806793630123
+        },
+        "rust": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 791056,
+          "seconds": 300.0187324658036
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "00245bb1abeb59f4ca456ca3ed730f6f8451b4371f2e2d150bd1d001411644b8",
+      "status": "RUST_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'nilpotent_orbits.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E6",
+      "id": "E6_annihilator_variety",
+      "index": 60,
+      "input_sha256": "bac8e52859a448284967a52f3ea043360cae1474278f6051b321d0559a5785c2",
+      "job": "3832136",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 27464,
+          "seconds": 1.0620807210216299
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6012,
+          "seconds": 0.05919350899057463
+        }
+      },
+      "operation": "annihilator_variety",
+      "report_sha256": "2349780d45c7ea40b653307c31ae908956377e10b82eaeeda0eb2264aed72b07",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'K_Nilpotent.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E6",
+      "id": "E6_cycle_foundation",
+      "index": 61,
+      "input_sha256": "b19d973bbe0ee009479ef060016eabd5636d2ccd87fe5f48b7365a96e690f0fd",
+      "job": "3832143",
+      "metrics": {
+        "oracle": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 22960,
+          "seconds": 300.0376264699735
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5904,
+          "seconds": 0.06960136804264039
+        }
+      },
+      "operation": "cycle_foundation",
+      "report_sha256": "bbfe934d7562e5190806d339b21e1e914ef1a8d3a3de703e53b2e2e66d79605f",
+      "status": "ORACLE_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 6:7",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 6:7",
+          "  | FPP_numers(rd,null(6+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "E6",
+      "id": "E6_fpp_rank_rejected",
+      "index": 62,
+      "input_sha256": "f70016e644ee8bc326b008d9ef67bcff61e4039172b32f098f4334e54f5863ed",
+      "job": "3832149",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4016,
+          "seconds": 0.010804635006934404
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5808,
+          "seconds": 0.00899825687520206
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "15fd9fbbe6665bd424c8c3b7de4ddf129f96934041e28a43db4d4772dc87d5ee",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "E7",
+      "id": "E7_root_data",
+      "index": 63,
+      "input_sha256": "4f480fed33f949602d4f734d8ad0f800b0cc75db1ee68ad73e090d9714161cf1",
+      "job": "3832150",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4104,
+          "seconds": 0.012015828862786293
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6000,
+          "seconds": 0.010692862095311284
+        }
+      },
+      "operation": "root_data",
+      "report_sha256": "90f75f30e5cb45b80c7ded1fe609f729e05eca818eed6434b3cccfb2f0ef84b5",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "E7",
+      "id": "E7_kgb",
+      "index": 64,
+      "input_sha256": "8165e40e7982f2e4ba07cd959a230292a382d0af10bbf0bf25083e7de890ff03",
+      "job": "3832151",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 41672,
+          "seconds": 1.3032017189543694
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 1459140,
+          "seconds": 69.80348967504688
+        }
+      },
+      "operation": "kgb",
+      "report_sha256": "c625dca2e875aa683cf118800120097ba5d1e7d0fb1b6e4394d801fa2bcdc6f1",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  std::bad_alloc",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E7",
+      "id": "E7_klv",
+      "index": 65,
+      "input_sha256": "462c3055863d67f919097b6406716ac325ee125cec8ef9a99188d2cd4bc5e629",
+      "job": "3832153",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 204912,
+          "seconds": 7.01184935704805
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5708,
+          "seconds": 0.01091935602016747
+        }
+      },
+      "operation": "klv",
+      "report_sha256": "4717b595011a1d70ba4222e90ca2eb0926e94fca19ae7a5ba08421a0993c3532",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E7",
+      "id": "E7_unitarity",
+      "index": 66,
+      "input_sha256": "e74585845bf59d02ec7c10385d05e9787111063a778edfad0383f39a4c41eb56",
+      "job": "3832154",
+      "metrics": {
+        "oracle": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 214724,
+          "seconds": 300.0093568479642
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5696,
+          "seconds": 0.011345728999003768
+        }
+      },
+      "operation": "unitarity",
+      "report_sha256": "c6d6132faecbdf5751a9deaf157ee736febe82bdc7b7cf778f0dac1a1334af96",
+      "status": "ORACLE_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  std::bad_alloc",
+          "Evaluation aborted.",
+          "Runtime error:",
+          "  std::bad_alloc"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E7",
+      "id": "E7_hodge",
+      "index": 67,
+      "input_sha256": "e689902622c7908fadd271124c3a12ab4bddffa3c863fe141923640dc027cf94",
+      "job": "3832156",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 365736,
+          "seconds": 12.505994838022161
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5900,
+          "seconds": 0.02891241101315245
+        }
+      },
+      "operation": "hodge",
+      "report_sha256": "48adff86046bd9e5bbb90be98fd5e0bb119c9c82beb977c0c2175dc35b66ba3b",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "E7",
+      "id": "E7_fpp",
+      "index": 68,
+      "input_sha256": "6bb6972bb0cbe3ebb8c8f62c21cd342fb935b34dec7602fb841ca7fc713ffe7d",
+      "job": "3832162",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 981156,
+          "seconds": 24.460032337985467
+        },
+        "rust": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 2427652,
+          "seconds": 300.09605615597684
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "cc0cc379d620748bd565c89e3218fafc590a8b06f224a5ce2b09b4ab3b15ab85",
+      "status": "RUST_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'nilpotent_orbits.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E7",
+      "id": "E7_annihilator_variety",
+      "index": 69,
+      "input_sha256": "b41026b1c69db1c11c1a1c88ba6225db0413aa85e4b377d564b25882314f933d",
+      "job": "3832170",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 390008,
+          "seconds": 16.098446730989963
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6028,
+          "seconds": 0.012562158983200788
+        }
+      },
+      "operation": "annihilator_variety",
+      "report_sha256": "679746d17f2a66cdd3553bdf0e63566115cd926a4fab0eec65ac27c3f7d93f34",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'K_Nilpotent.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "E7",
+      "id": "E7_cycle_foundation",
+      "index": 70,
+      "input_sha256": "a5716077bff0052a644e03d6b453a21eaea907e8f3b1f59caaf1a497b25a301e",
+      "job": "3832171",
+      "metrics": {
+        "oracle": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 921756,
+          "seconds": 300.0188624809962
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5916,
+          "seconds": 0.011513311183080077
+        }
+      },
+      "operation": "cycle_foundation",
+      "report_sha256": "a8d0eac506f56a88758c0001eacd672c1d4cdccc0d6eb16025b2fbd3ae9a3e49",
+      "status": "ORACLE_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 7:8",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 7:8",
+          "  | FPP_numers(rd,null(7+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "E7",
+      "id": "E7_fpp_rank_rejected",
+      "index": 71,
+      "input_sha256": "c9db7525eb442f3b3b407bfa0dbd02a7fdea171c0c0412909f7c4741ad81273b",
+      "job": "3832011",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4064,
+          "seconds": 0.07460042502498254
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5812,
+          "seconds": 0.037571711000055075
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "3f47cc8f4da9af8ad2539907280f06f2a9e8f5a6fe26f99dff4b3b47a05eb13d",
+      "status": "REJECTION_CATEGORY_MATCH"
+    }
+  ],
+  "counts": {
+    "MATH_MATCH": 14,
+    "MATH_MISMATCH": 1,
+    "ORACLE_FAILURE": 4,
+    "ORACLE_TIMEOUT": 9,
+    "REJECTION_CATEGORY_MATCH": 6,
+    "RUST_FAILURE": 18,
+    "RUST_TIMEOUT": 2
+  },
+  "input_manifest_sha256": "982491529ea97b9eee533a0d8434ce34e31854eb58dc14743baa4bade925a060",
+  "job": "3832103",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-suite-r3-20260928.CneUcC69",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

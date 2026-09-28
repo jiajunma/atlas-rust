@@ -90,3 +90,35 @@ specializations print true. Preserve them as original-side failures while
 separately extending nontrivial filtration coverage and establishing the
 correct mathematical expectations. Any future patched-original experiment
 must have its own source pin and cannot be labelled unmodified7e1b958c.
+
+## Broader grid: capacity, time and construction gaps
+
+R3 review3832103 independently verifies54 B2/C2/D4/F4/E6/E7 cases. All root
+data cases match. E6 KGB3832113 fails in the same Rust real-form constructor
+as core KLV; the full KGB case remains its reproducer. E7 KGB3832151 has
+equal complete mathematical output, but takes69.8035s/1459140KiB in Rust
+versus1.3032s/41672KiB in the original. This is single-shot diagnostic evidence,
+not a repeated speed benchmark.
+
+E6 FPP3832129 and E7 FPP3832162 time out at300s in Rust; originals complete
+in0.2799s/24.4600s. Rust stdout is empty after the kills, so it does not identify
+which of the three gamma values or two FPP functions consumed the time.
+Do not assign the timeout to a particular helper without targeted evidence.
+The already identified reflection_word defect also affects the normalization
+path in to_positive_system; this is a source lead, not a proved explanation
+for these timeouts.
+
+The original times out in D4/F4/E6/E7 unitarity, D4/F4/E6 Hodge and E6/E7
+cycle foundation (300s/engine). E7 KLV/Hodge hit std::bad_alloc under the6GiB
+cap. Rust independently fails latest-script loading in all those cases.
+Neither side's incomplete execution supplies a valid speedup.
+
+## Product fixture migration, not a mathematical error
+
+R7 product job3832193 and review3832194 preserve an old-fixture API failure:
+any(v) cannot accept latest Maybe<vec>. Source basic.at:31 defines succeeds;
+K_Nilpotent.at:13/18 and basic.at:923 return Maybe<vec> from vector/solve.
+R8 changes only the two fixture success predicates to succeeds, retaining
+every assertion and unchanged latest scripts. No old output is reused as
+the expected mathematics. R7's checker tests passed31cases on HPC, but
+the failed Atlas execution never reached numerical acceptance.

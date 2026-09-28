@@ -2,10 +2,28 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+R3 broad54review3832103 is complete (artifact math_suite_broad_review_2026_09_28.json).
+MATH_VALIDATION now has the full initial72-case operation-by-group matrix.
+E6 KGB fails Rust construction. E7 KGB is exact but69.80s vs1.30s original
+in one run; RSS1.39GiB vs40.7MiB. E6/E7 Rust FPP reaches300s while original
+completes0.28/24.46s. These are current-main evidence, not historical optimized
+candidate comparisons. No stable speed ratio or failed-run speedup is claimed.
+The original itself times out in nine broad inputs and allocation-fails in
+E7 KLV/Hodge under6GiB; separate these from Rust mathematical defects.
+
+R7 adds index92 for product numerical cycle multiplicities1/2/3 with full
+Phi identity binding and independent exact kernel/tensor checks. The catalog
+has93candidate cases; general classical/exceptional cycles, cutoff proof and
+richer coefficients remain open. All execution/checker tests stay on HPC.
+R8 review3832201 now confirms original passes all30 numerical reconstructions,
+the8 full Phi sign identities and full rational kernels of dimensions27/75.
+Rust still fails latest basic.at loading. R7's any(Maybe<vec>) fixture failure
+is preserved; the correction uses succeeds and does not modify upstream scripts.
+
 New kernel findings (independently verified R5 review3832147): A2/G2
 partial_KL_block returns singletons instead of4/10entries (half-scale2versus1),
 and D4 FPP wall representatives can send integral simple roots negative.
-The catalog now has92cases including explicit regressions with original-backed
+The R6 catalog had92cases including explicit regressions with original-backed
 expectations. See `slices/math_failures_2026-09-28.md`; never repair by changing
 goldens or dropping mismatching Weyl elements. Source leads: reversed conjugate
 reflection suffix and actual-parameter Rep_table/Bruhat closure, respectively.

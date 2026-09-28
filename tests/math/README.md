@@ -67,6 +67,25 @@ one Rust entry; half-scaled inputs had2versus1. The focused tests assert those
 original-backed sizes and retain every parameter, matrix entry and polynomial.
 They are explicitly failing regression candidates, not supported features.
 
+R7 appends index92, A1.A1_cycle_product_ranks (93total). It recaptures
+15 SL(2,R) x SU(2) irreducibles at bounds4/6 against the latest unchanged
+scripts, not historical goldens. The compact highest weights0/1/2 give
+independent tensor-dimension predictions with multiplicities1/2/3.
+Four full Phi identities per bound bind positive/negative orbit labels before
+the prediction is applied. The HPC checker independently uses exact rational
+elimination to verify rank-nullity, the entire rational kernel, dimension rows,
+boundary projection and every integral reconstruction residual. Both the
+driver and independent reviewer reject violated mathematical checks even if
+the two interpreters print the same output. See
+`docs/slices/math_cycle_product_2026-09-28.md` for scope and derivation.
+This does not establish general cycles, richer representation-valued
+coefficients, exceptional-group multiplicities or cutoff completeness.
+R7 execution3832193 exposed an old-fixture interface mismatch: latest
+vector/solve return Maybe<vec>, tested by succeeds rather than any.
+R8 changes those two fixture checks only (plus the preventive harness test).
+The R7 original failure and raw streams remain frozen; upstream scripts
+and the numerical acceptance conditions are unchanged.
+
 | Area | Output checked | Additional mathematical check |
 |---|---|---|
 | Basic root data | Full roots, coroots, Cartan matrix and dual | Double dual; exact rational identity |

@@ -1,0 +1,88 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/target/release/atlas-cli",
+      "sha256": "be266b308e13110b357c2adf32f010b74cecf8ac4f8eccd9b5b66f0108e26104"
+    }
+  },
+  "build_report_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in expression any(v) at <standard input>:8:8-14",
+          "  Failed to match 'any' with argument type Maybe<vec>",
+          "Error in 'set' command at <standard input>:6:0--9:16:",
+          "Expression analysis failed",
+          "  Command 'set acf_vector' not executed, nothing defined."
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'K_Nilpotent.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "A1.A1",
+      "id": "A1.A1_cycle_product_ranks",
+      "independent_checks": {
+        "oracle": {
+          "status": "NOT_RUN_EXECUTION_FAILED"
+        },
+        "rust": {
+          "status": "NOT_RUN_EXECUTION_FAILED"
+        }
+      },
+      "index": 92,
+      "input_sha256": "d93efb801e269bcefa37cb710fe26f77d08a6792ba9f59aa53bca8e466e7f9ef",
+      "job": "3832193",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 12164,
+          "seconds": 0.29435101605486125
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7948,
+          "seconds": 0.030934580019675195
+        }
+      },
+      "operation": "cycle_product_ranks",
+      "report_sha256": "9fe1ee0b0d7d23d047c9a7170263a05cc7efc63c2a5530bbae4f723f6adb84ce",
+      "status": "ORACLE_FAILURE"
+    }
+  ],
+  "counts": {
+    "ORACLE_FAILURE": 1
+  },
+  "input_manifest_sha256": "eb76b16bde819e76905fbfd1b2c6fcbb152a330fd575222bd2d7ab1de429fdc0",
+  "job": "3832194",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-suite-r7-20260928.HPXzbdHm",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

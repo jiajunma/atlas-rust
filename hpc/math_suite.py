@@ -17,6 +17,7 @@ import time
 import traceback
 
 from math_baseline_build import digest, file_manifest
+from math_cycle_check import mathematical_evidence
 
 
 def cases(root):
@@ -85,17 +86,23 @@ def observation_ok(case, record, stdout, stderr):
 def compare(case, records, streams):
     valid = {engine: observation_ok(case, records[engine], *streams[engine])
              for engine in ("oracle", "rust")}
+    evidence = {engine: mathematical_evidence(case, records[engine], *streams[engine])
+                for engine in ("oracle", "rust")}
     if not valid["oracle"]:
         status = failure_status("ORACLE", records["oracle"])
+    elif evidence["oracle"] and evidence["oracle"]["status"] == "FAIL":
+        status = "ORACLE_INVARIANT_FAILURE"
     elif not valid["rust"]:
         status = failure_status("RUST", records["rust"])
+    elif evidence["rust"] and evidence["rust"]["status"] == "FAIL":
+        status = "RUST_INVARIANT_FAILURE"
     elif case["expected"] == "reject":
         status = "REJECTION_CATEGORY_MATCH"
     elif payload(streams["oracle"][0], case["id"]) == payload(streams["rust"][0], case["id"]):
         status = "MATH_MATCH"
     else:
         status = "MATH_MISMATCH"
-    return {"status": status, "valid": valid,
+    return {"status": status, "valid": valid, "independent_checks": evidence,
             "full_stdout_equal": streams["oracle"][0] == streams["rust"][0],
             "full_stderr_equal": streams["oracle"][1] == streams["rust"][1],
             "exit_equal": records["oracle"]["exit_status"] == records["rust"]["exit_status"]}

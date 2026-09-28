@@ -2,7 +2,37 @@
 
 ## Current mathematical-validation frontier — 2026-09-28
 
-NEW: the latest catalog has92cases. R4 probe array3832118 and independent
+NEW R7: broad array3832011 and independent review3832103 are COMPLETE.
+The54-case review SHA is31c0e62d1a6b9b3227cfc2b55fc5ea213a29bb75f82a5f5cb28f1986feea1250,
+stored in math_suite_broad_review_2026_09_28.json. Counts14mathmatches,
+6rejections,18Rust failures,4oracle failures,9oracle timeouts,2Rust timeouts,
+1mathmismatch. See MATH_VALIDATION for operation-by-group coverage, not a
+blanket pass percentage. E7 KGB matches fully but single-shot times are
+1.3032s original /69.8035s Rust; peakRSS41672/1459140KiB. E6/E7 FPP original
+finishes0.2799/24.4600s; Rust hits300s. E6 KGB fails construction. Preserve
+these cases as regression evidence. Do not infer stable ratios from one run.
+
+R7 appends product cycle numerical multiplicities at index92 (93cases total).
+It checks30 reconstructions, m=0/1/2 and bounds4/6, with full Phi sign binding,
+exact rational kernel completeness and independent tensor expectations.
+Latest scripts and both baseline binaries remain unchanged. No general cycle,
+exceptional multiplicity, cutoff-completeness or representation-valued claim.
+R7 preflight3832190 passed31checker tests; execution3832193 and independent
+review3832194 confirm an old-fixture API mismatch (any on Maybe<vec>).
+All R7 artifacts remain frozen. R8 uses succeeds for vector/solve results,
+as in latest scripts. Stage /public/home/majj/atlas-math-suite-r8-20260928.raDj5B8V,
+preflight3832199 passed31tests; execution3832200 and independent review3832201
+are terminal/reviewed. Original passes all30 scoped reconstructions and complete
+rational kernels (N4: Q14x41, rank14, kernel27; N6: Q22x97, rank22, kernel75).
+All8 Phi identities bind the orbit signs; tensor multiplicities1/2/3 agree.
+Rust fails latest basic.at before computing. Review SHA
+30924499bb053599239cfc9095dfa666f0e3d3bd4d20b242be8ba84dad414656.
+All known R2-R8 jobs are now terminal; do not rerun unchanged cases.
+Next mandatory scope: exceptional/general cycle multiplicities and cutoff
+justification, broader forms/isogenies and basic operations, nontrivial Hodge,
+and correctness-accepted repeated minute-scale D6/D8/E7 measurements.
+
+Earlier R6 checkpoint: the catalog had92cases. R4 probe array3832118 and independent
 review3832122 are terminal/reviewed; preflight3832117 passed19tests. All six
 Hodge probes (split A2/G2 bounds4/20; complex A2/G2 bounds15/50) still fail
 in the original. Trace-backed causes are recorded in
@@ -27,7 +57,7 @@ array3832163 and independent review3832167 are terminal: both original cases
 pass, both Rust cases fail the expected predecessor-count assertion. These
 are verified failing regressions, NOT fixed bugs; do not rerun unchanged.
 Full pins are in
-`math_suite_probe_submissions_2026_09_28.json`. R3 broad3832011 remains active.
+`math_suite_probe_submissions_2026_09_28.json`. R3 broad3832011 is now reviewed.
 
 These findings supersede any inference that latest-main failures are only
 language-level. The older optimized branches and old-original measurements
@@ -81,10 +111,9 @@ HPC handles (do not duplicate or mutate frozen inputs):
   an explicit all-ones vector instead of unloaded script helpers. Original
   R2 inputs remain immutable; latest upstream scripts are unchanged.
 - Broader array3832011, `9-35,45-71%2`, covers54cases in B2/C2/D4/F4/E6/E7.
-  Still RUNNING at this checkpoint, CPU2/8G/25min,300s/engine,child AS6G.
-  Independent review3832103 submitted ONCE with afterany:3832011, using the
-  same frozen R3 reviewer and explicit54indices. Collect these handles later;
-  scheduler completion alone is not mathematical acceptance.
+  All terminal, CPU2/8G/25min,300s/engine,child AS6G.
+  Independent review3832103 COMPLETED0:0 and accepted all artifact hashes;
+  it did not accept all mathematics. Do not resubmit these unchanged jobs.
 
 Submission metadata: `tests/reference/hpc/math_suite_submission_2026_09_28.json`.
 Verified reviews and new receipts are in `tests/reference/hpc/math_suite_*`;

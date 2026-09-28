@@ -1,0 +1,89 @@
+<K_Nilpotent.at
+<K_highest_weights.at
+{ Adapted from the source-bound 2026-09-18 product fixture, GPL-3.0-or-later.
+  Revalidate every identity against latest Atlas; no old output is a golden.
+  Numerical maximal-orbit multiplicities only, not general cycle completeness. }
+set acf_vector([KType] basis,KTypePol P)=vec:
+ let v=vector(basis,P) in
+ assert(succeeds(v),"product class is outside the complete captured K basis");
+ requisition(v)
+
+set acf_map(RealForm G,int N)=void:
+ let d0=initialize_KNilpotent(G,N) then
+ selected=for OC@i in d0.complex_orbits do if diagram(OC)=[2,0] then [i] else [] fi od then
+ selected=##selected in
+ assert(#selected=1,"split-factor complex orbit is not uniquely identified");
+ let ci=selected[0] then d=fill(d0,ci) then
+ closure=closure_real(d,ci) then top=real_forms_of(d,ci) then
+ basis=K_basis_closure(d,ci) then
+ (,columns,Q,PX)=d.Q_and_P_X_matrices[ci] then
+ (merged,,T0)=merge_T_matrices(d,closure) then T=change_basis(merged,basis,T0) then
+ (yb,,Y0)=d.Y_matrices[ci] then Y=change_basis(yb,basis,Y0) then
+ boundary=intersection(T,Y) then ker=kernel(Q) then
+ ranks=for oi in top do vec:##for oj in closure do
+   for (mu,) in d.pairs[oj] do if oi=oj then dimension(mu) else 0 fi od od od then
+ offset=0 in
+ assert(KGB_size(G)=3 and #top=2,"product form or maximal real orbits changed");
+ assert(Q=PX*T,"product Q differs from projected T");
+ assert(PX*boundary=null(n_rows(Q),n_columns(boundary)),"product boundary survives quotient");
+ prints("ACF_BEGIN bound=",N," complex=",#d.complex_orbits," real=",#d.real_orbits);
+ for OC@i in d.complex_orbits do
+   prints("ACF_COMPLEX bound=",N," orbit=",i," H=",OC.H," diagram=",diagram(OC)," dimension=",dim_nilpotent(OC)," real_forms=",real_forms_of(d,i))
+ od;
+ for O@i in d.real_orbits do
+   prints("ACF_REAL bound=",N," orbit=",i," H=",O.H," x=",#O.x," complex=",complex_orbit_number(d,i)," dimension=",dimension(O)," pairs=",#d.pairs[i])
+ od;
+ prints("ACF_MATRIX bound=",N," complex=",ci," closure=",closure," top=",top," ambient=",#basis," rows=",n_rows(Q)," columns=",n_columns(Q)," kernel=",n_columns(ker)," boundary=",n_columns(boundary));
+ for col@j in PX do prints("ACF_PX bound=",N," column=",j," vector=",col) od;
+ for col@j in boundary do prints("ACF_BOUNDARY bound=",N," column=",j," vector=",col) od;
+ for oi in closure do
+   for (mu,P)@j in d.pairs[oi] do
+     let a=acf_vector(basis,P) in
+     assert(columns[offset+j]=mu,"product orbit-tagged column identity changed");
+     assert(T[offset+j]=a and Q[offset+j]=PX*a,"product Phi column mismatch");
+     prints("ACF_COLUMN bound=",N," column=",offset+j," orbit=",oi," pair=",j," rank=",dimension(mu)," ambient=",a," quotient=",Q[offset+j]);
+     prints("ACF_PHI bound=",N," column=",offset+j," inducing=",mu,new_line,P)
+   od;
+   offset:=offset+#d.pairs[oi]
+ od;
+ assert(offset=n_columns(Q),"product quotient columns were omitted");
+ for col@j in ker do prints("ACF_KERNEL bound=",N," column=",j," vector=",col) od;
+ for r@j in ranks do
+   assert(#r=n_columns(Q) and r*ker=null(n_columns(ker)),"product rank depends on reconstruction choice");
+   prints("ACF_RANK bound=",N," orbit=",top[j]," row=",r," kernel_product=",r*ker)
+ od;
+ { Bind orbit labels by full Phi identities, not by fitting computed ranks. }
+ let xs0=[0,0,1,1,2] then lr0=[vec:[-1,0],[0,0],[-1,0],[0,0],[0,0]] then
+ I=for xi@i in xs0 do null_K_module(G)+K_type(KGB(G,xi),lr0[i]) od then
+ phi=[I[4]-I[3],I[0],I[4]-I[1],I[2]] in
+ assert(top=[1,2],"product real-orbit order requires independent remapping");
+ for P@j in phi do
+   let matches=##for col@i in T do if col=acf_vector(basis,P) then [i] else [] fi od in
+   assert(#matches=1,"product Phi sign identity is missing or ambiguous");
+   prints("ACF_BIND bound=",N," identity=",j," column=",matches[0])
+ od;
+ for m in [0,1,2] do
+   let xs=[0,0,1,1,2] then lrs=[vec:[-1,m],[0,m],[-1,m],[0,m],[0,m]] in
+   for xi@i in xs do
+     let k=K_type(KGB(G,xi),lrs[i]) then p=param(k) then J=character_formula(p).K_type_pol then
+     w=acf_vector(basis,J) then target=PX*w then solution0=solve(Q,target) in
+     assert(is_final(k) and not is_finite_dimensional(p),"product input finality or dimension changed");
+     assert(J=null_K_module(G)+k,"product irreducible class differs from frozen discovery");
+     assert(succeeds(solution0),"product quotient has no integral reconstruction");
+     let solution=requisition(solution0) then actual=vec:for r in ranks do r*solution od in
+     assert(Q*solution=target,"product reconstruction has nonzero residual");
+     let expected=[vec:[m+1,0],[m+1,0],[0,m+1],[0,m+1],[m+1,m+1]] in
+     assert(actual=expected[i],"product numerical multiplicity differs from tensor expectation");
+     prints("ACF_INPUT bound=",N," m=",m," id=",i," x=",xi," lr=",lrs[i]," weights=",for (,x,mu) in highest_weights(k,KGB(G,0)) do project_K(x,mu) od," parameter=",p,new_line,J);
+     prints("ACF_MODULE bound=",N," m=",m," id=",i," ambient=",w," target=",target," solution=",solution," ranks=",actual)
+   od
+ od;
+ prints("ACF_END bound=",N)
+
+set acf_rd=simply_connected(Lie_type("A1.A1"),true)
+set acf_ic=inner_class(acf_rd,[[1,0],[0,1]])
+set acf_G=real_form(acf_ic,1)
+prints("MATH_BEGIN @ID@")
+acf_map(acf_G,4)
+acf_map(acf_G,6)
+prints("MATH_END @ID@")

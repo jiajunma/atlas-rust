@@ -11,6 +11,7 @@ import tarfile
 
 from math_baseline_build import digest, file_manifest
 from math_suite import cases
+from math_cycle_check import mathematical_evidence
 
 
 def checked_json(path, expected_sha=None):
@@ -53,6 +54,9 @@ def independently_classify(case, entries, streams):
             if code is not None and (code < 0 or code >= 128):
                 return engine.upper() + "_SIGNAL_OR_RESOURCE_FAILURE"
             return engine.upper() + "_FAILURE"
+        evidence = mathematical_evidence(case, entries[engine], *streams[engine])
+        if evidence and evidence["status"] == "FAIL":
+            return engine.upper() + "_INVARIANT_FAILURE"
     if case["expected"] == "reject":
         return "REJECTION_CATEGORY_MATCH"
     left = complete_section(streams["oracle"][0], case["id"])
@@ -130,8 +134,13 @@ def review_case(path, expected, build_path, build_sha, build, manifest):
     status = independently_classify(expected, report["observations"], streams)
     if status != report["status"]:
         raise ValueError("recomputed outcome differs from reported outcome")
+    evidence = {e: mathematical_evidence(expected, report["observations"][e], *streams[e])
+                for e in ("oracle", "rust")}
+    if evidence != report.get("independent_checks"):
+        raise ValueError("independently recomputed mathematical evidence changed")
     return {"id": expected["id"], "index": report["case_index"], "job": report["job_id"],
             "group": expected["type"], "operation": expected["operation"], "status": status,
+            "independent_checks": evidence,
             "report_sha256": digest(path), "input_sha256": expected["input_sha256"],
             "metrics": {e: {k: o[k] for k in ("exit_status", "seconds", "maxrss_kb", "maxrss_approximate")}
                         for e, o in report["observations"].items()},

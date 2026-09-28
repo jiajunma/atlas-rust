@@ -36,10 +36,46 @@ Reviewed JSON artifacts:
 - `tests/reference/hpc/math_suite_corrective_review_2026_09_28.json`
 - `tests/reference/hpc/math_suite_r3_preflight_2026_09_28.json`
 
-The catalog now contains92 cases, not92 verified successes. Additional
-54 B2/C2/D4/F4/E6/E7 cases are running as array3832011; independent review
-3832103 is queued after that exact array. Do not infer acceptance from SLURM
-COMPLETED alone or replace timed-out cases with easier inputs under the same ID.
+The catalog now contains93 cases, not93 verified successes. Broad array3832011
+and independent review3832103 are complete. The review rehashed the pinned
+sources, scripts, binaries and all54 complete result sets. Artifact:
+`tests/reference/hpc/math_suite_broad_review_2026_09_28.json`, SHA
+`31c0e62d1a6b9b3227cfc2b55fc5ea213a29bb75f82a5f5cb28f1986feea1250`.
+Do not infer mathematical acceptance from SLURM COMPLETED or replace timed-out
+cases with easier inputs under the same ID.
+
+## Current full initial grid
+
+This table combines the R2 pilot, the four R3 corrected KGB/FPP inputs, and
+the54-case R3 broad review. It covers the initial72cases only, not all later
+diagnostic additions. Every group's wrong-rank FPP rejection matched.
+
+| Group | Root data | KGB | FPP | Script KLV | Unitarity | Hodge | AV-ann | Cycle foundation |
+|---|---|---|---|---|---|---|---|---|
+| A2 | match | match | match | load fail | load fail | oracle error | load fail | load fail |
+| B2 | match | match | match | load fail | load fail | oracle error | load fail | load fail |
+| C2 | match | match | match | load fail | load fail | oracle error | load fail | load fail |
+| D4 | match | match | wrong result | load fail | oracle timeout | oracle timeout | load fail | load fail |
+| G2 | match | match | match | load fail | load fail | oracle error | load fail | load fail |
+| F4 | match | match | match | load fail | oracle timeout | oracle timeout | load fail | load fail |
+| E6 | match | constructor fail | Rust timeout | load fail | oracle timeout | oracle timeout | load fail | oracle timeout |
+| E7 | match | match | Rust timeout | oracle allocation fail | oracle timeout | oracle allocation fail | load fail | oracle timeout |
+
+“Load fail” means the original completed but Rust rejected latest basic.at.
+In cells where the original also failed/timed out, Rust independently failed
+the same script load; the oracle failure must not hide this second failure.
+B2/C2 Hodge errors are real-form mismatches. E7 allocation failures occurred
+under the6GiB child address-space limit, not proof of incorrect oracle math.
+Cycle foundation is still not a cycle-multiplicity computation.
+
+The accepted E7 KGB observation3832151 is materially slower in current Rust:
+original1.3032s /41672KiB versus Rust69.8035s /1459140KiB, about53.6x time
+and35.0x peak RSS in this **single** run. This is a concrete regression lead,
+not a stable benchmark estimate or a statement about the older optimized branch.
+E6/E7 FPP originals completed in0.2799s/24.4600s; Rust reached300s in both
+cases. Their full Rust results remain unverified, so no completed-run ratio
+is claimed. D4/F4 original cycle-foundation cases take66.6s/146.7s but Rust
+does not get past script loading; they cannot support a speedup claim.
 
 ## New kernel regressions and Hodge diagnostics
 
@@ -64,11 +100,23 @@ Original-side defects are not Rust mathematical passes or speed results.
 
 ## Requirements still open
 
+R8 product review3832201 adds scoped numerical-cycle evidence: original
+SL(2,R) x SU(2) passes30 reconstructions (15irreducibles at bounds4/6), with
+multiplicities1/2/3. Exact Q ranks14/22 and full kernel dimensions27/75 are
+independently checked; all8 full Phi identities bind positive/negative labels.
+Rust fails latest generic script loading before the calculation. Artifact:
+`tests/reference/hpc/math_suite_cycle_review_2026_09_28.json` (SHA
+`30924499bb053599239cfc9095dfa666f0e3d3bd4d20b242be8ba84dad414656`).
+R7's old-fixture any(Maybe<vec>) failure is separately preserved; R8 changes
+only the fixture's success predicates to latest succeeds. All upstream
+scripts stay unchanged. This is not general associated-cycle acceptance.
+
 - General associated cycles: orbit identities AND multiplicities, independent
   dimension/rank checks, boundary support and justified cutoff completeness.
   AV-ann, AV support and bounded Phi matrices do not satisfy this requirement.
-  Old SL2/product numerical examples must be revalidated against this baseline
-  and supplemented by meaningful classical/exceptional examples.
+  The product numerical example is now revalidated on this original baseline,
+  but Rust does not run it; meaningful classical/exceptional and richer
+  coefficient coverage is still required.
 - Hodge: investigate the preserved original failures, then cover nontrivial
   irreducibles, different bounds and singular/nonintegral parameters. Elementary
   specialization identities alone are not full filtration validation.

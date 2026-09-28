@@ -67,8 +67,15 @@
       "operations": [
         {"id": "partial_kl_regression", "template": "partial_kl_regression.atlas", "scope": "Regression from HPC3832138/3832142: original partial KL blocks have4/10 entries for trivial and2 for half-scaled parameters; Rust incorrectly returns singletons. Retain complete parameters, matrices and polynomial pools in addition to size assertions."}
       ]
+    },
+    {
+      "groups": [{"type": "A1.A1", "family": "classical", "rank": 2, "tier": "small"}],
+      "operations": [
+        {"id": "cycle_product_ranks", "template": "cycle_product_ranks.atlas", "mathematical_check": "sl2_su2_numerical_cycles", "scope": "SL(2,R) x SU(2), 15 irreducibles at two bounds with multiplicities1/2/3. Full Phi sign binding, exact rational kernel completeness, integral residual and independent tensor-dimension expectations. Numerical maximal-orbit ranks only, not general cycles or cutoff completeness."}
+      ]
     }
   ],
+  "standalone_note": "Additional product case is numerical maximal-orbit multiplicity coverage only, not general-cycle acceptance.",
   "open_requirements": [
     "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
     "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
