@@ -519,6 +519,75 @@ mod tests {
         (inner_class, classification)
     }
 
+    // Regression: external numbering uses fixed fundamental-coweight bits,
+    // not the first imaginary-subsystem root flipped by each grading shift.
+    #[test]
+    fn e6_twisted_generator_coordinates_follow_ambient_basis() {
+        let cartan = vec![
+            vec![2, 0, -1, 0, 0, 0],
+            vec![0, 2, 0, -1, 0, 0],
+            vec![-1, 0, 2, -1, 0, 0],
+            vec![0, -1, -1, 2, -1, 0],
+            vec![0, 0, 0, -1, 2, -1],
+            vec![0, 0, 0, 0, -1, 2],
+        ];
+        let roots = cartan.iter().cloned().map(Weight::new).collect();
+        let coroots = (0..6)
+            .map(|i| {
+                let mut coordinates = vec![0; 6];
+                coordinates[i] = 1;
+                Coweight::new(coordinates)
+            })
+            .collect();
+        let datum = BasedRootDatum::from_simple_data(6, cartan, roots, coroots).unwrap();
+        let permutation = [5, 1, 4, 3, 2, 0];
+        let mut matrix = vec![vec![0; 6]; 6];
+        for (i, j) in permutation.into_iter().enumerate() {
+            matrix[j][i] = 1;
+        }
+        let involution = LatticeInvolution::new(&datum, matrix.clone(), matrix).unwrap();
+        let inner = InnerClass::new(datum, involution, 72).unwrap();
+        let lattice_budget = IntegerLatticeBudget::new(64, 100_000, 100_000, 128);
+        let source = crate::CartanFiber::build(
+            inner.distinguished_involution().involution(),
+            &lattice_budget,
+        )
+        .unwrap();
+        let adjoint = crate::AdjointCartanFiber::build(
+            inner.root_system(),
+            inner.distinguished_involution(),
+            &source,
+            &AdjointFiberBudget::new(lattice_budget, 50_000, 100_000),
+        )
+        .unwrap();
+        let grading = CartanGradingData::build(
+            inner.root_system(),
+            inner.distinguished_involution(),
+            &adjoint,
+        )
+        .unwrap();
+        // In Ker(delta-1)/Im(delta+1), each exchanged pair is killed.
+        // The two fixed coordinates 1 and 3 survive independently. This
+        // expectation follows from the displayed permutation, not Rust output.
+        let expected = vec![1, 3];
+        assert_eq!(adjoint.dimension(), expected.len());
+        for (bit, &generator) in expected.iter().enumerate() {
+            let basis = &adjoint.basis_representatives()[bit];
+            let flipped: Vec<_> = grading.grading_shift(bit).unwrap()
+                .noncompact_indices()
+                .map(|position| {
+                    let root = grading.imaginary_simple_root(position).unwrap();
+                    inner.root_system().simple_coordinates(root).unwrap().to_vec()
+                })
+                .collect();
+            println!("E6_FORM_COORDINATE_REGRESSION bit={bit} basis={basis:?} flipped={flipped:?}");
+            for &fixed in &expected {
+                assert_eq!(basis.bit(fixed), Some(fixed == generator));
+            }
+        }
+        assert_eq!(verified_generator_map(&inner, &grading).unwrap(), expected);
+    }
+
     #[test]
     fn sl2_orders_compact_zero_and_split_last() {
         let datum = BasedRootDatum::from_simple_data(

@@ -91,6 +91,21 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### Fundamental-fiber coordinates are not grading-shift positions
+
+- E6 probe3833407 reproduces the external-form constructor failure without
+  full Weyl enumeration. The fundamental adjoint fiber basis is e1/e3, but
+  e3 flips several imaginary-subsystem simple roots; its FIRST flipped root
+  has ambient-simple coordinates[0,0,1,1,1,0], not a datum-simple root.
+- Never infer a fiber basis coordinate from the first flipped grading root.
+  For a distinguished diagram involution, exchanged pairs vanish in the
+  fiber quotient and fixed fundamental-coweight coordinates survive. Verify
+  the actual basis representatives and their ascending coordinate order.
+- Original FormNumberMap uses the PARTITION overload of specialGrading,
+  not its Fiber overload. Preserve the maximal-popcount/highest-index
+  election and require unchanged-unit after-pass plus full original-backed
+  E6 KGB/KL comparison before accepting an external-numbering repair.
+
 ### Read template defaults for root/coroot operations
 
 - `InnerClass::int_item` calls `additive_closure` without a template argument;

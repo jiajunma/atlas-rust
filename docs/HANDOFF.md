@@ -6,6 +6,32 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
+ACTIVE COMBINED REPAIR: checked coroot sums are now staged together with the
+real-II KL boundary repair, retaining all integer/half-scale regressions.
+Stage /public/home/majj/atlas-math-kl-coroot-repair-20260928.vCEV2VU4;
+preflight3833256 COMPLETED, build3833274 and dependent array3833289 submitted.
+Indices75-82,89-91,103-107. Do not duplicate or mutate this frozen stage.
+Receipt math_kl_coroot_repair_submission_2026_09_28.json records every source
+and input pin. Collect build hash, inspect unchanged before/after tests, then
+submit an independently pinned review. Runtime is NOT yet accepted.
+While HPC executes, analyze E6 real-form ordering: verified_generator_map
+chooses the first flipped imaginary-subsystem root, which need not be a
+datum-simple root. Original partition indices instead use the adjoint fiber
+in fundamental-coweight coordinates. Prove the exact failure with a focused
+unchanged-runtime regression before changing the map or tiebreak logic.
+Focused E6 probe3833407 is COMPLETE in
+/public/home/majj/atlas-math-e6-coordinate-probe-20260928.eoSKciRl.
+It adds ONLY a real_form_order unit to3832345 runtime; no E6 repair yet.
+The explicit diagram permutation fixes coordinates1/3; its fundamental fiber
+can be checked without the full Weyl enumeration. The unit EXECUTES and fails:
+basis e1/e3 is correct, but e3's first flipped imaginary-subsystem root is
+[0,0,1,1,1,0], not datum-simple. Report SHA
+603606c432068d75dc0bc2d16fb70f854bc1d0d08ad0d8f47fc2a9eb50739dc6;
+log SHAeb481eb2e2e271cba3a13018c4c69b8a331de4b43c34de79bf901bd6fed4ed5c.
+NEXT E6 repair: verify ambient unit-vector basis in increasing fixed-generator
+order directly, retaining the partition specialGrading election. Keep this
+same regression and require full original-backed KGB/KL differential after.
+
 LATEST: FPP build3832301 COMPLETE, before exact-root test fails D4 and after
 passes ten types/both numberings. Independent review3832333 is COMPLETE:
 8mathmatches,8rejections,1Rust E7 timeout at300s. D4 wall is correct; E6

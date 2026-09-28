@@ -2,6 +2,19 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+CURRENT WAVE: combined KL boundary + coroot closure candidate is staged at
+atlas-math-kl-coroot-repair-20260928.vCEV2VU4. Preflight3833256 COMPLETED;
+build3833274 and array3833289 submitted (16 full-output cases including F4
+half/zero/unit history). Collect and independently review; do not duplicate.
+Source and acceptance pins are in math_kl_coroot_repair_submission_2026_09_28.json.
+All regressions and positivity guards retained; no runtime acceptance yet.
+Use the compute time for E6 external-form coordinate diagnosis in parallel.
+Unchanged-runtime E6 probe3833407 is COMPLETE: basis e1/e3 is correct but
+e3 first flips the nonsimple imaginary root[0,0,1,1,1,0], so the old map
+rejects it. Executed before-failure artifact/receipt and AGENTS guard retained.
+Next verify fixed ambient basis coordinates directly; do not alter the
+partition specialGrading election or remove the coordinate invariant.
+
 Newest evidence: FPP reflection repair before/after unit passes, and independent
 review3832333 confirms D4 wall and E6 complete outputs now agree. Eight positive
 matches/eight negative matches; E7 still times out at300s, so the whole FPP gate

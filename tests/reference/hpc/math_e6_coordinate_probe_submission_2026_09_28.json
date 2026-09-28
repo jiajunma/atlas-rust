@@ -1,0 +1,19 @@
+{
+  "schema": "atlas-math-regression-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-e6-coordinate-probe-20260928.eoSKciRl",
+  "job": "3833407",
+  "status": "COMPLETED_EXPECTED_EXECUTED_INVARIANT_FAILURE",
+  "report_sha256": "603606c432068d75dc0bc2d16fb70f854bc1d0d08ad0d8f47fc2a9eb50739dc6",
+  "unit_log_sha256": "eb481eb2e2e271cba3a13018c4c69b8a331de4b43c34de79bf901bd6fed4ed5c",
+  "finding": "Fiber representatives are ambient unit vectors e1/e3 (packed2/8). For e3, the first flipped imaginary-subsystem root has simple coordinates[0,0,1,1,1,0], before the actual datum-simple root[0,0,0,1,0,0]. verified_generator_map incorrectly assumes the first is datum-simple and rejects it. The unchanged-runtime unit executes and fails; no E6 repair yet.",
+  "probe_sha256": "558be2edac1593702912ab82b346afbf138a8ac22afcf2cc23df7e50a61c60fb",
+  "source_archive_sha256": "9d7363c273ec960827bcb0233bb3efd008520a8df3b2628a8bdaa8bb3df2f2f3",
+  "patch_sha256": "f0a1be8108122fc0c7b5409a0bf0a502c345b992b243a0475b1d519c94256517",
+  "module_sha256": "43fdad80372fdf9683324ed4d5b6a6a88f5eb00b0f1b0e2f8d7ec169811a5072",
+  "driver_sha256": "c0472cfaca9d6639afca31c9c4dca562e099e8aa3f1047d370b665a8dac53e10",
+  "parent_build": "3832345",
+  "parent_build_sha256": "6d7083abde0026076d8f872d6bd1c3e28e80d3373890a2210f243df099f32431",
+  "scope": "Runtime unchanged from3832345; only real_form_order.rs focused regression added. Uses the twisted E6 fundamental fiber directly, without enumerating the full Weyl group.",
+  "expectation": "Displayed permutation [5,1,4,3,2,0] kills exchanged pairs in the fiber quotient; fixed fundamental-coweight coordinates1 and3 survive. Diagnostic records each basis vector and all flipped imaginary-subsystem roots, then requires verified_generator_map to return those fixed coordinates.",
+  "acceptance": "Before probe must execute the intended mathematical invariant failure, not compilation failure. No repair or external-numbering acceptance from this probe. Existing original-backed E6 KGB/core KL cases remain mandatory after any repair."
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HPC-only unchanged-runtime probes for F4 KL and integral-coroot regressions."""
+"""HPC-only unchanged-runtime probes for focused mathematical regressions."""
 import json
 import os
 from pathlib import Path
@@ -48,6 +48,12 @@ def main():
             following = "    // Conventions for the hand computations below."
             test_filter = "locator::tests::integral_coroot_"
             package, count, trace_prefix = "atlas-real-group", 2, "LOCATOR_COROOT_REGRESSION "
+        elif kind == "e6_form_coordinates":
+            core = "crates/atlas-real-group/src/real_form_order.rs"
+            first = "    // Regression: external numbering uses fixed fundamental-coweight bits,"
+            following = "    #[test]\n    fn sl2_orders_compact_zero_and_split_last()"
+            test_filter = "real_form_order::tests::e6_twisted_generator_coordinates_follow_ambient_basis"
+            package, count, trace_prefix = "atlas-real-group", 1, "E6_FORM_COORDINATE_REGRESSION "
         else:
             raise ValueError("unknown regression probe")
         previous = parent["source_files"]["rust"]
@@ -81,7 +87,9 @@ def main():
         if (run.returncode != 101 or f"test result: FAILED. 0 passed; {count} failed;" not in log
                 or len(report["boundary_links"]) < count):
             raise ValueError("must reproduce executed regression failures, not compilation errors")
-        expected_error = "cross of extremal" if kind == "kl_boundary" else "integral image positivity"
+        expected_error = {"kl_boundary": "cross of extremal",
+                          "locator_coroots": "integral image positivity",
+                          "e6_form_coordinates": "twist-fixed generator coordinate"}[kind]
         if expected_error not in log:
             raise ValueError("expected mathematical invariant failure is missing")
         if any(digest(out / "source" / n) != h for n, h in files.items()):

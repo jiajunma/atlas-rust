@@ -24,6 +24,14 @@ def build_environments(out, inherited):
             for phase in ("before", "after")}
 
 
+def without_added_regression(source, first, following):
+    if source.count(first) != 1:
+        raise ValueError("regression marker must occur exactly once")
+    start = source.index(first)
+    end = source.index(following, start)
+    return source[:start] + source[end:]
+
+
 def main():
     if not os.environ.get("SLURM_JOB_ID"):
         raise SystemExit("Repair builds and regression tests require HPC")
@@ -61,25 +69,46 @@ def main():
         before_files = file_manifest(out / "rust-before")
         core = "crates/atlas-core/src/domain_builtins.rs"
         kl = "crates/atlas-real-group/src/kl_table.rs"
+        locator = "crates/atlas-real-group/src/locator.rs"
+        coroot_repair = lock["repair"].get("include_coroot_repair", False)
+        runtime_modules = {kl, locator} if coroot_repair else {kl}
+        test_modules = {core, locator} if coroot_repair else {core}
         after_files = report["source_files"]["rust"]
         previous = parent["source_files"]["rust"]
         if (before_files.keys() != after_files.keys() or before_files.keys() != previous.keys()
-                or {n for n in before_files if before_files[n] != after_files[n]} != {kl}):
-            raise ValueError("only the declared KL module may change between phases")
-        if {n for n in before_files if before_files[n] != previous[n]} != {core}:
-            raise ValueError("before source may add only the F4 core regression")
+                or {n for n in before_files if before_files[n] != after_files[n]} != runtime_modules):
+            raise ValueError("only the declared repair modules may change between phases")
+        if {n for n in before_files if before_files[n] != previous[n]} != test_modules:
+            raise ValueError("before source may add only the declared regression modules")
         before_core = (out / "rust-before" / core).read_text()
-        start = before_core.index("    #[test]\n    fn f4_partial_kl_recursion_handles_interval_boundary_links()")
-        end = before_core.index("    #[test]\n    fn alcove_reflection_words_act_as_exact_root_reflections()", start)
+        stripped = without_added_regression(
+            before_core,
+            "    #[test]\n    fn f4_partial_kl_recursion_handles_interval_boundary_links()",
+            "    #[test]\n    fn alcove_reflection_words_act_as_exact_root_reflections()")
         parent_core = Path(lock["repair"]["parent_build"]).parent / "rust-source" / core
-        if before_core[:start] + before_core[end:] != parent_core.read_text():
+        if stripped != parent_core.read_text():
             raise ValueError("before source changed runtime instead of only adding regression")
+        if coroot_repair:
+            before_locator = (out / "rust-before" / locator).read_text()
+            stripped = without_added_regression(
+                before_locator,
+                "    // Regression: integral-datum closure uses coroot addition.",
+                "    // Conventions for the hand computations below.")
+            parent_locator = Path(lock["repair"]["parent_build"]).parent / "rust-source" / locator
+            if stripped != parent_locator.read_text():
+                raise ValueError("before locator changes more than its two regressions")
+            after_locator = (out / "rust-source" / locator).read_text()
+            if before_locator.split("#[cfg(test)]", 1)[1] != after_locator.split("#[cfg(test)]", 1)[1]:
+                raise ValueError("locator regressions changed between before and after")
         report["repair_source_check"] = {
             "before_archive_sha256": digest(before_archive),
             "regression_core_sha256": before_files[core],
             "before_kl_sha256": before_files[kl],
             "after_kl_sha256": after_files[kl],
-            "only_runtime_change": "KL direct recursion: branch-local cross and absent real-II boundary as zero"}
+            "runtime_modules": sorted(runtime_modules),
+            "before_module_sha256": {n: before_files[n] for n in runtime_modules},
+            "after_module_sha256": {n: after_files[n] for n in runtime_modules},
+            "coroot_repair": coroot_repair}
         environments = build_environments(out, os.environ)
         report["build_environment"] = {
             phase: {k: env[k] for k in
@@ -98,7 +127,9 @@ def main():
             if expected_exit == 0:
                 report["commands"].append(entry)
             else:
-                report["regression_before"] = entry
+                report.setdefault("expected_failures", []).append(entry)
+                if name == "regression-before":
+                    report["regression_before"] = entry
             if p.returncode != expected_exit:
                 raise ValueError(name + " unexpected exit: " + str(p.returncode))
             return (out / (name + ".log")).read_text()
@@ -115,6 +146,17 @@ def main():
                 or "cross of extremal" not in before_log
                 or "F4 partial KL boundary:" not in before_log):
             raise ValueError("before test must fail an executed assertion, not compilation")
+        locator_unit = ["cargo", "test", "--offline", "--locked", "-p", "atlas-real-group",
+                        "--lib", "locator::tests::integral_coroot_", "--", "--nocapture"]
+        if coroot_repair:
+            failed = command("coroot-before", locator_unit, out / "rust-before", 101, phase="before")
+            if ("test result: FAILED. 0 passed; 2 failed;" not in failed
+                    or "integral image positivity" not in failed
+                    or "assertion `left == right` failed" not in failed):
+                raise ValueError("both coroot regressions must execute and fail before repair")
+            passed = command("coroot-after", locator_unit, out / "rust-source")
+            if "test result: ok. 2 passed; 0 failed;" not in passed:
+                raise ValueError("both unchanged coroot regressions must pass after repair")
         after_log = command("regression-after", unit, out / "rust-source")
         if "test result: ok. 1 passed; 0 failed;" not in after_log:
             raise ValueError("after test did not execute the exact regression")
@@ -123,6 +165,12 @@ def main():
                              "--lib", "kl_table::tests::", "--", "--nocapture"], out / "rust-source")
         if "test result: ok." not in table_log or "test result: ok. 0 passed;" in table_log:
             raise ValueError("KL table regression suite did not execute")
+        if coroot_repair:
+            locator_log = command("locator-regressions",
+                                  ["cargo", "test", "--offline", "--locked", "-p", "atlas-real-group",
+                                   "--lib", "locator::tests::", "--", "--nocapture"], out / "rust-source")
+            if "test result: ok." not in locator_log or "test result: ok. 0 passed;" in locator_log:
+                raise ValueError("locator regression suite did not execute")
         reflection = command("fpp-reflection-regression",
                              ["cargo", "test", "--offline", "--locked", "-p", "atlas-core", "--lib",
                               "domain_builtins::tests::alcove_reflection_words_act_as_exact_root_reflections",

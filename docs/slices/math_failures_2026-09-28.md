@@ -149,6 +149,18 @@ This is before-failure evidence, not an after-fix or full-differential pass.
 
 E6's core KLV probe fails earlier in Rust with `real-form order twist-fixed
 generator coordinate invariant was violated`, while the original succeeds.
+Focused unchanged-runtime probe3833407 now tests the fundamental fiber for
+the explicit E6 diagram permutation[5,1,4,3,2,0]. Exchanged pairs vanish in
+the fiber quotient and fixed coweight bits1/3 survive. The current
+verified_generator_map instead chooses the FIRST flipped imaginary-subsystem
+root and assumes it is datum-simple. This is not implied by fiber coordinates:
+imaginary-subsystem simples can be nonsimple in the ambient root system.
+The probe is now COMPLETE: basis e1/e3 is correct; e3's first flipped root
+has coordinates[0,0,1,1,1,0], preceding[0,0,0,1,0,0]. The unchanged-runtime
+unit executes and fails (not a compilation failure), report SHA
+603606c432068d75dc0bc2d16fb70f854bc1d0d08ad0d8f47fc2a9eb50739dc6.
+Do not just skip roots, delete the invariant or change
+the maximal-popcount specialGrading election without a coordinate proof.
 E7's original reports `std::bad_alloc` under the6GiB child address-space cap;
 this is a resource-limited comparison, not evidence that Rust is correct or
 that the original algorithm is mathematically wrong. Do not report its

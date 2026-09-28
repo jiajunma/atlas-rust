@@ -2,10 +2,23 @@ from pathlib import Path
 import unittest
 
 import math_kl_boundary_probe
-from math_kl_repair_build import build_environments
+from math_kl_repair_build import build_environments, without_added_regression
 
 
 class KlRepairBuildTests(unittest.TestCase):
+    def test_only_marked_regression_is_removed_for_parent_comparison(self):
+        self.assertEqual(without_added_regression("prefixTEST new codeNEXT suffix", "TEST", "NEXT"),
+                         "prefixNEXT suffix")
+
+    def test_missing_or_duplicate_regression_markers_are_rejected(self):
+        for source in ("prefixNEXT suffix", "TESTTESTNEXT"):
+            with self.assertRaises(ValueError):
+                without_added_regression(source, "TEST", "NEXT")
+
+    def test_following_marker_must_follow_the_regression(self):
+        with self.assertRaises(ValueError):
+            without_added_regression("NEXT prefixTEST suffix", "TEST", "NEXT")
+
     def test_probe_is_importable_without_running_a_build(self):
         self.assertTrue(callable(math_kl_boundary_probe.main))
 
