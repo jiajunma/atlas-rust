@@ -63,10 +63,13 @@ A2/G2 cache-history queries lose predecessors; B2 containment triggers a
 height-parity error; compact A1 nonstandard input is wrongly accepted. The
 original passes all four cases. A separate candidate now routes partial KL
 through actual-parameter lookup, Hasse downsets, locator-aware singular
-condensation and zero/one-seeded polynomial interning. Build3832345 completed;
-dependent differential3832350/review3832517 are pending acceptance, not proof
-of a repair.
-The E6 constructor and E7 oracle capacity failures remain distinct open gaps.
+condensation and zero/one-seeded polynomial interning. Independent review3832517
+now verifies11mathematical matches and1rejection match, including the complete
+A2/B2/C2/D4/G2 outputs and all four new regressions. F4 instead reaches a
+deeper `cross of extremal` panic in KL recursion; E7 hits the same Rust panic
+while its original leg still fails allocation. E6 remains a constructor error.
+The candidate is therefore only partially verified, not accepted as a complete
+partial-KL implementation. Preserve and repair these remaining cases.
 
 ## Current full initial grid
 

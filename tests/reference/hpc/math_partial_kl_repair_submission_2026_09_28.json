@@ -36,8 +36,23 @@
     105,
     106
   ],
-  "status": "DIFFERENTIAL_IN_PROGRESS_NOT_ACCEPTED",
+  "status": "REVIEWED_PARTIAL_PASS; F4_KL_RECURSION_PANIC_REMAINS",
   "source_scope": "Main05625 plus only domain_builtins.rs: FPP repair/unit, actual-parameter partial-KL arm, removal of obsolete classic finals helper. Both binaries freshly built; latest original source unchanged.",
   "acceptance": "Inspect independent full-output differential including nonintegral/singular/history/containment/rejection; retain E6 constructor and E7 original capacity failures as distinct open requirements.",
-  "transport": "Tiny patch applied to immutable HPC baseline; candidate source/archive generated on HPC. No push, install or shared-checkout mutation."
+  "transport": "Tiny patch applied to immutable HPC baseline; candidate source/archive generated on HPC. No push, install or shared-checkout mutation.",
+  "review_status": "COMPLETED_ARTIFACTS_VERIFIED",
+  "review_sha256": "65517a73057b4244c1a572f9a8ed7ebc671cd6c55fc6aec25c0dde2efb6616dd",
+  "review_artifact": "math_partial_kl_repair_review_2026_09_28.json",
+  "counts": {
+    "MATH_MATCH": 11,
+    "REJECTION_CATEGORY_MATCH": 1,
+    "RUST_FAILURE": 2,
+    "ORACLE_FAILURE": 1
+  },
+  "open_failures": [
+    "F4 core case80/job3832508: panic at kl_table.rs:265, cross of extremal.",
+    "E6: existing real-form construction failure.",
+    "E7: original std::bad_alloc under6GiB; Rust also reaches cross-of-extremal panic."
+  ],
+  "next": "Add focused missing-cross KL recursion regression and repair from original kl.cpp; candidate runtime remains uncommitted/not fully accepted."
 }

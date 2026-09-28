@@ -30,12 +30,32 @@ Do NOT duplicate. Build and latest original are freshly compiled in isolation.
 Input manifest c293daeb15ad0a6dce4bdffd4223a339b39421520ff6048e374f3f7bc6578781;
 review-code SHA594c8d56ff32ac37b0b034cbae15bd31a1fbfc0b6541e76594a74b88c3a7d5f0.
 Build SHA6d7083abde0026076d8f872d6bd1c3e28e80d3373890a2210f243df099f32431;
-independent review3832517 is already submitted afterany3832350. Collect it,
-do not submit another. Frozen core SHA4547f83fa036ef463ac8a0e732c0055b6c47099d550b3b90fe701b7aed423592.
+Independent review3832517 is COMPLETE, SHA
+65517a73057b4244c1a572f9a8ed7ebc671cd6c55fc6aec25c0dde2efb6616dd:
+11mathmatches,1rejection match,2Rust failures,1original failure. All array jobs
+are terminal; do not rerun unchanged. A2/B2/C2/D4/G2 core results, A2/G2
+focused regressions and all4 new history/containment/rejection cases pass.
+F4 now reaches a deeper panic in kl_table.rs:265 (`cross of extremal`);
+E7 also hits that Rust panic, while original E7 fails allocation under6GiB.
+E6 remains the pre-existing real-form constructor error. This partial-KL
+candidate is NOT fully accepted and remains uncommitted.
+Frozen core SHA4547f83fa036ef463ac8a0e732c0055b6c47099d550b3b90fe701b7aed423592.
 Only core differs from main: FPP repair/test, replacement partial-KL arm,
 removal of its obsolete classic finals helper. No unrelated code changed.
 No acceptance/commit of the runtime changes yet. Patch/archive pins are in
 results/math-partial-kl-repair-20260928 and the submission receipt.
+
+NEXT REQUIRED REPAIR: retain F4 case80/job3832508 as the verified failing
+reproducer, then add a focused KL recursion regression before changing code.
+Rust recursion_column eagerly unwraps cross(x,s) for EVERY extremal x before
+examining its descent status. Original kl.cpp:400-445 reads cross only in the
+ComplexDescent and RealTypeII branches; ImaginaryCompact/RealTypeI do not
+use it. Determine which missing link the F4 case hits. Missing real-II cross
+may be UndefBlock outside a partial interval (KL support has a sentinel path);
+do not blindly replace all missing required links with zero or just catch the
+panic. No kl_table.rs edits have been made yet. Existing A2 KL unit fixtures
+and the sealed BlockTopology trait permit a focused missing-unused-cross
+regression; F4 full-output differential remains the mathematical acceptance.
 
 Separate E7 FPP600s stage (same FPP-only build, not the partial-KL candidate):
 /public/home/majj/atlas-math-fpp-e7-long-20260928.FEh5ubAb.

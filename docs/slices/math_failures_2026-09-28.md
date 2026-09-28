@@ -98,7 +98,15 @@ R10 discovered that bare Atlas lacks list/tuple equality for these types;
 R11 uses elementwise Param/vec/int equality without importing basic.at.
 Independent review3832340 confirms all four original cases pass while Rust
 loses A2/G2 predecessors, errors on B2's singleton and accepts the nonstandard
-A1 input. The candidate repair is frozen in build3832345, not yet accepted.
+A1 input. The candidate repair is frozen in build3832345. Independent review
+3832517 now confirms A2/B2/C2/D4/G2 full KL outputs and all four new regressions
+pass. F4 reaches a deeper panic at kl_table.rs:265 (`cross of extremal`), also
+seen in the E7 Rust leg. Keep case80/job3832508 as its complete original-backed
+reproducer. The Rust recursion fetches `cross(x,s).expect(...)` before its
+descent switch, whereas original kl.cpp:400-445 fetches cross only in the
+complex-descent and real-II branches. Identify the actual missing-link case,
+add a focused regression, and preserve required-link invariants when repairing.
+This is not permission to return zero for every missing link or waive F4.
 
 E6's core KLV probe fails earlier in Rust with `real-form order twist-fixed
 generator coordinate invariant was violated`, while the original succeeds.

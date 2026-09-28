@@ -11,7 +11,12 @@ R11 review3832340 adds four original-pass/Rust-fail partial-KL regressions
 R10's script-only list-equality fixture mistake. Catalog107cases.
 Candidate core now routes partial_KL_block through actual-parameter lookup,
 complete Hasse downset and locator-aware condensation/interner. Preflight3832344
-passes38checks; build3832345 COMPLETE. Array3832350/review3832517 are IN PROGRESS.
+passes38checks; build3832345 and array3832350/review3832517 are COMPLETE.
+Review:11mathmatches/1rejection match, F4 Rust KL recursion panic, E6 existing
+constructor failure, E7 original allocation failure plus the same Rust panic.
+A2/B2/C2/D4/G2 and all new targeted regressions pass. Next fix must address
+the eagerly unwrapped `cross of extremal` in kl_table.rs:265; preserve F4's
+full-output case and add a focused regression before touching the recursion.
 See HANDOFF and new receipts. Do not claim or commit the runtime as accepted
 until the corresponding differential gates and independent review are examined.
 
