@@ -91,6 +91,33 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### Read template defaults for root/coroot operations
+
+- `InnerClass::int_item` calls `additive_closure` without a template argument;
+  upstream `rootdata.h` defaults `for_coroots=true`. The Rust locator wrongly
+  ported root sums. In B/C/F/G, root and coroot closures need not coincide.
+- Probe3832726 executes two failing regressions: B2 closure gives4 instead
+  of8 elements; F4 half-scale locator fails integral-image positivity.
+  Preserve these tests, use exact coroot evaluations as an independent check,
+  and require after-pass plus original-backed full-output comparison.
+- `combine_roots`'s boolean selects subtraction, NOT root versus coroot.
+  Do not flip that flag or remove positivity checks as a shortcut.
+
+### Undefined links in a partial KL block are descent-specific
+
+- F4 case80/job3832508 panics at `cross of extremal`. The unchanged-runtime
+  probe3832534 isolates `x=263, y=278, s=2`, with descent `RealTypeII`.
+- A real-II cross can leave a downward-closed partial block. Original
+  `blocks.cpp` explicitly permits `UndefBlock` there, and `KL_pol` evaluates
+  its contribution as zero. A complex descent or inverse Cayley descent,
+  in contrast, must remain inside the interval.
+- Do not eagerly unwrap every extremal's cross, silently zero every missing
+  link, or require cross-closure of a partial block. Preserve the descent
+  distinction and compare full KL parameters/matrices/pools, including
+  partial/full/partial cache histories. Keep the original-backed regression
+  and before-panic/after-pass evidence; no acceptance from avoiding a panic
+  alone. See `docs/slices/math_failures_2026-09-28.md`.
+
 ### Isolate Cargo outputs for before/after archive builds
 
 - HPC job `3832260` compiled the before source and failed the intended D4

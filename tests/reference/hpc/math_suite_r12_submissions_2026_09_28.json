@@ -1,0 +1,33 @@
+{
+  "schema": "atlas-math-regression-submission-v1",
+  "case_index": 107,
+  "case_id": "F4_partial_kl_history",
+  "inputs_sha256": "0e4444ab51da6c5fd81a8d1a590a922ae8b33f622f3574923b6131c11d1ad795",
+  "review_code_sha256": "6f9928cbb4ee7a7ced10b7884c89c04b4101c5ef1a2951ffc7f7c815877c6f26",
+  "build_report": "/public/home/majj/atlas-math-partial-kl-repair-20260928.SZRaJr6Y/results/3832345/build.json",
+  "build_sha256": "6d7083abde0026076d8f872d6bd1c3e28e80d3373890a2210f243df099f32431",
+  "preflight": {
+    "job": "3832551",
+    "status": "PASSED_39_CHECKER_TESTS",
+    "sha256": "eb01391b978eefdcbdf54cb98cffbc69af3cb245b5602bd1270e5e7f5cf337f6"
+  },
+  "failed_submission": {
+    "stage": "/public/home/majj/atlas-math-suite-r12-20260928.e62FkabO",
+    "job": "3832552",
+    "review": "3832594",
+    "status": "HARNESS_FAILURE_NO_INTERPRETER_EXECUTED",
+    "reason": "Execution omitted SUITE_INPUTS_SHA256; independent review refused the incomplete report. No mathematical observation or result ratio.",
+    "report_sha256": "71a53cfd5f246a20199860d4307aebf92b4cf1b4da5996d248fc4d5626876e12"
+  },
+  "corrected_submission": {
+    "stage": "/public/home/majj/atlas-math-suite-r12b-20260928.Z4w6C7c8",
+    "job": "3832609",
+    "review": "3832614",
+    "review_dependency": "afterany:3832609",
+    "status": "REVIEWED_ORIGINAL_PASS_RUST_FAILURE",
+    "review_sha256": "89813b870cae2d89336598b6d0eb7df22cb9eca48b02a86fe8b304ddee16ffbf",
+    "review_artifact": "math_suite_r12b_review_2026_09_28.json",
+    "finding": "Cold half-scale F4 partial_KL_block fails with Weyl-element integral image positivity invariant, before the cross-boundary repair. Original full history passes. This is an additional locator/subsystem failure, not the same observed panic.",
+    "scope": "Identical frozen sources, fixture, scripts, binaries and manifest; only restore the missing submission pin. Fresh stage preserves the failed attempt."
+  }
+}

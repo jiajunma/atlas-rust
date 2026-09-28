@@ -13,7 +13,14 @@
   "timeout_seconds_per_engine": 600,
   "review": "3832506",
   "review_dependency": "afterany:3832501",
-  "status": "IN_PROGRESS_NOT_ACCEPTED",
+  "status": "REVIEWED_RUST_TIMEOUT_600_SECONDS_NOT_ACCEPTED",
+  "review_sha256": "4b405a26cf01655d6ac79bdfbcbf5928812099fb325d7ec6aa826e7d74ec31db",
+  "review_artifact": "math_fpp_e7_long_review_2026_09_28.json",
+  "oracle_seconds": 24.190585152013227,
+  "oracle_maxrss_kb": 981172,
+  "rust_seconds": 600.2182064279914,
+  "rust_maxrss_kb": 2588124,
+  "rust_exit_status": 124,
   "prior": "Review3832333 preserves same FPP-only candidate's E7 timeout at300s. No other input/source/limit relaxed; CPU8GiB/child6GiB unchanged.",
   "scope": "Additional full-output correctness observation, not a stable speed ratio. All old artifacts remain immutable."
 }

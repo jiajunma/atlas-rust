@@ -1,0 +1,76 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-partial-kl-repair-20260928.SZRaJr6Y/results/3832345/oracle-source/atlas",
+      "sha256": "093066582e908115022188debf348f77535e10cc7bfb2e06bb32ee5b3a03b71b"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-partial-kl-repair-20260928.SZRaJr6Y/results/3832345/target/release/atlas-cli",
+      "sha256": "4ae1e00cd491f6e58d76b304b53caf5120548ae801e96585d30cee2ae432c81a"
+    }
+  },
+  "build_report_sha256": "6d7083abde0026076d8f872d6bd1c3e28e80d3373890a2210f243df099f32431",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Runtime error at <stdin>:8:11: Weyl-element integral image positivity invariant was violated",
+          "  |  let cold=partial_KL_block(q) in",
+          "  |           ^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "F4",
+      "id": "F4_partial_kl_history",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 107,
+      "input_sha256": "6600daf378650171d69ce6233e5ea92a30c0b665048f99aa2d7b85aacb279202",
+      "job": "3832609",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 9428,
+          "seconds": 0.189101416000085
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 9880,
+          "seconds": 0.06709734099968045
+        }
+      },
+      "operation": "partial_kl_history",
+      "report_sha256": "944769ec37c25dcb4ecfe76d4f86a27b1d176f357f16dd2d087c0f364b356115",
+      "status": "RUST_FAILURE"
+    }
+  ],
+  "counts": {
+    "RUST_FAILURE": 1
+  },
+  "input_manifest_sha256": "0e4444ab51da6c5fd81a8d1a590a922ae8b33f622f3574923b6131c11d1ad795",
+  "job": "3832614",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-suite-r12b-20260928.Z4w6C7c8",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

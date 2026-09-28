@@ -11,8 +11,8 @@ class MathSuiteTests(unittest.TestCase):
 
     def test_catalog_cross_product(self):
         catalog, matrix = cases(Path(__file__).resolve().parents[1])
-        self.assertEqual(len(matrix), 107)
-        self.assertEqual(sum(x["family"] != "language" for x in matrix), 104)
+        self.assertEqual(len(matrix), 108)
+        self.assertEqual(sum(x["family"] != "language" for x in matrix), 105)
         self.assertEqual({x["family"] for x in matrix}, {"classical", "exceptional", "language"})
         self.assertTrue(catalog["open_requirements"])
         for case in matrix:
@@ -161,6 +161,17 @@ class MathSuiteTests(unittest.TestCase):
         self.assertEqual(matrix[106]["diagnostic"], "partial_KL_block requires a standard parameter")
         self.assertEqual(matrix[8]["diagnostic"], "Rank and rational weight size mismatch 2:3")
         self.assertIn("if is_standard(p) then error", matrix[106]["source"])
+
+    def test_f4_partial_kl_boundary_regression_extends_history_coverage(self):
+        matrix = cases(Path(__file__).resolve().parents[1])[1]
+        case = matrix[107]
+        self.assertEqual(case["id"], "F4_partial_kl_history")
+        self.assertEqual(case["family"], "exceptional")
+        self.assertEqual(case["expected"], "accept")
+        for marker in ("[p*(1/2),p*0,p]", "partial_block(q)", "KL_block(q)",
+                       'prints("COLD",cold', 'prints("FULL",whole,"WARM",warm)',
+                       "indices[i,j]!=windices[i,j]", "polynomials[i]=wpolynomials[i]"):
+            self.assertIn(marker, case["source"])
 
 
 if __name__ == "__main__":

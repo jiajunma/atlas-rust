@@ -45,26 +45,90 @@ removal of its obsolete classic finals helper. No unrelated code changed.
 No acceptance/commit of the runtime changes yet. Patch/archive pins are in
 results/math-partial-kl-repair-20260928 and the submission receipt.
 
-NEXT REQUIRED REPAIR: retain F4 case80/job3832508 as the verified failing
-reproducer, then add a focused KL recursion regression before changing code.
-Rust recursion_column eagerly unwraps cross(x,s) for EVERY extremal x before
-examining its descent status. Original kl.cpp:400-445 reads cross only in the
-ComplexDescent and RealTypeII branches; ImaginaryCompact/RealTypeI do not
-use it. Determine which missing link the F4 case hits. Missing real-II cross
-may be UndefBlock outside a partial interval (KL support has a sentinel path);
-do not blindly replace all missing required links with zero or just catch the
-panic. No kl_table.rs edits have been made yet. Existing A2 KL unit fixtures
-and the sealed BlockTopology trait permit a focused missing-unused-cross
-regression; F4 full-output differential remains the mathematical acceptance.
+F4 KL boundary repair is INCOMPLETE. Unchanged-runtime probe3832534
+executes the new core regression and identifies x263,y278,s2,RealTypeII at
+unit scale, then reproduces the panic. Report SHA
+14d877bb00d5c4b4e4d25c7d9dacf7c58105c63ade97b905ea357c0390b7f616.
+The real-II cross may legitimately leave the interval, as original blocks.cpp
+states; its KL_pol(UndefBlock,sy) term is zero. Current kl_table.rs moves cross
+lookup into only the branches needing it and zeroes only the absent real-II
+subtraction term, retaining required complex/Cayley links. Runtime NOT accepted.
+Core SHA now d7dcd40b43c53cde6a1aef86c5be19b867b99129ff6fcc2774d424d76bb6891c
+(adds only the F4 unit to the3832345 core); KL SHA
+13346677b299721bb5b623999b9f5c0bd51e6a42c0abc967b6fda2e319573ee2.
+Repair stage /public/home/majj/atlas-math-kl-boundary-repair-20260928.qacZjoD2,
+preflight3832612 PASS(41checks), isolated build3832615 is TERMINAL/FAILED4:24.
+Before unit executes the cross panic. After unit completes the integer-scale
+partial KL call/parameter comparison, then half-scale lookup fails integral
+image positivity. No after-pass, no release build, no KL-table/FPP unit suite
+from this job. Build SHA
+1f9d64d78c695a1a292f9d1e1c31b1fe5103569aa351ccfcad2aaa352336409d,
+before/after log SHA9d2ca542... /a42b3e8d... . Array3832623 was observed
+PENDING/DependencyNeverSatisfied and then CANCELLED; no interpreter
+executions and no independent differential review. Preserve the failed build.
+Original source/scripts remain unchanged. Full-output differential still
+required after BOTH issues are addressed (indices75-82,89-91,103-107).
+
+Catalog108cases:107 adds F4 half/zero/unit partial/full/partial history.
+R12 preflight3832551 passed39checks, but execution3832552 omitted
+SUITE_INPUTS_SHA256 and did not run either interpreter. Review3832594 then
+failed on the incomplete report. Preserve the harness-failure artifact;
+it is not a mathematical observation. Identical-input corrected R12b stage
+/public/home/majj/atlas-math-suite-r12b-20260928.Z4w6C7c8, execution3832609,
+and review3832614 are COMPLETE. Review SHA
+89813b870cae2d89336598b6d0eb7df22cb9eca48b02a86fe8b304ddee16ffbf:
+original passes the full history, Rust fails first cold half-scale call with
+`Weyl-element integral image positivity invariant was violated`. Raw Rust
+stdout has no PARAMETER/COLD/FULL records (131bytes), so this is BEFORE the
+full-lookup cache enlargement. Always export the manifest pin to every
+execution job, not just preflight. Receipts identify the exact review.
+
+NEXT additional root cause (static source evidence; not fixed): locator.rs
+`additive_closure` explicitly implements ROOT sums via combine_roots(...,false),
+whose bool means SUBTRACT, not root/coroot. Original rootdata.h:131 declares
+`template<bool for_coroots=true>`; InnerClass::int_item uses that default, and
+rootdata.cpp:690-704 closes COROOT sums. The Rust doc incorrectly says
+additive_closure<false>. This matters for B/C/F/G, unlike A/D/E. A minimal
+independent regression: in the existing standard B2 root datum, close the
+roots [1,0] and [1,2] as coroots. Coroots [2,-1] and [0,1] add to [2,0],
+the coroot of [1,1]; closure must recover all8 signed roots, while root sums
+retain only4. Also test F4 gamma=[1,1,1,1]/2 in fundamental-weight coordinates:
+mapped canonical positive roots must equal the exact set where gamma evaluates
+integrally on coroots. Keep case107's full original-backed failure. Do not just
+drop the positivity guard or flip combine_roots's subtract flag. locator.rs now
+adds ONLY those two focused tests, no runtime repair yet; SHA
+48faf441c52b37585cc13b946d463a34aefd38030c6ff507fe2472d2619e8b5d.
+Unchanged-runtime coroot-probe stage
+/public/home/majj/atlas-math-coroot-probe-20260928.ckgeagE9, job3832726 COMPLETE42s;
+consult math_coroot_probe_submission_2026_09_28.json for the actual job before
+starting more work. It uses the original3832345 candidate runtime, not the
+KL-only repair, with only the locator unit tests added. The probe verifies
+that source distinction. Both tests EXECUTED and FAILED: B2 closure gives4
+instead of8 roots; F4 hits integral-image positivity. Report SHA
+88aaa653d427f1705f36ef992a280a5db52acc3a662d2b4c329196cd2e455e43,
+log SHAac43be69bfcff8c1d8c140d6c5f5684c979d83db726fcb6d32072fffb188a467.
+No active jobs remain from this wave. NEXT: repair locator's coroot additive
+closure with checked coroot-coordinate sums (a borrowed coroot-to-RootId map
+avoids rescanning all roots). Preserve the same two tests and positivity guard,
+then prove after-pass on HPC and rebuild the combined KL+locator candidate.
+Do not weaken the core F4 unit that now exposes both integer and half-scale
+failures. Full differential, including index107, remains mandatory.
+The source archive SHA is4304a7fc9f39dea728a57cfc3efdda328efea801d0ee905b6d4ff8711ba79fdb;
+probe pin SHA283d278151fd05ffa9118a91354d985057cd7d5fca0e6b76f2b14061d765d781.
 
 Separate E7 FPP600s stage (same FPP-only build, not the partial-KL candidate):
 /public/home/majj/atlas-math-fpp-e7-long-20260928.FEh5ubAb.
-Preflight3832370 COMPLETE (38checks); array3832501 case68 is submitted with
-MATH_CASE_TIMEOUT=600. Review3832506 depends afterany on that exact array.
+Preflight3832370 COMPLETE (38checks); array3832501 case68 is TERMINAL,
+Rust timeout600.2182s/2588124KiB, original success24.1906s/981172KiB.
+Review3832506 COMPLETE, SHA
+4b405a26cf01655d6ac79bdfbcbf5928812099fb325d7ec6aa826e7d74ec31db,
+retained in math_fpp_e7_long_review_2026_09_28.json. This is not full FPP
+acceptance or a completed speed ratio; do not repeat unchanged at a longer
+timeout. Profile/isolate the actual FPP stages before the next candidate.
 Input SHA175dc2c9578a51db21b274dd0a473a3272fa9797c27a52b149355aa218399f12,
 review-code SHA91326c438d07484062ee093d70d38953d893cb9da107decc1910df379acde7a4.
 Its batch supports an explicit timeout; older frozen stages remain unchanged.
-See new receipt for the exact job id; do not resubmit an already-live job.
+See the submission receipt for the exact build/limits; both jobs are terminal.
 
 R9 catalog103cases: D6/D8 KGB at93/94, eight nontrivial Hodge probes at95-102.
 Preflight3832208 passes36tests. Hodge array3832211/review3832222 are complete:

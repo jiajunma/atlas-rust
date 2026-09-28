@@ -1,0 +1,18 @@
+{
+  "schema": "atlas-kl-boundary-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-kl-boundary-probe-20260928.5LATrEOC",
+  "job": "3832534",
+  "status": "EXPECTED_PANIC_REPRODUCED_NOT_REPAIRED",
+  "report_sha256": "14d877bb00d5c4b4e4d25c7d9dacf7c58105c63ade97b905ea357c0390b7f616",
+  "report_artifact": "math_kl_boundary_probe_2026_09_28.json",
+  "unit_log_sha256": "2636e6f0fb1b15f50ff347048597eda4dc2114edb6121c0ba9097568a3800c70",
+  "observed_boundary": {"denominator": 1, "x": 263, "y": 278, "s": 2, "descent": "RealTypeII"},
+  "pin_sha256": "11f19d243af339fa5888879170570492768d9d3deb4d1bfcae74f468f3efba27",
+  "source_archive_sha256": "403c86b4ed8582bc3d44d237359647759fd8216f035776e7909e5b8de3b2aa99",
+  "core_sha256": "d7dcd40b43c53cde6a1aef86c5be19b867b99129ff6fcc2774d424d76bb6891c",
+  "patch_sha256": "1af8de2f5f46ebabe548cc31edd8cf35776fc407f50a1c4cb689a98762179b69",
+  "parent_build": "/public/home/majj/atlas-math-partial-kl-repair-20260928.SZRaJr6Y/results/3832345/build.json",
+  "parent_build_sha256": "6d7083abde0026076d8f872d6bd1c3e28e80d3373890a2210f243df099f32431",
+  "scope": "Same runtime as the original-pass/Rust-panic F4 case80/job3832508. Adds only the F4 core unit regression, prints missing direct-recursion cross statuses, then invokes partial_KL_block at unit/half scale and compares returned parameters to partial_block. No KL runtime repair yet.",
+  "acceptance": "Require an executed cross-of-extremal panic with topology diagnostics; compilation failures are not regression evidence. Full-output oracle differential remains mandatory for any subsequent repair."
+}

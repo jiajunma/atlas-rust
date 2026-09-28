@@ -706,6 +706,56 @@ mod tests {
         RootId::from_usize(index)
     }
 
+    // Regression: integral-datum closure uses coroot addition.
+    #[test]
+    fn integral_coroot_closure_contains_the_b2_coroot_sums() {
+        let system = b2();
+        let generators = [vec![1, 0], vec![1, 2]]
+            .into_iter()
+            .map(|coordinates| system.id_of(&Weight::new(coordinates)).unwrap())
+            .collect();
+        // Their coroots [2,-1] and [0,1] sum to [2,0] and differ by
+        // [2,-2]. Together with negatives these are all eight coroots.
+        // Root addition instead preserves the even second coordinate and
+        // incorrectly yields only the four long roots.
+        eprintln!("LOCATOR_COROOT_REGRESSION B2 exact coroot-sum closure");
+        let expected: BTreeSet<RootId> = system.entries().map(|(id, _, _)| id).collect();
+        assert_eq!(additive_closure(&system, &generators).unwrap(), expected);
+    }
+
+    #[test]
+    fn integral_coroot_locator_matches_exact_f4_half_integrality() {
+        // F4 half-scale original-pass/Rust-fail: case107, HPC3832609.
+        // Fundamental-weight coordinates, as in the bare-core fixture.
+        let cartan = vec![
+            vec![2, -1, 0, 0], vec![-1, 2, -2, 0],
+            vec![0, -1, 2, -1], vec![0, 0, -1, 2],
+        ];
+        let roots = cartan.iter().cloned().map(Weight::new).collect();
+        let coroots = (0..4).map(|s| {
+            let mut coordinates = vec![0; 4];
+            coordinates[s] = 1;
+            crate::Coweight::new(coordinates)
+        }).collect();
+        let datum = BasedRootDatum::from_simple_data(4, cartan, roots, coroots).unwrap();
+        let system = RootSystem::enumerate(&datum, 48).unwrap();
+        let value = gamma(&[1, 1, 1, 1], 2);
+        let expected: BTreeSet<RootId> = system.entries()
+            .filter(|(id, _, coroot)| system.is_positive(*id) == Some(true)
+                && checked_dot(value.numerator(), coroot.as_slice()).unwrap()
+                    .rem_euclid(value.denominator()) == 0)
+            .map(|(id, _, _)| id)
+            .collect();
+        assert!(!expected.is_empty());
+        eprintln!("LOCATOR_COROOT_REGRESSION F4 exact half-integral coroot evaluations");
+        let mut table = IntegralDatumTable::new();
+        let (item, locator) = table.int_item(&system, &value).unwrap();
+        let actual: BTreeSet<RootId> = table.item(item).unwrap().positive_roots().iter()
+            .map(|&root| locator.w().image(root).unwrap())
+            .collect();
+        assert_eq!(actual, expected, "locator must preserve the complete integral positive system");
+    }
+
     // Conventions for the hand computations below.
     //
     // The design brief quotes gammas in the fundamental-weight basis (the

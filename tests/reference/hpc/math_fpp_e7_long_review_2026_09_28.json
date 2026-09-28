@@ -1,0 +1,72 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-fpp-repair-r2-20260928.49AOGABt/results/3832301/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-fpp-repair-r2-20260928.49AOGABt/results/3832301/target-after/release/atlas-cli",
+      "sha256": "550eabf4961185a403527e2552ff5a4581e95896fddf5dd4266b6c73919be33f"
+    }
+  },
+  "build_report_sha256": "3d0efc1f9fa119e3659a82131831224b35b4e7d0c7b2fbc4dcffc3f57a6b29cd",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "E7",
+      "id": "E7_fpp",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 68,
+      "input_sha256": "6bb6972bb0cbe3ebb8c8f62c21cd342fb935b34dec7602fb841ca7fc713ffe7d",
+      "job": "3832501",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 981172,
+          "seconds": 24.190585152013227
+        },
+        "rust": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 2588124,
+          "seconds": 600.2182064279914
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "84df3b5986deab83b2ac098e1353e9d506558d0e2ae679af77da68c06510570e",
+      "status": "RUST_TIMEOUT"
+    }
+  ],
+  "counts": {
+    "RUST_TIMEOUT": 1
+  },
+  "input_manifest_sha256": "175dc2c9578a51db21b274dd0a473a3272fa9797c27a52b149355aa218399f12",
+  "job": "3832506",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-fpp-e7-long-20260928.FEh5ubAb",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

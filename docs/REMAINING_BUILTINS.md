@@ -5,18 +5,32 @@
 Newest evidence: FPP reflection repair before/after unit passes, and independent
 review3832333 confirms D4 wall and E6 complete outputs now agree. Eight positive
 matches/eight negative matches; E7 still times out at300s, so the whole FPP gate
-remains open. A fresh600s E7 run uses the exact same FPP candidate.
+remains open. Review3832506 confirms the same candidate also times out at600s:
+original24.1906s/981172KiB, Rust600.2182s/2588124KiB. No completed speed ratio.
 R11 review3832340 adds four original-pass/Rust-fail partial-KL regressions
 (history, containment, nonstandard rejection), after retaining and correcting
-R10's script-only list-equality fixture mistake. Catalog107cases.
+R10's script-only list-equality fixture mistake. Catalog now108cases, with an
+additional F4 partial/full/partial history regression at index107.
 Candidate core now routes partial_KL_block through actual-parameter lookup,
 complete Hasse downset and locator-aware condensation/interner. Preflight3832344
 passes38checks; build3832345 and array3832350/review3832517 are COMPLETE.
 Review:11mathmatches/1rejection match, F4 Rust KL recursion panic, E6 existing
 constructor failure, E7 original allocation failure plus the same Rust panic.
 A2/B2/C2/D4/G2 and all new targeted regressions pass. Next fix must address
-the eagerly unwrapped `cross of extremal` in kl_table.rs:265; preserve F4's
-full-output case and add a focused regression before touching the recursion.
+the eagerly unwrapped `cross of extremal` in kl_table.rs:265. Focused
+unchanged-runtime probe3832534 reproduces the panic and identifies a real-II
+cross leaving the interval (x263,y278,s2). A local candidate preserves the
+required descent links and zeroes only this legitimate missing real-II term,
+as original KL_pol(UndefBlock,sy) does. Build3832615 still FAILS: the integer
+scale passes its partial-parameter assertion, but half scale hits the separate
+locator positivity failure. Dependent array3832623 was cancelled without
+execution. R12b review3832614 confirms that cold-half F4 fails too while the
+original succeeds. Static source audit finds root-versus-coroot additive
+closure in locator.rs. Probe3832726 now executes and fails both new exact
+B2/F4 regressions on unchanged runtime (4vs8 closure elements and positivity).
+NEXT: checked coroot-additive closure repair, same-unit after-pass, then the
+combined candidate's full differential. No active job remains from this wave.
+See the new AGENTS repair guard, HANDOFF and receipts.
 See HANDOFF and new receipts. Do not claim or commit the runtime as accepted
 until the corresponding differential gates and independent review are examined.
 

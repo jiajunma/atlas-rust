@@ -34,7 +34,11 @@ identity tests over A2/B2/C2/D4/D6/D8/G2/F4/E6/E7 and both root numberings.
 Review3832333 confirms the D4 regression, all smaller FPP cases, and E6.
 E7 remains timed out at300s, so not all FPP gates pass. Original E7 finishes
 in24.43s; Rust's killed leg uses2.31GiB. A separate600s run preserves this
-failure. Potential performance lead only: original rootdata.h:296/320 uses
+failure. The600s follow-up is now terminal: review3832506 independently
+verifies original24.1906s/981172KiB versus Rust timeout600.2182s/2588124KiB.
+Increasing the observation window did not close the gate; do not resubmit
+the same input/build with yet another timeout or call it a completed ratio.
+Potential performance lead only: original rootdata.h:296/320 uses
 precomputed simple-root permutations, whereas simple_reflect_root_nbr rebuilds
 ambient vectors and looks up roots on each letter. The FPP Weyl-value export
 also applies every word through matrix-based WeylElement multiplication.
@@ -107,6 +111,41 @@ descent switch, whereas original kl.cpp:400-445 fetches cross only in the
 complex-descent and real-II branches. Identify the actual missing-link case,
 add a focused regression, and preserve required-link invariants when repairing.
 This is not permission to return zero for every missing link or waive F4.
+
+Focused probe3832534 now identifies the exact missing link: at unit scale,
+`x=263, y=278, s=2`, descent `RealTypeII`. Its executed core regression
+fails with the same panic, not a compilation/fixture failure. Report SHA
+14d877bb00d5c4b4e4d25c7d9dacf7c58105c63ade97b905ea357c0390b7f616;
+unit log SHA2636e6f0fb1b15f50ff347048597eda4dc2114edb6121c0ba9097568a3800c70.
+Original partial-block construction explicitly allows this cross to leave
+the interval; `KL_pol(UndefBlock, sy)` is zero. The candidate now moves cross
+lookup into the complex/real-II branches and supplies zero only for an
+absent real-II cross. Complex and Cayley descent invariants remain required.
+The before/after F4 unit and full-output differential are still required;
+case107 additionally checks F4 cold/full/warm histories at three scales.
+Isolated build3832615 is now terminal: the same before unit reproduces the
+cross panic, and the after unit gets past the integer-scale calculation but
+fails on half-scale lookup with integral-image positivity. Build SHA
+1f9d64d78c695a1a292f9d1e1c31b1fe5103569aa351ccfcad2aaa352336409d.
+Keep this FAIL result; there is no release binary or differential acceptance.
+The never-runnable dependent array3832623 was cancelled without execution.
+
+R12b review3832614 independently verifies case107: original full history
+passes, but the pre-boundary-repair Rust binary fails on the initial half-scale
+call with `Weyl-element integral image positivity invariant was violated`.
+This is a distinct locator failure before any full-lookup cache enlargement,
+not the real-II panic. Report SHA
+89813b870cae2d89336598b6d0eb7df22cb9eca48b02a86fe8b304ddee16ffbf.
+Static audit finds locator.rs computes root additive closure; upstream
+rootdata.h:131 defaults `additive_closure` to `for_coroots=true`, and
+InnerClass::int_item uses that default. Non-simply-laced systems distinguish
+these closures. The precise relationship to this failure and the correction
+still require HPC regression/differential proof. A minimal B2 coroot-sum
+identity and the F4 exact-integral-root-set test are specified in HANDOFF.
+Probe3832726 executes both new locator unit regressions on unchanged runtime:
+B2 incorrectly returns4 instead of8 closure elements; F4 hits the positivity
+invariant. Report SHA88aaa653d427f1705f36ef992a280a5db52acc3a662d2b4c329196cd2e455e43.
+This is before-failure evidence, not an after-fix or full-differential pass.
 
 E6's core KLV probe fails earlier in Rust with `real-form order twist-fixed
 generator coordinate invariant was violated`, while the original succeeds.

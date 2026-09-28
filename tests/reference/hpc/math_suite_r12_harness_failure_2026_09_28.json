@@ -1,0 +1,10 @@
+{
+  "case_index": 107,
+  "error": "Traceback (most recent call last):\n  File \"/public/home/majj/atlas-math-suite-r12-20260928.e62FkabO/hpc/math_suite.py\", line 180, in run\n    if digest(root / \"suite-inputs.json\") != os.environ[\"SUITE_INPUTS_SHA256\"]:\n  File \"/public/software/anaconda/anaconda3-2022.5/lib/python3.9/os.py\", line 679, in __getitem__\n    raise KeyError(key) from None\nKeyError: 'SUITE_INPUTS_SHA256'\n",
+  "job_id": "3832552",
+  "node": "cu041",
+  "observations": {},
+  "performance_scope": "one-shot correctness survey, NOT a stable speed claim",
+  "schema": "atlas-math-survey-v1",
+  "status": "HARNESS_FAILURE"
+}

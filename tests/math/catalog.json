@@ -115,6 +115,12 @@
       "operations": [
         {"id": "partial_kl_nonstandard_rejected", "template": "partial_kl_nonstandard_rejected.atlas", "diagnostic": "partial_KL_block requires a standard parameter", "diagnostic_rank_suffix": false, "scope": "Compact A1 negative imaginary simple-root weight must be rejected as nonstandard before partial KL computation."}
       ]
+    },
+    {
+      "groups": [{"type": "F4", "family": "exceptional", "rank": 4, "tier": "medium"}],
+      "operations": [
+        {"id": "partial_kl_history", "template": "partial_kl_history.atlas", "scope": "Regression extension for case80/HPC3832508 cross-of-extremal panic: full partial/full/partial parameters, matrices and polynomial pools at half, zero and unit scale; compare with the same Bruhat downset and latest original."}
+      ]
     }
   ],
   "standalone_note": "Additional product case is numerical maximal-orbit multiplicity coverage only, not general-cycle acceptance.",

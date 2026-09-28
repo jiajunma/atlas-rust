@@ -1,0 +1,20 @@
+{
+  "schema": "atlas-coroot-regression-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-coroot-probe-20260928.ckgeagE9",
+  "job": "3832726",
+  "status": "BOTH_REGRESSIONS_EXECUTED_AND_FAILED_NOT_REPAIRED",
+  "report_sha256": "88aaa653d427f1705f36ef992a280a5db52acc3a662d2b4c329196cd2e455e43",
+  "report_artifact": "math_coroot_probe_2026_09_28.json",
+  "unit_log_sha256": "ac43be69bfcff8c1d8c140d6c5f5684c979d83db726fcb6d32072fffb188a467",
+  "findings": ["B2 root closure produces4 instead of the8 elements required by coroot sums.", "F4 gamma=[1,1,1,1]/2 hits integral image positivity before the exact-set comparison."],
+  "pin_sha256": "283d278151fd05ffa9118a91354d985057cd7d5fca0e6b76f2b14061d765d781",
+  "source_archive_sha256": "4304a7fc9f39dea728a57cfc3efdda328efea801d0ee905b6d4ff8711ba79fdb",
+  "locator_sha256": "48faf441c52b37585cc13b946d463a34aefd38030c6ff507fe2472d2619e8b5d",
+  "probe_driver_sha256": "4030cf79090c07b7d0bd9cf8d9542bc9de2e835090e954762a7049fe1d0d8146",
+  "patch_sha256": "a55afbf45f9efa9d986ca0fdf786ffb99f34a12ea4fc5b6b7debc898334c3a4c",
+  "parent_build": "/public/home/majj/atlas-math-partial-kl-repair-20260928.SZRaJr6Y/results/3832345/build.json",
+  "parent_build_sha256": "6d7083abde0026076d8f872d6bd1c3e28e80d3373890a2210f243df099f32431",
+  "scope": "Only two locator unit tests are added to unchanged3832345 runtime: B2 exact coroot-sum closure, F4 half-scale canonical integral roots versus exact coroot evaluation. This archive intentionally excludes the separate KL-only repair and core F4 unit.",
+  "acceptance": "Both tests must execute and fail, including the F4 integral-image positivity invariant. A compiler error is not before-failure proof. No locator runtime fix has been made yet.",
+  "next": "Collect this exact probe. Then implement coroot, not root, additive closure with checked coordinate sums and preserved positive-image invariant; require before/after unit proof and full original-backed case107 plus the prior KL regressions."
+}

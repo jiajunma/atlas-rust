@@ -36,7 +36,10 @@ Reviewed JSON artifacts:
 - `tests/reference/hpc/math_suite_corrective_review_2026_09_28.json`
 - `tests/reference/hpc/math_suite_r3_preflight_2026_09_28.json`
 
-The catalog now contains107 cases, not107 verified successes. Broad array3832011
+The catalog now contains108 cases, not108 verified successes. Case107 extends
+the F4 partial-KL panic reproducer to cold/full/warm history at three scales;
+review3832614 confirms original success but Rust's cold half-scale integral
+image positivity failure. Broad array3832011
 and independent review3832103 are complete. The review rehashed the pinned
 sources, scripts, binaries and all54 complete result sets. Artifact:
 `tests/reference/hpc/math_suite_broad_review_2026_09_28.json`, SHA
@@ -55,7 +58,8 @@ now matches. E6 finishes with exact output in19.012s Rust versus0.282s original,
 instead of the unchanged main's300s timeout. These are single-shot diagnostic
 times, not a repeated speed claim. E7 still takes more than300s (2.31GiB RSS)
 against24.43s original; it is NOT mathematically accepted. A separate600s
-follow-up retains the original300s failure. No whole-FPP completion claim.
+follow-up retains the original300s failure; review3832506 also records a600s
+Rust timeout (2588124KiB) against24.1906s original. No whole-FPP completion claim.
 Artifact: `tests/reference/hpc/math_fpp_repair_r2_review_2026_09_28.json`.
 
 R11 independent review3832340 verifies four more baseline partial-KL failures:
@@ -70,6 +74,13 @@ deeper `cross of extremal` panic in KL recursion; E7 hits the same Rust panic
 while its original leg still fails allocation. E6 remains a constructor error.
 The candidate is therefore only partially verified, not accepted as a complete
 partial-KL implementation. Preserve and repair these remaining cases.
+
+F4 probe3832534 identifies the panic's legitimate absent real-II cross.
+KL-only repair build3832615 eliminates that panic at unit scale but the SAME
+regression then fails at half scale in the locator; there is no after-pass or
+release candidate. Its dependent differential array was cancelled without
+execution. The new failure remains mandatory, with an additional root/coroot
+closure regression being prepared; see HANDOFF and the repair receipts.
 
 ## Current full initial grid
 
