@@ -1,0 +1,33 @@
+{
+  "schema": "atlas-language-core-review-submission-v1",
+  "stage": "/public/home/majj/atlas-named-core-review-20260928.LxyUVwBE",
+  "job": "3834919",
+  "status": "FAILED_FULL_SUITE_ONE_HISTORICAL_DECLARATION_ASSERTION",
+  "elapsed": "00:01:00",
+  "report": "tests/reference/hpc/math_named_core_review_2026_09_28.json",
+  "report_sha256": "6455ab36eb8d096f1a850fcae14146d459c79c168a3a59ea8744c3d77ac79c6b",
+  "observed": "3checker tests pass;401 Rust tests inventoried. Core suite398pass/1fail/2filtered,16.83s,154644KiB RSS. alias_name_declares_a_variable expects expanded(int,int), but runtime reports retained Pair. Exact source is being added as an original-backed capture before updating the historical expectation. Both explicitly known assignment failures were filtered from this invocation, but their separate executions were not reached because the suite failed; do not claim this review reproduced them.",
+  "scheduler_adjustment": {
+    "reason": "fat priority projected start on October1 for an already-built core unit binary. The suite uses2test threads and only small domain examples; requested a smaller cpu allocation for the same pending job/script/binary.",
+    "command": "scontrol update JobId=3834919 Partition=cpu NumCPUs=2 MinMemoryNode=8192",
+    "actual_allocation": "cpu, cu257,4CPUs,8GiB; started2026-09-28T17:51:00",
+    "note": "MinMemoryNode=8G was rejected; integer MiB is required. The4CPU/8GiB update hit QOS, but the2CPU request succeeded; unchanged CPUs/Task=4 caused the actual allocation to round up to4CPUs. A follow-up CPUsPerTask=2 request was rejected because the original job was already running; no running-job resources were changed. No job canceled, duplicated or interpreter rebuilt."
+  },
+  "pin_sha256": "cf0b25c7f52684825b4b0c5debe601d925e658c8279de23e7414c758defad381",
+  "pin": {
+    "schema": "atlas-language-core-review-pin-v1",
+    "parent_report": "/public/home/majj/atlas-named-build-r2-20260928.xa3ImNjp/results/3834895/report.json",
+    "parent_report_sha256": "386976d612e9438e0c1acd4d91c4331ac4f8e69440a6380013f686c86714c8ab",
+    "test_binary": "/public/home/majj/atlas-named-build-r2-20260928.xa3ImNjp/results/3834895/target/debug/deps/atlas_core-657328c7d8bef4d8",
+    "test_binary_sha256": "624f9208dc09324a1db85bcf4b2349278a002e5f266981bb25b62fa1f1c32a5c",
+    "inputs": {
+      "hpc/math_language_unit_review.py": "9f92c2d9e69d92cb0ab67408e0371e3f3b3324df710a76b0297122b97c056833",
+      "hpc/math_language_unit_review.sbatch": "28a75c911a515650f312d3e4ced1ea54016d47f088df7d6024260033858610af",
+      "hpc/test_math_language_unit_review.py": "551e8a31641040960c50c485402041bbb29716ad73635f4f7352a8bbaaae1713",
+      "hpc/math_baseline_build.py": "931ec63f850d2a3769de1d5fb7836fc8eba7097e6d302ea30c2a6e47417c2ed7"
+    },
+    "scope": "Full core suite from exact freshly verified candidate. Known global/local polymorphic assignment defects run separately and must fail at retained assertions; not marked fixed or ignored."
+  },
+  "expected_report": "/public/home/majj/atlas-named-core-review-20260928.LxyUVwBE/results/3834919/report.json",
+  "scope": "Exact R2 binary and source, complete atlas-core unit inventory; both known polymorphic assignment failures must execute separately, not ignored or claimed repaired."
+}

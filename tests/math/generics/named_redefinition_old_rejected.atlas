@@ -1,0 +1,4 @@
+set_type MathChangedRow = [int]
+set old_value = MathChangedRow:[3]
+set_type MathChangedRow = [string]
+set rejected = MathChangedRow:old_value

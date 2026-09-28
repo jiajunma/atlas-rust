@@ -1,0 +1,3 @@
+set_type MathFunction = (int->int)
+set named_inc = MathFunction:((int x): x+1)
+prints("NAMED_FUNCTION",named_inc(2),let local = MathFunction:((int x): x+2) in local(3))

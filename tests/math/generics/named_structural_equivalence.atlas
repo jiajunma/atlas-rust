@@ -1,0 +1,6 @@
+set_type MathLeftRow = [int]
+set_type MathRightRow = [int]
+set left = MathLeftRow:[2,3]
+set right = MathRightRow:left
+set named_sum(MathRightRow xs) = xs[0]+xs[1]
+prints("NAMED_EQUAL",named_sum(left),right)

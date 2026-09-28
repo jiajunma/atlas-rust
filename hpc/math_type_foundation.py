@@ -7,6 +7,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import time
 import traceback
 
@@ -127,6 +128,29 @@ def main():
                 or "polymorphic global must reject assignment" not in log):
             raise ValueError("known language regression changed unexpectedly")
         run("cli-check", ["cargo", "check", "--offline", "--locked", "-p", "atlas-cli"])
+        if pin.get("full_core_review", False):
+            from math_language_unit_review import KNOWN_FAILURES, check_summary, inventory
+            checker = run("core-review-checker", [sys.executable,
+                str(root / "hpc/test_math_language_unit_review.py"), "-v"])
+            if not re.search(r"Ran 3 tests.*\n\nOK", checker, re.S):
+                raise ValueError("full-core checker did not execute its tests")
+            test = ["cargo", "test", "--offline", "--locked", "-p", "atlas-core", "--lib"]
+            names = inventory(run("core-inventory", test + ["--", "--list"]))
+            args = test + ["--", "--test-threads=2", "--nocapture"]
+            for name in KNOWN_FAILURES:
+                args.extend(["--skip", name])
+            log = run("core-suite", args)
+            check_summary(log, len(names) - len(KNOWN_FAILURES), 0, len(KNOWN_FAILURES))
+            for index, (name, marker) in enumerate(KNOWN_FAILURES.items()):
+                log = run("retained-failure-" + str(index),
+                          test + [name, "--", "--exact", "--nocapture"], expected_exit=101)
+                check_summary(log, 0, 1, len(names) - 1)
+                if marker not in log or "polymorphic " not in log:
+                    raise ValueError("retained regression missed its intended assertion")
+            report["full_core_review"] = {
+                "test_count": len(names), "passed": len(names) - len(KNOWN_FAILURES),
+                "known_failures_executed": list(KNOWN_FAILURES), "ignored": 0,
+            }
         if "language_capture" in pin:
             run("cli-build", ["cargo", "build", "--offline", "--locked", "-p", "atlas-cli"])
             from math_language_bridge import capture

@@ -756,6 +756,8 @@ extern {
         "string" => ParserToken::String(<SpannedValue<String>>),
         "identifier" => ParserToken::Identifier(<SpannedValue<String>>),
         "type_name" => ParserToken::TypeName(<SpannedValue<String>>),
+        "type_constructor" => ParserToken::TypeConstructor(<SpannedValue<String>>),
+        "type_variable" => ParserToken::TypeVariable(<SpannedValue<usize>>),
         "operator" => ParserToken::Operator(<SpannedValue<FormulaOperator>>),
         "operator_becomes" => ParserToken::OperatorBecomes(<SpannedValue<String>>),
         "primitive_type" => ParserToken::PrimitiveType(<SpannedValue<Prim>>),

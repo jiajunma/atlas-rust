@@ -1,0 +1,4 @@
+set siblings=(any_type T ((T x):x),any_type T ((T y):y))
+prints("SIBLINGS",let (f,g)=siblings in (f(2),g("abc")))
+set T=19
+prints("RESTORED",T)

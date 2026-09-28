@@ -7,6 +7,9 @@
 
 use std::fmt;
 
+pub mod type_scope;
+use type_scope::ParserTypes;
+
 use malachite::Integer as BigInt;
 
 use crate::{
@@ -805,6 +808,8 @@ pub enum ParserToken {
     Identifier(SpannedValue<String>),
     /// A type name classified using the current session's type environment.
     TypeName(SpannedValue<String>),
+    TypeConstructor(SpannedValue<String>),
+    TypeVariable(SpannedValue<usize>),
     Operator(SpannedValue<FormulaOperator>),
     /// An operator immediately followed by `:=` (lexer.w:507-516), e.g.
     /// `+:=`; the payload is the bare operator symbol.
@@ -877,6 +882,8 @@ impl ParserToken {
             Self::String(value) => value.span,
             Self::Identifier(value) => value.span,
             Self::TypeName(value) => value.span,
+            Self::TypeConstructor(value) => value.span,
+            Self::TypeVariable(value) => value.span,
             Self::Operator(value) => value.span,
             Self::OperatorBecomes(value) => value.span,
             Self::PrimitiveType(value) => value.span,
@@ -945,6 +952,8 @@ impl fmt::Display for ParserToken {
             Self::String(_) => "string",
             Self::Identifier(_) => "identifier",
             Self::TypeName(_) => "type name",
+            Self::TypeConstructor(_) => "type constructor",
+            Self::TypeVariable(_) => "type variable",
             Self::Operator(operator) => operator.value.symbol.as_str(),
             Self::OperatorBecomes(operator) => {
                 return write!(formatter, "{}:=", operator.value);
@@ -1009,28 +1018,30 @@ impl fmt::Display for ParserToken {
 
 type Spanned<T> = Result<(usize, T, usize), ()>;
 
-struct TokenStream {
+struct TokenStream<'a, 'types> {
     tokens: std::vec::IntoIter<(ParserToken, SourceSpan)>,
     index: usize,
+    types: &'a ParserTypes<'types>,
 }
 
-impl TokenStream {
-    fn new(tokens: Vec<(ParserToken, SourceSpan)>) -> Self {
+impl<'a, 'types> TokenStream<'a, 'types> {
+    fn new(tokens: Vec<(ParserToken, SourceSpan)>, types: &'a ParserTypes<'types>) -> Self {
         Self {
             tokens: tokens.into_iter(),
             index: 0,
+            types,
         }
     }
 }
 
-impl Iterator for TokenStream {
+impl Iterator for TokenStream<'_, '_> {
     type Item = Spanned<ParserToken>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (token, _) = self.tokens.next()?;
         let start = self.index;
         self.index += 1;
-        Some(Ok((start, token, self.index)))
+        Some(Ok((start, self.types.token(token), self.index)))
     }
 }
 
@@ -1235,8 +1246,10 @@ fn parser_tokens(source: &SourceText) -> Result<Vec<(ParserToken, SourceSpan)>, 
 pub fn parse(source: &SourceText) -> Result<Program, ParseError> {
     let tokens = parser_tokens(source)?;
     let spans: Vec<SourceSpan> = tokens.iter().map(|(_, span)| *span).collect();
+    let table = crate::types::TypeTable::new();
+    let scope = ParserTypes::new(&table);
     grammar::ProgramParser::new()
-        .parse(TokenStream::new(tokens))
+        .parse(TokenStream::new(tokens, &scope))
         .map_err(|error| syntax_error(error, source, &spans))
 }
 
@@ -1248,15 +1261,16 @@ pub fn parse_command(tokens: &[Token], source: &SourceText) -> Result<Command, P
 }
 
 /// Session entry point: classification must see preceding type declarations.
-/// This is the persistent environment only; intra-command type abstractions
-/// require their own scoped classification when that grammar is integrated.
+/// The lazy stream owns command-local lexical scopes. Generic declaration
+/// actions still need to be connected to this scope during grammar migration.
 pub fn parse_command_in(
     tokens: &[Token], source: &SourceText, types: &crate::types::TypeTable,
 ) -> Result<Command, ParseError> {
-    let parsed = parser_tokens_in(tokens, types)?;
+    let parsed = parser_tokens_from_tokens(tokens.iter().cloned())?;
     let spans: Vec<SourceSpan> = parsed.iter().map(|(_, span)| *span).collect();
+    let scope = ParserTypes::new(types);
     grammar::CommandParser::new()
-        .parse(TokenStream::new(parsed))
+        .parse(TokenStream::new(parsed, &scope))
         .map_err(|error| syntax_error(error, source, &spans))
 }
 
@@ -1272,24 +1286,12 @@ pub fn parse_expression(tokens: &[Token], source: &SourceText) -> Result<Expr, P
 pub fn parse_expression_in(
     tokens: &[Token], source: &SourceText, types: &crate::types::TypeTable,
 ) -> Result<Expr, ParseError> {
-    let parsed = parser_tokens_in(tokens, types)?;
+    let parsed = parser_tokens_from_tokens(tokens.iter().cloned())?;
     let spans: Vec<SourceSpan> = parsed.iter().map(|(_, span)| *span).collect();
+    let scope = ParserTypes::new(types);
     grammar::ExprParser::new()
-        .parse(TokenStream::new(parsed))
+        .parse(TokenStream::new(parsed, &scope))
         .map_err(|error| syntax_error(error, source, &spans))
-}
-
-fn parser_tokens_in(
-    tokens: &[Token], types: &crate::types::TypeTable,
-) -> Result<Vec<(ParserToken, SourceSpan)>, ParseError> {
-    Ok(parser_tokens_from_tokens(tokens.iter().cloned())?.into_iter().map(|(token, span)| {
-        let token = match token {
-            ParserToken::Identifier(name) if types.is_type_name(&name.value) =>
-                ParserToken::TypeName(name),
-            other => other,
-        };
-        (token, span)
-    }).collect())
 }
 
 fn syntax_error(
@@ -1434,6 +1436,8 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
     match token {
         ParserToken::Identifier(_) => Some("IDENT"),
         ParserToken::TypeName(_) => Some("TYPE_ID"),
+        ParserToken::TypeConstructor(_) => Some("TYPE_CONSTR"),
+        ParserToken::TypeVariable(_) => Some("TYPE_VAR"),
         ParserToken::Integer(_) => Some("INT"),
         ParserToken::Unsupported(_) => None, // maps to `$undefined` below
         ParserToken::If(_) => Some("IF"),
@@ -3046,6 +3050,66 @@ fn compact_case_pattern(pattern: &Pattern) -> String {
 mod tests {
     use super::*;
     use malachite::Integer as BigInt;
+
+    #[test]
+    fn lazy_type_tokens_observe_declarations_after_opening_lookahead() {
+        let source = SourceText::new("T,T (T,(S,T),T) T");
+        let table = crate::types::TypeTable::new();
+        let scope = ParserTypes::new(&table);
+        let mut stream = TokenStream::new(parser_tokens(&source).unwrap(), &scope);
+        let next = |stream: &mut TokenStream<'_, '_>| stream.next().unwrap().unwrap().1;
+        assert!(matches!(next(&mut stream), ParserToken::Identifier(_)));
+        assert!(matches!(next(&mut stream), ParserToken::Comma(_)));
+        assert!(matches!(next(&mut stream), ParserToken::Identifier(_)));
+        assert!(matches!(next(&mut stream), ParserToken::LParen(_)));
+        scope.introduce(&["T".into(), "T".into()]);
+        assert!(matches!(next(&mut stream), ParserToken::TypeVariable(SpannedValue { value: 0, .. })));
+        assert!(matches!(next(&mut stream), ParserToken::Comma(_)));
+        assert!(matches!(next(&mut stream), ParserToken::LParen(_)));
+        scope.introduce(&["S".into()]);
+        assert!(matches!(next(&mut stream), ParserToken::TypeVariable(SpannedValue { value: 2, .. })));
+        assert!(matches!(next(&mut stream), ParserToken::Comma(_)));
+        assert!(matches!(next(&mut stream), ParserToken::TypeVariable(SpannedValue { value: 0, .. })));
+        assert!(matches!(next(&mut stream), ParserToken::RParen(_)));
+        assert_eq!(scope.level(), 2);
+        assert!(matches!(next(&mut stream), ParserToken::Comma(_)));
+        assert!(matches!(next(&mut stream), ParserToken::TypeVariable(SpannedValue { value: 0, .. })));
+        assert!(matches!(next(&mut stream), ParserToken::RParen(_)));
+        assert_eq!(scope.level(), 0);
+        assert!(matches!(next(&mut stream), ParserToken::Identifier(_)));
+    }
+
+    #[test]
+    fn lazy_scopes_preserve_spans_and_restore_sibling_names() {
+        let source = SourceText::new("(T) (T) T");
+        let table = crate::types::TypeTable::new();
+        let scope = ParserTypes::new(&table);
+        let mut stream = TokenStream::new(parser_tokens(&source).unwrap(), &scope);
+        for offset in [0, 4] {
+            assert!(matches!(stream.next().unwrap().unwrap().1, ParserToken::LParen(_)));
+            scope.introduce(&["T".into()]);
+            let token = stream.next().unwrap().unwrap().1;
+            assert_eq!(token.span(), source.span(offset + 1, offset + 2));
+            assert!(matches!(token, ParserToken::TypeVariable(SpannedValue { value: 0, .. })));
+            assert!(matches!(stream.next().unwrap().unwrap().1, ParserToken::RParen(_)));
+        }
+        assert!(matches!(stream.next().unwrap().unwrap().1, ParserToken::Identifier(_)));
+    }
+
+    #[test]
+    fn active_type_variables_are_not_accepted_as_expression_identifiers() {
+        let source = SourceText::new("T");
+        let table = crate::types::TypeTable::new();
+        let scope = ParserTypes::new(&table);
+        scope.push_group(type_scope::GroupKind::Virtual);
+        scope.introduce(&["T".into()]);
+        let tokens = parser_tokens(&source).unwrap();
+        let spans = tokens.iter().map(|(_, span)| *span).collect::<Vec<_>>();
+        let failure = grammar::ExprParser::new().parse(TokenStream::new(tokens, &scope)).unwrap_err();
+        assert!(syntax_error(failure, &source, &spans).message.contains("TYPE_VAR"));
+        // A fresh command has no leaked formals after a parse failure.
+        assert!(parse(&source).is_ok());
+    }
 
     fn pattern_shape(pattern: &Pattern) -> String {
         match pattern {

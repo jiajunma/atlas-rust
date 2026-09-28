@@ -1,0 +1,5 @@
+set_type MathVoid = void
+set discarded = MathVoid:42
+set discarded_row = MathVoid:[1,2]
+set discarded_function = MathVoid:((int x):x+1)
+prints("NAMED_VOID",discarded,discarded_row,discarded_function)

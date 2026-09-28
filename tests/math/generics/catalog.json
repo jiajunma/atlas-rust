@@ -217,6 +217,126 @@
       "intent": "reject",
       "scope": "A named recursive [int] result cannot silently degrade to an undetermined result accepting a string row.",
       "file": "named_recursive_result_rejected.atlas"
+    },
+    {
+      "id": "named_redefinition_retains_old",
+      "intent": "accept",
+      "scope": "Redefinition changes the active type binding but not existing values, functions or aliases of its old definition.",
+      "file": "named_redefinition_retains_old.atlas"
+    },
+    {
+      "id": "named_structural_equivalence",
+      "intent": "accept",
+      "scope": "Distinct nonrecursive named types with equal structure are compatible while retaining their display names.",
+      "file": "named_structural_equivalence.atlas"
+    },
+    {
+      "id": "named_row_operations",
+      "intent": "accept",
+      "scope": "Named row indexing, slicing, component assignment, iteration and builtin overload resolution must expose the row structure.",
+      "file": "named_row_operations.atlas"
+    },
+    {
+      "id": "named_function_value",
+      "intent": "accept",
+      "scope": "A zero-arity named function type supports both top-level overload binding and direct local calls.",
+      "file": "named_function_value.atlas"
+    },
+    {
+      "id": "named_field_copy",
+      "intent": "accept",
+      "scope": "A named alias copies field metadata, supports projectors and tuple destructuring, and reports its definition location.",
+      "file": "named_field_copy.atlas"
+    },
+    {
+      "id": "named_union_discrimination",
+      "intent": "accept",
+      "scope": "A simple nonrecursive named union retains injector metadata needed by case discrimination.",
+      "file": "named_union_discrimination.atlas"
+    },
+    {
+      "id": "named_forget_binding",
+      "intent": "accept",
+      "scope": "Forgetting removes the live type identifier while existing values keep their stored type and the name can become a value identifier.",
+      "file": "named_forget_binding.atlas"
+    },
+    {
+      "id": "named_redefinition_old_rejected",
+      "intent": "reject",
+      "scope": "After changing an alias from [int] to [string], an old value must not silently acquire the new type.",
+      "file": "named_redefinition_old_rejected.atlas"
+    },
+    {
+      "id": "named_recursive_nominal_rejected",
+      "intent": "reject",
+      "scope": "Structurally similar but independently declared recursive types remain nominally distinct and cannot be cast to one another.",
+      "file": "named_recursive_nominal_rejected.atlas"
+    },
+    {
+      "id": "named_void_context",
+      "intent": "accept",
+      "scope": "Capture3834868 disproves discard expectation: named-void global initializers retain scalar, row and function values. Preserve the input and actual observable behavior.",
+      "file": "named_void_context.atlas"
+    },
+    {
+      "id": "named_overload_alias_replacement",
+      "intent": "accept",
+      "scope": "Semantically equal named argument types replace one overload and can forget it through the other alias.",
+      "file": "named_overload_alias_replacement.atlas"
+    },
+    {
+      "id": "named_member_redefinition",
+      "intent": "accept",
+      "scope": "Capture3834868 preserves both old member_second and its user-replaced sibling after redefinition. Follow clean_out_type_identifier's early return, not its stale cleanup prose.",
+      "file": "named_member_redefinition.atlas"
+    },
+    {
+      "id": "named_primitive_context",
+      "intent": "accept",
+      "scope": "Named int and mat values must work in index tuples, matrix slice bounds and ordinary arithmetic overloads.",
+      "file": "named_primitive_context.atlas"
+    },
+    {
+      "id": "multiline_constructor",
+      "intent": "accept",
+      "scope": "Constructor formal scope spans physical lines; its variables become ordinary identifiers after the definition.",
+      "file": "multiline_constructor.atlas"
+    },
+    {
+      "id": "constructor_bang_next_line",
+      "intent": "reject",
+      "scope": "Capture3834951 disproves the provisional acceptance: the mandatory constructor bang cannot move to a later physical line after the completed type specification. Preserve this rejected boundary input.",
+      "file": "constructor_bang_next_line.atlas"
+    },
+    {
+      "id": "sibling_abstractions",
+      "intent": "accept",
+      "scope": "Sibling type abstractions can reuse the same formal name after the previous lexical group closes; tuple function components instantiate independently.",
+      "file": "sibling_abstractions.atlas"
+    },
+    {
+      "id": "sequential_polymorphic_declarations",
+      "intent": "accept",
+      "scope": "An any_type block publishes its declarations sequentially; the next definition can call the preceding one with rigid formals, which do not escape end.",
+      "file": "sequential_polymorphic_declarations.atlas"
+    },
+    {
+      "id": "typevariable_binding_rejected",
+      "intent": "reject",
+      "scope": "An active TYPE_VAR cannot be an IDENT value binding, even within the defining any_type block.",
+      "file": "typevariable_binding_rejected.atlas"
+    },
+    {
+      "id": "generic_recursive_group",
+      "intent": "accept",
+      "scope": "A generic recursive group forwards its formal arguments into bare same-group references; union constructors and case payloads preserve the concrete element type.",
+      "file": "generic_recursive_group.atlas"
+    },
+    {
+      "id": "named_declaration_fields",
+      "intent": "accept",
+      "scope": "Exact source from alias_name_declares_a_variable: establish current-original declaration reporting and preserved projector/field mutation values before changing its historical unit expectation.",
+      "file": "named_declaration_fields.atlas"
     }
   ]
 }

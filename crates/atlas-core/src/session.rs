@@ -46,10 +46,10 @@ pub fn run_source_with_context(
     loop {
         match lexer.next_token() {
             Ok(token) if token.kind == TokenKind::Newline => {
-                execute_tokens(&mut command, source, context, &mut events);
+                execute_tokens(&mut command, source, context, &mut events, Some(&token));
             }
             Ok(token) if token.kind == TokenKind::Eof => {
-                execute_tokens(&mut command, source, context, &mut events);
+                execute_tokens(&mut command, source, context, &mut events, Some(&token));
                 break;
             }
             Ok(token) if matches!(token.kind, TokenKind::Unsupported(_)) => {
@@ -83,12 +83,13 @@ pub(crate) fn execute_tokens(
     source: &SourceText,
     context: &mut TypedContext,
     events: &mut Vec<SessionEvent>,
+    terminator: Option<&Token>,
 ) {
     if tokens.is_empty() {
         return;
     }
 
-    let command = match parse_command_in(tokens, source, context.types()) {
+    let mut command = match parse_command_in(tokens, source, context.types()) {
         Ok(command) => command,
         Err(diagnostic) => {
             events.push(SessionEvent::Diagnostic(diagnostic));
@@ -96,6 +97,18 @@ pub(crate) fn execute_tokens(
             return;
         }
     };
+    // Original parser.y includes the command's newline in set_type's @$.
+    // Use the actual lexer terminator (including trailing comments/spacing),
+    // not a guessed extra column after the last semantic token. Atlas locates
+    // a consumed newline on its old line, one column past the newline itself.
+    if let (crate::syntax::Command::SetType { span, .. }, Some(end)) = (&mut command, terminator) {
+        let end_position = crate::diagnostic::SourcePosition {
+            line: end.span.start.line,
+            column: end.span.start.column + usize::from(end.kind == TokenKind::Newline),
+        };
+        *span = SourceSpan::new(span.source_id(), span.byte_start(), end.span.byte_end(),
+            span.start, end_position);
+    }
     tokens.clear();
 
     match context.execute(&command) {
@@ -167,7 +180,7 @@ mod tests {
         let events = run_source(&source);
         assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
         let queries = events.iter().filter(|e| matches!(e,
-            SessionEvent::ReportLine { text, .. } if text == "Defined type: [int]\n")).count();
+            SessionEvent::ReportLine { text, .. } if text == "Type defined at <standard input>:1:0-25:\n  MathRow = [int]\n")).count();
         assert_eq!(queries, 2, "{events:?}");
         assert!(events.iter().any(|e| matches!(e,
             SessionEvent::Value { value, .. } if value.to_string() == "[\"x\"]")));
@@ -181,6 +194,62 @@ mod tests {
             let events = run_source_with_context(&SourceText::new(program), &mut context);
             assert!(events.iter().any(|e| matches!(e,
                 SessionEvent::Diagnostic(d) if d.kind == ErrorKind::Syntax)), "{events:?}");
+        }
+    }
+
+    #[test]
+    fn named_type_retention_covers_structural_consumers_and_lifetime() {
+        // Before capture3834815 confirms all seven original results; simple
+        // union discrimination and forget fail in the unchanged Rust binary.
+        let cases = [
+            (include_str!("../../../tests/math/generics/named_redefinition_retains_old.atlas"), "NAMED_HISTORY[2,3][5,6][\"x\"]\n"),
+            (include_str!("../../../tests/math/generics/named_structural_equivalence.atlas"), "NAMED_EQUAL5[2,3]\n"),
+            (include_str!("../../../tests/math/generics/named_row_operations.atlas"), "NAMED_ROW2[2,8][3,9,5]3\n"),
+            (include_str!("../../../tests/math/generics/named_function_value.atlas"), "NAMED_FUNCTION35\n"),
+            (include_str!("../../../tests/math/generics/named_field_copy.atlas"), "NAMED_FIELDS7s7s\n"),
+            (include_str!("../../../tests/math/generics/named_union_discrimination.atlas"), "NAMED_UNION8\n"),
+            (include_str!("../../../tests/math/generics/named_forget_binding.atlas"), "NAMED_FORGET7[3]\n"),
+        ];
+        for (program, expected) in cases {
+            let events = run_source(&SourceText::new(program));
+            assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{program}\n{events:?}");
+            assert!(events.iter().any(|e| matches!(e, SessionEvent::ReportLine { text, .. } if text == expected)), "{program}\n{events:?}");
+        }
+    }
+
+    #[test]
+    fn named_redefinition_and_recursive_identity_reject_wrong_casts() {
+        for program in [
+            include_str!("../../../tests/math/generics/named_redefinition_old_rejected.atlas"),
+            include_str!("../../../tests/math/generics/named_recursive_nominal_rejected.atlas"),
+        ] {
+            let events = run_source(&SourceText::new(program));
+            let errors: Vec<_> = events.iter().filter_map(|e| match e {
+                SessionEvent::Diagnostic(d) => Some(d), _ => None,
+            }).collect();
+            assert_eq!(errors.len(), 1, "{events:?}");
+            assert_eq!(errors[0].kind, ErrorKind::Type, "{events:?}");
+        }
+    }
+
+    #[test]
+    fn named_void_and_primitive_contexts_follow_the_captured_oracle() {
+        let program = concat!("set_type MathVoid = void\n",
+            "set discarded = MathVoid:42\n", "set discarded_row = MathVoid:[1,2]\n",
+            "set discarded_function = MathVoid:((int x):x+1)\n",
+            "discarded\n", "discarded_row\n", "discarded_function\n");
+        let events = run_source(&SourceText::new(program));
+        assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
+        assert!(events.iter().any(|e| matches!(e, SessionEvent::Value { value, .. } if value.to_string() == "42")), "{events:?}");
+        assert!(events.iter().any(|e| matches!(e, SessionEvent::Value { value, .. } if value.to_string() == "[1,2]")), "{events:?}");
+        assert!(events.iter().any(|e| matches!(e, SessionEvent::Value { value: Value::Closure(_), .. })), "{events:?}");
+        for program in [
+            include_str!("../../../tests/math/generics/named_overload_alias_replacement.atlas"),
+            include_str!("../../../tests/math/generics/named_member_redefinition.atlas"),
+            include_str!("../../../tests/math/generics/named_primitive_context.atlas"),
+        ] {
+            let events = run_source(&SourceText::new(program));
+            assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
         }
     }
 
@@ -861,7 +930,7 @@ mod tests {
     }
 
     #[test]
-    fn settype_b5_fixture_matches_the_frozen_events() {
+    fn settype_b5_fixture_matches_current_named_definition_queries() {
         let source = SourceText::new(include_str!(
             "../../../tests/fixtures/eval/settype_b5.atlas"
         ));
@@ -875,7 +944,7 @@ mod tests {
         ));
         assert!(matches!(
             events[1],
-            SessionEvent::ReportLine { ref text, .. } if text == "Defined type: (int,int)\n"
+            SessionEvent::ReportLine { ref text, .. } if text == "Type defined at <standard input>:1:0-31:\n  Pair = \n  ( int x\n  , int y\n  )\n"
         ));
         assert!(matches!(
             events[2],
@@ -918,7 +987,7 @@ mod tests {
         assert!(matches!(
             events[9],
             SessionEvent::ReportLine { ref text, .. }
-                if text == "Defined type: ( void nil | (int,IntList) cons )\n"
+                if text == "Type defined at <standard input>:9:0-56:\n  IntList = \n  ( void nil\n  | (int,IntList) cons\n  )\n"
         ));
         assert!(matches!(
             events[10],
@@ -939,7 +1008,7 @@ mod tests {
     }
 
     #[test]
-    fn settype_b5_rejected_fixture_matches_the_frozen_events() {
+    fn settype_b5_historical_rejection_now_accepts_simple_named_unions() {
         let source = SourceText::new(include_str!(
             "../../../tests/fixtures/eval/settype_b5_rejected.atlas"
         ));
@@ -959,9 +1028,7 @@ mod tests {
         ));
         assert!(matches!(
             events[2],
-            SessionEvent::Diagnostic(ref diagnostic)
-                if diagnostic.kind == ErrorKind::Type
-                    && diagnostic.message == "Discrimination on expression of type (int|string) requires using 'set_type' for this type, and naming injectors for it"
+            SessionEvent::Value { ref value, .. } if value.to_string() == "1"
         ));
         assert!(matches!(
             events[3],

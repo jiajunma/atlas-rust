@@ -1,0 +1,4 @@
+set_type MathOperationRow = [int]
+set xs = MathOperationRow:[2,3,4]
+xs[1] := 8
+prints("NAMED_ROW",xs[0],xs[0:2],for x in xs do x+1 od,#xs)

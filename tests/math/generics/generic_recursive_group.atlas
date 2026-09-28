@@ -1,0 +1,5 @@
+set_type T [MathGenericList=(void generic_nil | (T,MathGenericList) generic_cons)]
+set gl=MathGenericList<int>:generic_cons(5,generic_nil())
+prints("GENERIC_GROUP",case gl | generic_nil: -1 | generic_cons(head,tail): head esac)
+set T=23
+prints("RESTORED",T)

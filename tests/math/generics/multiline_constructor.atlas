@@ -1,0 +1,7 @@
+set_type MathMultilinePair<T,
+S> =
+  (T multiline_first,
+   S multiline_second) !
+set mp=MathMultilinePair<int,string>:(7,"seven")
+set T=11
+prints("MULTILINE",mp.multiline_first,mp.multiline_second,T)

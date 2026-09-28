@@ -55,6 +55,166 @@ No repair/after-pass yet. All these jobs are terminal; do not duplicate.
 
 ## Source-backed causes and port order
 
+### Complete-core gate and declaration expectation migration
+
+Capture3835038 COMPLETE16s independently confirms the exact historical unit
+source: `p: Pair` prints `Declaring identifier 'p': Pair`, and all four values
+are(3,4),3,14,(3,14). Rust's complete stdout/stderr match. All56 oracle intents
+agree (35accept/21reject);15 whole-stream matches. Report
+86bddb98e26b3c246c56db0d594c19614d8aa22ba838d5c77b26f6315ac5df17.
+Only then was the unit's expanded-type report expectation changed; no runtime
+behavior or value assertions changed. The failed full-core review is retained.
+
+Build3835058 COMPLETE7:45 at atlas-lexical-core-build-20260928.QM7IzLdg, pin
+550899263c93e43a298b1481e353ab936435e19013f6637e0b403e649cf18fa6.
+The pinned driver now has an opt-in full-core gate using the separately tested
+inventory/summary checker: require every non-known-failure test to execute,
+then execute BOTH known polymorphic assignment failures at their exact markers.
+Neither may be ignored or called repaired. Current candidate inventories407
+tests (six new lexical scope tests):405 pass,0ignored; both known failures
+execute at their exact assertions (exit101).150 filtered checks and CLI build/
+check also pass. All56 original intents confirmed35accept/21reject;15 full
+stdout/stderr matches. The full core command takes13.782s and155048KiB RSS;
+all1227 source files and pinned inputs reverified. Report
+0dc45ae377d879bc213e893b03ec6096d1619f403582950b8c64939195d6400f.
+FPP/F4/E6 retained mathematical units still pass. This is not full generic
+support, all-mathematics acceptance or a release speed benchmark. Job terminal;
+do not duplicate it. Next work remains actual generic grammar/AST/actions and
+the scheme-carrying analyzer, with the source-backed boundaries below.
+
+Next parser integration audit: Cargo.lock pins lalrpop-util0.22.2. Its
+state_machine.rs:237-278 fetches and classifies lookahead BEFORE all reductions
+on that lookahead, then shifts it without reclassification. Therefore introduce
+formals only at reductions whose lookahead is the opening delimiter (or `>`
+for constructor type_args). A new generic grammar must pass the same ParserTypes
+to its actions and TokenStream, and must not assume Bison default-reduction
+timing for virtual groups. The scope tests verify stream timing manually, not
+those not-yet-written grammar actions. Also split `<` and `>` into distinct
+parser terminals while retaining them in the formula-operator nonterminal;
+the current generic Operator token cannot serve both constructor delimiters.
+Keep `>=` as one operator and preserve the rejected discovery fixture.
+
+Two further integration boundaries from executable original code:
+parsetree.w:2806 wraps EACH declaration initializer in its own abstraction;
+global.w:926-930 then executes EACH declaration node sequentially, including
+comma-separated bindings, not merely one SET group at a time. Add a comma-
+dependency and partial-failure probe before implementing that command; the
+current sequential fixture covers separate SET clauses only. Ordinary SET's
+parallel binding behavior must remain distinct. For `f@ T (T)`, parser.y drops
+the declaration count after lexical setup, and axis.w:7364 wraps the signature
+at the surrounding fixed count fc; it is not another type-abstraction body.
+Exact overload lookup shifts stored free variables by fc before comparison.
+Do not add a synthetic rigid abstraction around this operator-cast form.
+
+### Lazy lexical scopes and additional boundary evidence
+
+Capture3834951 COMPLETE29s at atlas-generic-scopes-20260928.zQdkmNmH reuses
+the exact named-type R2 candidate. All55 original arms execute;54 provisional
+intents agree, and the proposed bang-on-next-line acceptance is DISPROVED.
+Report SHA0f126fe0d88e2507ed32958a836ca3365c1196a4b5f513ef6e0e9b43f7ea32fc.
+Keep that source and frozen provisional capture. The newer catalog correctly
+records rejection: original says unexpected newline, expecting '!'. Ordinary
+multiline constructor fields/formals are accepted, but the mandatory bang must
+precede the terminating physical newline once the type spec is complete.
+
+Other new original-backed independent results:
+
+- Multiline pair projectors return7 and"seven"; formal T can then bind11.
+- Sibling `any_type T` scopes are both legal and produce (2,"abc"); outside
+  them T can bind19. This is distinct from the rejected NESTED same-name scope.
+- An any_type block installs its declarations sequentially: scope_pair calls
+  preceding scope_identity, producing (2,"abc") and(true,3/4). T/S can then
+  bind13/17 outside the block.
+- A generic recursive group expands the implicit MathGenericList reference
+  into MathGenericList<A>; its int instance extracts5, with T restored after.
+- A TYPE_VAR used as a value binding is rejected at TYPE_VAR, not at the
+  preceding any_type declaration as Rust currently does.
+
+Lexical-scope build3834975 COMPLETE6:50 at
+atlas-lexical-scope-build-20260928.BKCNlPyQ, pin
+2c2184a056b01dddb3e928dd59ef441f88c81ddc39e5aa4d95b68949351da74d.
+The candidate moves persistent name classification from an eager whole-command
+rewrite into TokenStream::next and adds shared ParserTypes with scanner-time
+groups, parser-time formal installation, duplicate slots/outer offsets,
+constructor/variable distinctions and reset. Six new unit tests include actual
+lazy-token consumption and TYPE_VAR expression rejection. Existing generic
+declaration actions/AST/inference are NOT connected yet; no generic support
+claim. The raw Lexer still collects command boundaries separately. Next grammar
+integration must verify LALRPOP action/lookahead timing against the captured
+multiline and next-line-bang cases, not infer it from Bison's default reductions.
+All149 related tests and CLI check/build pass. All55 corrected oracle intents
+match (34accept/21reject),14 full streams remain equal. Report
+b6bc69edcb2f02ad4b2022390b9e7fa55eb43f456b76efb1ec3fc862d6c0c16e.
+Source/patch/current55case inputs are pinned; job terminal, do not duplicate.
+
+### Named lifetime and structural consumers: current migration
+
+Before3834815 COMPLETE22s reuses the exact verified3834754debug binary and
+captures45cases (26original accepts/19rejections). All original intents match;
+the nine added inputs retain full streams/time/RSS. Simple named union
+discrimination and type-name reuse after forget are Rust failures, not merely
+different report text. Ordinary row/function/field/history values agree, but
+names, definition locations and identifier queries differ. Report SHA
+23008c2c5d3173032330d63499fd432aeb6a5c641ff1f1b00d9d6250616a13ff.
+
+Candidate3834852 FAILED2:47:41type/3coercion/40syntax tests pass, session35pass/
+3fail. Two assertions reveal that definition spans lack the consumed newline;
+one new test mistakenly expects Output instead of the session's ReportLine.
+The driver stops before CLI build/capture. Preserve report
+ba6693137283cf23b172186ab5e2edea13d01f3a28689732d16a4839aa032ecc.
+Parser.y's set_type actions use @$ including the newline. Forward the actual
+lexer terminator through normal/session-frame command execution; do not guess
+last-token-end+1, which loses trailing comments and whitespace.
+
+Edge capture3834868 COMPLETE21s confirms all49 original intents (30accept,
+19reject), report14cf1eeb550d5fe4cdfc739665316a30438743db9ee0b0d8c211214cb2330b1f.
+Two provisional explanations were false, and the unchanged sources remain:
+
+- Named-void global bindings retain42, [1,2] and the function value. Original
+  axis-types.w::coerce accepts void without wrapping an expression; handling
+  void at evaluation boundaries is separate. Do not impose structural-void
+  discarding on these named global initializers.
+- Redefining MathMemberRecord leaves member_second overloaded at its old
+  MathMemberRecord argument and preserves user-replaced member_first. Actual
+  global.w::clean_out_type_identifier first returns when kind()!=tabled;
+  kind() exposes the structural top, so the documented projector cleanup is
+  bypassed for this example. Port the observable behavior, not that prose.
+
+R2 candidate3834895 COMPLETE6:30 at atlas-named-build-r2-20260928.xa3ImNjp,
+pin a4ee2a14a2bab18d47e776dd38b0148aee6adc86e33e71a5035d785513af195a.
+It retains type identities plus active name bindings, copies fields, exposes
+structure only where needed, preserves names in successful casts/reports, uses
+semantic (not slot/textual) equality for overload matching and implements the
+captured edge behavior. All143 related tests (42type/3coercion/40syntax/
+39session/19session-frame) and CLI check/build pass. Report SHA
+386976d612e9438e0c1acd4d91c4331ac4f8e69440a6380013f686c86714c8ab.
+All49 original intents confirmed;14 complete stdout/stderr matches versus2
+before. These include named annotations, environment/recursive-result controls,
+structural equality, rows, function values, copied fields, union discrimination,
+forget/reuse, overload replacement, retained members and primitive contexts.
+The union and forget failures are fixed on unchanged retained inputs.
+
+Six named rejected inputs now reach the right rejection category and matching
+stdout, but stderr prose differs. Named history retains correct old/new values
+but ordinary identifier whattype metadata still differs. Named void retains
+scalar/row/function values correctly, but general closure printing lacks the
+original location/body. Grouped-type canonicalization and atomic field-conflict
+handling also need broader coverage; do not declare all named types finished.
+Candidate timing is DEBUG versus release oracle/old Rust; no speed ratios.
+Full-core review3834919 FAILED1:00 using the same R2 binary/source hashes.
+3 checker tests pass;401 Rust tests inventoried;398pass/1fail/2filtered in
+16.83s with154644KiB RSS. The sole failure is a historical unit asserting
+`Declaring identifier 'p': (int,int)` while the runtime retains Pair. Its full
+six-command source is added as named_declaration_fields (catalog56) for exact
+original confirmation before updating that assertion. Separate known-global/
+local expected-failure invocations were not reached; this review does not prove
+they executed. Report SHA
+6455ab36eb8d096f1a850fcae14146d459c79c168a3a59ea8744c3d77ac79c6b.
+The same pending job was moved from fat (projectedOctober1 start) to cpu8GiB;
+actual allocation remained4CPUs because NumCPUs does not lower CPUs/Task.
+No duplicate submission or source/binary change. Full generic inference and
+high-level mathematics remain unproven.
+
 ### Persistent-environment integration: scoped progress, remaining output gaps
 
 Job3834754 COMPLETE6:17, pin

@@ -1,0 +1,11 @@
+set_type MathSavedRow = [int]
+set saved = MathSavedRow:[2,3]
+set saved_id(MathSavedRow xs) = xs
+set_type MathCopyRow = MathSavedRow
+set_type MathSavedRow = [string]
+set changed = MathSavedRow:["x"]
+set copied = MathCopyRow:[5,6]
+whattype saved
+whattype changed
+whattype MathCopyRow
+prints("NAMED_HISTORY",saved_id(saved),copied,changed)

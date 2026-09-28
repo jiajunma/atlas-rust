@@ -1,0 +1,5 @@
+set_type MathForgotten = [int]
+set saved = MathForgotten:[3]
+forget MathForgotten
+set MathForgotten = 7
+prints("NAMED_FORGET",MathForgotten,saved)

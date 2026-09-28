@@ -1,0 +1,9 @@
+any_type T,
+S begin
+set scope_identity(T x)=T:x
+set scope_pair(T x,S y)=(T,S):(scope_identity(x),y)
+end
+prints("SEQUENTIAL",scope_pair(2,"abc"),scope_pair(true,3/4))
+set T=13
+set S=17
+prints("RESTORED",T,S)

@@ -1,0 +1,7 @@
+set_type MathMemberRecord = (int member_first, int member_second)
+set saved_record = MathMemberRecord:(2,3)
+set member_first(MathMemberRecord r) = 42
+set_type MathMemberRecord = (string member_new_first, string member_new_second)
+set changed_record = MathMemberRecord:("a","b")
+whattype member_second ?
+prints("NAMED_MEMBERS",member_first(saved_record),member_new_first(changed_record),member_new_second(changed_record))

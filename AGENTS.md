@@ -103,6 +103,53 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### Type-variable scope is lexical, and command boundaries remain observable
+
+- Capture3834951 accepts sibling `any_type T` scopes, while3834266 rejects
+  nested reuse before the outer scope ends. Do not implement conventional
+  same-name shadowing or reserve the name beyond its lexical group.
+- Keep duplicate formal slots when assigning indices: lookup uses the first
+  occurrence and an inner variable's index includes all outer slots, even
+  unused duplicates. TYPE_VAR is not an ordinary value-binding IDENT.
+- A generic recursive group's bare self-reference forwards the group's
+  arguments (MathGenericList becomes MathGenericList<A>); it is not an
+  unparameterized constructor call.
+- Original rejects the constructor's mandatory bang on the next physical
+  line after a completed type spec. Keep that disproven acceptance fixture;
+  virtual nesting is not permission to suppress every declaration newline.
+  Parser actions must affect subsequent token classification lazily, and
+  LALRPOP lookahead timing needs its own tests rather than assumptions from Bison.
+
+### Named definitions have identity, structure and a live binding
+
+- Original-backed capture3834815 accepts simple named union discrimination
+  and forgetting/reusing a type identifier; unchanged Rust3834754 rejects
+  both. Historical simple-alias exclusion tests are not latest-oracle rules.
+- Keep old table slots when redefining or forgetting a name: values and
+  closures can still reference them. Update the active name binding separately.
+  Distinct nonrecursive names may be structurally equal; distinct recursive
+  identities must terminate comparison rather than expanding indefinitely.
+- Preserve names while checking structural consumers (row operations, tuple
+  patterns, function calls); do not change only their display. A copied alias
+  also retains field metadata. Query locations belong to the live definition,
+  even if an identical type slot is reused. Pass the actual lexer terminator
+  into definition spans: original set_type's @$ includes the newline.
+- Capture3834868 disproves two tempting assumptions. The current original
+  retains an old generated projector after type redefinition (clean_out's
+  kind()!=tabled early return bypasses its documented cleanup). Named-void
+  global initializers retain their actual scalar/row/function values; coerce
+  leaves the expression unchanged. Preserve these inputs and observable
+  behavior rather than implementing the stale prose or intuitive discarding.
+- Full-core review3834919 exposes a historical declaration assertion missed
+  by filtered suites. Before changing it, capture3835038 runs its exact source:
+  original reports Pair (not expanded(int,int)) and preserves all four field/
+  mutation values. Keep that full-output fixture and failed review; never
+  update a historical expected result just because the new Rust prints it.
+- Full-core build3835058 then passes405 of407 tests; the two known global/
+  local polymorphic assignment failures are each executed separately at their
+  original assertions, not ignored. Use the exact inventory/summary gate when
+  changing shared type infrastructure; filtered suites missed the stale unit.
+
 ### An oracle loader failure invalidates differential evidence
 
 - Bridge3834754 passes136 unit checks and builds the Rust CLI, but its36

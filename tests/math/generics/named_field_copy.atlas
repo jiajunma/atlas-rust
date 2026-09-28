@@ -1,0 +1,6 @@
+set_type MathRecord = (int first_field, string second_field)
+set_type MathRecordCopy = MathRecord
+set record = MathRecordCopy:(7,"s")
+set (a,b) = record
+whattype MathRecordCopy
+prints("NAMED_FIELDS",first_field(record),second_field(record),a,b)

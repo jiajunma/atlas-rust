@@ -2,6 +2,40 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+Current build3835058 COMPLETE7:45 verifies the complete407-test core inventory:
+405pass,0ignored, two known polymorphic assignment failures separately executed.
+150 filtered checks and CLI check/build pass; all56 original intents confirmed,
+15 full stdout/stderr matches. Report
+0dc45ae377d879bc213e893b03ec6096d1619f403582950b8c64939195d6400f.
+Exact declaration probe3835038 first confirmed retained Pair and all values;
+only then was the historical assertion updated. FPP/F4/E6 units remain passing.
+All jobs terminal; generic grammar/inference and high-level mathematics remain
+open. Neither known assignment error is repaired; no debug speed comparison.
+
+Scope boundary capture3834951 COMPLETE55cases: constructor multiline fields,
+sibling scopes, sequential polymorphic declarations and implicit recursive-group
+arguments accepted; TYPE_VAR value binding rejected. Mandatory constructor bang
+on next line is rejected, disproving the provisional intent. Source remains in
+the library. Lazy lexical-scope foundation3834975 COMPLETE6:50:149related tests,
+CLI check/build and55case capture pass;14 full matches retained. Six new tests
+verify scope/token infrastructure; actual generic grammar/inference still open.
+Core review3834919 fails only the historical alias declaration report assertion
+(398pass/1fail/2filtered); exact source added as56th original probe before any
+expectation update. See HANDOFF and generic slice; do not duplicate terminal jobs.
+
+Named-type before3834815 COMPLETE45cases: all original intents confirmed;
+simple union discrimination and forget/reuse expose two active Rust failures.
+Candidate3834852 failed3session assertions after84related units passed; no CLI
+build/capture. Edge3834868 confirms49original intents and disproves intuitive
+named-void discarding and projector cleanup. R2 candidate3834895 COMPLETE6:30:
+143 related units and CLI check/build pass;49case capture has14 whole-output
+matches (previously2). Named union/forget failures now pass unchanged inputs.
+Named negative categories match but diagnostics differ; identifier queries and
+closure printing remain gaps. The active type table/structural consumers are
+ported on these cases, not just report text. Full-core review3834919 exposes
+the historical declaration assertion described above. Full generic scopes, implicit
+constness and high-level math gates remain open. Debug timings are not speedups.
+
 Persistent type-name parser/annotation bridge3834754 COMPLETE6:17 passes136
 unit tests and CLI check/build. Its36case capture is INVALID: original startup
 fails GLIBCXX_3.4.26/29 due to missing GCC runtime-library path. Corrected

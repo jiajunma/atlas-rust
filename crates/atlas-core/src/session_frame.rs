@@ -219,7 +219,7 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                 TokenKind::Newline | TokenKind::Eof => {
                     let ended = token.kind == TokenKind::Eof;
                     if !command.is_empty() {
-                        match self.run_command(&mut command, &source, events) {
+                        match self.run_command(&mut command, &source, events, &token) {
                             Outcome::Finished => {}
                             Outcome::Quit => return Outcome::Quit,
                             Outcome::Abort => {
@@ -422,7 +422,7 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
             return Outcome::Finished;
         }
         let mut command_events = Vec::new();
-        let outcome = self.execute(&mut command, source, &mut command_events);
+        let outcome = self.execute(&mut command, source, &mut command_events, None);
         for event in command_events {
             match event {
                 SessionEvent::Output { text, .. } => self.sink.write(&text),
@@ -438,13 +438,14 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
         command: &mut Vec<Token>,
         source: &SourceText,
         events: &mut Vec<SessionEvent>,
+        terminator: &Token,
     ) -> Outcome {
         if is_quit(command) {
             command.clear();
             self.quitting = true;
             return Outcome::Quit;
         }
-        self.execute(command, source, events)
+        self.execute(command, source, events, Some(terminator))
     }
 
     /// Run one ordinary command, converting value events into the printed
@@ -455,9 +456,10 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
         command: &mut Vec<Token>,
         source: &SourceText,
         events: &mut Vec<SessionEvent>,
+        terminator: Option<&Token>,
     ) -> Outcome {
         let mut raw_events = Vec::new();
-        execute_tokens(command, source, &mut self.context, &mut raw_events);
+        execute_tokens(command, source, &mut self.context, &mut raw_events, terminator);
         let mut failed = false;
         for event in raw_events {
             match event {

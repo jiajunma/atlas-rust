@@ -1,0 +1,4 @@
+set_type MathNextBang<T> = (T next_bang_first,T next_bang_second)
+!
+set bp=MathNextBang<int>:(2,3)
+prints("NEXT_BANG",bp.next_bang_first,bp.next_bang_second)

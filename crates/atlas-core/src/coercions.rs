@@ -191,27 +191,12 @@ pub fn coercion_table() -> &'static [Coercion] {
 
 /// Expand a tabled type one level for structural comparison.
 fn expanded<'a>(type_: &'a Type, table: &'a TypeTable) -> &'a Type {
-    match type_ {
-        Type::Tabled(number) => table.expansion(*number),
-        other => other,
-    }
+    type_.expanded(table)
 }
 
 /// Structural equality through tabled expansions.
 fn same(a: &Type, b: &Type, table: &TypeTable) -> bool {
-    let (a, b) = (expanded(a, table), expanded(b, table));
-    match (a, b) {
-        (Type::Primitive(x), Type::Primitive(y)) => x == y,
-        (Type::Undetermined, Type::Undetermined) => true,
-        (Type::Row(x), Type::Row(y)) => same(x, y, table),
-        (Type::Function(x), Type::Function(y)) => {
-            same(&x.0, &y.0, table) && same(&x.1, &y.1, table)
-        }
-        (Type::Tuple(xs), Type::Tuple(ys)) | (Type::Union(xs), Type::Union(ys)) => {
-            xs.len() == ys.len() && xs.iter().zip(ys).all(|(x, y)| same(x, y, table))
-        }
-        _ => false,
-    }
+    a.equivalent(b, table)
 }
 
 /// The first registered coercion from `from` to `to`, if any.
@@ -273,6 +258,10 @@ pub fn is_close(x: &Type, y: &Type, table: &TypeTable) -> u8 {
 /// broadest, `*` narrowest; a primitive absorbs whatever coerces into it;
 /// rows and tuples go componentwise; functions need equal argument types.
 pub fn broader_eq(a: &Type, b: &Type, table: &TypeTable) -> bool {
+    if let (Type::Tabled(x), Type::Tabled(y)) = (a, b) {
+        if x == y { return true; }
+        if table.is_recursive(*x) && table.is_recursive(*y) { return false; }
+    }
     let (a, b) = (expanded(a, table), expanded(b, table));
     if a.is_void() {
         return true;

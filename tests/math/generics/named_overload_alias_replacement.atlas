@@ -1,0 +1,7 @@
+set_type MathArgumentLeft = int
+set_type MathArgumentRight = int
+set named_overload(MathArgumentLeft x) = x+1
+set named_overload(MathArgumentRight x) = x+2
+prints("NAMED_OVERLOAD",named_overload(3))
+forget named_overload @ MathArgumentLeft
+whattype named_overload ?

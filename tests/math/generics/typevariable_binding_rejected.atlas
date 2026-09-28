@@ -1,0 +1,3 @@
+any_type T begin
+set T=3
+end

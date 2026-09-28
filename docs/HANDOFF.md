@@ -6,6 +6,74 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
+CURRENT BUILD3835058 COMPLETE7:45 at atlas-lexical-core-build-20260928.QM7IzLdg,
+pin550899263c93e43a298b1481e353ab936435e19013f6637e0b403e649cf18fa6.
+Full407-test inventory verified:405 pass,0ignored, and both known assignment
+failures execute separately at their exact assertions.150 filtered checks and
+CLI check/build also pass. Core suite13.782s/155048KiB;1227 source files verified.
+All56 original intents confirmed35accept/21reject,15 full-stream matches.
+Report SHA0dc45ae377d879bc213e893b03ec6096d1619f403582950b8c64939195d6400f.
+The retained FPP/F4/E6 mathematical units remain passing. This is not generic
+language support or full high-level mathematical acceptance; no debug speed ratio.
+Capture3835038 COMPLETE16s proves the exact failed unit's latest-original
+declaration text retains Pair and values remain(3,4),3,14,(3,14). All56 intents
+confirmed;15 full-stream matches. Only the report assertion/comment changed,
+no runtime implementation or value check weakened. Report
+86bddb98e26b3c246c56db0d594c19614d8aa22ba838d5c77b26f6315ac5df17.
+All jobs in this wave are terminal. Do not duplicate3835058 or the failed review.
+Next grammar-action/lookahead integration details are in the generic slice;
+LALRPOP0.22.2 always fetches lookahead before reducing on it.
+
+NEW SCOPE FOUNDATION build3834975 COMPLETE6:50 at
+atlas-lexical-scope-build-20260928.BKCNlPyQ, pin
+2c2184a056b01dddb3e928dd59ef441f88c81ddc39e5aa4d95b68949351da74d.
+149 related tests and CLI check/build pass;55case capture confirms all current
+34accept/21reject intents, retaining14 full-stream matches. Report
+b6bc69edcb2f02ad4b2022390b9e7fa55eb43f456b76efb1ec3fc862d6c0c16e.
+Moves name classification to lazy token consumption, adds shared lexical type
+scope with six tests. Grammar actions/AST/inference are still unconnected;
+this is not generic language acceptance. Capture3834951 COMPLETE29s, report
+0f126fe0d88e2507ed32958a836ca3365c1196a4b5f513ef6e0e9b43f7ea32fc,
+adds six boundary probes (catalog55): four accepted values, one TYPE_VAR binding
+rejection, one disproved acceptance (constructor bang on the following line
+is rejected). Keep the frozen discovery; current catalog34accept/21reject.
+Read the generic slice for precise values, before streams and remaining work.
+
+NAMED-TYPE MIGRATION: before capture3834815 COMPLETE22s, all45
+original intents confirmed (26accept/19reject), exact3834754candidate retained.
+Nine new cases cover lifetime/redefinition, structural equality, rows/functions,
+copied fields, union tags, forget and nominal recursive rejection. Simple union
+discrimination and type-name reuse after forget fail Rust, pass original.
+Report23008c2c5d3173032330d63499fd432aeb6a5c641ff1f1b00d9d6250616a13ff.
+Candidate build3834852 FAILED2:47 at atlas-named-build-20260928.Njj1ymrl,
+pin0651483feef4ed9bf7287ba83c7507b28db1771764f977d8e4991e6411f44a11.
+41type/3coercion/40syntax pass; session35pass3fail on missing newline in spans
+and wrong event-kind test assertion. No CLI build/capture occurred. Edge
+capture3834868 COMPLETE21s verifies all49 original intents and disproves the
+assumed named-void discarding and old-projector cleanup. See generic slice.
+R2 build3834895 COMPLETE6:30 at atlas-named-build-r2-20260928.xa3ImNjp,
+pin a4ee2a14a2bab18d47e776dd38b0148aee6adc86e33e71a5035d785513af195a.
+It passes143 related units (42type/3coercion/40syntax/39session/19session-frame),
+CLI check/build and49case capture. Report SHA
+386976d612e9438e0c1acd4d91c4331ac4f8e69440a6380013f686c86714c8ab.
+Fourteen whole stdout/stderr matches versus two before; simple named union
+discrimination and forget/reuse now pass. Six named negatives reject correctly
+but diagnostic prose differs. Ordinary identifier queries and closure printing
+still differ. Generic scopes and implicit polymorphic constness remain open.
+No speed ratios from this debug candidate. Full-core review3834919 FAILED1:00
+at atlas-named-core-review-20260928.LxyUVwBE. Pin
+cf0b25c7f52684825b4b0c5debe601d925e658c8279de23e7414c758defad381.
+The exact built test binary inventories401 tests:398pass/1fail/2filtered,
+16.83s/154644KiB RSS. Failure is alias_name_declares_a_variable's historical
+expanded(int,int) report expectation versus retained Pair. The exact source is
+new named_declaration_fields fixture (catalog56), being captured against latest
+original before changing the unit. Both known assignment failures' separate
+runs were NOT reached in this failed review; do not claim them executed here.
+Report6455ab36eb8d096f1a850fcae14146d459c79c168a3a59ea8744c3d77ac79c6b.
+fat projected start onOctober1; same pending job moved to cpu/8GiB, actual4CPUs,
+and ran without rebuild. scontrol memory takes integer MiB; NumCPUs does not
+change CPUs/Task. The future review script defaults to cpu2/8GiB. No duplicates.
+
 LANGUAGE BRIDGE BUILD:3834754 COMPLETE6:17 at
 /public/home/majj/atlas-language-bridge-20260928.Zdtz3EAN, pin
 c23be725d1153c89df51bf5b7d2015eec13c074ccea2819f2628449d59db1d97.

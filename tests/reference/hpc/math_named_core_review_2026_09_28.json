@@ -1,0 +1,82 @@
+{
+  "commands": [
+    {
+      "argv": [
+        "/public/software/anaconda/anaconda3-2022.5/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "hpc",
+        "-p",
+        "test_math_language_unit_review.py",
+        "-v"
+      ],
+      "cwd": "/public/home/majj/atlas-named-core-review-20260928.LxyUVwBE",
+      "exit_status": 0,
+      "expected_exit": 0,
+      "log_sha256": "26a46e8dbcbf85b0de7e9c81f66be5264d4a37cecb76951db8e31b1137b89c4a",
+      "maxrss_approximate": false,
+      "maxrss_kb": 15256,
+      "name": "checker",
+      "seconds": 0.9995748610235751,
+      "time_sha256": "9d9b58040b87de63c555af34da5c7101d201abaec2cdb86a98a53d009fe24db2"
+    },
+    {
+      "argv": [
+        "/public/home/majj/atlas-named-build-r2-20260928.xa3ImNjp/results/3834895/target/debug/deps/atlas_core-657328c7d8bef4d8",
+        "--list"
+      ],
+      "cwd": "/public/home/majj/atlas-named-build-r2-20260928.xa3ImNjp/results/3834895/source",
+      "exit_status": 0,
+      "expected_exit": 0,
+      "log_sha256": "1c8daf7b67166c745fc5c18964f149faa2637e3d070a39dd6bc04ed9a8f2707a",
+      "maxrss_approximate": false,
+      "maxrss_kb": 4100,
+      "name": "inventory",
+      "seconds": 0.11339438613504171,
+      "time_sha256": "49e4c181fb3bfc5a7b6955ee9f2cfaf618442ee6c42693a161dfd602dc17ecc3"
+    },
+    {
+      "argv": [
+        "/public/home/majj/atlas-named-build-r2-20260928.xa3ImNjp/results/3834895/target/debug/deps/atlas_core-657328c7d8bef4d8",
+        "--test-threads=2",
+        "--nocapture",
+        "--skip",
+        "typed::tests::polymorphic_empty_global_is_not_assignable",
+        "--skip",
+        "typed::tests::polymorphic_empty_local_is_not_assignable"
+      ],
+      "cwd": "/public/home/majj/atlas-named-build-r2-20260928.xa3ImNjp/results/3834895/source",
+      "exit_status": 101,
+      "expected_exit": 0,
+      "log_sha256": "6cde6add70ebb56c8b0fdbbebda0312f94a6d3125565c1a9e746cf8a31ee2ed5",
+      "maxrss_approximate": false,
+      "maxrss_kb": 154644,
+      "name": "core-suite",
+      "seconds": 16.830131136113778,
+      "time_sha256": "41cc359dbf08fd1be346a5315892c6069d2679ad3c1c459d3478c1ea0381a49e"
+    }
+  ],
+  "error": "Traceback (most recent call last):\n  File \"/public/home/majj/atlas-named-core-review-20260928.LxyUVwBE/hpc/math_language_unit_review.py\", line 112, in main\n    log = run(\"core-suite\", args)\n  File \"/public/home/majj/atlas-named-core-review-20260928.LxyUVwBE/hpc/math_language_unit_review.py\", line 99, in run\n    raise ValueError(name + \" unexpected exit\")\nValueError: core-suite unexpected exit\n",
+  "job": "3834919",
+  "node": "cu257",
+  "pin": {
+    "inputs": {
+      "hpc/math_baseline_build.py": "931ec63f850d2a3769de1d5fb7836fc8eba7097e6d302ea30c2a6e47417c2ed7",
+      "hpc/math_language_unit_review.py": "9f92c2d9e69d92cb0ab67408e0371e3f3b3324df710a76b0297122b97c056833",
+      "hpc/math_language_unit_review.sbatch": "28a75c911a515650f312d3e4ced1ea54016d47f088df7d6024260033858610af",
+      "hpc/test_math_language_unit_review.py": "551e8a31641040960c50c485402041bbb29716ad73635f4f7352a8bbaaae1713"
+    },
+    "parent_report": "/public/home/majj/atlas-named-build-r2-20260928.xa3ImNjp/results/3834895/report.json",
+    "parent_report_sha256": "386976d612e9438e0c1acd4d91c4331ac4f8e69440a6380013f686c86714c8ab",
+    "schema": "atlas-language-core-review-pin-v1",
+    "scope": "Full core suite from exact freshly verified candidate. Known global/local polymorphic assignment defects run separately and must fail at retained assertions; not marked fixed or ignored.",
+    "test_binary": "/public/home/majj/atlas-named-build-r2-20260928.xa3ImNjp/results/3834895/target/debug/deps/atlas_core-657328c7d8bef4d8",
+    "test_binary_sha256": "624f9208dc09324a1db85bcf4b2349278a002e5f266981bb25b62fa1f1c32a5c"
+  },
+  "schema": "atlas-language-core-review-v1",
+  "source_files_rehashed": 1226,
+  "status": "FAIL",
+  "test_count": 401
+}

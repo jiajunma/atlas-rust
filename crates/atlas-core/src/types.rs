@@ -3,7 +3,7 @@
 //! Ports upstream `type_expr` (axis-types.w:289-388): a tag plus payload,
 //! with void as the empty tuple, length-1 tuples and unions unrepresentable
 //! (constructors collapse them), variant/field names living in the typedef
-//! table rather than the type, tabled types equal by number, and
+//! table rather than the type, recursive types compared nominally, and
 //! `specialise` as the only permitted mutation (most-general-unifier on
 //! success, explicitly NOT commit-or-rollback — `can_specialise` exists for
 //! callers that need rollback). Display matches the upstream spellings
@@ -113,8 +113,8 @@ pub enum Type {
     Row(Box<Type>),
     Tuple(Vec<Type>),
     Union(Vec<Type>),
-    /// A typedef-table entry; equality is by number (the table
-    /// canonicalises, so distinct numbers are distinct types).
+    /// A named typedef-table entry. Recursive entries compare nominally;
+    /// distinct nonrecursive names may have compatible structural expansions.
     Tabled(TypeNumber),
     /// An application of a declared type constructor, retaining its name and
     /// arguments even when its structural expansion contains unused formals.
@@ -156,6 +156,53 @@ impl Type {
         Self::Row(Box::new(component))
     }
 
+    /// Inspect a monomorphic type's outer structure without losing its name
+    /// in the owning expression. Children keep their own named identities.
+    pub fn expanded<'a>(&'a self, table: &'a TypeTable) -> &'a Type {
+        let mut current = self;
+        // Well-formed entries have a structural top. The bound also makes a
+        // malformed, directly cyclic placeholder inspectable without looping.
+        for _ in 0..table.bindings.len() {
+            let Type::Tabled(number) = current else { break; };
+            current = table.expansion(*number);
+        }
+        current
+    }
+
+    /// Semantic equality, distinct from textual/table-slot equality and from
+    /// compatibility with holes. Recursive names are a terminating boundary.
+    pub fn equivalent(&self, other: &Type, table: &TypeTable) -> bool {
+        if table.validate_applications(self).is_err() || table.validate_applications(other).is_err() {
+            return false;
+        }
+        match (self, other) {
+            (Type::Tabled(a), Type::Tabled(b)) if a == b => true,
+            (Type::Tabled(a), Type::Tabled(b))
+                if table.is_recursive(*a) && table.is_recursive(*b) => false,
+            (Type::Tabled(a), Type::Applied(b, args))
+            | (Type::Applied(b, args), Type::Tabled(a)) if a == b && args.is_empty() => true,
+            (Type::Tabled(a), Type::Applied(b, _))
+            | (Type::Applied(b, _), Type::Tabled(a))
+                if table.is_recursive(*a) && table.is_recursive(*b) => false,
+            (Type::Tabled(a), b) => table.expansion(*a).equivalent(b, table),
+            (a, Type::Tabled(b)) => a.equivalent(table.expansion(*b), table),
+            (Type::Applied(a, xs), Type::Applied(b, ys)) if a == b =>
+                xs.len() == ys.len() && xs.iter().zip(ys).all(|(x, y)| x.equivalent(y, table)),
+            (Type::Applied(a, _), Type::Applied(b, _))
+                if table.is_recursive(*a) && table.is_recursive(*b) => false,
+            (Type::Applied(..), b) => table.expand_application(self)
+                .is_ok_and(|a| a.equivalent(b, table)),
+            (a, Type::Applied(..)) => table.expand_application(other)
+                .is_ok_and(|b| a.equivalent(&b, table)),
+            (Type::Row(a), Type::Row(b)) => a.equivalent(b, table),
+            (Type::Function(a), Type::Function(b)) =>
+                a.0.equivalent(&b.0, table) && a.1.equivalent(&b.1, table),
+            (Type::Tuple(a), Type::Tuple(b)) | (Type::Union(a), Type::Union(b)) =>
+                a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x.equivalent(y, table)),
+            _ => self == other,
+        }
+    }
+
     /// Specialise `self` toward `pattern`, mutating only by narrowing `*`
     /// holes; returns whether the two are compatible. On failure `self` may
     /// already be partially specialised (upstream semantics) — use
@@ -167,7 +214,9 @@ impl Type {
                 *self = pattern.clone();
                 true
             }
-            (Type::Tabled(own), Type::Tabled(other)) => own == other,
+            (Type::Tabled(own), Type::Tabled(other)) if own == other => true,
+            (Type::Tabled(own), Type::Tabled(other))
+                if table.is_recursive(*own) && table.is_recursive(*other) => false,
             (Type::Applied(own, _), Type::Applied(other, _))
             | (Type::Applied(own, _), Type::Tabled(other))
             | (Type::Tabled(own), Type::Applied(other, _))
@@ -188,9 +237,12 @@ impl Type {
             (_, Type::Applied(..)) => table.expand_application(pattern)
                 .is_ok_and(|expanded| self.specialise(&expanded, table)),
             (Type::Tabled(number), _) => {
-                // Table types contain no holes, so this is a pure check.
-                let expansion = table.expansion(*number).clone();
-                expansion.can_specialise(pattern, table)
+                // axis-types.w:942-979: successful structural specialisation
+                // must expose the receiver, not merely return compatibility.
+                let mut expansion = table.expansion(*number).clone();
+                if !expansion.specialise(pattern, table) { return false; }
+                *self = expansion;
+                true
             }
             (_, Type::Tabled(number)) => {
                 let expansion = table.expansion(*number).clone();
@@ -217,7 +269,9 @@ impl Type {
     pub fn can_specialise(&self, pattern: &Type, table: &TypeTable) -> bool {
         match (self, pattern) {
             (_, Type::Undetermined) | (Type::Undetermined, _) => true,
-            (Type::Tabled(own), Type::Tabled(other)) => own == other,
+            (Type::Tabled(own), Type::Tabled(other)) if own == other => true,
+            (Type::Tabled(own), Type::Tabled(other))
+                if table.is_recursive(*own) && table.is_recursive(*other) => false,
             (Type::Applied(own, _), Type::Applied(other, _))
             | (Type::Applied(own, _), Type::Tabled(other))
             | (Type::Tabled(own), Type::Applied(other, _))
@@ -265,13 +319,12 @@ pub struct TypeBinding {
     pub fields: Vec<Option<String>>,
 }
 
-/// The typedef table (upstream `type_expr::type_map`). Bracketed
-/// `set_type [ … ]` definitions live in `bindings`; the single-name form
-/// is a plain alias that never enters the map (axis.w:5146-5168).
+/// Immutable type identities plus live identifier bindings. Redefinition or
+/// forgetting changes only the latter: existing values keep their old types.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TypeTable {
     bindings: Vec<TypeBinding>,
-    aliases: std::collections::BTreeMap<String, Type>,
+    active: std::collections::BTreeMap<String, TypeNumber>,
     /// Only new constructor entries occur here. Legacy tabled entries retain
     /// their nominal recursive-type behavior until the declaration layer moves.
     constructors: std::collections::BTreeMap<usize, (usize, bool)>,
@@ -283,8 +336,10 @@ impl TypeTable {
     }
 
     pub fn add(&mut self, binding: TypeBinding) -> TypeNumber {
+        let number = TypeNumber(self.bindings.len());
+        self.active.insert(binding.name.clone(), number);
         self.bindings.push(binding);
-        TypeNumber(self.bindings.len() - 1)
+        number
     }
 
     /// Replace a placeholder binding with its resolved definition; used by
@@ -368,31 +423,44 @@ impl TypeTable {
     }
 
     pub fn lookup(&self, name: &str) -> Option<TypeNumber> {
-        self.bindings
-            .iter()
-            .position(|binding| binding.name == name)
-            .map(TypeNumber)
+        self.active.get(name).copied()
     }
 
-    /// Register a single-name `set_type` alias; it stays out of the tabled
-    /// map, so discrimination on it is rejected.
+    /// Retain a simple type definition, including copied field metadata.
+    /// Only the outer alias expands; names inside the body remain visible.
+    pub fn add_simple(&mut self, mut binding: TypeBinding) -> TypeNumber {
+        if let Type::Tabled(number) = &binding.definition {
+            binding.fields = self.binding(*number).fields.clone();
+        }
+        binding.definition = binding.definition.expanded(self).clone();
+        if let Some(index) = self.bindings.iter().position(|old|
+            old.name == binding.name && old.definition == binding.definition)
+        {
+            self.active.insert(binding.name.clone(), TypeNumber(index));
+            self.bindings[index].fields = binding.fields;
+            return TypeNumber(index);
+        }
+        self.add_constructor(binding, 0, false)
+    }
+
+    /// Convenience for a simple definition without explicitly named fields.
     pub fn add_alias(&mut self, name: impl Into<String>, definition: Type) {
-        self.aliases.insert(name.into(), definition);
+        self.add_simple(TypeBinding { name: name.into(), definition, fields: Vec::new() });
     }
 
-    /// Resolve a type name written in a type expression: aliases first,
-    /// then the tabled map (mirroring upstream, where a redefinition
-    /// shadows outward).
+    /// Resolve the active definition, not the oldest retained table entry.
     pub fn resolve_name(&self, name: &str) -> Option<Type> {
-        self.aliases
-            .get(name)
-            .cloned()
-            .or_else(|| self.lookup(name).map(Type::Tabled))
+        self.lookup(name).map(Type::Tabled)
     }
 
-    /// Classify a token without cloning its structural alias expansion.
+    /// Remove an identifier without invalidating stored type references.
+    pub fn forget(&mut self, name: &str) -> bool {
+        self.active.remove(name).is_some()
+    }
+
+    /// Classify a token without cloning its structural expansion.
     pub fn is_type_name(&self, name: &str) -> bool {
-        self.aliases.contains_key(name) || self.lookup(name).is_some()
+        self.active.contains_key(name)
     }
 }
 
@@ -497,6 +565,77 @@ mod tests {
 
     fn show(type_: &Type) -> String {
         type_.display(&TypeTable::new()).to_string()
+    }
+
+    #[test]
+    fn simple_names_survive_redefinition_and_forget() {
+        let mut table = TypeTable::new();
+        table.add_alias("Saved", Type::row(Type::Primitive(Prim::Int)));
+        let old = table.resolve_name("Saved").unwrap();
+        assert!(matches!(old, Type::Tabled(_)));
+        assert_eq!(old.display(&table).to_string(), "Saved");
+        table.add_alias("Copy", old.clone());
+        let copy = table.resolve_name("Copy").unwrap();
+        table.add_alias("Saved", Type::row(Type::Primitive(Prim::String)));
+        let new = table.resolve_name("Saved").unwrap();
+        assert_ne!(old, new);
+        assert_eq!(old.expanded(&table), &Type::row(Type::Primitive(Prim::Int)));
+        assert!(copy.equivalent(&old, &table));
+        assert!(!old.equivalent(&new, &table));
+        assert!(!old.can_specialise(&new, &table));
+        assert!(table.forget("Saved"));
+        assert!(!table.is_type_name("Saved"));
+        assert!(table.resolve_name("Saved").is_none());
+        assert_eq!(old.display(&table).to_string(), "Saved");
+    }
+
+    #[test]
+    fn simple_aliases_copy_fields_and_preserve_nested_names() {
+        let mut table = TypeTable::new();
+        table.add_alias("Element", Type::Primitive(Prim::Int));
+        let element = table.resolve_name("Element").unwrap();
+        let record = table.add_simple(TypeBinding {
+            name: "Record".into(),
+            definition: Type::tuple(vec![element.clone(), Type::Primitive(Prim::String)]),
+            fields: vec![Some("first".into()), Some("second".into())],
+        });
+        table.add_alias("Copy", Type::Tabled(record));
+        let copied = table.lookup("Copy").unwrap();
+        assert_eq!(table.binding(copied).fields, table.binding(record).fields);
+        assert_eq!(table.expansion(copied).display(&table).to_string(), "(Element,string)");
+        let mut copy = Type::Tabled(copied);
+        assert!(copy.specialise(&Type::tuple(vec![Type::Undetermined, Type::Undetermined]), &table));
+        assert_eq!(copy, Type::tuple(vec![element, Type::Primitive(Prim::String)]));
+    }
+
+    #[test]
+    fn simple_equality_is_structural_but_does_not_treat_holes_as_equal() {
+        let mut table = TypeTable::new();
+        table.add_alias("Left", Type::row(Type::Primitive(Prim::Int)));
+        table.add_alias("Right", Type::row(Type::Primitive(Prim::Int)));
+        let mut left = table.resolve_name("Left").unwrap();
+        let right = table.resolve_name("Right").unwrap();
+        assert_ne!(left, right);
+        assert!(left.equivalent(&right, &table));
+        assert!(left.specialise(&right, &table));
+        assert_eq!(left, Type::row(Type::Primitive(Prim::Int)));
+        assert!(!Type::Undetermined.equivalent(&Type::Primitive(Prim::Int), &table));
+    }
+
+    #[test]
+    fn semantic_equality_terminates_at_recursive_identity_and_validates_arity() {
+        let mut table = TypeTable::new();
+        let a = table.add_constructor(TypeBinding {
+            name: "Loop".into(), definition: Type::Undetermined, fields: vec![],
+        }, 0, true);
+        table.update(a, Type::union_of(vec![Type::void(), Type::row(Type::Tabled(a))]), vec![]);
+        let b = table.add_constructor(TypeBinding {
+            name: "Other".into(), definition: table.expansion(a).clone(), fields: vec![],
+        }, 0, true);
+        assert!(Type::Tabled(a).equivalent(&Type::Applied(a, vec![]), &table));
+        assert!(!Type::Tabled(a).equivalent(&Type::Applied(b, vec![]), &table));
+        let invalid = Type::Applied(a, vec![Type::Primitive(Prim::Int)]);
+        assert!(!invalid.equivalent(&invalid, &table));
     }
 
     #[test]
