@@ -28,7 +28,7 @@ out = root / 'results' / os.environ['SLURM_JOB_ID']
 out.mkdir(parents=True, exist_ok=False)
 with (out / 'unittest.log').open('wb') as log:
     run = subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'hpc',
-                          '-p', 'test_math_suite.py', '-v'], stdout=log, stderr=subprocess.STDOUT)
+                          '-p', 'test_math*.py', '-v'], stdout=log, stderr=subprocess.STDOUT)
 unchanged = all(digest(root / name) == sha for name, sha in expected.items())
 report = {'schema': 'atlas-math-harness-preflight-v1',
           'job': os.environ['SLURM_JOB_ID'], 'inputs': expected,

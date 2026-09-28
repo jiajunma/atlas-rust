@@ -26,6 +26,14 @@ not a source-level C++ translation.
 6. **Preserve user changes.** Never reset unrelated work. Use `apply_patch` for
    hand edits and conventional commits (`feat:`, `test:`, `fix:`, `docs:`,
    `chore:`).
+7. **Every Rust calculation error requires a regression test.** Whenever an
+   incorrect Rust mathematical result is discovered, add a reproducing case
+   to the test library (`tests/math` or the relevant `tests/fixtures` suite)
+   before fixing it. Preserve the triggering input and an independently
+   justified expected result; never use the faulty Rust output as the golden.
+   Run the regression and original-Atlas comparison on HPC, retaining evidence
+   that it fails before the fix and passes after it. If the fix is deferred,
+   keep the case explicitly tracked as failing; do not remove or weaken it.
 
 ## Repository map
 

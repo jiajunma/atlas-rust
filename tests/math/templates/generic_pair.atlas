@@ -1,0 +1,8 @@
+{ Mirrors basic.at's named generic pair, independent of its other definitions. }
+set_type MathPair<S,T> = (S math_fst,T math_snd) !
+prints("MATH_BEGIN @ID@")
+set mp = MathPair<int,rat>:(2,3/4)
+prints("PAIR",mp)
+prints("FIRST",mp.math_fst,"SECOND",mp.math_snd)
+if not (mp.math_fst=2 and mp.math_snd=3/4) then error("generic pair projection failed") fi
+prints("MATH_END @ID@")

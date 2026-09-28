@@ -1,0 +1,4 @@
+<basic.at
+prints("MATH_BEGIN @ID@")
+prints("BASIC_READY",true)
+prints("MATH_END @ID@")

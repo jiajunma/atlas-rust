@@ -22,8 +22,11 @@ from math_baseline_build import digest, file_manifest
 def cases(root):
     catalog = json.loads((root / "tests/math/catalog.json").read_text())
     result = []
-    for group in catalog["groups"]:
-        for operation in catalog["operations"] + catalog["rejections"]:
+    grids = [(catalog["groups"], catalog["operations"] + catalog["rejections"]),
+             ([{"type": "Language", "family": "language", "rank": 0, "tier": "small"}],
+              catalog.get("language_operations", []))]
+    for groups, operations in grids:
+        for group, operation in ((g, op) for g in groups for op in operations):
             case = dict(group, **operation)
             case["operation"] = operation["id"]
             case["id"] = group["type"] + "_" + operation["id"]
@@ -77,9 +80,9 @@ def compare(case, records, streams):
     valid = {engine: observation_ok(case, records[engine], *streams[engine])
              for engine in ("oracle", "rust")}
     if not valid["oracle"]:
-        status = "ORACLE_TIMEOUT" if records["oracle"]["timed_out"] else "ORACLE_FAILURE"
+        status = failure_status("ORACLE", records["oracle"])
     elif not valid["rust"]:
-        status = "RUST_TIMEOUT" if records["rust"]["timed_out"] else "RUST_FAILURE"
+        status = failure_status("RUST", records["rust"])
     elif case["expected"] == "reject":
         status = "REJECTION_CATEGORY_MATCH"
     elif payload(streams["oracle"][0], case["id"]) == payload(streams["rust"][0], case["id"]):
@@ -90,6 +93,17 @@ def compare(case, records, streams):
             "full_stdout_equal": streams["oracle"][0] == streams["rust"][0],
             "full_stderr_equal": streams["oracle"][1] == streams["rust"][1],
             "exit_equal": records["oracle"]["exit_status"] == records["rust"]["exit_status"]}
+
+
+def failure_status(engine, record):
+    code = record["exit_status"]
+    if code == 124:
+        return engine + "_TIMEOUT"
+    # Exit 137 can be either SIGKILL/OOM or timeout's escalation. Do not
+    # silently call every kill a timeout without scheduler evidence.
+    if code is not None and (code < 0 or code >= 128):
+        return engine + "_SIGNAL_OR_RESOURCE_FAILURE"
+    return engine + "_FAILURE"
 
 
 def verify_build(build, lock):
@@ -125,7 +139,8 @@ def observe(engine, binary, scripts, case, output, timeout):
     metrics = paths["metrics"].read_text()
     rss = re.search(r"Maximum resident set size \(kbytes\):\s*(\d+)", metrics)
     record = {"engine": engine, "command": command, "exit_status": proc.returncode,
-              "timed_out": proc.returncode in (124, 137), "seconds": elapsed,
+              "timed_out": proc.returncode == 124, "seconds": elapsed,
+              "termination_uncertain": proc.returncode < 0 or proc.returncode >= 128,
               "maxrss_kb": int(rss[1]) if rss else None, "maxrss_approximate": False,
               "resource_limit_gib": 6, "timeout_seconds": timeout,
               "artifacts": {key: {"path": str(path), "sha256": digest(path),

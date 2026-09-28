@@ -1,0 +1,8 @@
+{ The same any_type scope form used throughout latest basic.at. }
+any_type T begin
+set math_identity(T x)=T:x
+end
+prints("MATH_BEGIN @ID@")
+prints("INT",math_identity(7),"RAT",math_identity(3/4),"ROW",math_identity([2,3]))
+if not (math_identity(7)=7 and math_identity(3/4)=3/4) then error("generic identity failed") fi
+prints("MATH_END @ID@")

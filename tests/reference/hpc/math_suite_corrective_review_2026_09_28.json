@@ -1,0 +1,266 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/target/release/atlas-cli",
+      "sha256": "be266b308e13110b357c2adf32f010b74cecf8ac4f8eccd9b5b66f0108e26104"
+    }
+  },
+  "build_report_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "A2",
+      "id": "A2_kgb",
+      "index": 1,
+      "input_sha256": "863cf3de878373f65cbe5c33d6c066d35fe3dc00bb8af8a326e3f0f1602d5dce",
+      "job": "3832000",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4272,
+          "seconds": 0.01021599699743092
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7436,
+          "seconds": 0.011655542999505997
+        }
+      },
+      "operation": "kgb",
+      "report_sha256": "a3203802683805c07f009269cf06d48915ce1fce8f2dff0211157409b780ec2f",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "A2",
+      "id": "A2_fpp",
+      "index": 5,
+      "input_sha256": "6154f0cc3dff5264dd9d8c2f6e1fa0c9e748295f7b2348ff6d4a51e21082c7cf",
+      "job": "3832001",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4036,
+          "seconds": 0.00936002004891634
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6472,
+          "seconds": 0.009883699007332325
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "7cae38f789789960f2d0125544e1ccaa571b097de7e2599f10f5fe0d23fc753e",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "G2",
+      "id": "G2_kgb",
+      "index": 37,
+      "input_sha256": "414737d13f7d5ad8c9d6477909469709d08c0c4d83a4a6a41a125cae6dfc7952",
+      "job": "3832002",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4288,
+          "seconds": 0.010279180482029915
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7532,
+          "seconds": 0.013139601796865463
+        }
+      },
+      "operation": "kgb",
+      "report_sha256": "f919405637f34a48a182b074f0692235debe241ef382a405a305a9fed50d2573",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "G2",
+      "id": "G2_fpp",
+      "index": 41,
+      "input_sha256": "7d17c753a16557eb49132ff0b3e020d34fa3fe467bb5d4a1b545c22dadee299c",
+      "job": "3832003",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4024,
+          "seconds": 0.04349394096061587
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6464,
+          "seconds": 0.03438838996225968
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "2ac3cd0bb2caed04cc33e5c3b2cc4e317a5222120c58648672b824584e7b8df4",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:18: syntax error, unexpected $undefined",
+          "  | set_type MathPair<S,T> = (S math_fst,T math_snd) !",
+          "  |                  ^",
+          "Syntax error at <stdin>:4:19: syntax error, unexpected $undefined",
+          "  | set mp = MathPair<int,rat>:(2,3/4)"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "Language",
+      "id": "Language_generic_pair",
+      "index": 72,
+      "input_sha256": "4ee1eaab0a9ec07b0168407bf08eae1fc759d02bce536557596c09e0e338ad59",
+      "job": "3832004",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3600,
+          "seconds": 0.010286998935043812
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5512,
+          "seconds": 0.009121343959122896
+        }
+      },
+      "operation": "generic_pair",
+      "report_sha256": "b2524e1f57c7e68263a686e50be5cf503447f2ee6ddf221a2da3ffd995f9901a",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Name error at <stdin>:6:14: Undefined identifier 'math_identity'",
+          "  | prints(\"INT\",math_identity(7),\"RAT\",math_identity(3/4),\"ROW\",math_identity([2,3]))"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "Language",
+      "id": "Language_generic_identity",
+      "index": 73,
+      "input_sha256": "140965f556da12352ea9ed58db1a5be2d27211d04289035f697c5ff619d4ccac",
+      "job": "3832005",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3608,
+          "seconds": 0.00933534000068903
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5500,
+          "seconds": 0.009823661064729095
+        }
+      },
+      "operation": "generic_identity",
+      "report_sha256": "08cde012623a14598ea4033b7c72e4d6df814b4a6ce9a259d560a3d288852e4c",
+      "status": "RUST_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "Language",
+      "id": "Language_basic_load",
+      "index": 74,
+      "input_sha256": "48e1a8f15fc1bc4955bb21dabe6ccb6b4abde00f7f16fcb5ee62babc590b4017",
+      "job": "3831999",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4808,
+          "seconds": 0.039450397714972496
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5576,
+          "seconds": 0.00960598886013031
+        }
+      },
+      "operation": "basic_load",
+      "report_sha256": "c44fba55b713dc0bf02c2b3b7c9382a7db923a0f74bd1e78d9f6799b598baba4",
+      "status": "RUST_FAILURE"
+    }
+  ],
+  "counts": {
+    "MATH_MATCH": 4,
+    "RUST_FAILURE": 3
+  },
+  "input_manifest_sha256": "982491529ea97b9eee533a0d8434ce34e31854eb58dc14743baa4bade925a060",
+  "job": "3832014",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-suite-r3-20260928.CneUcC69",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

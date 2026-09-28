@@ -1,0 +1,30 @@
+{
+  "schema": "atlas-math-progress-v1",
+  "date": "2026-09-28",
+  "build": {
+    "job": "3831844",
+    "status": "COMPLETED",
+    "report": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/build.json",
+    "sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb"
+  },
+  "r3_stage": "/public/home/majj/atlas-math-suite-r3-20260928.CneUcC69",
+  "r3_inputs_sha256": "982491529ea97b9eee533a0d8434ce34e31854eb58dc14743baa4bade925a060",
+  "r3_review_code_manifest_sha256": "7fa335e02ec7b598280b9181d7925966d1f185141a1d1c6451c2a0b0cacb72ca",
+  "r3_review_batch_sha256": "70562532f078b8ae1eb7112a008d3587c8a8c7096cfcd3e1879155f40ed9e28f",
+  "reviewed": [
+    {"job": "3831996", "kind": "18-case R2 pilot", "artifact": "math_suite_pilot_review_2026_09_28.json", "sha256": "79076ae481287f0d9bbec8fc543856f91071a018ca8d3ab656e7681a1b0390e4"},
+    {"job": "3831995", "kind": "17 R3 verifier tests", "artifact": "math_suite_r3_preflight_2026_09_28.json", "sha256": "be18b1f7bf0e6b75a40a4fa57c7e9c8dcea432c168e5652bea44b249178b6317"},
+    {"job": "3832014", "kind": "7-case R3 corrective pilot", "artifact": "math_suite_corrective_review_2026_09_28.json", "sha256": "7e764a964990ab5606cd924eef2f210bf77dfb85bb5cf083435649a7eda8fe34"}
+  ],
+  "broader_survey": {
+    "array_job": "3832011",
+    "indices": "9-35,45-71%2",
+    "cases": 54,
+    "last_observed": "RUNNING",
+    "review_job": "3832103",
+    "review_dependency": "afterany:3832011",
+    "review_status": "SUBMITTED_NOT_REVIEWED",
+    "review_indices": "9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71"
+  },
+  "scope": "Progress receipt, not full mathematical or performance acceptance. Preserve earlier submission history. Do not resubmit frozen jobs."
+}

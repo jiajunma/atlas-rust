@@ -27,6 +27,20 @@ shows the pulled main grammar does not implement those declarations. HPC
 execution must establish the actual failures; do not rewrite upstream scripts
 to make those compatibility failures disappear.
 
+Three additional minimal language cases (indices72–74, without moving any of
+the72 domain indices) isolate generic named pairs, polymorphic `any_type`
+functions, and the exact latest `basic.at` load. Total catalog size is75.
+These are prerequisite diagnostics, not substitute mathematical coverage.
+Exit137 is signal/resource/timeout-escalation ambiguous until raw scheduler
+evidence resolves it; it is not automatically labelled a timeout.
+
+The first A2/G2 pilot exposed two fixture dependencies: unary matrix negation
+and `ones` belong to basic.at, not the bare core. The core templates now use
+the builtin `0-mat` overload and an explicitly constructed all-ones vector;
+failed R2 inputs/results remain immutable. Its Hodge failures on the original
+are retained separately and are not waived because elementary specializations
+printed true before the branching failures.
+
 | Area | Output checked | Additional mathematical check |
 |---|---|---|
 | Basic root data | Full roots, coroots, Cartan matrix and dual | Double dual; exact rational identity |

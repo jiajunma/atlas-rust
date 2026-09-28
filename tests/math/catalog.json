@@ -23,6 +23,11 @@
   "rejections": [
     {"id": "fpp_rank_rejected", "template": "fpp_rank_rejected.atlas", "diagnostic": "Rank and rational weight size mismatch"}
   ],
+  "language_operations": [
+    {"id": "generic_pair", "template": "generic_pair.atlas", "scope": "Minimal latest set_type Pair<S,T> constructor and projections, without basic.at."},
+    {"id": "generic_identity", "template": "generic_identity.atlas", "scope": "Minimal latest any_type scope and polymorphic function, without basic.at."},
+    {"id": "basic_load", "template": "basic_load.atlas", "scope": "Load the exact unmodified latest basic.at before high-level mathematical scripts."}
+  ],
   "open_requirements": [
     "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
     "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",

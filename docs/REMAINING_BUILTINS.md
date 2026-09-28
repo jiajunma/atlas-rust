@@ -4,7 +4,8 @@
 
 Current objective is mathematical correctness, not merely builtin registration.
 All tests/builds/benchmarks run on HPC. `tests/math/catalog.json` tracks72 initial
-classical/exceptional cases plus explicit mandatory gaps. General associated
+classical/exceptional cases plus3language prerequisite cases and explicit gaps.
+General associated
 cycles must include multiplicities and cutoff justification; AV-ann, orbit
 support and bounded KNilpotent matrices do not close that requirement. Hodge
 grading specialization at one small bound does not prove full filtration
@@ -14,19 +15,27 @@ still required. Memory is a capacity guardrail, not the priority.
 Remote Rust main remains05625c5d after pull. Latest original is7e1b958c, not the
 historical4d3e9449 oracle. Source diff spans257files. Static inspection identifies
 generic `set_type Pair<S,T>` / `any_type` in latest basic.at versus missing main
-grammar; confirm with HPC before deciding the precise compatibility repair.
+grammar; HPC independent reviews3831996/3832014 confirm the loading gap.
 Do not silently mix in older optimized/PGO candidate results or alter latest
 original scripts. The shared HPC Rust working checkout is dirty and unrelated
 to this immutable-main baseline; preserve it.
 
-Build3831844 RUNNING at last observation; R2 harness3831893 passed9tests;
-18-case A2/G2 pilot3831897 submitted with afterok dependencies. Full paths,
-input hashes, earlier failed submission-directory attempts and next actions
-are in HANDOFF's 2026-09-28 frontier and
-`tests/reference/hpc/math_suite_submission_2026_09_28.json`. Do not duplicate
-pending jobs. First review complete pilot output, then extend the validated
-templates across the remaining families and fix actual mathematical failures.
-No current mathematical or speed result is claimed for this new library.
+Build3831844 completed and source/script/binary hashes were independently
+verified. Pilot3831897 and corrective3831999 are fully reviewed: A2/G2 root
+data, KGB and FPP match; rank-rejected cases agree. Latest-script KLV,
+unitarity, AV-ann and cycle-foundation fail in Rust before mathematics begins.
+Hodge bound4 fails in the original too (A2 negative branching level; G2
+K-type real-form mismatch); keep these cases and investigate, not waive them.
+The KGB/FPP initial failures were fixture errors (unloaded unary matrix minus
+and `ones`), corrected without changing the upstream scripts.
+
+R3 checker preflight3831995 passes17tests. Broader54-case array3832011 remains
+in flight; review3832103 depends afterany on that exact array. Full receipts,
+hashes and frozen paths are in HANDOFF and `tests/reference/hpc/math_suite_*`.
+Do not duplicate jobs. `docs/MATH_VALIDATION.md` separates verified results,
+unresolved mathematics and historical speed evidence. These single-shot small
+cases do not establish stable speedup. Every newly discovered Rust calculation
+error must be retained as a regression test under AGENTS hard rule7.
 
 ## full_deform common-block recursion verified (2026-08-20)
 

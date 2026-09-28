@@ -20,37 +20,54 @@ Library: `tests/math/catalog.json`, nine templates per group, 72 initial cases
 across A2/B2/C2/D4/G2/F4/E6/E7. Root-data/KGB/FPP core calls are separated from
 latest-script loading. High-level Hodge/unitarity/AV use the unmodified latest
 scripts. Raw complete output, status, wall seconds and peak RSS are retained.
+Three additional language prerequisites bring the catalog to75; all original
+domain indices are preserved. Generic-pair, any_type and basic.at-loading cases
+are diagnostics, not additional mathematical group coverage.
 Cycle-foundation matrices are explicitly NOT associated-cycle multiplicities;
 general cycles, broader Hodge bounds/parameters, isogenies/real forms, independent
 identities and minute-scale D6/D8/E7 benchmarks remain mandatory open coverage.
 No E8/fat resource unlock. See `tests/math/README.md` for acceptance rules.
 
 HPC handles (do not duplicate or mutate frozen inputs):
-- Build **3831844**, last observed RUNNING on cu008. Stage
+- Build **3831844**, COMPLETED0:0 in8:58 on cu008. Stage
   `/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5`;
-  report will be `results/3831844/build.json`. Latest oracle + remote-main Rust,
+  report `results/3831844/build.json`, SHA
+  `167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb`.
+  Latest oracle + remote-main Rust,
   CPU2/8G/55min, compiler invocations and full source/script/binary pins recorded.
 - R2 harness preflight **3831893**, COMPLETED0:0,4s/cu002: all **9** verifier
   tests pass. Report SHA `573f9d7b8b3391e414e13c2ea88cba655e3ebe45aa2ca3e67d953011375e451a`.
   This is framework correctness only, not Atlas/math acceptance.
-- Initial differential pilot **3831897**, submitted once with afterok on the
-  two jobs above, array `0-8,36-44%2` (18 A2/G2 cases). Stage
+- Initial differential pilot **3831897**, all18 A2/G2 cases terminal. Stage
   `/public/home/majj/atlas-math-suite-r2-20260928.rjGJpUN8`.
-  CPU2/8G/25min each, 300s/engine, child address-space cap6G. Inspect all raw
-  streams before wider submission or claims. Catalog contains all72 cases;
-  unscheduled groups are NOT verified coverage.
+  Independent review3831996 rehashed both full sources (606/1212files),
+  264scripts, binaries and all raw streams. Two root-data matches, two intended
+  rejections, eight Rust script-loading failures, six original/fixture failures.
+- R3 stage `/public/home/majj/atlas-math-suite-r3-20260928.CneUcC69`:
+  preflight3831995 passes17checker tests; corrective array3831999 terminal;
+  independent review3832014 confirms four A2/G2 KGB/FPP matches and three
+  Rust generic-language failures. Corrected fixtures use builtin `0-mat` and
+  an explicit all-ones vector instead of unloaded script helpers. Original
+  R2 inputs remain immutable; latest upstream scripts are unchanged.
+- Broader array3832011, `9-35,45-71%2`, covers54cases in B2/C2/D4/F4/E6/E7.
+  Still RUNNING at this checkpoint, CPU2/8G/25min,300s/engine,child AS6G.
+  Independent review3832103 submitted ONCE with afterany:3832011, using the
+  same frozen R3 reviewer and explicit54indices. Collect these handles later;
+  scheduler completion alone is not mathematical acceptance.
 
 Submission metadata: `tests/reference/hpc/math_suite_submission_2026_09_28.json`.
-Next: review build provenance, collect exact pilot handles in batches, separate
-fixture/oracle failures, language-loading failures, numerical differences and
-resource limits, then expand validated templates to all groups. Never infer
+Verified reviews and new receipts are in `tests/reference/hpc/math_suite_*`;
+current conclusions are in `docs/MATH_VALIDATION.md`. Next: collect the wider
+survey/review, investigate Hodge original failures, extend actual associated
+cycle multiplicity and nontrivial Hodge coverage, and retain every discovered
+Rust calculation error as a regression (AGENTS hard rule7). Never infer
 performance from failed math or a single short run. Goal remains ACTIVE.
 
 Important source finding: old oracle `4d3e9449` -> latest `7e1b958c` changes257
 files (20078insertions/13071deletions). Latest basic.at uses `Pair<S,T>` and
 `any_type`; pulled main lacks their grammar and explicitly lexes any_type as
-an identifier. This is a likely major upstream-compatibility gap, pending HPC
-confirmation. Do not rewrite upstream scripts to hide it.
+an identifier. Independent HPC reviews3831996/3832014 now confirm this major
+upstream-compatibility gap. Do not rewrite upstream scripts to hide it.
 
 Infrastructure repair:3831840/3831841 failed before test/build because sbatch
 `--chdir` does NOT change `SLURM_SUBMIT_DIR`. Verified sacct/logs showed terminal

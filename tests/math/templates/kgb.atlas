@@ -1,6 +1,7 @@
-{ Same split simply-connected datum as basic.at:split_form, core only. }
+{ Same split simply-connected datum as basic.at:split_form, core only.
+  Unary matrix negation is script-defined; use the builtin 0-mat overload. }
 set rd=simply_connected(Lie_type("@TYPE@"),true)
-set G=quasisplit_form(inner_class(rd,-id_mat(@RANK@)))
+set G=quasisplit_form(inner_class(rd,0-id_mat(@RANK@)))
 prints("MATH_BEGIN @ID@")
 prints("GROUP",G,"KGB_SIZE",KGB_size(G))
 for i:KGB_size(G) do

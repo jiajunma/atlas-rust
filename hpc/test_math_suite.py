@@ -1,6 +1,6 @@
 import unittest
 from pathlib import Path
-from math_suite import cases, compare, observation_ok, payload
+from math_suite import cases, compare, failure_status, observation_ok, payload
 
 
 class MathSuiteTests(unittest.TestCase):
@@ -11,8 +11,9 @@ class MathSuiteTests(unittest.TestCase):
 
     def test_catalog_cross_product(self):
         catalog, matrix = cases(Path(__file__).resolve().parents[1])
-        self.assertEqual(len(matrix), 72)
-        self.assertEqual({x["family"] for x in matrix}, {"classical", "exceptional"})
+        self.assertEqual(len(matrix), 75)
+        self.assertEqual(sum(x["family"] != "language" for x in matrix), 72)
+        self.assertEqual({x["family"] for x in matrix}, {"classical", "exceptional", "language"})
         self.assertTrue(catalog["open_requirements"])
         for case in matrix:
             self.assertNotIn("@TYPE@", case["source"])
@@ -66,6 +67,20 @@ class MathSuiteTests(unittest.TestCase):
                                         self.stdout, message))
         self.assertFalse(observation_ok(case, dict(self.good, exit_status=1),
                                         self.stdout, message + b"\n" + message))
+
+    def test_signal_is_not_automatically_timeout(self):
+        self.assertEqual(failure_status("RUST", dict(self.good, exit_status=137)),
+                         "RUST_SIGNAL_OR_RESOURCE_FAILURE")
+        self.assertEqual(failure_status("ORACLE", dict(self.good, exit_status=124)),
+                         "ORACLE_TIMEOUT")
+
+    def test_language_cases_do_not_move_group_indices(self):
+        matrix = cases(Path(__file__).resolve().parents[1])[1]
+        self.assertEqual(matrix[0]["id"], "A2_root_data")
+        self.assertEqual(matrix[36]["id"], "G2_root_data")
+        self.assertEqual(matrix[71]["id"], "E7_fpp_rank_rejected")
+        self.assertEqual([x["id"] for x in matrix[72:]],
+                         ["Language_generic_pair", "Language_generic_identity", "Language_basic_load"])
 
 
 if __name__ == "__main__":
