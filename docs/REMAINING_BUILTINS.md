@@ -3,9 +3,11 @@
 ## Mathematical validation against latest original — 2026-09-28
 
 CURRENT WAVE: combined KL boundary + coroot closure candidate is staged at
-atlas-math-kl-coroot-repair-20260928.vCEV2VU4. Preflight3833256 COMPLETED;
-build3833274 and array3833289 submitted (16 full-output cases including F4
-half/zero/unit history). Collect and independently review; do not duplicate.
+atlas-math-kl-coroot-repair-20260928.vCEV2VU4. Preflight3833256 PASSES44checks;
+build3833274 COMPLETED with unchanged before-fail/after-pass tests and release
+CLI. Array3833289 running (16 full-output cases including F4 half/zero/unit
+history); independently pinned review3833539 submitted afterany. Collect it
+while continuing E6 repair; do not duplicate or accept based only on units.
 Source and acceptance pins are in math_kl_coroot_repair_submission_2026_09_28.json.
 All regressions and positivity guards retained; no runtime acceptance yet.
 Use the compute time for E6 external-form coordinate diagnosis in parallel.

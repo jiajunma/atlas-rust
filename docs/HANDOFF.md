@@ -9,11 +9,17 @@ Do not stop at inventorying defects. All testing/builds remain HPC-only.
 ACTIVE COMBINED REPAIR: checked coroot sums are now staged together with the
 real-II KL boundary repair, retaining all integer/half-scale regressions.
 Stage /public/home/majj/atlas-math-kl-coroot-repair-20260928.vCEV2VU4;
-preflight3833256 COMPLETED, build3833274 and dependent array3833289 submitted.
+preflight3833256 COMPLETED(44checks); build3833274 COMPLETED7:57.
+Identical before tests execute cross panic and both coroot failures; after
+F4 integer/half passes, coroot2 passes, KL-table6/locator10/FPP1 pass.
+Build SHA364a6b02f6cc4fb3bcf2e5762c20b5b32aeede31609c98e0585cbce154a01215;
+Rust binary SHAd1d648fb1eac8dd02c1059d3e5eb8939edb33e7c63341a79fc4faa101d0c3313.
+Dependent array3833289 is running; independently pinned review3833539 is
+submitted afterany3833289. Collect its result; do not wait idly or duplicate.
 Indices75-82,89-91,103-107. Do not duplicate or mutate this frozen stage.
 Receipt math_kl_coroot_repair_submission_2026_09_28.json records every source
-and input pin. Collect build hash, inspect unchanged before/after tests, then
-submit an independently pinned review. Runtime is NOT yet accepted.
+and input pin. Build/unit evidence is retained; full-output differential
+review is still pending. Runtime is NOT yet accepted or committed.
 While HPC executes, analyze E6 real-form ordering: verified_generator_map
 chooses the first flipped imaginary-subsystem root, which need not be a
 datum-simple root. Original partition indices instead use the adjoint fiber

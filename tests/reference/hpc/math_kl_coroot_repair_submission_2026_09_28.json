@@ -15,7 +15,11 @@
   "preflight_sha256": "ad205dc156a16edbaa46fc2dcd5d6d18557134259f3a4914a08434ea2392427d",
   "build_job": "3833274",
   "build_dependency": "afterok:3833256",
-  "build_status": "SUBMITTED",
+  "build_status": "COMPLETED_BEFORE_FAILURES_AFTER_PASSES_RELEASE_BUILT",
+  "build_sha256": "364a6b02f6cc4fb3bcf2e5762c20b5b32aeede31609c98e0585cbce154a01215",
+  "build_artifact": "math_kl_coroot_repair_build_2026_09_28.json",
+  "rust_binary_sha256": "d1d648fb1eac8dd02c1059d3e5eb8939edb33e7c63341a79fc4faa101d0c3313",
+  "unit_evidence": "Same core F4 test executes before panic and after passes both integer/half scales. Same two coroot tests execute before failures and after pass. After KL-table6, locator10, and FPP exact-root1 tests pass. Release CLI built; no full mathematical acceptance yet.",
   "differential_array": "3833289",
   "differential_dependency": "afterok:3833274",
   "differential_status": "SUBMITTED",
@@ -37,7 +41,9 @@
     106,
     107
   ],
-  "review_status": "REQUIRES_EXACT_BUILD_HASH_AFTER_BUILD_COMPLETES",
+  "review_job": "3833539",
+  "review_dependency": "afterany:3833289",
+  "review_status": "SUBMITTED_WITH_EXACT_BUILD_AND_INPUT_HASHES",
   "scope": "Before runtime equals3832345 plus only unchanged F4 KL and B2/F4 coroot regressions. After changes only kl_table.rs and locator.rs runtime. Original source/scripts/binary reused unchanged from3832345.",
   "acceptance": "Separate targets; execute and retain before cross panic and both coroot failures, require unchanged after tests, all KL table and locator tests, prior FPP root identity. Then full-output comparison and independently pinned review of this exact array. No runtime acceptance from build/unit passes alone.",
   "parallel_work": "Analyze E6 external real-form numbering while compute jobs run; no duplicate/restarted jobs and no shared checkout mutation."

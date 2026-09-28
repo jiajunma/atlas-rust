@@ -146,6 +146,12 @@ Probe3832726 executes both new locator unit regressions on unchanged runtime:
 B2 incorrectly returns4 instead of8 closure elements; F4 hits the positivity
 invariant. Report SHA88aaa653d427f1705f36ef992a280a5db52acc3a662d2b4c329196cd2e455e43.
 This is before-failure evidence, not an after-fix or full-differential pass.
+Combined KL/coroot build3833274 now executes unchanged before failures and
+after passes: both locator regressions, F4 integer/half KL unit, KL-table6,
+locator10 and FPP exact-root test. Release CLI built, build SHA
+364a6b02f6cc4fb3bcf2e5762c20b5b32aeede31609c98e0585cbce154a01215.
+Full-output array3833289 and its pinned independent review3833539 are still
+pending; no mathematical acceptance from avoiding the two panics alone.
 
 E6's core KLV probe fails earlier in Rust with `real-form order twist-fixed
 generator coordinate invariant was violated`, while the original succeeds.
