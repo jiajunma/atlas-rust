@@ -1,0 +1,44 @@
+{
+  "schema": "atlas-math-regression-history-v1",
+  "baseline_build": "3831844",
+  "baseline_build_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "cases": [
+    103,
+    104,
+    105,
+    106
+  ],
+  "catalog_size": 107,
+  "r10": {
+    "stage": "/public/home/majj/atlas-math-suite-r10-20260928.F6vaRFgb",
+    "inputs_sha256": "4adac0d0ba38df29a357c19b559b4e2e5cdc88314c0bf098b6d15ef57e5e1378",
+    "review_code_sha256": "5a181dd54f5e1b3e7aca1b4ba0d7e9e155db2098cd3b667bc487c57b19cdca45",
+    "preflight": "3832307",
+    "preflight_tests": 38,
+    "preflight_sha256": "fe350c4b5c773addfe62b665cdcc7b2409200bbb9cf02b79f441424377042ace",
+    "array": "3832308",
+    "review": "3832312",
+    "review_sha256": "94deb77eff4fe730916e61612eed54fa252994593c9d26c53c2a0c94887db2ab",
+    "counts": {
+      "ORACLE_FAILURE": 3,
+      "RUST_FAILURE": 1
+    },
+    "finding": "Fixture-only [Param]/KL-tuple equality errors retained. Compact A1 nonstandard rejection already demonstrates a true Rust defect."
+  },
+  "r11": {
+    "stage": "/public/home/majj/atlas-math-suite-r11-20260928.5DRl9Iwd",
+    "inputs_sha256": "d32a174795453a31526479c1c01521f7d9c1c5d410c7f1442d994107964b4d7c",
+    "review_code_sha256": "46ff11f6b0e2dad4737d6ea2f81d6e9e9b4810e80e2719d520983d1bd28a55cc",
+    "preflight": "3832334",
+    "preflight_tests": 38,
+    "preflight_sha256": "72f01564cfdf6ee998323cd0cb0824586e72807c3885b20c533a59493374606a",
+    "array": "3832335",
+    "review": "3832340",
+    "review_sha256": "8995ea83b4de4c1f927b3e92fcd0236ce28dd792612874e68f7ba8420bd4a97b",
+    "counts": {
+      "RUST_FAILURE": 4
+    },
+    "finding": "Elementwise builtin equality preserves complete comparison. All4 original cases meet expectations; baseline Rust loses predecessors, hits B2 height parity, or wrongly accepts nonstandard A1."
+  },
+  "status": "ALL_JOBS_TERMINAL; FOUR_VERIFIED_FAILING_REGRESSIONS; REPAIR_NOT_ACCEPTED_YET"
+}

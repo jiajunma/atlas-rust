@@ -6,6 +6,46 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
+LATEST: FPP build3832301 COMPLETE, before exact-root test fails D4 and after
+passes ten types/both numberings. Independent review3832333 is COMPLETE:
+8mathmatches,8rejections,1Rust E7 timeout at300s. D4 wall is correct; E6
+now matches in19.012s (original0.282s). Do not claim all FPP passes yet.
+Build SHA3d0efc1f9fa119e3659a82131831224b35b4e7d0c7b2fbc4dcffc3f57a6b29cd;
+review SHA50ab1506a23e9708eb17c2c970522d713a8f5df4ee4beb2f4229b7e4754b085b.
+The exact FPP source core SHA is8a52ffb1..., NOT the current local core,
+which now also contains the unverified partial-KL candidate.
+
+R10/R11 now107cases. Indices103/104 A2/G2 partial/full/partial history,
+105B2 containment,106compact A1 rejection. R10 review3832312 preserves
+three fixture failures (bare [Param]/KL-tuple equality needs script overloads)
+and the genuine compact A1 acceptance bug. R11 uses elementwise builtin
+comparisons. Preflight3832334 and review3832340 are COMPLETE: original passes
+all4; baseline Rust fails all4. Review SHA8995ea83b4de4c1f927b3e92fcd0236ce28dd792612874e68f7ba8420bd4a97b.
+
+Partial-KL candidate stage:
+/public/home/majj/atlas-math-partial-kl-repair-20260928.SZRaJr6Y.
+Preflight3832344 COMPLETE (38checks); build3832345 COMPLETE in5:54.
+Dependent array3832350 indices75-82,89-91,103-106, afterok3832345.
+Do NOT duplicate. Build and latest original are freshly compiled in isolation.
+Input manifest c293daeb15ad0a6dce4bdffd4223a339b39421520ff6048e374f3f7bc6578781;
+review-code SHA594c8d56ff32ac37b0b034cbae15bd31a1fbfc0b6541e76594a74b88c3a7d5f0.
+Build SHA6d7083abde0026076d8f872d6bd1c3e28e80d3373890a2210f243df099f32431;
+independent review3832517 is already submitted afterany3832350. Collect it,
+do not submit another. Frozen core SHA4547f83fa036ef463ac8a0e732c0055b6c47099d550b3b90fe701b7aed423592.
+Only core differs from main: FPP repair/test, replacement partial-KL arm,
+removal of its obsolete classic finals helper. No unrelated code changed.
+No acceptance/commit of the runtime changes yet. Patch/archive pins are in
+results/math-partial-kl-repair-20260928 and the submission receipt.
+
+Separate E7 FPP600s stage (same FPP-only build, not the partial-KL candidate):
+/public/home/majj/atlas-math-fpp-e7-long-20260928.FEh5ubAb.
+Preflight3832370 COMPLETE (38checks); array3832501 case68 is submitted with
+MATH_CASE_TIMEOUT=600. Review3832506 depends afterany on that exact array.
+Input SHA175dc2c9578a51db21b274dd0a473a3272fa9797c27a52b149355aa218399f12,
+review-code SHA91326c438d07484062ee093d70d38953d893cb9da107decc1910df379acde7a4.
+Its batch supports an explicit timeout; older frozen stages remain unchanged.
+See new receipt for the exact job id; do not resubmit an already-live job.
+
 R9 catalog103cases: D6/D8 KGB at93/94, eight nontrivial Hodge probes at95-102.
 Preflight3832208 passes36tests. Hodge array3832211/review3832222 are complete:
 all8 original cases fail (A2 internal negative branch bound, G2 owner mismatch)

@@ -36,13 +36,37 @@ Reviewed JSON artifacts:
 - `tests/reference/hpc/math_suite_corrective_review_2026_09_28.json`
 - `tests/reference/hpc/math_suite_r3_preflight_2026_09_28.json`
 
-The catalog now contains103 cases, not103 verified successes. Broad array3832011
+The catalog now contains107 cases, not107 verified successes. Broad array3832011
 and independent review3832103 are complete. The review rehashed the pinned
 sources, scripts, binaries and all54 complete result sets. Artifact:
 `tests/reference/hpc/math_suite_broad_review_2026_09_28.json`, SHA
 `31c0e62d1a6b9b3227cfc2b55fc5ea213a29bb75f82a5f5cb28f1986feea1250`.
 Do not infer mathematical acceptance from SLURM COMPLETED or replace timed-out
 cases with easier inputs under the same ID.
+
+## Repair candidates (not remote main)
+
+FPP reflection-word candidate build3832301 has an exact before-fail/after-pass
+root-reflection identity test for ten classical/exceptional Lie types and both
+root-numbering choices, using independent Cargo targets. Independent
+review3832333 verifies17 full differential cases:8 mathematical matches,
+8 intended rejections,1 E7 timeout. D4's preserved wall/positivity regression
+now matches. E6 finishes with exact output in19.012s Rust versus0.282s original,
+instead of the unchanged main's300s timeout. These are single-shot diagnostic
+times, not a repeated speed claim. E7 still takes more than300s (2.31GiB RSS)
+against24.43s original; it is NOT mathematically accepted. A separate600s
+follow-up retains the original300s failure. No whole-FPP completion claim.
+Artifact: `tests/reference/hpc/math_fpp_repair_r2_review_2026_09_28.json`.
+
+R11 independent review3832340 verifies four more baseline partial-KL failures:
+A2/G2 cache-history queries lose predecessors; B2 containment triggers a
+height-parity error; compact A1 nonstandard input is wrongly accepted. The
+original passes all four cases. A separate candidate now routes partial KL
+through actual-parameter lookup, Hasse downsets, locator-aware singular
+condensation and zero/one-seeded polynomial interning. Build3832345 completed;
+dependent differential3832350/review3832517 are pending acceptance, not proof
+of a repair.
+The E6 constructor and E7 oracle capacity failures remain distinct open gaps.
 
 ## Current full initial grid
 

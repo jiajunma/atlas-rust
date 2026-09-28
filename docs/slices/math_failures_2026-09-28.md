@@ -29,6 +29,17 @@ source-backed defect hypothesis for this failure, not proof that changing
 that line fixes all FPP behavior. Test the root-reflection identity directly
 across classical/exceptional systems before accepting a repair.
 
+Candidate evidence: build3832301 now provides exact before-fail/after-pass
+identity tests over A2/B2/C2/D4/D6/D8/G2/F4/E6/E7 and both root numberings.
+Review3832333 confirms the D4 regression, all smaller FPP cases, and E6.
+E7 remains timed out at300s, so not all FPP gates pass. Original E7 finishes
+in24.43s; Rust's killed leg uses2.31GiB. A separate600s run preserves this
+failure. Potential performance lead only: original rootdata.h:296/320 uses
+precomputed simple-root permutations, whereas simple_reflect_root_nbr rebuilds
+ambient vectors and looks up roots on each letter. The FPP Weyl-value export
+also applies every word through matrix-based WeylElement multiplication.
+Profile/isolate the stages before assigning the remaining timeout to either.
+
 ## Partial KL blocks collapse to a singleton
 
 After replacing the script-only `infinitesimal_character` alias with builtin
@@ -81,6 +92,13 @@ Further source audit for the next sequential repair:
 5. Preserve `test_standard` rejection before lookup and locator transport of
    each row at the caller's infinitesimal character. Test nonintegral and
    singular parameters as well as the existing A2/G2 predecessor regressions.
+
+R10/R11 cover those histories plus compact A1 negative imaginary weight.
+R10 discovered that bare Atlas lacks list/tuple equality for these types;
+R11 uses elementwise Param/vec/int equality without importing basic.at.
+Independent review3832340 confirms all four original cases pass while Rust
+loses A2/G2 predecessors, errors on B2's singleton and accepts the nonstandard
+A1 input. The candidate repair is frozen in build3832345, not yet accepted.
 
 E6's core KLV probe fails earlier in Rust with `real-form order twist-fixed
 generator coordinate invariant was violated`, while the original succeeds.

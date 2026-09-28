@@ -1,0 +1,682 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-fpp-repair-r2-20260928.49AOGABt/results/3832301/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-fpp-repair-r2-20260928.49AOGABt/results/3832301/target-after/release/atlas-cli",
+      "sha256": "550eabf4961185a403527e2552ff5a4581e95896fddf5dd4266b6c73919be33f"
+    }
+  },
+  "build_report_sha256": "3d0efc1f9fa119e3659a82131831224b35b4e7d0c7b2fbc4dcffc3f57a6b29cd",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "A2",
+      "id": "A2_fpp",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 5,
+      "input_sha256": "6154f0cc3dff5264dd9d8c2f6e1fa0c9e748295f7b2348ff6d4a51e21082c7cf",
+      "job": "3832315",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4012,
+          "seconds": 0.013934310991317034
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6464,
+          "seconds": 0.014614941028412431
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "644dfc9be63602ea4751a94b145070664ea7dca7fb4f30d14f7439f796abef0d",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 2:3",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 2:3",
+          "  | FPP_numers(rd,null(2+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "A2",
+      "id": "A2_fpp_rank_rejected",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 8,
+      "input_sha256": "7295d9a432793aad4adbc34252e7cabf13978b2fef682524ba164367ccdadd16",
+      "job": "3832316",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3952,
+          "seconds": 0.03660048404708505
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5820,
+          "seconds": 0.024139405984897166
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "57c0a545493f133746c56507d21eb7bf0903fe182861e15f656fa5e685df42c4",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "B2",
+      "id": "B2_fpp",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 14,
+      "input_sha256": "a18abbc5211216f2406686d60aabed3489e9bfe7a12cf437f24e82c9f711c0db",
+      "job": "3832317",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4020,
+          "seconds": 0.012469872017391026
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6460,
+          "seconds": 0.015040313999634236
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "7571e365baf81ccc6ce8f47b6e9de268dce71589ecd873233d8e2b49ee30c0b1",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 2:3",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 2:3",
+          "  | FPP_numers(rd,null(2+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "B2",
+      "id": "B2_fpp_rank_rejected",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 17,
+      "input_sha256": "ed05e02feb1f7de26fa43bf16b6c0ff648a3b679422f8e9c9538a8a94f4aff34",
+      "job": "3832318",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3956,
+          "seconds": 0.009807516005821526
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5816,
+          "seconds": 0.01082547102123499
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "f32a356c7406e755621cc336847b7ec9498905f932e847f69485972ee918b0c5",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "C2",
+      "id": "C2_fpp",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 23,
+      "input_sha256": "4e6f6def3921176a4159048f939e0d672a2d4c92d2097bd14b06e0427521b03b",
+      "job": "3832319",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4020,
+          "seconds": 0.010565562988631427
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6448,
+          "seconds": 0.012082697008736432
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "1cee7d3d8fe49e9f1fe5814f1ef7f908857f0ce43499f83d95c106d125a607d4",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 2:3",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 2:3",
+          "  | FPP_numers(rd,null(2+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "C2",
+      "id": "C2_fpp_rank_rejected",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 26,
+      "input_sha256": "d75da19fa3c8973231f3ca98335fb84a12a9b1ba5b0d39d6670af6ea2a6e9791",
+      "job": "3832320",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3952,
+          "seconds": 0.01121152302948758
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5816,
+          "seconds": 0.010157682991120964
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "4c7e3726d04396a29d3297ce045a77e7fbe00c7f57e1a80e3e385b6dfcf4e43c",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "D4",
+      "id": "D4_fpp",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 32,
+      "input_sha256": "d7095412408564f87c1ce239293a8aae6c194d977d7281907f10c3047e04cb5c",
+      "job": "3832321",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4060,
+          "seconds": 0.012015376996714622
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6664,
+          "seconds": 0.018580849980935454
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "d19aeb26738b194632f814a00ef9364d1b1b7357231815d6dac999266e76aafc",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 4:5",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 4:5",
+          "  | FPP_numers(rd,null(4+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "D4",
+      "id": "D4_fpp_rank_rejected",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 35,
+      "input_sha256": "c29ad86964f5a79fede604a07812bce8e12f351c1a223d14e76df7b835a6ab3c",
+      "job": "3832322",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3968,
+          "seconds": 0.011375109024811536
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5824,
+          "seconds": 0.01133124902844429
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "9f1390136dedeec9aab51695be26c46f9ee051829c99f39cba95e6185ba976b9",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "G2",
+      "id": "G2_fpp",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 41,
+      "input_sha256": "7d17c753a16557eb49132ff0b3e020d34fa3fe467bb5d4a1b545c22dadee299c",
+      "job": "3832323",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4028,
+          "seconds": 0.010708841029554605
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6452,
+          "seconds": 0.011142127041239291
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "cbcfed267e91b8ee6bad928bf455aa6e5475e4421af53b1e59c3e1bbd96d7da6",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 2:3",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 2:3",
+          "  | FPP_numers(rd,null(2+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "G2",
+      "id": "G2_fpp_rank_rejected",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 44,
+      "input_sha256": "ecec0c0304c32823054149ee1a7c902298b578a04cf4985dff20824492609cd1",
+      "job": "3832324",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3952,
+          "seconds": 0.011853329953737557
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5824,
+          "seconds": 0.010909870965406299
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "daab3959cd0f7ca1d01066f2d3062c3336f2c1cda24e1c7f7e809a849d2c2562",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "F4",
+      "id": "F4_fpp",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 50,
+      "input_sha256": "4c3ce42d5443a5a594e4701d484e93fa14a2b83906af8c26e36e667f919502ff",
+      "job": "3832325",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4708,
+          "seconds": 0.020966396026778966
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 8712,
+          "seconds": 0.20647820801241323
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "0b4734c8ad4bd9368d062dd2a86d590f10085a2a841a5500055c772ed5e976c1",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 4:5",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 4:5",
+          "  | FPP_numers(rd,null(4+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "F4",
+      "id": "F4_fpp_rank_rejected",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 53,
+      "input_sha256": "2b12a49f61a3614cd9f173bd6539a54c290bf6a3b79de403e32d65457d1d767c",
+      "job": "3832326",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3980,
+          "seconds": 0.010924828005954623
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5824,
+          "seconds": 0.011836465040687472
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "8dbc8e7578ff6e92d40b26ace3445300a8fc74598d3c4cdf3d1f1755dc88a251",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "E6",
+      "id": "E6_fpp",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 59,
+      "input_sha256": "575edbb259ff2faa389c5978157f621f95b8501c87f3a8e5120e5e51be332c15",
+      "job": "3832327",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 16296,
+          "seconds": 0.2815784579725005
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 65808,
+          "seconds": 19.01207991898991
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "66eca20001dd55122c65e875f9cf9e11a822df073b139940a439fc7552e1cb24",
+      "status": "MATH_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 6:7",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 6:7",
+          "  | FPP_numers(rd,null(6+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "E6",
+      "id": "E6_fpp_rank_rejected",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 62,
+      "input_sha256": "f70016e644ee8bc326b008d9ef67bcff61e4039172b32f098f4334e54f5863ed",
+      "job": "3832328",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4000,
+          "seconds": 0.011757770029362291
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5832,
+          "seconds": 0.01102772302692756
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "c2945d8cab5f32b2cbc15e8434c2d8a94ea0963c1aad764ce7c327240edd5c64",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": false,
+      "group": "E7",
+      "id": "E7_fpp",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 68,
+      "input_sha256": "6bb6972bb0cbe3ebb8c8f62c21cd342fb935b34dec7602fb841ca7fc713ffe7d",
+      "job": "3832329",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 981156,
+          "seconds": 24.430811653030105
+        },
+        "rust": {
+          "exit_status": 124,
+          "maxrss_approximate": false,
+          "maxrss_kb": 2420360,
+          "seconds": 300.08286073600175
+        }
+      },
+      "operation": "fpp",
+      "report_sha256": "e5a5830e41eb07f187e5c85af729d85a0888af4f581bcc9d8edc9091769782e7",
+      "status": "RUST_TIMEOUT"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  Rank and rational weight size mismatch 7:8",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Runtime error at <stdin>:4:1: Rank and rational weight size mismatch 7:8",
+          "  | FPP_numers(rd,null(7+1))",
+          "  | ^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "E7",
+      "id": "E7_fpp_rank_rejected",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 71,
+      "input_sha256": "c9db7525eb442f3b3b407bfa0dbd02a7fdea171c0c0412909f7c4741ad81273b",
+      "job": "3832330",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4048,
+          "seconds": 0.012594993982929736
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5836,
+          "seconds": 0.010049136995803565
+        }
+      },
+      "operation": "fpp_rank_rejected",
+      "report_sha256": "8bb7208d11f4fda11a9f8f280951e1a577ad7f8d5c0f36d7468558338676506d",
+      "status": "REJECTION_CATEGORY_MATCH"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "group": "D4",
+      "id": "D4_fpp_wall_regression",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 89,
+      "input_sha256": "2636f061ea033905052fddb360a598830790efb3fc363b1548b8160975b89167",
+      "job": "3832314",
+      "metrics": {
+        "oracle": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4052,
+          "seconds": 0.011295445961877704
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6828,
+          "seconds": 0.01441599300596863
+        }
+      },
+      "operation": "fpp_wall_regression",
+      "report_sha256": "bd16dcd7bf1ca8e2f8bd64b6eef13529b126b7ac5b825e59f35d6340e38a8629",
+      "status": "MATH_MATCH"
+    }
+  ],
+  "counts": {
+    "MATH_MATCH": 8,
+    "REJECTION_CATEGORY_MATCH": 8,
+    "RUST_TIMEOUT": 1
+  },
+  "input_manifest_sha256": "cc68314c624aedb60a99a2ebdbf2b7b4740adfd8b310677b9f39460b3de3cbd4",
+  "job": "3832333",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-fpp-repair-r2-20260928.49AOGABt",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

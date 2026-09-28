@@ -154,3 +154,22 @@ The review rehashes the full source archives/binaries and every raw round before
 acceptance. Per-engine 60-600-second calibration is reported separately:
 short workloads are not padded and are not claimed to satisfy that time window.
 The CPU8GiB/child6GiB envelope remains in force. A capacity failure stays visible.
+
+## Partial KL repair regressions
+
+R10/R11 append indices103-106 (107cases total): A2/G2 partial/full/partial
+lookup at half, zero and unit scale; B2 singleton/containing-interval lookup;
+and compact A1 nonstandard rejection. Every parameter, matrix entry and
+polynomial is printed and compared. R10 preserved a fixture dependency error:
+bare Atlas has no equality overload for `[Param]` or the complete KL tuple.
+R11 uses elementwise builtin comparisons instead of loading/rewriting basic.at.
+Independent review3832340 confirms all four original cases behave as expected
+and all four baseline Rust cases fail. The nonstandard case succeeds wrongly
+in Rust; equal exit codes are therefore not assumed.
+
+The explicit `diagnostic_rank_suffix:false` option keeps the nonstandard
+diagnostic unchanged; existing FPP rank diagnostics still include both ranks.
+`MATH_CASE_TIMEOUT` optionally sets the batch child timeout (default300,
+driver-enforced maximum600seconds). The observed limit is recorded for each
+engine. Longer follow-ups get a fresh stage and never overwrite shorter
+timeout failures or turn those failures into speed ratios.

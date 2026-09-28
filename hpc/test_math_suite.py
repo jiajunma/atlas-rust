@@ -11,8 +11,8 @@ class MathSuiteTests(unittest.TestCase):
 
     def test_catalog_cross_product(self):
         catalog, matrix = cases(Path(__file__).resolve().parents[1])
-        self.assertEqual(len(matrix), 103)
-        self.assertEqual(sum(x["family"] != "language" for x in matrix), 100)
+        self.assertEqual(len(matrix), 107)
+        self.assertEqual(sum(x["family"] != "language" for x in matrix), 104)
         self.assertEqual({x["family"] for x in matrix}, {"classical", "exceptional", "language"})
         self.assertTrue(catalog["open_requirements"])
         for case in matrix:
@@ -135,12 +135,32 @@ class MathSuiteTests(unittest.TestCase):
     def test_large_d_and_nontrivial_hodge_are_additive(self):
         matrix = cases(Path(__file__).resolve().parents[1])[1]
         self.assertEqual([c["id"] for c in matrix[93:95]], ["D6_kgb", "D8_kgb"])
-        self.assertEqual(len(matrix[95:]), 8)
-        self.assertEqual({c["type"] for c in matrix[95:]}, {"A2", "G2"})
-        for case in matrix[95:]:
+        self.assertEqual(len(matrix[95:103]), 8)
+        self.assertEqual({c["type"] for c in matrix[95:103]}, {"A2", "G2"})
+        for case in matrix[95:103]:
             self.assertIn("hodge_branch_irr(p,", case["source"])
             self.assertIn("nontrivial Hodge probe unexpectedly became trivial", case["source"])
             self.assertIn("HS.v_to_1=branch_std", case["source"])
+
+    def test_partial_kl_history_and_containment_preserve_full_output(self):
+        matrix = cases(Path(__file__).resolve().parents[1])[1]
+        self.assertEqual([c["id"] for c in matrix[103:106]],
+                         ["A2_partial_kl_history", "G2_partial_kl_history", "B2_partial_kl_containment"])
+        for case in matrix[103:105]:
+            for source in ("[p*(1/2),p*0,p]", "cold=partial_KL_block(q)",
+                           "whole=KL_block(q)", "warm=partial_KL_block(q)",
+                           "polynomials[i]=wpolynomials[i]", "params[i]=expected[i]"):
+                self.assertIn(source, case["source"])
+            self.assertNotIn("params=expected", case["source"])
+            self.assertNotIn("cold=warm", case["source"])
+        self.assertIn("#p_params!=1 or #q_params!=3", matrix[105]["source"])
+
+    def test_nonstandard_rejection_does_not_get_rank_suffix(self):
+        matrix = cases(Path(__file__).resolve().parents[1])[1]
+        self.assertEqual(matrix[106]["expected"], "reject")
+        self.assertEqual(matrix[106]["diagnostic"], "partial_KL_block requires a standard parameter")
+        self.assertEqual(matrix[8]["diagnostic"], "Rank and rational weight size mismatch 2:3")
+        self.assertIn("if is_standard(p) then error", matrix[106]["source"])
 
 
 if __name__ == "__main__":

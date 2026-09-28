@@ -34,7 +34,7 @@ def cases(root):
             case["operation"] = operation["id"]
             case["id"] = group["type"] + "_" + operation["id"]
             case["expected"] = "reject" if "diagnostic" in operation else "accept"
-            if case["expected"] == "reject":
+            if case["expected"] == "reject" and operation.get("diagnostic_rank_suffix", True):
                 case["diagnostic"] += " {}:{}".format(group["rank"], group["rank"] + 1)
             template = root / "tests/math/templates" / operation["template"]
             if template.parent.resolve() != (root / "tests/math/templates").resolve():

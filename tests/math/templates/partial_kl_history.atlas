@@ -1,0 +1,29 @@
+{ Preserve full mathematical output across partial/full/partial lookup.
+  Singular and nonintegral queries must use their own parameter and downset. }
+set rd=simply_connected(Lie_type("@TYPE@"),true)
+set G=quasisplit_form(inner_class(rd,0-id_mat(@RANK@)))
+set p=param(KGB(G,KGB_size(G)-1),null(@RANK@),two_rho(rd)/2)
+prints("MATH_BEGIN @ID@")
+for q in [p*(1/2),p*0,p] do
+ let cold=partial_KL_block(q) in
+ let expected=partial_block(q) in
+ let whole=KL_block(q) in
+ let warm=partial_KL_block(q) in
+ let (params,indices,polynomials)=cold in
+ let (wparams,windices,wpolynomials)=warm in
+ prints("PARAMETER",q,"DECOMPOSED",%q);
+ prints("COLD",cold,"EXPECTED_PARAMETERS",expected);
+ prints("FULL",whole,"WARM",warm);
+ if #params!=#expected or #params!=#wparams then error("partial KL parameters differ from Bruhat downset") fi;
+ for i:#params do
+  if not (params[i]=expected[i]) or not (params[i]=wparams[i]) then error("partial KL parameter depends on lookup history") fi;
+  for j:#params do
+   if indices[i,j]!=windices[i,j] then error("partial KL matrix depends on lookup history") fi
+  od
+ od;
+ if #polynomials!=#wpolynomials then error("partial KL pool size depends on lookup history") fi;
+ for i:#polynomials do
+  if not (polynomials[i]=wpolynomials[i]) then error("partial KL polynomial depends on lookup history") fi
+ od
+od
+prints("MATH_END @ID@")

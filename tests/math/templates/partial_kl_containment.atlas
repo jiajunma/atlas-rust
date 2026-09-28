@@ -1,0 +1,32 @@
+{ Existing original-backed B2 containment anchor, now checking every KL
+  coefficient rather than only printing the cached block's rows. }
+set rd=simply_connected(Lie_type("B2"),true)
+set G=real_form(inner_class(rd,id_mat(2)),2)
+set p=param(KGB(G,5),[1,1],[1,0]/2)
+set q=Cayley(0,p)
+prints("MATH_BEGIN @ID@")
+set cold=partial_KL_block(p)
+set enlarged=partial_KL_block(q)
+set warm=partial_KL_block(p)
+prints("P",p,"Q",q,"COLD",cold,"ENLARGED",enlarged,"WARM",warm)
+set (p_params,p_indices,p_polynomials)=cold
+set (q_params,,)=enlarged
+set (w_params,w_indices,w_polynomials)=warm
+set p_expected=partial_block(p)
+set q_expected=partial_block(q)
+if #p_params!=1 or #q_params!=3 then error("partial KL containment lost its 1/3 element intervals") fi
+if #p_params!=#p_expected or #q_params!=#q_expected or #p_params!=#w_params then error("partial KL containment has wrong parameter count") fi
+for i:#p_params do
+ if not (p_params[i]=p_expected[i]) or not (p_params[i]=w_params[i]) then error("partial KL singleton parameter changed") fi;
+ for j:#p_params do
+  if p_indices[i,j]!=w_indices[i,j] then error("partial KL singleton matrix changed") fi
+ od
+od
+for i:#q_params do
+ if not (q_params[i]=q_expected[i]) then error("partial KL containing parameter differs from Bruhat downset") fi
+od
+if #p_polynomials!=#w_polynomials then error("partial KL singleton pool size changed") fi
+for i:#p_polynomials do
+ if not (p_polynomials[i]=w_polynomials[i]) then error("partial KL singleton polynomial changed") fi
+od
+prints("MATH_END @ID@")

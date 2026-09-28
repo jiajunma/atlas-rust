@@ -94,6 +94,27 @@
         {"id": "hodge_zero_bound4", "template": "hodge_nontrivial.atlas", "parameters": {"SCALE": "0", "BOUND": 4}, "scope": "Singular nu=0 spherical parameter, full standard/irreducible grading and branching; not the trivial-module anchor."},
         {"id": "hodge_zero_bound20", "template": "hodge_nontrivial.atlas", "parameters": {"SCALE": "0", "BOUND": 20}, "scope": "Additional singular nu=0 Hodge branch at bound20, retaining all smaller-bound failures."}
       ]
+    },
+    {
+      "groups": [
+        {"type": "A2", "family": "classical", "rank": 2, "tier": "small"},
+        {"type": "G2", "family": "exceptional", "rank": 2, "tier": "small"}
+      ],
+      "operations": [
+        {"id": "partial_kl_history", "template": "partial_kl_history.atlas", "scope": "Full partial KL parameters, indices and polynomial pools before/after full lookup at half, zero and unit scale; independently compare the parameter list with the Bruhat downset."}
+      ]
+    },
+    {
+      "groups": [{"type": "B2", "family": "classical", "rank": 2, "tier": "small"}],
+      "operations": [
+        {"id": "partial_kl_containment", "template": "partial_kl_containment.atlas", "scope": "Original-backed singleton contained in a three-element partial block: repeated query must preserve its full KL output instead of leaking cached containing rows."}
+      ]
+    },
+    {
+      "groups": [{"type": "A1", "family": "classical", "rank": 1, "tier": "small"}],
+      "operations": [
+        {"id": "partial_kl_nonstandard_rejected", "template": "partial_kl_nonstandard_rejected.atlas", "diagnostic": "partial_KL_block requires a standard parameter", "diagnostic_rank_suffix": false, "scope": "Compact A1 negative imaginary simple-root weight must be rejected as nonstandard before partial KL computation."}
+      ]
     }
   ],
   "standalone_note": "Additional product case is numerical maximal-orbit multiplicity coverage only, not general-cycle acceptance.",

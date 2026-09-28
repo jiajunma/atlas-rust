@@ -101,9 +101,21 @@ not a source-level C++ translation.
   a regression proof. Use separate fresh `target-before` and `target-after`
   directories, and record their paths with each command. An exit code alone
   cannot establish which source was executed.
-- Keep failed build artifacts. The isolated replacement is job `3832301`;
-  it is not mathematical acceptance until its unit and differential gates
-  pass. See `tests/reference/hpc/math_fpp_repair_r2_submission_2026_09_28.json`.
+- Keep failed build artifacts. The isolated replacement `3832301` gives
+  before-assertion-fail/after-pass. Differential review `3832333` confirms
+  the D4 repair and E6, but E7 still times out; do not equate the unit pass
+  with all-FPP acceptance. See the R2 submission/review JSONs in
+  `tests/reference/hpc` and the separate E7 long-run receipt.
+
+### Bare-core mathematical fixtures must use bare-core operations
+
+- R10 jobs `3832308`/review `3832312` showed that equality of `[Param]` and
+  complete KL tuples requires script overloads, even in the original.
+  Loading latest `basic.at` would mask the independent kernel regression
+  behind Rust's unrelated generic-language gap.
+- Compare Param/vec/int entries explicitly, retain the full printed records,
+  and keep the failed fixture artifacts. R11 review `3832340` then confirms
+  four original-pass/Rust-fail regressions without changing either engine.
 
 ### Owned `LatticeInvolution` builders
 

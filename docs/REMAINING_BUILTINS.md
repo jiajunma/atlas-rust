@@ -2,6 +2,19 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+Newest evidence: FPP reflection repair before/after unit passes, and independent
+review3832333 confirms D4 wall and E6 complete outputs now agree. Eight positive
+matches/eight negative matches; E7 still times out at300s, so the whole FPP gate
+remains open. A fresh600s E7 run uses the exact same FPP candidate.
+R11 review3832340 adds four original-pass/Rust-fail partial-KL regressions
+(history, containment, nonstandard rejection), after retaining and correcting
+R10's script-only list-equality fixture mistake. Catalog107cases.
+Candidate core now routes partial_KL_block through actual-parameter lookup,
+complete Hasse downset and locator-aware condensation/interner. Preflight3832344
+passes38checks; build3832345 COMPLETE. Array3832350/review3832517 are IN PROGRESS.
+See HANDOFF and new receipts. Do not claim or commit the runtime as accepted
+until the corresponding differential gates and independent review are examined.
+
 The user has explicitly added sequential repair of discovered errors to the
 objective. Next repair: conjugating suffix in FPP reflection_word, guarded by
 the already-failing D4 wall fixture and new exact root-action unit regression.

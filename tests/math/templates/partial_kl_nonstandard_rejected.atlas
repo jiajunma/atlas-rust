@@ -1,0 +1,10 @@
+{ Compact A1 has an imaginary simple root. Negative lambda+rho is not
+  standard, and must be rejected before any partial KL block is computed. }
+set rd=simply_connected(Lie_type("A1"),true)
+set G=real_form(inner_class(rd,id_mat(1)),0)
+set p=param(KGB(G,0),[-2],[0]/1)
+prints("MATH_BEGIN @ID@")
+prints("PARAMETER",p,"STANDARD",is_standard(p))
+if is_standard(p) then error("nonstandard fixture unexpectedly standard") fi
+partial_KL_block(p)
+prints("MATH_END @ID@")

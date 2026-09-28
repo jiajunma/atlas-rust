@@ -12,7 +12,7 @@
   "build_batch_sha256": "2c8648f588b8e54d555da0d783889a143580723cad3433d9628902ff90f42f3e",
   "build_job": "3832301",
   "build_dependency": "afterok:3832300",
-  "status": "SUBMITTED_NOT_DIFFERENTIALLY_ACCEPTED",
+  "status": "UNIT_BEFORE_FAIL_AFTER_PASS; DIFFERENTIAL_PARTIAL_E7_TIMEOUT",
   "parent_build": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/build.json",
   "parent_build_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
   "before_archive_sha256": "2a27467d44881c47eb9fa9cbe992773d115b54bdb0bd9fadd47a622ed7d7f061",
@@ -28,7 +28,7 @@
     "Full HPC FPP differential cases, including preserved D4 wall regression and rejected inputs, pass before acceptance."
   ],
   "transport": "HPC-local copies of immutable archives/harness from the previous stage; only changed driver, two checker tests and manifests transferred. No whole source upload, push, install or shared-checkout mutation.",
-  "scope": "Uncommitted repair candidate; no push, installation, default/main change or claim that the bug is fixed yet.",
+  "scope": "D4 repair and E6 exact results verified, but E7 times out at300s. Full FPP acceptance gate remains open; same candidate scheduled separately at600s. No main/default/push change.",
   "build_targets": "Independent fresh target-before and target-after; no shared build cache between source trees.",
   "previous_attempt": {
     "job": "3832260",
@@ -38,5 +38,46 @@
     "before_log_sha256": "037c3283e99754280b3b484e22bdc0b41a106ee618b645e0386425a18aacdcc5",
     "after_log_sha256": "4fbacab8ea1b8143f912d267ac0241a12adc55455b7c736540f94b20b39e9bc0",
     "finding": "Before compiled and failed D4 root-reflection assertion; after reused same old test binary/word in 0.7s despite verified reversed source. Source archives and old stage remain unchanged."
+  },
+  "build_status": "BUILT_NOT_DIFFERENTIALLY_VERIFIED",
+  "build_report_sha256": "3d0efc1f9fa119e3659a82131831224b35b4e7d0c7b2fbc4dcffc3f57a6b29cd",
+  "regression_before": {
+    "exit_status": 101,
+    "log_sha256": "f3f0765194f27f93643ba7f83b22242ae1e3e0eae03b9ef969e152ffdb9cc1f7",
+    "result": "Executed D4 root-reflection assertion fails in before source."
+  },
+  "regression_after": {
+    "exit_status": 0,
+    "log_sha256": "b4868d9246ad0894c3aacf2b805ee76b46184dcc2fc61c10ea82b4c854a78c06",
+    "result": "Same regression passes ten Lie types and both numbering choices in independent target."
+  },
+  "differential_array": "3832314",
+  "indices": [
+    5,
+    8,
+    14,
+    17,
+    23,
+    26,
+    32,
+    35,
+    41,
+    44,
+    50,
+    53,
+    59,
+    62,
+    68,
+    71,
+    89
+  ],
+  "review_job": "3832333",
+  "review_status": "COMPLETED_ARTIFACTS_VERIFIED",
+  "review_artifact": "math_fpp_repair_r2_review_2026_09_28.json",
+  "review_sha256": "50ab1506a23e9708eb17c2c970522d713a8f5df4ee4beb2f4229b7e4754b085b",
+  "counts": {
+    "MATH_MATCH": 8,
+    "REJECTION_CATEGORY_MATCH": 8,
+    "RUST_TIMEOUT": 1
   }
 }

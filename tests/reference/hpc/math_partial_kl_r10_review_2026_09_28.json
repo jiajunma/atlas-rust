@@ -1,0 +1,211 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/target/release/atlas-cli",
+      "sha256": "be266b308e13110b357c2adf32f010b74cecf8ac4f8eccd9b5b66f0108e26104"
+    }
+  },
+  "build_report_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in expression =(params,expected) at <standard input>:16:9-24",
+          "  Failed to match '=' with argument type ([Param],[Param])",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Type error at <stdin>:16:10: Failed to match '=' with argument type ([Param],[Param])",
+          "  |  if not (params=expected) then error(\"partial KL parameters differ from Bruhat downset\") fi;",
+          "  |          ^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "A2",
+      "id": "A2_partial_kl_history",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 103,
+      "input_sha256": "953451923dee54e967aa9c57817fa0a03879906f74cdb6219398a729a68a7eeb",
+      "job": "3832309",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4444,
+          "seconds": 0.017553130979649723
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7428,
+          "seconds": 0.021769970015157014
+        }
+      },
+      "operation": "partial_kl_history",
+      "report_sha256": "7e5a4cc6838860d93693646237b91db4e50d691fd38607d2897c1273bf3f16e9",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in expression =(params,expected) at <standard input>:16:9-24",
+          "  Failed to match '=' with argument type ([Param],[Param])",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Type error at <stdin>:16:10: Failed to match '=' with argument type ([Param],[Param])",
+          "  |  if not (params=expected) then error(\"partial KL parameters differ from Bruhat downset\") fi;",
+          "  |          ^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "group": "G2",
+      "id": "G2_partial_kl_history",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 104,
+      "input_sha256": "966b381072166b928cbf38175b2e6405603f6b1fd751dbe1a9c8e585ea745e9b",
+      "job": "3832310",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4456,
+          "seconds": 0.030629379965830594
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7528,
+          "seconds": 0.01323807897279039
+        }
+      },
+      "operation": "partial_kl_history",
+      "report_sha256": "fe41f7e2b010b6b0aa88a521671cf68df69575a655926a400d74d4bd346a2ebb",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in expression =(p_params,partial_block(p)) at <standard input>:15:8-33",
+          "  Failed to match '=' with argument type ([Param],[Param])",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted.",
+          "Error in expression =(cold,warm) at <standard input>:16:8-17"
+        ],
+        "rust": [
+          "Runtime error at <stdin>:8:10: rep-context height parity invariant was violated",
+          "  | set cold=partial_KL_block(p)",
+          "  |          ^^^^^^^^^^^^^^^^^^^",
+          "Runtime error at <stdin>:10:10: rep-context height parity invariant was violated",
+          "  | set warm=partial_KL_block(p)"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "B2",
+      "id": "B2_partial_kl_containment",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 105,
+      "input_sha256": "1bcc639988bce14a326300e46451a4ed04706daad03c55674b0bd7a659ab785c",
+      "job": "3832311",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4672,
+          "seconds": 0.010341171990148723
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7624,
+          "seconds": 0.01780443300958723
+        }
+      },
+      "operation": "partial_kl_containment",
+      "report_sha256": "524d244c5cb51f9e3b9e1033ded190ea2c62c9994312ba72881922a845f2de25",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Runtime error:",
+          "  partial_KL_block requires a standard parameter:",
+          "  non-standard parameter(x=0,lambda=[-1]/1,nu=[0]/1)",
+          "  Parameter not standard",
+          "Evaluation aborted."
+        ],
+        "rust": []
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "A1",
+      "id": "A1_partial_kl_nonstandard_rejected",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 106,
+      "input_sha256": "0b3144b796aa1c5affb0eba8c636f2c2f968f34efd54b3c33d41e6cf11a8ea61",
+      "job": "3832308",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4444,
+          "seconds": 0.019790709018707275
+        },
+        "rust": {
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 7324,
+          "seconds": 0.009722194983623922
+        }
+      },
+      "operation": "partial_kl_nonstandard_rejected",
+      "report_sha256": "3d7479ee89c28943121d1cc42640c41774216205b9db1d15d4690dd75a5ebe4a",
+      "status": "RUST_FAILURE"
+    }
+  ],
+  "counts": {
+    "ORACLE_FAILURE": 3,
+    "RUST_FAILURE": 1
+  },
+  "input_manifest_sha256": "4adac0d0ba38df29a357c19b559b4e2e5cdc88314c0bf098b6d15ef57e5e1378",
+  "job": "3832312",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-suite-r10-20260928.F6vaRFgb",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}
