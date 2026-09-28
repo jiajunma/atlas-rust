@@ -151,6 +151,42 @@
       "intent": "accept",
       "scope": "Two named fields both use S, leaving distinct formal T unused. Verify the declared two-argument arity, application report and both projector types/values.",
       "file": "unused_constructor_tuple.atlas"
+    },
+    {
+      "id": "named_type_annotations",
+      "intent": "accept",
+      "scope": "A non-generic alias must be recognized in casts and lambda parameters using the live type-name environment, not silently resolved as an unknown hole.",
+      "file": "named_type_annotations.atlas"
+    },
+    {
+      "id": "named_type_mismatch",
+      "intent": "reject",
+      "scope": "A declared [int] alias must reject a string row at type analysis, after the alias declaration succeeds.",
+      "file": "named_type_mismatch.atlas"
+    },
+    {
+      "id": "named_function_application",
+      "intent": "accept",
+      "scope": "A parameterized named function type exposes its argument/result structure and preserves substitution in direct application.",
+      "file": "named_function_application.atlas"
+    },
+    {
+      "id": "direct_polymorphic_function",
+      "intent": "accept",
+      "scope": "A local polymorphic function value supports independent direct calls at int and rat, without global overload dispatch.",
+      "file": "direct_polymorphic_function.atlas"
+    },
+    {
+      "id": "tuple_function_freshening",
+      "intent": "accept",
+      "scope": "Distinct polymorphic function values in one tuple must freshen independently before destructuring and use.",
+      "file": "tuple_function_freshening.atlas"
+    },
+    {
+      "id": "rigid_function_result_rejected",
+      "intent": "reject",
+      "scope": "The int result of a local generic identity call cannot satisfy an arbitrary rigid outer T result annotation.",
+      "file": "rigid_function_result_rejected.atlas"
     }
   ]
 }

@@ -15,6 +15,8 @@ pub enum TypeError {
     Arity { expected: usize, found: usize },
     UndeterminedInAssignment,
     PendingAssignments,
+    ExpectedFunction,
+    RecursiveExpansion,
     ScopeCapture,
     IndexOverflow,
 }
@@ -53,6 +55,24 @@ pub fn shift(t: &Type, fixed: usize, amount: usize) -> Result<Type, TypeError> {
         Some(n) if n < fixed => Ok(Type::Variable(n)),
         Some(n) => Ok(Type::Variable(n.checked_add(amount).ok_or(TypeError::IndexOverflow)?)),
     })
+}
+
+fn named(t: &Type) -> Option<super::TypeNumber> {
+    match t { Type::Tabled(n) | Type::Applied(n, _) => Some(*n), _ => None }
+}
+
+/// Expose only the top constructor chain, not recursive children. A repeated
+/// complete application is an invalid unguarded cycle. Do not reject repeated
+/// constructor IDs alone: Identity<Identity<int>> is a finite valid chain.
+fn expanded_top(t: &Type, table: &TypeTable) -> Result<Type, TypeError> {
+    let mut result = t.clone();
+    let mut seen = Vec::new();
+    while named(&result).is_some() {
+        if seen.contains(&result) { return Err(TypeError::RecursiveExpansion); }
+        seen.push(result.clone());
+        result = table.expand_application(&result)?;
+    }
+    Ok(result)
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -116,6 +136,13 @@ impl TypeAssignment {
 
     pub fn fixed(&self) -> usize { self.fixed }
     pub fn degree(&self) -> usize { self.equivalents.len() }
+
+    fn grow(&mut self, count: usize) -> Result<(), TypeError> {
+        let degree = self.degree().checked_add(count).ok_or(TypeError::IndexOverflow)?;
+        self.fixed.checked_add(degree).ok_or(TypeError::IndexOverflow)?;
+        self.equivalents.resize(degree, None);
+        Ok(())
+    }
 
     /// Import another assignment into a disjoint variable range, including
     /// substitutions already pending there (axis-types.w::append). Merely
@@ -370,6 +397,172 @@ impl InferredType {
         let result = self.unify_to(other, table);
         if result != Ok(true) { *self = saved; }
         result
+    }
+
+    /// Two-sided unification follows the original assignment-owner choice.
+    /// Work on owned snapshots so failure also restores remapped bodies/scopes,
+    /// not just the slots assigned during the final recursive comparison.
+    pub fn unify(&mut self, other: &mut Self, table: &TypeTable) -> Result<bool, TypeError> {
+        let (mut left, mut right) = (self.clone(), other.clone());
+        let left_poly = left.is_polymorphic();
+        let right_poly = right.is_polymorphic();
+        if !left_poly { left.wring_out()?; }
+        if !right_poly { right.wring_out()?; }
+        let owner_left = if left_poly && right_poly {
+            left.fixed() >= right.fixed()
+        } else {
+            left_poly || !right_poly
+        };
+        // Fixed variables from a later context must never be captured by an
+        // earlier owner's free range, including when the other type is rigid.
+        if owner_left && left.fixed() < right.fixed() {
+            left.raise_floor(right.fixed() - left.fixed())?;
+        } else if !owner_left && right.fixed() < left.fixed() {
+            right.raise_floor(left.fixed() - right.fixed())?;
+        }
+        if left_poly && right_poly {
+            if owner_left {
+                let diff = left.assignment.append(&right.assignment)?;
+                right.body = shift(&right.body, right.fixed(), diff)?;
+            } else {
+                let diff = right.assignment.append(&left.assignment)?;
+                left.body = shift(&left.body, left.fixed(), diff)?;
+            }
+        }
+        let matched = if owner_left {
+            left.assignment.unify(&left.body, &right.body, table)?
+        } else {
+            right.assignment.unify(&left.body, &right.body, table)?
+        };
+        if !matched { return Ok(false); }
+        if left_poly && right_poly {
+            if owner_left { right.assignment = left.assignment.clone(); }
+            else { left.assignment = right.assignment.clone(); }
+        }
+        *self = left;
+        *other = right;
+        Ok(true)
+    }
+
+    pub fn has_unifier(&self, formal: &Type, table: &TypeTable) -> Result<bool, TypeError> {
+        if !self.is_clean() { return Err(TypeError::PendingAssignments); }
+        let mut assignment = self.assignment.clone();
+        let formal = assignment.instantiate(&TypeScheme::wrap(formal, 0)?)?;
+        assignment.unify(&self.body, &formal, table)
+    }
+
+    fn top_expr(&self) -> &Type {
+        let mut top = &self.body;
+        while let Type::Variable(n) = top {
+            match self.assignment.equivalent(*n) {
+                Some(next) => top = next,
+                None => break,
+            }
+        }
+        top
+    }
+
+    /// Both returned components have the same substituted/compacted scope.
+    /// Like bake(), they must not be fed into the old assignment afterward.
+    pub fn function_parts(&self, table: &TypeTable) -> Result<(Type, Type), TypeError> {
+        let expanded = expanded_top(self.top_expr(), table)?;
+        match self.assignment.substitution(&expanded)? {
+            Type::Function(parts) => Ok(*parts),
+            _ => Err(TypeError::ExpectedFunction),
+        }
+    }
+
+    pub fn matches_argument(&mut self, argument: &Self, table: &TypeTable) -> Result<bool, TypeError> {
+        if !argument.is_clean() { return Err(TypeError::PendingAssignments); }
+        if self.fixed() < argument.fixed() { self.raise_floor(argument.fixed() - self.fixed())?; }
+        self.wring_out()?;
+        self.body = expanded_top(&self.body, table)?;
+        let formal = match &self.body {
+            Type::Function(parts) => parts.0.clone(),
+            _ => return Err(TypeError::ExpectedFunction),
+        };
+        // append accounts for both the function's degree and any difference
+        // between the two floors; only shifting by degree can capture a free
+        // variable when importing an argument inferred in an earlier scope.
+        let diff = self.assignment.append(&argument.assignment)?;
+        let actual = shift(&argument.body, argument.fixed(), diff)?;
+        self.assignment.unify(&formal, &actual, table)
+    }
+
+    /// Specialise a structural pattern, preserving repeated-variable linkage
+    /// on the inferred side. The pattern's explicit variables are not inferred.
+    /// Failure may leave partial substitutions; trial users must roll back.
+    pub fn unify_specialise(&mut self, pattern: &mut Type, table: &TypeTable) -> Result<bool, TypeError> {
+        self.assignment.validate(&self.body)?;
+        table.validate_applications(&self.body)?;
+        table.validate_applications(pattern)?;
+        self.unify_specialise_inner(&self.body.clone(), pattern, table)
+    }
+
+    pub fn try_unify_specialise(&mut self, pattern: &mut Type, table: &TypeTable) -> Result<bool, TypeError> {
+        let (saved_type, saved_pattern) = (self.clone(), pattern.clone());
+        let result = self.unify_specialise(pattern, table);
+        if result != Ok(true) { *self = saved_type; *pattern = saved_pattern; }
+        result
+    }
+
+    fn unify_specialise_inner(&mut self, actual: &Type, pattern: &mut Type, table: &TypeTable)
+        -> Result<bool, TypeError>
+    {
+        if *pattern == Type::Undetermined {
+            *pattern = actual.clone();
+            return Ok(true);
+        }
+        if let Type::Variable(n) = actual {
+            if *n >= self.fixed() && self.assignment.equivalent(*n).is_none() {
+                let ceiling = self.fixed().checked_add(self.degree()).ok_or(TypeError::IndexOverflow)?;
+                let plug = TypeScheme::wrap(pattern, ceiling)?;
+                self.assignment.grow(plug.degree())?;
+                return Ok(pattern.specialise(plug.body(), table) && self.assignment.assign(*n, plug.body()));
+            }
+        }
+        if let (Some(p), Some(q)) = (named(actual), named(pattern)) {
+            if p != q {
+                if table.is_recursive(p) && table.is_recursive(q) { return Ok(false); }
+                let actual = expanded_top(actual, table)?;
+                *pattern = expanded_top(pattern, table)?;
+                return self.unify_specialise_inner(&actual, pattern, table);
+            }
+            let actual_args = match actual { Type::Applied(_, args) => args.as_slice(), _ => &[] };
+            let pattern_args = match pattern { Type::Applied(_, args) => args.as_mut_slice(), _ => &mut [] };
+            if actual_args.len() != pattern_args.len() { return Ok(false); }
+            for (a, p) in actual_args.iter().zip(pattern_args) {
+                *p = expanded_top(p, table)?;
+                if !self.unify_specialise_inner(a, p, table)? { return Ok(false); }
+            }
+            return Ok(true);
+        }
+        if named(actual).is_some() {
+            return self.unify_specialise_inner(&expanded_top(actual, table)?, pattern, table);
+        }
+        if named(pattern).is_some() {
+            *pattern = expanded_top(pattern, table)?;
+            return self.unify_specialise_inner(actual, pattern, table);
+        }
+        match (actual, pattern) {
+            (Type::Variable(n), pattern) => match self.assignment.equivalent(*n).cloned() {
+                Some(t) => self.unify_specialise_inner(&t, pattern, table),
+                None => Ok(*pattern == Type::Variable(*n)),
+            },
+            (Type::Primitive(a), Type::Primitive(p)) => Ok(a == p),
+            (Type::Row(a), Type::Row(p)) => self.unify_specialise_inner(a, p, table),
+            (Type::Function(a), Type::Function(p)) => Ok(
+                self.unify_specialise_inner(&a.0, &mut p.0, table)?
+                && self.unify_specialise_inner(&a.1, &mut p.1, table)?),
+            (Type::Tuple(a), Type::Tuple(p)) | (Type::Union(a), Type::Union(p)) => {
+                if a.len() != p.len() { return Ok(false); }
+                for (a, p) in a.iter().zip(p) {
+                    if !self.unify_specialise_inner(a, p, table)? { return Ok(false); }
+                }
+                Ok(true)
+            }
+            _ => Ok(false),
+        }
     }
 
     /// Test one global overload's formal argument, returning the shift that
@@ -685,5 +878,147 @@ mod tests {
         constructor.raise_floor(2).unwrap();
         assert_eq!((constructor.fixed(), constructor.degree()), (2, 2));
         assert_eq!(constructor.body(), &Type::tuple(vec![var(2), var(2)]));
+    }
+
+    #[test]
+    fn structural_matching_links_repeated_variables_and_can_roll_back() {
+        let table = TypeTable::new();
+        let mut actual = InferredType::wrap(&Type::function(var(0), var(0)), 0).unwrap();
+        let mut pattern = Type::function(int(), rat());
+        let saved = (actual.clone(), pattern.clone());
+        assert!(!actual.try_unify_specialise(&mut pattern, &table).unwrap());
+        assert_eq!((actual.clone(), pattern), saved);
+        let mut pattern = Type::function(int(), int());
+        assert!(actual.unify_specialise(&mut pattern, &table).unwrap());
+        assert_eq!(actual.bake().unwrap(), pattern);
+    }
+
+    #[test]
+    fn structural_matching_allocates_holes_in_the_existing_scope() {
+        let table = TypeTable::new();
+        let mut actual = InferredType::bottom(2).unwrap();
+        let mut pattern = Type::function(Type::Undetermined, Type::row(Type::Undetermined));
+        assert!(actual.unify_specialise(&mut pattern, &table).unwrap());
+        assert_eq!(pattern, Type::function(var(3), Type::row(var(4))));
+        assert_eq!(actual.bake().unwrap(), Type::function(var(2), Type::row(var(3))));
+        let concrete = InferredType::wrap(&Type::function(int(), Type::row(rat())), 2).unwrap();
+        assert!(actual.unify_to(&concrete, &table).unwrap());
+        assert_eq!(actual.bake().unwrap(), concrete.bake().unwrap());
+    }
+
+    #[test]
+    fn structural_matching_does_not_assign_rigid_variables_or_hide_occurs_checks() {
+        let table = TypeTable::new();
+        let mut fixed = InferredType::wrap(&var(0), 1).unwrap();
+        assert!(!fixed.unify_specialise(&mut int(), &table).unwrap());
+        assert!(fixed.unify_specialise(&mut var(0), &table).unwrap());
+        let mut free = InferredType::bottom(0).unwrap();
+        let mut recursive = Type::row(var(0));
+        let saved = free.clone();
+        assert!(!free.try_unify_specialise(&mut recursive, &table).unwrap());
+        assert_eq!(free, saved);
+    }
+
+    #[test]
+    fn structural_named_matching_exposes_patterns_and_preserves_recursive_identity() {
+        let mut table = TypeTable::new();
+        let rows = table.add_constructor(TypeBinding { name: "Rows".into(), definition: Type::row(var(0)), fields: vec![] }, 1, false);
+        let mut actual = InferredType::wrap(&Type::row(int()), 0).unwrap();
+        let mut pattern = Type::Applied(rows, vec![Type::Undetermined]);
+        assert!(actual.unify_specialise(&mut pattern, &table).unwrap());
+        assert_eq!(pattern, Type::row(int()));
+        let a = table.add_constructor(TypeBinding { name: "Loop".into(), definition: Type::void(), fields: vec![] }, 1, true);
+        table.update(a, Type::union_of(vec![Type::void(), Type::Applied(a, vec![var(0)])]), vec![]);
+        let b = table.add_constructor(TypeBinding { name: "Other".into(), definition: Type::Applied(a, vec![var(0)]), fields: vec![] }, 1, true);
+        let mut recursive = InferredType::wrap(&Type::Applied(a, vec![int()]), 0).unwrap();
+        assert!(!recursive.unify_specialise(&mut Type::Applied(b, vec![int()]), &table).unwrap());
+        let mut same = Type::Applied(a, vec![Type::Undetermined]);
+        assert!(recursive.unify_specialise(&mut same, &table).unwrap());
+        assert_eq!(same, Type::Applied(a, vec![int()]));
+    }
+
+    #[test]
+    fn identical_named_patterns_expand_their_argument_aliases() {
+        let mut table = TypeTable::new();
+        let rows = table.add_constructor(TypeBinding { name: "Rows".into(), definition: Type::row(var(0)), fields: vec![] }, 1, false);
+        let number = table.add_constructor(TypeBinding { name: "Number".into(), definition: int(), fields: vec![] }, 0, false);
+        let mut actual = InferredType::wrap(&Type::Applied(rows, vec![int()]), 0).unwrap();
+        let mut pattern = Type::Applied(rows, vec![Type::Tabled(number)]);
+        assert!(actual.unify_specialise(&mut pattern, &table).unwrap());
+        assert_eq!(pattern, Type::Applied(rows, vec![int()]));
+    }
+
+    #[test]
+    fn generic_function_call_substitutes_the_result_without_mutating_the_argument() {
+        let table = TypeTable::new();
+        let mut function = InferredType::wrap(&Type::function(var(0), Type::row(var(0))), 0).unwrap();
+        let argument = InferredType::wrap(&int(), 0).unwrap();
+        let saved = argument.clone();
+        assert!(function.matches_argument(&argument, &table).unwrap());
+        assert_eq!(function.function_parts(&table).unwrap(), (int(), Type::row(int())));
+        assert_eq!(argument, saved);
+    }
+
+    #[test]
+    fn call_preserves_rigid_context_and_independent_polymorphic_argument() {
+        let table = TypeTable::new();
+        let mut function = InferredType::wrap(&Type::function(var(0), var(0)), 0).unwrap();
+        let argument = InferredType::wrap(&Type::tuple(vec![var(0), Type::Undetermined]), 1).unwrap();
+        assert!(function.matches_argument(&argument, &table).unwrap());
+        assert_eq!(function.fixed(), 1);
+        let expected = Type::tuple(vec![var(0), var(1)]);
+        assert_eq!(function.function_parts(&table).unwrap(), (expected.clone(), expected));
+        let mut late_function = InferredType::wrap(&Type::function(var(3), var(3)), 2).unwrap();
+        let early_argument = InferredType::wrap(&Type::row(Type::Undetermined), 0).unwrap();
+        assert!(late_function.matches_argument(&early_argument, &table).unwrap());
+        assert_eq!(late_function.function_parts(&table).unwrap(), (Type::row(var(2)), Type::row(var(2))));
+    }
+
+    #[test]
+    fn function_components_follow_constructor_and_assignment_indirections() {
+        let mut table = TypeTable::new();
+        let n = table.add_constructor(TypeBinding { name: "Function".into(), definition: Type::function(var(0), Type::row(var(0))), fields: vec![] }, 1, false);
+        let named = InferredType::wrap(&Type::Applied(n, vec![int()]), 0).unwrap();
+        let mut value = InferredType::bottom(0).unwrap();
+        assert!(value.unify_to(&named, &table).unwrap());
+        assert_eq!(value.function_parts(&table).unwrap(), (int(), Type::row(int())));
+        assert!(value.matches_argument(&InferredType::wrap(&int(), 0).unwrap(), &table).unwrap());
+        assert_eq!(value.function_parts(&table).unwrap(), (int(), Type::row(int())));
+        assert_eq!(InferredType::wrap(&int(), 0).unwrap().function_parts(&table), Err(TypeError::ExpectedFunction));
+    }
+
+    #[test]
+    fn two_sided_unification_shares_substitutions_without_capturing_scopes() {
+        let table = TypeTable::new();
+        for reverse in [false, true] {
+            let mut left = InferredType::wrap(&Type::function(var(0), var(0)), 0).unwrap();
+            let mut right = InferredType::wrap(&Type::function(var(0), Type::Undetermined), 1).unwrap();
+            let matched = if reverse { right.unify(&mut left, &table) } else { left.unify(&mut right, &table) };
+            assert!(matched.unwrap());
+            assert_eq!(left.bake().unwrap(), Type::function(var(0), var(0)));
+            assert_eq!(left.bake().unwrap(), right.bake().unwrap());
+            assert_eq!(left.assignments(), right.assignments());
+            assert!(!left.is_polymorphic());
+        }
+    }
+
+    #[test]
+    fn two_sided_failure_restores_both_types_including_pending_constraints() {
+        let table = TypeTable::new();
+        let mut left = InferredType::wrap(&Type::tuple(vec![Type::Undetermined, int()]), 0).unwrap();
+        let mut right = InferredType::wrap(&Type::tuple(vec![rat(), rat()]), 1).unwrap();
+        let saved = (left.clone(), right.clone());
+        assert!(!left.unify(&mut right, &table).unwrap());
+        assert_eq!((left, right), saved);
+    }
+
+    #[test]
+    fn has_unifier_is_read_only_and_treats_formal_variables_as_fresh() {
+        let table = TypeTable::new();
+        let actual = InferredType::wrap(&Type::tuple(vec![var(0), int()]), 1).unwrap();
+        let saved = actual.clone();
+        assert!(actual.has_unifier(&Type::tuple(vec![var(0), var(1)]), &table).unwrap());
+        assert!(!actual.has_unifier(&Type::tuple(vec![var(0), var(0)]), &table).unwrap());
+        assert_eq!(actual, saved);
     }
 }

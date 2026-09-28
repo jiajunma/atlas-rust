@@ -1,0 +1,4 @@
+set_type MathMonoRow = [int]
+set probe_mono = MathMonoRow:[2,3]
+set probe_mono_function(MathMonoRow xs) = xs
+prints("NAMED_TYPE",probe_mono,probe_mono_function([4,5]))

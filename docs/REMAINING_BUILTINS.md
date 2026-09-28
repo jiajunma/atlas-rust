@@ -2,7 +2,16 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
-NEW TYPE SCOPE:3834389 COMPLETE4:15;27type/3coercion tests and CLI check pass.
+NEW TYPE MATCHING:3834447 COMPLETE4:44;38type/3coercion tests and CLI check
+pass. Structural matching, direct-function substitution and full two-sided
+rollback verified internally; active parser/analyzer still unmigrated.
+R7 capture3834702 COMPLETE34s confirms31 oracle intents (17accept/14reject),
+including named annotations, direct/tuple polymorphic calls and rigid-result
+rejection. Rust still fails those new cases at syntax. Global/local wrong
+assignment regressions remain open. Both jobs terminal; see matching/R7
+receipts and `slices/generic_language_2026-09-28.md` for exact evidence.
+
+PREVIOUS TYPE SCOPE:3834389 COMPLETE4:15;27type/3coercion tests and CLI check pass.
 Owned InferredType + nine new internal tests carry pending substitutions and
 fixed/free ranges together. Known global unit still fails. This foundation
 is not yet connected to the parser/analyzer; no latest-script support claim.

@@ -122,11 +122,41 @@ executes/fails at its intended assertion; it is not repaired. Report SHA
 `tests/reference/hpc/math_type_scope_2026_09_28.json`. All source hashes match
 the tested archive+patch tree; do not duplicate this terminal job.
 
-Still missing before analyzer integration: two-sided unification, structural
-pattern specialisation, named/assigned function component access and direct
-function-argument matching; then migrate Analysis/TypeCell/convert_expr and
-parser type environments together. No global/local assignment after-pass,
-25-contract differential acceptance or latest basic.at loading is claimed.
+The matching foundation adds two-sided transactional unification, structural
+pattern specialisation (including recursive nominal identity), read-only
+formal matching, named/assigned function component access and direct function
+argument/result substitution. Eleven new internal tests cover repeated versus
+independent variables, pending/rigid scopes, structural exposure and rollback.
+Job3834447 COMPLETE4:44 at atlas-type-matching-20260928.sP9ffXRv; pin
+47bf30c87a11656837cc88542a40efd7c3ea6934f89f8f5baf8b4d1260e8e5f9,
+polymorphic.rs e8d63d0eed149db31c60306a669644148e1c3ec123e5d7fed198739911b18cd0.
+All38 type tests,3 coercion tests and CLI check pass; the known global
+assignment regression still executes/fails. Report SHA
+799066fe0f91e45622f9bbc9b48c18e6ce9c86e47c8995641dd4dde81637b2ec,
+`tests/reference/hpc/math_type_matching_2026_09_28.json`.
+The safe Rust API uses owned snapshots for
+both bodies and assignments on failure, and accounts for differing floors
+when importing an earlier inferred argument. This does not change the active
+analyzer or establish any new source-language acceptance.
+
+Next migrate Analysis/TypeCell/convert_expr and parser type environments
+together. No global/local assignment after-pass or latest basic.at loading
+is claimed. The language probe catalog now has31 provisional contracts:
+six new inputs cover named monotype annotations and rejection, named function
+application, direct local polymorphic calls, independent tuple functions, and
+a rigid outer result rejection. Capture3834702 COMPLETE34s confirms all31
+oracle intents (17accept/14reject),6 checker tests,606original/1212Rust source
+files and264 scripts rehashed. Report SHA
+31901e9563db8128d51a4c61d60382984f000acbc7dbea3d8d37e42df3ddd271,
+`tests/reference/hpc/math_generic_probe_r7_2026_09_28.json`.
+The six new complete original streams were inspected: direct calls return
+([2],[3/4]), tuple functions return(2,["abc"]), named function returns[7],
+and the int result cannot satisfy rigid A. Named monotypes are retained in
+variable/function reports, not just expanded away: latest global.w:1503 uses
+add_simple_typedef even for an unparameterized definition. The current Rust
+alias map still expands those names, another integration mismatch to fix.
+Preserve old captures with their25-case catalogs; use the new31-case checker
+only with the matching new catalog. Both matching/capture jobs are terminal.
 
 Parser integration audit: `session::execute_tokens` currently calls
 `parse_command(tokens, source)` without the live type table. The general
@@ -138,6 +168,15 @@ including scope changes inside one command; do not blindly add identifiers
 to every type production. Original TYPE_VAR versus IDENT classification is
 observable in the same-name nested-abstraction rejection. The session's
 command-at-a-time boundary is necessary but not sufficient for that behavior.
+Also replace semantic calls to `TypeExpr::resolve()` in casts, lambda
+parameters and recursive-function result analysis: that diagnostic-only helper
+uses an empty table and silently falls back to Undetermined. These paths must
+resolve against the actual environment and report unknown names. Update both
+normal session commands and session-frame redirection parsing. Keep the existing
+`whattype TypeName` and type redefinition paths working: upstream TYPE_ID is
+allowed by `id`, but not by every IDENT-only binding production. Merely
+reclassifying every identifier without adapting those productions regresses
+the existing settype_b5 fixture.
 
 ### Additional original-backed discovery
 

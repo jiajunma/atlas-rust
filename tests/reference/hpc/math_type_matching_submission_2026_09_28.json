@@ -1,0 +1,29 @@
+{
+  "schema": "atlas-type-matching-submission-v1",
+  "stage": "/public/home/majj/atlas-type-matching-20260928.sP9ffXRv",
+  "job": "3834447",
+  "status": "COMPLETE_FOUNDATION_CHECKS_PASS_LANGUAGE_NOT_PORTED",
+  "observed": "sacct3834447 COMPLETED00:04:44 exit0:0.38 type tests and3 coercion tests pass; CLI check passes. Known global assignment unit still executes/fails as required by the foundation-only driver.",
+  "report": "tests/reference/hpc/math_type_matching_2026_09_28.json",
+  "report_sha256": "799066fe0f91e45622f9bbc9b48c18e6ce9c86e47c8995641dd4dde81637b2ec",
+  "pin_sha256": "47bf30c87a11656837cc88542a40efd7c3ea6934f89f8f5baf8b4d1260e8e5f9",
+  "pin": {
+    "schema": "atlas-type-foundation-pin-v1",
+    "parent_archive": "/public/home/majj/atlas-math-polymorphic-global-probe-20260928.wiD9I1kY/rust-probe.tar",
+    "parent_archive_sha256": "76e76e589fe775734849807bf438650a6d7b9c8d0622c402bf0ff9acbef1bf53",
+    "parent_report": "/public/home/majj/atlas-math-polymorphic-global-probe-20260928.wiD9I1kY/results/3833788/report.json",
+    "parent_report_sha256": "1ab2f23b5b520f0a29a88ef6469ab41bddbbce5012b6e0043a650b78d7c301c0",
+    "changed_files": {
+      "crates/atlas-core/src/types.rs": "46fab12516542df0f47a2c6403e6e1cc9b67c34a394f93a86a08e614aa0bfacf",
+      "crates/atlas-core/src/types/polymorphic.rs": "e8d63d0eed149db31c60306a669644148e1c3ec123e5d7fed198739911b18cd0"
+    },
+    "inputs": {
+      "candidate.patch": "27aecce5af504b602b74bf70dcb3c2330099839e4a5b86ab2902081afd6e2c8d",
+      "hpc/math_baseline_build.py": "931ec63f850d2a3769de1d5fb7836fc8eba7097e6d302ea30c2a6e47417c2ed7",
+      "hpc/math_type_foundation.py": "4ed2a113d0eda091c61396d89ba35b6b36ea62874ab8f948ef2c83b302081bd8",
+      "hpc/math_type_foundation.sbatch": "25d2a27292ce1bd6539e5e6fbc3addd10701258f1886088ae493a2d273bb2e3e"
+    },
+    "scope": "Complete internal inferred-type structural matching, read-only candidate matching, direct function argument/result substitution, and two-sided transactional unification. Eleven new tests; active language pipeline unchanged and known global assignment test must still fail. No high-level mathematics or generic-language acceptance."
+  },
+  "acceptance_limit": "Internal matching foundation, not parser/analyzer integration, not constant-assignment repair or high-level math acceptance."
+}

@@ -6,7 +6,21 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
-NEWEST LANGUAGE FOUNDATION: owned `InferredType` scope wrapper and nine new
+NEWEST LANGUAGE FOUNDATION: matching3834447 COMPLETE4:44 passes38 type tests,
+3 coercion tests and CLI check. Eleven new tests cover structural matching,
+two-sided rollback, direct-function argument/result substitution and differing
+scopes. Source polymorphic.rs e8d63d0eed149db31c60306a669644148e1c3ec123e5d7fed198739911b18cd0;
+report799066fe0f91e45622f9bbc9b48c18e6ce9c86e47c8995641dd4dde81637b2ec.
+The global regression still executes/fails; active language integration remains.
+Capture3834702 COMPLETE34s at atlas-generic-calls-20260928.f5mSx0Od confirms
+all31 oracle intents (17accept/14reject),6 checker tests,606original/1212Rust
+source files and264 scripts rehashed. Report
+31901e9563db8128d51a4c61d60382984f000acbc7dbea3d8d37e42df3ddd271.
+New named-type, direct/tuple-polymorphic-call and rigid-result raw streams
+inspected. Rust still fails their syntax. No active jobs from this wave.
+See matching/R7 submission receipts and the indexed generic-language slice.
+
+PREVIOUS LANGUAGE FOUNDATION: owned `InferredType` scope wrapper and nine new
 tests verified by3834389 COMPLETE4:15 at atlas-type-scope-20260928.VbWRGzcY. Pin
 29c461ae28757dfe1b52fba2e953baeba432b8c326ca5dd5127e452bdcaf002d;
 polymorphic.rs a45e0edf329baaf3ef0fbd6d5e59a0cf077d36604033fdb18a5036cc24864b02.

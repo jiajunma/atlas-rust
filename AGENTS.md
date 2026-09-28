@@ -105,6 +105,11 @@ not a source-level C++ translation.
 
 ### Type imports must carry pending assignments and their scope
 
+- Matching foundation3834447 passes38 type tests/3 coercion tests and CLI
+  check. Structural matching must expose the requested components while
+  preserving repeated-variable constraints and recursive nominal identity.
+  Direct function calls apply argument substitutions to the result; a failed
+  two-sided trial restores both expression bodies and both assignment scopes.
 - Source-backed scope foundation3834389 passes27 type tests (nine new),
   three coercion tests and CLI check. Import both the type body AND shifted
   pending substitutions; adding fresh empty slots alone discards constraints.

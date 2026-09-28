@@ -1,0 +1,1 @@
+prints("TUPLE_FRESH",let (f,g)=(any_type T ((T x):x),any_type S ((S y):[y])) in (f(2),g("abc")))

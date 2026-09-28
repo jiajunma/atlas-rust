@@ -1,0 +1,1 @@
+set probe_bad_call=any_type T ((T x):let f=any_type S ((S y):y) in T:f(1))
