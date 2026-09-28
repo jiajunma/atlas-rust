@@ -1,0 +1,2 @@
+set probe_empty=[]
+probe_empty:=[1]

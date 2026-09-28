@@ -8,6 +8,8 @@ language-loading gap and exposes FPP/partial-KL regressions on current main
 05625c5d. Builtin registration coverage is not mathematical correctness.
 See `MATH_VALIDATION.md` and `slices/math_failures_2026-09-28.md` for pinned
 evidence and unresolved scope; keep the failing cases in the test library.
+The current generic-language contracts, disproven hypotheses and source-backed
+port boundaries are indexed in `slices/generic_language_2026-09-28.md`.
 
 ## Reference source tree
 

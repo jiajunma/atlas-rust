@@ -1,0 +1,20 @@
+{
+  "schema": "atlas-generic-contract-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-generic-probe-r3-20260928.t8Hx4cky",
+  "probe_sha256": "a2c622a98f2a7c36246bab339b5993fae1ed867520632b37efef6ef2999e71aa",
+  "job": "3833787",
+  "status": "COMPLETED_6_CHECKER_TESTS_CONCRETE_CONTROL_FULL_OUTPUT_MATCH",
+  "report_sha256": "9184eb016e262418882e8b2cf385512d3da16bafc20c1d71edeccf688785ef49",
+  "observed": "All17 oracle intents confirmed. Concrete [int] empty-list assignment succeeds in both with identical full streams; untyped polymorphic assignment is still wrongly accepted in Rust. No generic runtime support claimed.",
+  "partition": "cpu",
+  "cpus": 1,
+  "memory": "2G",
+  "parent_capture": "3833758",
+  "parent_capture_sha256": "c321581d1666d9856951701ba1ab0c83955643f5447ba20b9b77f381de3d29d6",
+  "build": "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/build.json",
+  "build_sha256": "e2ce570826277bf24377b4e0b627f071f264c8ff8144ae789d04c9692e448b8f",
+  "cases": 17,
+  "provisional_accept_cases": 9,
+  "provisional_reject_cases": 8,
+  "scope": "Retains16 discovery inputs and adds the explicit [int] empty-list assignment acceptance control. No runtime-language changes. Inspect complete outputs and error sites, not just the observed category."
+}

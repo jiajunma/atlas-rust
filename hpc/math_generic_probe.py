@@ -45,8 +45,15 @@ def observed_category(case, record, streams):
         return "RESOURCE_OR_SIGNAL_FAILURE"
     if code == 0 and not err and payload(out, case["id"]) is not None:
         return "ACCEPTED"
+    # Current original reports constructor arity as an analysis error without
+    # a literal "Type error" heading (capture3833740). Keep it distinct from
+    # syntax errors. Program output alone cannot supply a diagnostic category.
+    if code == 1 and re.search(
+            rb"Type constructor '[^'\n]+' called with [0-9]+ type arguments, expected [0-9]+",
+            err):
+        return "REJECTED_TYPE_ARITY"
     kinds = re.findall(rb"(Syntax|Lexical|Type|Name|Runtime|Internal|Program) error",
-                       out + err, re.I)
+                       err, re.I)
     if code == 1 and kinds:
         return "REJECTED_" + "+".join(sorted({x.decode().upper() for x in kinds}))
     return "OTHER_FAILURE"
@@ -96,7 +103,9 @@ def main():
                                                scripts, case, folder, 45)
                 record["observations"][engine] = observation
                 record["categories"][engine] = observed_category(case, observation, stream)
-                record["first_diagnostics"][engine] = stream[1].decode(errors="replace").splitlines()[:12]
+                record["first_diagnostics"][engine] = [
+                    line[:500] for line in stream[1].decode(errors="replace").splitlines()[:12]
+                ]
                 streams[engine] = stream
             record["full_stdout_equal"] = streams["oracle"][0] == streams["rust"][0]
             record["full_stderr_equal"] = streams["oracle"][1] == streams["rust"][1]

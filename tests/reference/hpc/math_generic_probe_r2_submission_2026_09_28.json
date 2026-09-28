@@ -1,0 +1,20 @@
+{
+  "schema": "atlas-generic-contract-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-generic-probe-r2-20260928.1HDrf35O",
+  "probe_sha256": "c82b6e6f49e389e1eacba787f69304678457e550b6aae03e22e7de3960d12816",
+  "job": "3833758",
+  "status": "COMPLETED_6_CHECKER_TESTS_ALL_ORACLE_INTENTS_CONFIRMED",
+  "report_sha256": "c321581d1666d9856951701ba1ab0c83955643f5447ba20b9b77f381de3d29d6",
+  "findings": "All8 original acceptances fail in Rust. Of8 original rejections, polymorphic empty-list assignment is wrongly accepted in Rust; matching syntax labels for scope escape still fail full-output comparison. Duplicate<T,T> instantiated<int,rat> has two int projectors; explicit generic overload selection succeeds. No generic feature acceptance.",
+  "partition": "cpu",
+  "cpus": 1,
+  "memory": "2G",
+  "parent_capture": "3833740",
+  "parent_capture_sha256": "3333d195a2b86dd52a0d0a6623041e229e1918364855aa88f0ed81879b08ae01",
+  "build": "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/build.json",
+  "build_sha256": "e2ce570826277bf24377b4e0b627f071f264c8ff8144ae789d04c9692e448b8f",
+  "cases": 16,
+  "provisional_accept_cases": 8,
+  "provisional_reject_cases": 8,
+  "scope": "Retains all11 discovery inputs unchanged, corrects two provisional intents using the parent oracle capture, adds5 substitution/overload/occurs/assignment cases. Distinguishes exact arity diagnostics and never classifies stdout error words as diagnostics. No runtime-language changes or compatibility acceptance."
+}

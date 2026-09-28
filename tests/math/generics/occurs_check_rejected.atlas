@@ -1,0 +1,7 @@
+any_type S begin
+set probe_need((S->[S]) f)=f
+end
+any_type T begin
+set probe_id(T x)=x
+end
+set probe_infinite=probe_need(probe_id)

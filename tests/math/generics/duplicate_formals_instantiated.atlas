@@ -1,0 +1,5 @@
+set_type MathRepeated<T,T> = (T repeated_fst,T repeated_snd) !
+set repeated=MathRepeated<int,rat>:(1,2)
+prints("REPEATED",repeated,repeated.repeated_fst,repeated.repeated_snd)
+whattype repeated.repeated_fst
+whattype repeated.repeated_snd

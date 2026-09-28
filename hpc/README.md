@@ -1,15 +1,17 @@
 # HPC verification
 
-Use local execution for small, bounded checks when practical. Use the XMU
-login node for checkout, source synchronization, and dependency/build
-preparation, and run large Rust suites, the reference Atlas executable, CWEB
-expansion, differential comparisons, and benchmarks through SLURM on a compute
-node.
+For the current mathematical-validation goal, all builds and testing run
+through SLURM on compute nodes, including small unit and verifier tests.
+Local work is reading, editing, Git and hashing. Use the XMU login node for
+Git/source staging and dependency acquisition, not builds or interpreter runs.
+This supersedes the historical local-small-check/login-build instructions.
 
 ## Repository location and toolchain
 
-The shared project directory is `/public/home/majj/atlas-rust` on XMU. The
-login node has internet access for initial dependency acquisition; compute
+The shared project directory `/public/home/majj/atlas-rust` on XMU contains
+unrelated uncommitted work; never pull into, overwrite or build from it for
+the current validation campaign. Use fresh pinned job stages. The login node
+has GitHub access (HTTPS checked on2026-09-28) and can acquire dependencies; compute
 nodes do not. The repository follows the installed stable toolchain, with
 Rust 1.90 as the enforced minimum because Malachite 0.10 requires it. Install
 or update a suitable stable toolchain on the login node before building:
@@ -18,49 +20,47 @@ or update a suitable stable toolchain on the login node before building:
 rustup toolchain install stable --profile minimal --component clippy,rustfmt
 ```
 
-Build binaries and cache dependencies on the login node before submitting
-jobs. Every job records the commit, dirty-tree state, Rust toolchain, reference
+Acquire dependencies on the login node; build binaries on compute nodes.
+Every job records the commit, dirty-tree state, Rust toolchain, reference
 Atlas revision, CWEB version, SLURM job/node, fixture manifest, exit status,
 and report checksums.
 
 Never put tokens, credentials, or large generated outputs in Git.
 
-Typical workflow:
+For published source, prefer HPC-side Git. In a login-node shell, set
+`atlas_commit` to the exact reviewed full commit SHA available on GitHub:
 
 ```bash
-atlas_commit="$(git rev-parse HEAD)"
-atlas_dirty=false
-if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
-  atlas_dirty=true
-fi
-rsync -az --exclude=.git --exclude=target --exclude=results ./ \
-  majj@10.26.14.64:/public/home/majj/atlas-rust/
-ssh majj@10.26.14.64 \
-  'cd atlas-rust && export PATH=$HOME/.cargo/bin:$PATH && cargo build --workspace --release --locked'
+atlas_stage=$(mktemp -d /public/home/majj/atlas-rust-job.XXXXXXXX)
+git clone --no-checkout https://github.com/jiajunma/atlas-rust.git "$atlas_stage/source"
+cd "$atlas_stage/source"
+git checkout "$atlas_commit"
+git rev-parse HEAD
+git status --porcelain --untracked-files=all
+cargo fetch --locked
 ```
 
-The differential jobs now verify the submit checkout rather than trusting a
-declared commit string. After syncing a committed tree, make the remote
-checkout point at the same commit (and verify it is clean) before submission;
-an rsync that leaves a stale `.git/HEAD` is intentionally rejected:
+Verify HEAD equals the requested SHA and status is empty before submission.
+An existing dedicated source cache may instead fetch and materialize that
+exact commit in a new stage. Never use a moving branch as the recorded version.
+Unpushed candidates use a small checksummed patch against a pinned HPC
+baseline, with an exact source-file manifest after application. Do not push
+unverified code just to transport it, upload target trees, or overlay the
+shared development checkout. Current math harnesses freeze archives plus
+input manifests; see `docs/HANDOFF.md` for their active pins and jobs.
+
+The following legacy job examples run from that fresh login-node checkout,
+not the shared directory. Use the stage-specific math drivers for the current
+campaign. A lexer preflight alone is not mathematical verification:
 
 ```bash
-ssh majj@10.26.14.64 \
-  "cd atlas-rust && git checkout --detach $atlas_commit && git rev-parse HEAD && git status --porcelain --untracked-files=all"
-```
-
-Then submit a versioned job script:
-
-```bash
-ssh majj@10.26.14.64 \
-  "cd atlas-rust && ATLAS_COMMIT=$atlas_commit ATLAS_DIRTY_TREE=$atlas_dirty sbatch hpc/differential.sbatch"
+ATLAS_COMMIT="$atlas_commit" ATLAS_DIRTY_TREE=false sbatch hpc/differential.sbatch
 ```
 
 For the structural Rust layer, use the smaller preflight job first:
 
 ```bash
-ssh majj@10.26.14.64 \
-  "cd atlas-rust && ATLAS_COMMIT=$atlas_commit ATLAS_DIRTY_TREE=$atlas_dirty sbatch hpc/real_group_preflight.sbatch"
+ATLAS_COMMIT="$atlas_commit" ATLAS_DIRTY_TREE=false sbatch hpc/real_group_preflight.sbatch
 ```
 
 For the typed scalar operator stage, first capture the upstream oracle only.
@@ -70,8 +70,7 @@ does not invoke Rust, so it is valid evidence for freezing the reference before
 the implementation stage:
 
 ```bash
-ssh majj@10.26.14.64 \
-  "cd atlas-rust && ATLAS_COMMIT=$atlas_commit ATLAS_DIRTY_TREE=$atlas_dirty sbatch hpc/scalar_reference.sbatch"
+ATLAS_COMMIT="$atlas_commit" ATLAS_DIRTY_TREE=false sbatch hpc/scalar_reference.sbatch
 ```
 
 The report is `results/<commit>/<job-id>/scalar_reference_report.json`; its
@@ -87,8 +86,7 @@ For the typed pipeline swap, compare the Rust CLI against the already frozen
 Atlas event files with:
 
 ```bash
-ssh majj@10.26.14.64 \
-  "cd atlas-rust && ATLAS_COMMIT=$atlas_commit ATLAS_DIRTY_TREE=$atlas_dirty sbatch hpc/pipeline_swap_diff.sbatch"
+ATLAS_COMMIT="$atlas_commit" ATLAS_DIRTY_TREE=false sbatch hpc/pipeline_swap_diff.sbatch
 ```
 
 The report is
@@ -125,8 +123,7 @@ the raw reference job. With no fixture argument it captures
 `commands/subscription_context.atlas`:
 
 ```bash
-ssh majj@10.26.14.64 \
-  "cd atlas-rust && ATLAS_COMMIT=$atlas_commit ATLAS_DIRTY_TREE=$atlas_dirty sbatch hpc/reference_capture.sbatch"
+ATLAS_COMMIT="$atlas_commit" ATLAS_DIRTY_TREE=false sbatch hpc/reference_capture.sbatch
 ```
 
 Pass one or more paths below `tests/fixtures/` after the job script to capture
@@ -160,19 +157,19 @@ state, executable checksum, and `atlas-scripts` tree hash after the final
 fixture; a runtime replacement during capture therefore cannot produce a PASS
 report.
 
-Heavy differential jobs must use `sbatch`; do not run them on the login node.
+All differential jobs must use `sbatch`; do not run them on the login node.
 Job scripts must fail on a mismatch and write a machine-readable report under
 `results/<commit>/<job-id>/`. Pull only summaries and checksums back:
 
-```bash
-rsync -az majj@10.26.14.64:/public/home/majj/atlas-rust/results/ ./results/
-```
+Copy only the exact job's reports/checksums (and targeted raw diagnostics when
+needed) from its immutable stage. Do not synchronize an entire shared results
+tree, and verify downloaded hashes against the remote report.
 
 SLURM opens `#SBATCH --output` before the script body runs. The checked-in jobs
 therefore use root-level output filenames and exclude only the current job's
 exact untracked stdout path from the submit-tree dirty check. Other Slurm logs,
 untracked files, and tracked changes still make the checkout dirty. Exercise
-that rule locally with `bash hpc/test_source_state.sh`.
+that rule with `bash hpc/test_source_state.sh` inside an HPC compute job.
 
 Compute-node jobs should also set `PATH="$HOME/.cargo/bin:$PATH"` explicitly;
 the login-node shell environment is not guaranteed to be inherited.

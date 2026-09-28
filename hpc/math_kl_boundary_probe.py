@@ -66,6 +66,12 @@ def main():
             following = "    #[test]\n    fn f4_partial_kl_recursion_handles_interval_boundary_links()"
             test_filter = "domain_builtins::tests::f4_full_kl_polynomial_matches_oracle_with_and_without_history"
             package, count, trace_prefix = "atlas-core", 1, "F4_FULL_KL_REGRESSION "
+        elif kind == "polymorphic_global_constant":
+            core = "crates/atlas-core/src/typed.rs"
+            first = "    // Regression: latest-original global.w:992 makes polymorphic bindings constant."
+            following = "    #[test]\n    fn overriding_a_constant_reports_the_constant_suffix()"
+            test_filter = "typed::tests::polymorphic_empty_global_is_not_assignable"
+            package, count, trace_prefix = "atlas-core", 1, "POLYMORPHIC_GLOBAL_REGRESSION "
         else:
             raise ValueError("unknown regression probe")
         previous = parent["source_files"]["rust"]
@@ -103,7 +109,8 @@ def main():
                           "locator_coroots": "integral image positivity",
                           "e6_form_coordinates": "twist-fixed generator coordinate",
                           "e6_partial_cayley": "second image",
-                          "f4_full_kl": "assertion `left == right` failed"}[kind]
+                          "f4_full_kl": "assertion `left == right` failed",
+                          "polymorphic_global_constant": "polymorphic global must reject assignment"}[kind]
         if expected_error not in log:
             raise ValueError("expected mathematical invariant failure is missing")
         if any(digest(out / "source" / n) != h for n, h in files.items()):

@@ -6,13 +6,14 @@ not a source-level C++ translation.
 
 ## Hard rules
 
-1. **Use local execution for small checks; use HPC for heavy work.** Small,
-   bounded local checks such as `cargo check -p <crate>`, focused unit tests,
-   formatting, and static analysis are allowed. Do not run long builds,
-   full-workspace or large test suites, Atlas/CWEB differential jobs,
-   benchmarks, or other resource-heavy work locally; submit those to XMU HPC.
-   The original Atlas executable remains an HPC oracle. GitHub Actions is
-   allowed only when its workflow is the requested verification environment.
+1. **All testing and builds run on HPC compute nodes.** The user's latest
+   mathematical-validation directive supersedes the older local-small-check
+   convention. Use local execution for reading, editing, Git and hashing;
+   use the login node for Git/source staging and dependency acquisition only.
+   Submit Cargo builds/checks/tests, fixture/verifier execution, Atlas/CWEB
+   differential jobs and benchmarks through SLURM. The original Atlas
+   executable remains an HPC oracle. GitHub Actions is allowed only when its
+   workflow is the requested verification environment.
 2. **The original Atlas executable is the language oracle.** The upstream
    repository and its generated CWEB output define reference behavior. Do not
    infer undocumented semantics from what is convenient to implement.
@@ -111,9 +112,22 @@ not a source-level C++ translation.
 - Constructor-arity rejection lacks the literal `Type error` heading.
   Bind rejection expectations to the actual diagnostic and failing command;
   a Rust syntax error before the declaration is not a matching type rejection.
-- CPU submission for that capture rejected8GiB and reported a4GiB allowance.
-  The same small capture completed with a2GiB CLI override. Old8GiB notes
-  are historical, not a guarantee of current partition policy.
+- The one-CPU capture submission rejected8GiB and reported a4GiB allowance.
+  The same small capture completed with a2GiB CLI override. This does not
+  establish a partition-wide4GiB cap: the two-CPU repair job used8GiB.
+  Check the actual requested CPU/memory combination and scheduler response.
+
+### Preserve the polymorphic versus concrete assignment distinction
+
+- Capture3833758 shows original rejecting `set x=[]; x:=[1]` as constant
+  while Rust accepts it. Probe3833788 executes the unchanged-runtime unit
+  failure (`constant=false rejected=false`), after permitting concrete `[int]`.
+- R3 capture3833787 confirms the concrete `[int]` control matches completely.
+  Original global.w:992 derives implicit constness from the binding's type
+  scheme. Preserve that type-level rule, including fixed versus polymorphic
+  variables; do not make every empty list or every type variable constant.
+  The regression remains explicitly failing until a real after-pass and
+  full original-backed comparison exist. See the indexed generic-language slice.
 
 ### Compare archive paths in extracted-tree coordinates
 

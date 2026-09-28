@@ -22,8 +22,8 @@
     },
     {
       "id": "concrete_overload",
-      "intent": "accept",
-      "scope": "A concrete overload and a polymorphic overload coexist; record actual preference.",
+      "intent": "reject",
+      "scope": "Capture3833740: a concrete int overload and generic overload coexist, but the int call is ambiguous; concrete does not automatically win.",
       "file": "concrete_overload.atlas"
     },
     {
@@ -64,9 +64,45 @@
     },
     {
       "id": "duplicate_formals_rejected",
-      "intent": "reject",
-      "scope": "Duplicate formal type names must not silently alias two independent variables.",
+      "intent": "accept",
+      "scope": "Historical probe ID retained: capture3833740 disproves the rejection hypothesis. Original accepts duplicate names and prints (A,A); investigate substitution separately.",
       "file": "duplicate_formals_rejected.atlas"
+    },
+    {
+      "id": "independent_formals",
+      "intent": "accept",
+      "scope": "Different type variables remain independent within one function, and instances do not leak constraints to later calls.",
+      "file": "independent_formals.atlas"
+    },
+    {
+      "id": "duplicate_formals_instantiated",
+      "intent": "accept",
+      "scope": "Determine which supplied type argument a repeated formal name denotes; retain projector types and values, not just declaration acceptance.",
+      "file": "duplicate_formals_instantiated.atlas"
+    },
+    {
+      "id": "explicit_generic_selection",
+      "intent": "accept",
+      "scope": "Use a rigid type variable during explicit overload selection to distinguish the generic definition from a concrete int overload.",
+      "file": "explicit_generic_selection.atlas"
+    },
+    {
+      "id": "occurs_check_rejected",
+      "intent": "reject",
+      "scope": "The same variable cannot simultaneously be S and [S]; unification must not invent a recursive type to accept an identity function here.",
+      "file": "occurs_check_rejected.atlas"
+    },
+    {
+      "id": "polymorphic_assignment_rejected",
+      "intent": "reject",
+      "scope": "A polymorphic non-function value is implicitly constant; assignment must not monomorphize an already bound empty list.",
+      "file": "polymorphic_assignment_rejected.atlas"
+    },
+    {
+      "id": "monomorphic_empty_assignment",
+      "intent": "accept",
+      "scope": "An explicit concrete element type removes polymorphism; an empty [int] row must remain assignable, unlike the paired polymorphic case.",
+      "file": "monomorphic_empty_assignment.atlas"
     }
   ]
 }

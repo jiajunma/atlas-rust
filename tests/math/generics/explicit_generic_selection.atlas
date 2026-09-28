@@ -1,0 +1,6 @@
+any_type T begin
+set probe_select(T x)=x
+end
+set probe_select(int x)=x+1
+set probe_generic=probe_select@ T (T)
+prints("GENERIC",probe_generic(2),probe_generic(3/4))

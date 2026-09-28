@@ -1,0 +1,3 @@
+set probe_ints=[int]:[]
+probe_ints:=[1]
+prints("MUTABLE",probe_ints)

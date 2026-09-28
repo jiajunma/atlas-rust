@@ -12,9 +12,9 @@ class GenericContractCaptureTests(unittest.TestCase):
 
     def test_catalog_has_positive_and_rejected_cases(self):
         cases = load_cases(Path(__file__).resolve().parents[1])
-        self.assertEqual(len(cases), 11)
-        self.assertEqual(sum(c["intent"] == "accept" for c in cases), 5)
-        self.assertEqual(len({c["id"] for c in cases}), 11)
+        self.assertEqual(len(cases), 17)
+        self.assertEqual(sum(c["intent"] == "accept" for c in cases), 9)
+        self.assertEqual(len({c["id"] for c in cases}), 17)
         self.assertTrue(all(c["source"].endswith("quit\n") for c in cases))
 
     def test_acceptance_requires_markers_and_empty_diagnostics(self):
@@ -32,6 +32,18 @@ class GenericContractCaptureTests(unittest.TestCase):
         for code, expected in ((124, "TIMEOUT"), (137, "RESOURCE_OR_SIGNAL_FAILURE")):
             self.assertEqual(observed_category(self.case, dict(self.success, exit_status=code),
                                               (self.output, b"Type error")), expected)
+
+    def test_constructor_arity_is_an_explicit_distinct_rejection(self):
+        failed = dict(self.success, exit_status=1)
+        diagnostic = b"Type constructor 'MathArityPair' called with 1 type arguments, expected 2"
+        self.assertEqual(observed_category(self.case, failed, (self.output, diagnostic)),
+                         "REJECTED_TYPE_ARITY")
+        self.assertEqual(observed_category(self.case, failed, (diagnostic, b"unclassified")),
+                         "OTHER_FAILURE")
+
+    def test_printed_error_words_cannot_classify_a_rejection(self):
+        self.assertEqual(observed_category(self.case, dict(self.success, exit_status=1),
+                                          (b"Type error", b"unclassified")), "OTHER_FAILURE")
 
 
 if __name__ == "__main__":

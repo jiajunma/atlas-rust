@@ -56,6 +56,31 @@ generic gap is not just one missing keyword. Preserve current oracle cases
 72-74; port scoping, type substitution and overload behavior with negative
 fixtures rather than rewriting upstream scripts. No language runtime edited.
 
+LATEST LANGUAGE EVIDENCE: capture3833758 COMPLETE16cases/6checker tests,
+reportc321581d1666d9856951701ba1ab0c83955643f5447ba20b9b77f381de3d29d6.
+Duplicate<T,T> instantiated<int,rat> has TWO int projector results; later
+duplicate slots remain unused. Explicit generic selection succeeds, ordinary
+generic/concrete int application is ambiguous, occurs-check example rejected.
+All8 original-positive cases fail in Rust; Rust wrongly ACCEPTS assignment
+to an untyped empty row. R3 capture3833787 adds the concrete `[int]` control:
+all17 oracle intents confirmed; that control matches full stdout/stderr.
+R3 report9184eb016e262418882e8b2cf385512d3da16bafc20c1d71edeccf688785ef49.
+Same-runtime unit probe3833788 COMPLETE2:18: executes0pass1fail with
+`constant=false rejected=false`, after concrete assignment succeeds. Source
+typed.rsa5c919d9... contains ONLY the new regression on parent3833716.
+Report1ab2f23b5b520f0a29a88ef6469ab41bddbbce5012b6e0043a650b78d7c301c0;
+log79f9970bbabf079f6e5fcbdcd5a6d23f2e2fff6bd4b56312958efca8a441f035.
+All jobs in this paragraph are terminal; do not duplicate. The new unit is
+intentionally still failing, not ignored. No language implementation yet.
+Next implement the scheme/scope/constructor/overload boundaries described in
+`slices/generic_language_2026-09-28.md`, preserving all17 probes and the
+unchanged before unit. Current Rust has only independent `Undetermined`
+holes; these cannot represent repeated linked type variables. In particular,
+implicit constness comes from the scheme in global.w:992, not the value[].
+Avoid a one-off list-constant patch that leaves type soundness and reports wrong.
+
+Earlier generic discovery:
+
 Generic contract capture3833740 COMPLETE27s,4 checker tests pass, at
 /public/home/majj/atlas-math-generic-probe-20260928.7vz3U5lz.
 Pin eafd8bf29b7593bcf0e366a5b8245a1c1f573f9a1d937cd4924cadeb355636dc;
@@ -70,9 +95,10 @@ All original successes fail in Rust. Scope escape has syntax errors in both,
 but Rust fails the preceding declaration too; that is NOT equivalence.
 Next review raw streams, freeze evidence-backed expectations and extend the
 duplicate/substitution and overload cases before implementing type schemes.
-Initial8G submission created no job (CPU allowance now4G); overriding to2G
-completed the capture. Do not mutate the frozen capture or assume8G remains
-available. Receipt and raw paths are in tests/reference/hpc/math_generic_*.
+Initial one-CPU8G submission created no job (reported allowance4G); overriding
+to2G completed the capture. This is not a partition-wide limit; two-CPU
+repair jobs used8G. Do not mutate the frozen capture. Receipt and raw paths
+are in tests/reference/hpc/math_generic_*.
 
 ### Earlier wave snapshots (superseded by latest results above)
 

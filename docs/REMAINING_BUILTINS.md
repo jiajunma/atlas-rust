@@ -13,6 +13,11 @@ and duplicate formals are accepted despite the initial rejection hypothesis.
 Rust fails every original-positive case. Freeze actual contracts before porting
 scoped variables/substitution/overload resolution; do not rewrite basic.at.
 All E7/resource, broader group/real-form and upper-level mathematics gates remain.
+Generic capture3833758 verifies16 oracle contracts and exposes Rust's wrong
+acceptance of assignment to a polymorphic empty list. Probe3833788 COMPLETE
+executes the unchanged-runtime unit failure;3833787 COMPLETE adds the concrete
+`[int]` control, whose full output matches. The new unit remains failing.
+See `slices/generic_language_2026-09-28.md` before implementing type schemes.
 
 The following records preserve the earlier progression.
 

@@ -1,0 +1,4 @@
+any_type S,T begin
+set probe_pair(S x,T y) = (S,T):(x,y)
+end
+prints("DISTINCT",probe_pair(2,"abc"),probe_pair(true,3/4))

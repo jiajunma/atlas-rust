@@ -1,0 +1,20 @@
+{
+  "schema": "atlas-language-regression-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-polymorphic-global-probe-20260928.wiD9I1kY",
+  "job": "3833788",
+  "status": "EXECUTED_WRONG_ACCEPTANCE_REPRODUCED_NOT_REPAIRED",
+  "report_sha256": "1ab2f23b5b520f0a29a88ef6469ab41bddbbce5012b6e0043a650b78d7c301c0",
+  "unit_log_sha256": "79f9970bbabf079f6e5fcbdcd5a6d23f2e2fff6bd4b56312958efca8a441f035",
+  "observed": "Compute job completed00:02:18. Unit executes0passed1failed, constant=false/rejected=false, then panics at the expected rejection assertion; concrete [int] assignment passed first. Runtime unchanged; no after-pass.",
+  "probe_sha256": "63a50ff5782e93bd5f41008e0c3d38349e744f4019dcd57c43638d12a36b8c8e",
+  "source_archive_sha256": "76e76e589fe775734849807bf438650a6d7b9c8d0622c402bf0ff9acbef1bf53",
+  "patch_sha256": "5669027fd784b54673c5480a1491a1d2794b366455cd5db33b45a0e569e7573f",
+  "module_sha256": "a5c919d9dc799c1540117c540d0e05765a0d5284aed3115905ff5cfc4107fceb",
+  "driver_sha256": "eaf67e62a14c16f33ec939878e464d10eaa5b12e8bcfefc04356650694166270",
+  "parent_build": "3833716",
+  "parent_build_sha256": "62aa96181c87d0ae816928dcbab37b5b7b448d1d1d00632106e28214319b2e63",
+  "oracle_capture": "3833758",
+  "oracle_capture_sha256": "c321581d1666d9856951701ba1ab0c83955643f5447ba20b9b77f381de3d29d6",
+  "scope": "Changes only one typed.rs unit test on the accepted mathematical candidate; language/runtime untouched. Test first permits concrete [int] empty-list assignment, then requires a constant-binding rejection for an untyped polymorphic empty row.",
+  "acceptance": "Must execute0passed1failed at the polymorphic-global assertion and print the rejection/constness diagnostic. A compilation failure or concrete-assignment failure is not evidence. No repair or after-pass yet."
+}

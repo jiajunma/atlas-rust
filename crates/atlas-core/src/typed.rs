@@ -16792,6 +16792,28 @@ mod tests {
         assert_eq!(completion_values(&mut context, "my"), &["myvar"]);
     }
 
+    // Regression: latest-original global.w:992 makes polymorphic bindings constant.
+    #[test]
+    fn polymorphic_empty_global_is_not_assignable() {
+        // The concrete annotation removes polymorphism, so this remains mutable.
+        let mut concrete = TypedContext::new();
+        concrete.execute(&command("set probe_ints=[int]:[]")).expect("typed empty row");
+        concrete.execute(&command("probe_ints:=[1]")).expect("monomorphic assignment");
+        assert!(!concrete.globals.is_const("probe_ints"));
+
+        let mut context = TypedContext::new();
+        context.execute(&command("set probe_empty=[]")).expect("polymorphic empty row");
+        let assignment = context.execute(&command("probe_empty:=[1]"));
+        eprintln!(
+            "POLYMORPHIC_GLOBAL_REGRESSION constant={} rejected={}",
+            context.globals.is_const("probe_empty"), assignment.is_err()
+        );
+        let error = assignment.expect_err("polymorphic global must reject assignment");
+        assert_eq!(error.kind, ErrorKind::Name);
+        assert_eq!(error.message, "Name 'probe_empty' is constant in assignment probe_empty:=[1]");
+        assert!(context.globals.is_const("probe_empty"));
+    }
+
     #[test]
     fn overriding_a_constant_reports_the_constant_suffix() {
         // global.w:911-994: the override report notes a constant previous

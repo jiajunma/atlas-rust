@@ -68,6 +68,10 @@ hypotheses. Original accepts5 probes; Rust accepts none. Arity diagnostics
 need exact contract review, and equal syntax labels alone are not acceptance.
 High-level unitarity/Hodge/AV/associated-cycle coverage is still blocked by
 latest basic.at, not repaired by the bare-core KL successes above.
+Follow-ups3833758/3833787 expand this prerequisite library to17 probes and
+confirm a separate wrong acceptance of polymorphic empty-row assignment.
+The explicit `[int]` control matches; before unit3833788 executes/fails on
+the incorrect polymorphic acceptance. See the indexed generic-language slice.
 
 Earlier candidate progression (superseded only for the cases covered above):
 
