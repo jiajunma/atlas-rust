@@ -1,0 +1,13 @@
+{
+  "schema": "atlas-generic-contract-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8",
+  "job": "3834282",
+  "status": "COMPLETED_CONCRETE_LOCAL_CONTROL_MATCH_ONE_FIXTURE_ERROR",
+  "elapsed": "00:00:10",
+  "probe_sha256": "f9c1514ec9ba198449230dcbbbd79cd7acc3b89f7c4a1376a69554a889e7dc5d",
+  "report_sha256": "da21cb68d53b0cb378c28924a450f747a34cfc396f99d73403f031801bb22f0b",
+  "cases": 24,
+  "checker_tests": 6,
+  "observed": "Concrete local [int] empty-row assignment succeeds with identical full streams. Spaced phantom discovery still fails before intended semantics because named struct_specs requires at least two fields. Both rejected sources retained and a distinct two-field companion added.",
+  "scope": "No Rust runtime changes or feature acceptance."
+}

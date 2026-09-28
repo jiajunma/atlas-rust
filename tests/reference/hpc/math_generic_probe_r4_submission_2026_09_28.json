@@ -1,0 +1,13 @@
+{
+  "schema": "atlas-generic-contract-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-generic-probe-r4-20260928.e54ZV67G",
+  "job": "3834266",
+  "status": "COMPLETED_DISCOVERY_WITH_TWO_DISPROVED_INTENTS",
+  "elapsed": "00:00:09",
+  "probe_sha256": "2e928dd58bd2af25162092241386bbe4e5b259e95b9511176894a971217518ef",
+  "report_sha256": "dc809b5c37c51739683dcf94e1d5a6bfdb4783b7ff5898906ae5932f34b6b427",
+  "cases": 22,
+  "checker_tests": 6,
+  "observed": "Original accepts fixed-type local mutation and distinct-name nested abstractions; rejects polymorphic local assignment, which Rust wrongly accepts. Same-name nested shadowing is rejected. The phantom fixture hits a >= lexical trap and does not test constructor substitution.",
+  "scope": "Discovery only; no Rust language repair. Sources/raw streams/metrics preserved; later catalog intentions follow the oracle."
+}

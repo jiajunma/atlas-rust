@@ -1,0 +1,4 @@
+any_type T begin
+set probe_reassign(T x,T y)=T:let z=x in z:=y; z
+end
+prints("FIXED_LOCAL",probe_reassign(2,7),probe_reassign("old","new"))

@@ -1,0 +1,1 @@
+prints("POLY_LOCAL",let xs=[] in xs:=[1]; xs)

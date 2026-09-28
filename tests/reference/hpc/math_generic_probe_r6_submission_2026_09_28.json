@@ -1,0 +1,15 @@
+{
+  "schema": "atlas-generic-contract-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-generic-probe-r6-20260928.VmO8cJBC",
+  "job": "3834288",
+  "status": "COMPLETED_25_ORACLE_INTENTS_CONFIRMED",
+  "elapsed": "00:00:10",
+  "probe_sha256": "ac5ed53fb072ba280097248d7aeeb3c90b8ca728e008ce1736e1606ebac6bf52",
+  "report_sha256": "9175f1b4fbdad9ed114580398b093580ee8ea0df1f4c7d8940d6c94920d457a3",
+  "cases": 25,
+  "checker_tests": 6,
+  "accepted_original_cases": 13,
+  "rejected_original_cases": 12,
+  "observed": "Valid two-field MathPhantom<S,T> reports body(A,A), retains applied<int,rat>, and has two int projectors returning7/9. All25 oracle intents confirmed. Rust still wrongly accepts global/local polymorphic assignments and cannot parse generic cases; concrete mutable controls fully match.",
+  "scope": "No language repair or high-level mathematical acceptance."
+}

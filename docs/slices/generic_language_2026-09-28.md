@@ -55,13 +55,103 @@ No repair/after-pass yet. All these jobs are terminal; do not duplicate.
 
 ## Source-backed causes and port order
 
+### Internal foundation implemented, language integration still open
+
+HPC job3833858 COMPLETE4:12 checks the new `types::polymorphic` module and
+`Type::{Variable,Applied}` representation. All17 type units (13new/4legacy),
+3 coercion units and `cargo check -p atlas-cli` pass. The unchanged global
+wrong-acceptance regression still executes/fails as required; this is NOT an
+after-pass. Report SHA
+4179f3ec973864a988da06f953589add340f31dd6b340cebc68d62e4a9c1118e.
+The report binds the parent archive/probe, exact1213-file source manifest,
+patch, driver and submitted script, isolated target and command time/RSS.
+
+`TypeScheme` owns a clean packed body/fixed threshold/degree;
+`TypeAssignment` owns per-trial substitutions, fresh instantiation, floor
+lowering, transitive occurs checking and substitution/compaction. Rollback
+uses an explicit owned snapshot. Constructor applications retain unused
+arguments, validate IDs/arity before unification shortcuts and perform
+simultaneous substitution. Recursive nominal identity prevents infinite
+expansion. The existing analyzer does not yet produce/use these new types.
+
+Remaining integration must carry types AND their assignment scopes together,
+following original `type` in axis-types.w:2990-3625. In particular: raising
+a fixed-variable floor must first bake pending assignments; combining tuple
+components or overload candidates must freshen their free-variable ranges;
+extracting a function result must apply the same argument substitutions.
+Do not feed compacted substitution output back into the old assignment.
+`convert_expr` currently takes a bare `&mut Type`, `Analysis` lacks the
+fixed-variable count, and local/global `TypeCell`s hold bare types. Those
+interfaces, lambda/let binding, balancing, casts and overload trials must
+migrate together. The older `specialise` API is not linked-variable inference.
+Primitive `Undetermined` wildcard overload registrations also need explicit
+schemes; new type variables cannot be treated as ordinary monomorphic holes.
+Recursive-group declarations need another lowering step: original
+`simple_subst(...,group)` in axis-types.w:1186-1265 forwards all actual
+arguments to implicit same-group references. The new primitive substitution
+currently handles explicit `Applied` arguments only. Normalize same-group
+references to explicit formal applications when lowering declarations, and
+validate forbidden recursion through existing recursive constructors. The
+nominal-termination unit is not proof of recursive-declaration support.
+
+Current display implements the original A/B/... spelling including ASCII
+punctuation after Z. Non-ASCII/large-index behavior needs a separate contract;
+do not claim full diagnostic compatibility from the foundation units.
+
+### Additional original-backed discovery
+
+R4 job3834266 COMPLETE9s captures22cases;6 checker tests pass. Report SHA
+dc809b5c37c51739683dcf94e1d5a6bfdb4783b7ff5898906ae5932f34b6b427.
+It accepts fixed-T local mutation and nested DISTINCT-T/S abstractions:
+`probe_outer` has `(A->(B->A,B))` and returns `(2,"abc")`/`(true,3/4)`.
+Rust still fails their syntax. Original rejects nested reuse of the same
+type-variable name (TYPE_VAR where IDENT required); the initial acceptance
+hypothesis is disproved, not a request to broaden the original language.
+Original rejects `let xs=[] in xs:=[1]; xs` as a constant assignment, while
+Rust wrongly returns `[1]`. The new unit retains that failure with an explicit
+concrete local assignment control. Root cause also includes
+axis.w:3084-3119 `thread_bindings`, not only global.w:992.
+
+R5 job3834282 COMPLETE10s captures24cases;6 checker tests pass. Report SHA
+da21cb68d53b0cb378c28924a450f747a34cfc396f99d73403f031801bb22f0b.
+The concrete local `[int]` control succeeds with identical full streams.
+Two preserved discovery inputs do NOT test phantom-parameter semantics:
+the unspaced `T>=` is an operator token; adding whitespace then exposes the
+invalid SINGLE named field (struct_specs requires two). A separate two-field
+companion is required. These are fixture errors, not original math defects.
+
+R6 job3834288 COMPLETE10s confirms all25 current oracle intents (13accept,
+12reject);6 checker tests pass. The two-field companion defines `(A,A)`,
+preserves `MathPhantom<int,rat>` in the variable report, returns7/9, and both
+projectors have type int. Report SHA
+9175f1b4fbdad9ed114580398b093580ee8ea0df1f4c7d8940d6c94920d457a3.
+Local unchanged-runtime probe3834285 COMPLETE3:32 executes the new unit:
+the concrete control passes, then `rejected=false` and0passed/1failed at
+the intended assertion. Report SHA
+86d014395dcd80a10fbccae10e99383df336b15a0658251f6e2c817c34c606c9.
+No global/local constness repair or after-pass. All capture/local-probe jobs
+above are terminal; do not duplicate them.
+
+Foundation R2 job3834296 COMPLETE6:25: a new source-backed
+regression checks that Applied specialisation exposes the structural receiver,
+not just a true compatibility result. The before phase restores only3833858's
+types.rs; the same test executes/fails before and passes after, in isolated
+targets. All18type/3coercion units and CLI check pass. Report SHA
+adbc4b8f88ea06825ec2623eccf811aca4c7920a972a7ec7dd7f43c748906902.
+This is internal foundation verification, not generic-language acceptance.
+Legacy Tabled specialisation has a similar read-only path; investigate with a
+separate source-language fixture before altering that already-active behavior.
+
+### Source port boundaries (original discovery plan)
+
 1. **Type representation and assignment scope.** `axis-types.w:2264-3010`
    distinguishes independent undetermined holes from repeated type variables.
    Variables below the context threshold are rigid; those above it can be
    instantiated. Substitution follows assigned variables transitively and
    rejects direct/indirect occurrence cycles. Shifting fresh variables must
-   leave fixed variables unchanged. Rust `types.rs::Type` currently has only
-   `Undetermined` holes and monomorphic structural/tabled types, so replacing
+   leave fixed variables unchanged. The active Rust analyzer still uses
+   `Undetermined` holes and monomorphic structural/tabled types (the new
+   representation is not integrated yet), so replacing
    every occurrence of `T` with a hole would lose the repeated-variable rule.
    Introduce owned type schemes and per-analysis substitution state. Clone or
    roll back state for candidate overload trials; do not mutate a global scheme

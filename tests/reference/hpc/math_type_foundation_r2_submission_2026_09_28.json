@@ -1,0 +1,20 @@
+{
+  "schema": "atlas-type-foundation-submission-v1",
+  "stage": "/public/home/majj/atlas-type-foundation-r2-20260928.GFARslae",
+  "job": "3834296",
+  "status": "FOUNDATION_UNITS_PASS_LANGUAGE_NOT_PORTED",
+  "elapsed": "00:06:25",
+  "report_sha256": "adbc4b8f88ea06825ec2623eccf811aca4c7920a972a7ec7dd7f43c748906902",
+  "pin_sha256": "1736b7d8f97004e375392b5e07db3e77b3b55e0be0a2bf0f152af20e1ea0e8a2",
+  "patch_sha256": "54512873d2a3ce187e99643ba7b847848a6569df3a5237fe1ddb9d68930995e9",
+  "source_changes": {
+    "crates/atlas-core/src/types.rs": "46fab12516542df0f47a2c6403e6e1cc9b67c34a394f93a86a08e614aa0bfacf",
+    "crates/atlas-core/src/types/polymorphic.rs": "070822923151d826be3d1a4f92fd3a92bda4608ef4c5c247c9e2a7d53b913828"
+  },
+  "type_tests": 18,
+  "coercion_tests": 3,
+  "cli_check": "PASS",
+  "before": "New structure regression executes0passed1failed, left Applied(TypeNumber(0),[Undetermined]) versus Row(Primitive(Int)). Only types.rs implementation differs; new regression body unchanged.",
+  "after": "Same regression passes among18type units;3coercion tests and CLI check pass in an isolated target. Existing global wrong-acceptance unit still intentionally fails.",
+  "scope": "Internal foundation only, no parser/analyzer integration or generic/high-level mathematical acceptance. Formatting emitted separately, not applied."
+}

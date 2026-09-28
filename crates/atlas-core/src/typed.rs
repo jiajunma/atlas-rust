@@ -16814,6 +16814,22 @@ mod tests {
         assert!(context.globals.is_const("probe_empty"));
     }
 
+    // Regression: axis.w::thread_bindings also makes polymorphic locals constant.
+    #[test]
+    fn polymorphic_empty_local_is_not_assignable() {
+        let mut concrete = TypedContext::new();
+        concrete
+            .execute(&command("let xs=[int]:[] in xs:=[1]; xs"))
+            .expect("monomorphic local assignment");
+
+        let mut context = TypedContext::new();
+        let assignment = context.execute(&command("let xs=[] in xs:=[1]; xs"));
+        eprintln!("POLYMORPHIC_LOCAL_REGRESSION rejected={}", assignment.is_err());
+        let error = assignment.expect_err("polymorphic local must reject assignment");
+        assert_eq!(error.kind, ErrorKind::Name);
+        assert_eq!(error.message, "Name 'xs' is constant in assignment xs:=[1]");
+    }
+
     #[test]
     fn overriding_a_constant_reports_the_constant_suffix() {
         // global.w:911-994: the override report notes a constant previous

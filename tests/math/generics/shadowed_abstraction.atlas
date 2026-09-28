@@ -1,0 +1,2 @@
+set probe_shadow=any_type T ((T x):any_type T ((T y):T:y))
+prints("SHADOW",probe_shadow(2)("abc"),probe_shadow(true)(3/4))

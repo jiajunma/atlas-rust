@@ -1,0 +1,1 @@
+prints("MONO_LOCAL",let xs=[int]:[] in xs:=[1]; xs)

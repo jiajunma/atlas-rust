@@ -1,0 +1,2699 @@
+{
+  "binary_pins": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas",
+      "sha256": "093066582e908115022188debf348f77535e10cc7bfb2e06bb32ee5b3a03b71b"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli",
+      "sha256": "52575708587d568aa6bd58c4f0dddffa927aa6fdd0d97487de031d65bc74aa14"
+    }
+  },
+  "cases": [
+    {
+      "case": {
+        "file": "pair_nested.atlas",
+        "fixture_sha256": "8bfcfc34530c105cb352b60753ab0891394087e553c0776bdaea7b3cb730b5b8",
+        "id": "generic_pair_nested",
+        "intent": "accept",
+        "scope": "Generic constructors substitute nested row/tuple arguments and preserve projectors.",
+        "source_sha256": "3643e9b6fb0d932024703ab97383e98cbafc95caa5cdbf2e9b913b2f0ad2de71"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:24: syntax error, unexpected $undefined",
+          "  | set_type MathNestedPair<S,T> = (S probe_fst,T probe_snd) !",
+          "  |                        ^",
+          "Syntax error at <stdin>:3:29: syntax error, unexpected ']'",
+          "  | set np = MathNestedPair<[int],(rat,bool)>:([2,3],(3/4,true))",
+          "  |                             ^",
+          "Name error at <stdin>:4:15: Undefined identifier 'np'",
+          "  | prints(\"PAIR\",np)",
+          "  |               ^^",
+          "Name error at <stdin>:5:17: Undefined identifier 'probe_fst'",
+          "  | prints(\"FIELDS\",np.probe_fst,np.probe_snd)",
+          "  |                 ^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_pair_nested/oracle.metrics",
+              "sha256": "74bded00b0d210a650c37751835356244734675ab17037fcddb8a138d6d11c68"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_pair_nested/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 241,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_pair_nested/oracle.stdout",
+              "sha256": "25663e19723c8ca43e23002ed17049164f46b4cde569ee00d45575d7342aa7fa"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_pair_nested/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3576,
+          "resource_limit_gib": 6,
+          "seconds": 0.04406955401645973,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_pair_nested/rust.metrics",
+              "sha256": "bfdeeaa01b1f1cb2ecbb5bf664974a0c70d29c37c2e0f1c865a46a4958e4ce2d"
+            },
+            "stderr": {
+              "bytes": 554,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_pair_nested/rust.stderr",
+              "sha256": "c3458f55e252cc1946ee11c8f2e2ad95655b3239d7bce8b7442d4c37188e6446"
+            },
+            "stdout": {
+              "bytes": 65,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_pair_nested/rust.stdout",
+              "sha256": "ee799a9ff72f5c601b21c377aababd5176630f58bfd8cf5646c763aac5859e50"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_pair_nested/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5456,
+          "resource_limit_gib": 6,
+          "seconds": 0.04031251999549568,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "identity_instances.atlas",
+        "fixture_sha256": "04eea5c53fb3bf494ad60a2590d4e4fb40059636f1527c4ccb53472d34b87d3d",
+        "id": "generic_identity_instances",
+        "intent": "accept",
+        "scope": "One scoped generic function supports independent int/rat/row instantiations.",
+        "source_sha256": "db0b24187497f235510f2b55641c05aa84cc5e895a6d295d821143190774e0f4"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Name error at <stdin>:5:20: Undefined identifier 'probe_id'",
+          "  | prints(\"INSTANCES\",probe_id(7),probe_id(3/4),probe_id([2,3]))",
+          "  |                    ^^^^^^^^^^^",
+          "Name error at <stdin>:6:17: Undefined identifier 'probe_id'",
+          "  | prints(\"NESTED\",probe_id([[2],[3,4]]))",
+          "  |                 ^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_identity_instances/oracle.metrics",
+              "sha256": "50abcb3905ae2e28251f9861b6ae62e07b772c9b1c31247a248f445b49fa0c3b"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_identity_instances/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 141,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_identity_instances/oracle.stdout",
+              "sha256": "2a86f6a2792fb3ce7e4ad1c4d70418d55b694847dd8faefbb2e3b069dfa8eaf8"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_identity_instances/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3584,
+          "resource_limit_gib": 6,
+          "seconds": 0.0534803299815394,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_identity_instances/rust.metrics",
+              "sha256": "86af80f4a33827626b8c117bccbfc2d7f9912585b26f63cf577bf35cd0bfb853"
+            },
+            "stderr": {
+              "bytes": 403,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_identity_instances/rust.stderr",
+              "sha256": "3d32931fbfc9c40d80015c69e293b1b1ece19008fc37a7fb7dcc3d634ece51a8"
+            },
+            "stdout": {
+              "bytes": 79,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_identity_instances/rust.stdout",
+              "sha256": "55133845c86e10e5671c33d5fc42ee142f1c1483319856fc7f206ef95d81beff"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_identity_instances/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5440,
+          "resource_limit_gib": 6,
+          "seconds": 0.04312868096167222,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "result_context.atlas",
+        "fixture_sha256": "2f7a12b2e33b80d9ed752a98389b5e9ddccd718fe53bdbc5c4f89599085feb2d",
+        "id": "generic_result_context",
+        "intent": "accept",
+        "scope": "A return-only type variable is instantiated from an explicit result context.",
+        "source_sha256": "415a2063d279be524db62d02c091880b099cdde92ba2e061e4ab06a887ed7126"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Name error at <stdin>:5:22: Undefined identifier 'probe_empty'",
+          "  | set probe_ints=[int]:probe_empty()",
+          "  |                      ^^^^^^^^^^^^^",
+          "Name error at <stdin>:6:22: Undefined identifier 'probe_empty'",
+          "  | set probe_rats=[rat]:probe_empty()",
+          "  |                      ^^^^^^^^^^^^^",
+          "Name error at <stdin>:7:16: Undefined identifier 'probe_ints'",
+          "  | prints(\"EMPTY\",probe_ints,probe_rats)",
+          "  |                ^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_result_context/oracle.metrics",
+              "sha256": "5ab0888fefdf16b592fc9d8684f33f2dc15680208974b1c2ef1a0aef8d25107e"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_result_context/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 164,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_result_context/oracle.stdout",
+              "sha256": "a80d55464fa2826502b7b3ef375b70316f2a2ac25a2beb29e0cd1ec768133882"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_result_context/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3540,
+          "resource_limit_gib": 6,
+          "seconds": 0.054691035009454936,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 887,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_result_context/rust.metrics",
+              "sha256": "927064c446b3047e5fcedc1df06812354bd9b6bf0c3fe2f7adc225d31454081f"
+            },
+            "stderr": {
+              "bytes": 513,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_result_context/rust.stderr",
+              "sha256": "2fc78b6c6726300b84da6ffcf78dd82e944ccf9a98efb634f0c3e644377c5d44"
+            },
+            "stdout": {
+              "bytes": 71,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_result_context/rust.stdout",
+              "sha256": "b371e547dd4e095d41631c07551935d7425434ef8818fcd89f96c0adf35c092b"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_result_context/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5468,
+          "resource_limit_gib": 6,
+          "seconds": 0.07385165098821744,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "concrete_overload.atlas",
+        "fixture_sha256": "7b459a4ae989b8d6964698ae5e2272aa01ca98a6e0614b56d5e0099a33d6505a",
+        "id": "generic_concrete_overload",
+        "intent": "reject",
+        "scope": "Capture3833740: a concrete int overload and generic overload coexist, but the int call is ambiguous; concrete does not automatically win.",
+        "source_sha256": "7fcc5e73cc7e14b5797b66f402bd21e42bf922fca83ea516619d9739cda69759"
+      },
+      "categories": {
+        "oracle": "REJECTED_PROGRAM",
+        "rust": "REJECTED_SYNTAX+TYPE"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error in expression probe_select(2) at <standard input>:6:16-31",
+          "  Ambiguous argument in function call, argument type int matches both A and int",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Type error at <stdin>:6:33: found rat while int was needed.",
+          "  | prints(\"SELECT\",probe_select(2),probe_select(3/4),probe_select(\"abc\"))",
+          "  |                                 ^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_concrete_overload/oracle.metrics",
+              "sha256": "e2f2887d7f775830c360a86ffcfa85975df90bbb25765da004d642b7e8b7fbad"
+            },
+            "stderr": {
+              "bytes": 206,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_concrete_overload/oracle.stderr",
+              "sha256": "1864b3e1f1da9d5b8ff02b48a2153da0eacfc37c0bb73f3b52bcdf62fb1b08c4"
+            },
+            "stdout": {
+              "bytes": 155,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_concrete_overload/oracle.stdout",
+              "sha256": "4ac566a5033d4d6fdb650eca4a5695e0f75be8c19190e4870b0bf9ddf6fc413d"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_concrete_overload/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3692,
+          "resource_limit_gib": 6,
+          "seconds": 0.040692898037377745,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_concrete_overload/rust.metrics",
+              "sha256": "92753cf8b49626e9f5878e8ae8a176ed67a47c73dd2c1288c12ad9c618c7b525"
+            },
+            "stderr": {
+              "bytes": 286,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_concrete_overload/rust.stderr",
+              "sha256": "9f28647aa318bded96860511ff5e9b423cfc573f744b928cfead0043791979e8"
+            },
+            "stdout": {
+              "bytes": 110,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_concrete_overload/rust.stdout",
+              "sha256": "9b3fccbf02996c445d0c0bf6d4e7f5ddada6338cc94a6c0b4e11ecaec16d828e"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_concrete_overload/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5568,
+          "resource_limit_gib": 6,
+          "seconds": 0.05287532100919634,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "explicit_operator_scheme.atlas",
+        "fixture_sha256": "c3670e09e1b9678f50d6221f92e04a5854c103f44b8a9ed14c111e5a0e2fe1d4",
+        "id": "generic_explicit_operator_scheme",
+        "intent": "accept",
+        "scope": "The generic overload-cast form used by latest basic.at's append definition.",
+        "source_sha256": "0a986e8e9567ae28b9a54f19ed9d6d2ad6021730eb259fd92ebcc4f8816bea85"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:21: syntax error, unexpected $undefined",
+          "  | set probe_append = #@ T ([[T]],[T])",
+          "  |                     ^",
+          "Name error at <stdin>:3:17: Undefined identifier 'probe_append'",
+          "  | prints(\"APPEND\",probe_append([[1]],[2,3]))",
+          "  |                 ^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "Name error at <stdin>:4:24: Undefined identifier 'probe_append'",
+          "  | prints(\"APPEND_STRING\",probe_append([[\"a\"]],[\"b\",\"c\"]))",
+          "  |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_operator_scheme/oracle.metrics",
+              "sha256": "4ca1c9f694f7ed810e8c16e270f893e580995d86ad6d90c11ed5a5fd6310c881"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_operator_scheme/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 181,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_operator_scheme/oracle.stdout",
+              "sha256": "3cad23a93891689b504f55252198acd556e4148b1ea954bbd1629895c39b0e18"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_operator_scheme/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3560,
+          "resource_limit_gib": 6,
+          "seconds": 0.03805319999810308,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_operator_scheme/rust.metrics",
+              "sha256": "5e9602c0e00d57e6aa35eeae3b84d3fb406dcce720b285d165c54479146f8e9c"
+            },
+            "stderr": {
+              "bytes": 472,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_operator_scheme/rust.stderr",
+              "sha256": "ea079d7baf6bfdc7cecc068a71f65579ccd35a3e2dfd2f25a7a2d184025cbc6a"
+            },
+            "stdout": {
+              "bytes": 91,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_operator_scheme/rust.stdout",
+              "sha256": "ef8586ce8da6e061679b7b78b30e4ee8515f8f73d7fe2819d2cbb92be328fdb0"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_operator_scheme/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5412,
+          "resource_limit_gib": 6,
+          "seconds": 0.03055527404649183,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "rigid_body_rejected.atlas",
+        "fixture_sha256": "c11c7650881eaa7aea9f9a68efdda698ade7fc6bea791732270ca0b706f54b7a",
+        "id": "generic_rigid_body_rejected",
+        "intent": "reject",
+        "scope": "An arbitrary fixed T cannot be equated to int while checking a generic body.",
+        "source_sha256": "c7dda0f7672dcae36f023d239a1240c5a2cd2517c31d835c42242bb480117a3b"
+      },
+      "categories": {
+        "oracle": "REJECTED_TYPE",
+        "rust": "REJECTED_SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:2:0--4:3",
+          "Type error:",
+          "  Subexpression 1 at <standard input>:3:21-22",
+          "  has wrong type: found int while A was needed.",
+          "Error in 'set' command at <standard input>:2:0--4:3:",
+          "Expression analysis failed",
+          "  Command 'set probe_bad' not executed, nothing defined."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 876,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_rigid_body_rejected/oracle.metrics",
+              "sha256": "705c5608f8a0553d5f142fbbe01b8625d41bf468d0c97f56db82ce329ce7b531"
+            },
+            "stderr": {
+              "bytes": 308,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_rigid_body_rejected/oracle.stderr",
+              "sha256": "ba6602a1e5e686e6017b415889b0bfbfbef82cc5377f051cd24a955364ba4b4e"
+            },
+            "stdout": {
+              "bytes": 81,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_rigid_body_rejected/oracle.stdout",
+              "sha256": "c84b6d463459c5ec3943aa40e1150fb951cfff39e5d5e75a1e7b3e033e803bcf"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_rigid_body_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3656,
+          "resource_limit_gib": 6,
+          "seconds": 0.06448627298232168,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_rigid_body_rejected/rust.metrics",
+              "sha256": "1814eaa708b36d102134d1bcf1022f7e005760446b3b5590d750bd9d717e945b"
+            },
+            "stderr": {
+              "bytes": 97,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_rigid_body_rejected/rust.stderr",
+              "sha256": "e2dbc688d54896c7ea7270c302b68997cdc6224af403c9c03146f91a8487db26"
+            },
+            "stdout": {
+              "bytes": 81,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_rigid_body_rejected/rust.stdout",
+              "sha256": "c84b6d463459c5ec3943aa40e1150fb951cfff39e5d5e75a1e7b3e033e803bcf"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_rigid_body_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5368,
+          "resource_limit_gib": 6,
+          "seconds": 0.03173282399075106,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "mixed_same_type_rejected.atlas",
+        "fixture_sha256": "ebdef8774d4588338b9db5fce3dcdd4a25559981c61bb92cb6f5dd41f3860e9d",
+        "id": "generic_mixed_same_type_rejected",
+        "intent": "reject",
+        "scope": "Repeated occurrences of one T must agree; string cannot satisfy an int instantiation.",
+        "source_sha256": "f462eb10a12ad887b79afb181608fc3d3fce61eaec176ee39962b4f68a686cd1"
+      },
+      "categories": {
+        "oracle": "REJECTED_PROGRAM+TYPE",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:5:0-35",
+          "Type error:",
+          "  Subexpression (2,\"abc\") at <standard input>:5:25-34",
+          "  has wrong type: found (int,string) while (A,A) was needed.",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Name error at <stdin>:5:14: Undefined identifier 'probe_choose'",
+          "  | prints(\"BAD\",probe_choose(2,\"abc\"))",
+          "  |              ^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_mixed_same_type_rejected/oracle.metrics",
+              "sha256": "864078b89b44a07a02899245529462acf9fc0c1ca304a7436e919866148f8c5b"
+            },
+            "stderr": {
+              "bytes": 252,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_mixed_same_type_rejected/oracle.stderr",
+              "sha256": "748a1f5ffaf35126edaef7c9b3052c2daaf59eaa4fd043b0e2c864c0890a1352"
+            },
+            "stdout": {
+              "bytes": 122,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_mixed_same_type_rejected/oracle.stdout",
+              "sha256": "dc9efef28cffc5a13f81d23a5b7d78cfe1a6915d074b91b6bbee4764d7e5cb79"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_mixed_same_type_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3672,
+          "resource_limit_gib": 6,
+          "seconds": 0.03960209299111739,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 887,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_mixed_same_type_rejected/rust.metrics",
+              "sha256": "7c3221d7259812a92db24bf494085778d82d588bb7a9551b52d5b316f0bc5e3b"
+            },
+            "stderr": {
+              "bytes": 240,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_mixed_same_type_rejected/rust.stderr",
+              "sha256": "1598cce391b00908c64017a14ae740fc09ec040b3027791a2f2fcac46051c390"
+            },
+            "stdout": {
+              "bytes": 91,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_mixed_same_type_rejected/rust.stdout",
+              "sha256": "0e732264de84f6e639ccb31c49a54b1f2e6f582eedb12371e5b4568acc9e79a2"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_mixed_same_type_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5400,
+          "resource_limit_gib": 6,
+          "seconds": 0.06267372402362525,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "constructor_arity_few_rejected.atlas",
+        "fixture_sha256": "ed6c675cb4ebc1f29e77461036fa637ea2f2acc145dcfaa442de94aef2a4fce2",
+        "id": "generic_constructor_arity_few_rejected",
+        "intent": "reject",
+        "scope": "Two-parameter constructor applied to one argument must be rejected.",
+        "source_sha256": "ea7a9a1d28fbe60fddab95d208714991071fd8a974f5993e116e9607efbe3eee"
+      },
+      "categories": {
+        "oracle": "REJECTED_TYPE_ARITY",
+        "rust": "REJECTED_SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:3:14-38",
+          "  Type constructor 'MathArityPair' called with 1 type arguments, expected 2",
+          "Error in 'set' command at <standard input>:3:0-39:",
+          "Expression analysis failed",
+          "  Command 'set probe_bad' not executed, nothing defined."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:23: syntax error, unexpected $undefined",
+          "  | set_type MathArityPair<S,T> = (S arity_fst,T arity_snd) !",
+          "  |                       ^",
+          "Syntax error at <stdin>:3:29: syntax error, unexpected $undefined",
+          "  | set probe_bad=MathArityPair<int>:(2,3)",
+          "  |                             ^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_few_rejected/oracle.metrics",
+              "sha256": "43b062679fd685816dca63a0e52834d6a1b3780220ba575d7cd9e2d974b10237"
+            },
+            "stderr": {
+              "bytes": 275,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_few_rejected/oracle.stderr",
+              "sha256": "b947e0ad9b1a15ba44ce8fd76f3c9f631a987e7ca910e90b3557f15a1feb9eb4"
+            },
+            "stdout": {
+              "bytes": 187,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_few_rejected/oracle.stdout",
+              "sha256": "eb878d3daab1d68e0d8a988719b9297891848bc8d2e6c4889ce305998fbbdcf5"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_few_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3624,
+          "resource_limit_gib": 6,
+          "seconds": 0.053050186950713396,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 887,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_few_rejected/rust.metrics",
+              "sha256": "bf3ccf11424ca169ae1579bf7420ca18e97bacf07600b5bcf63197f44f3e2f9e"
+            },
+            "stderr": {
+              "bytes": 301,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_few_rejected/rust.stderr",
+              "sha256": "051a23d90377ada30510294ac8e8285ee0a13b30119f28ba2f186b9427efccfa"
+            },
+            "stdout": {
+              "bytes": 103,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_few_rejected/rust.stdout",
+              "sha256": "1c90cd472fb3551a176f28fc0ec9b8c23328eccf91ad51f59b730b25c05953ab"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_few_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5392,
+          "resource_limit_gib": 6,
+          "seconds": 0.06260932399891317,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "constructor_arity_many_rejected.atlas",
+        "fixture_sha256": "ed05e9f37a62682e6aec5f45a5d090be68e060e8eacb45c7ae5937d958ffe16f",
+        "id": "generic_constructor_arity_many_rejected",
+        "intent": "reject",
+        "scope": "Two-parameter constructor applied to three arguments must be rejected.",
+        "source_sha256": "1fef11ce9e8d593e839b039db750b53ef93ecd9f4eae3131e2adcc9e8e6b3181"
+      },
+      "categories": {
+        "oracle": "REJECTED_TYPE_ARITY",
+        "rust": "REJECTED_SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:3:14-49",
+          "  Type constructor 'MathArityPair' called with 3 type arguments, expected 2",
+          "Error in 'set' command at <standard input>:3:0-50:",
+          "Expression analysis failed",
+          "  Command 'set probe_bad' not executed, nothing defined."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:23: syntax error, unexpected $undefined",
+          "  | set_type MathArityPair<S,T> = (S arity_fst,T arity_snd) !",
+          "  |                       ^",
+          "Syntax error at <stdin>:3:29: syntax error, unexpected $undefined",
+          "  | set probe_bad=MathArityPair<int,rat,bool>:(2,3/4)",
+          "  |                             ^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_many_rejected/oracle.metrics",
+              "sha256": "1f50ccb2a8567be5066ce51025f6057872f5392db59fba745077361d9e37e5f0"
+            },
+            "stderr": {
+              "bytes": 275,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_many_rejected/oracle.stderr",
+              "sha256": "6e29885a5ac87ae0d55cc0f668f8649ff56ab1ae1c38214716415c3d564731e8"
+            },
+            "stdout": {
+              "bytes": 189,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_many_rejected/oracle.stdout",
+              "sha256": "b630dbb37f90021f92fa1b387b3ec18c245fb345a1632989b003f17387423901"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_many_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3620,
+          "resource_limit_gib": 6,
+          "seconds": 0.06267787399701774,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_many_rejected/rust.metrics",
+              "sha256": "34f52bf509d0ee732632dfc080a1d666102e226ed299755cf902d3dc62bdb866"
+            },
+            "stderr": {
+              "bytes": 312,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_many_rejected/rust.stderr",
+              "sha256": "1643c0511be5068ea8f35d302144ec8975c101d20ad49015f9c11e7239ca3ae1"
+            },
+            "stdout": {
+              "bytes": 105,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_many_rejected/rust.stdout",
+              "sha256": "3f37d36b315c3b5c1cb69091cd47b1fc6c476b8b0c6fea14698d884615e0d4d8"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_constructor_arity_many_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5396,
+          "resource_limit_gib": 6,
+          "seconds": 0.03167265601223335,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "scope_escape_rejected.atlas",
+        "fixture_sha256": "cf52a92d5024d031e1c81ef1099c67a7e46adb05229b36f626700bb324a3adaa",
+        "id": "generic_scope_escape_rejected",
+        "intent": "reject",
+        "scope": "A formal type name must not survive the end of an any_type scope.",
+        "source_sha256": "7e9f4cc52d24ef16dca372e4ba3ba60efb841f7b1a39736b48acef3045c63ff2"
+      },
+      "categories": {
+        "oracle": "REJECTED_SYNTAX",
+        "rust": "REJECTED_SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ",
+          "syntax error, unexpected IDENT, expecting ')'"
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Syntax error at <stdin>:5:18: syntax error, unexpected IDENT",
+          "  | set probe_escape(T x)=x",
+          "  |                  ^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_scope_escape_rejected/oracle.metrics",
+              "sha256": "c8cd69b515c1436de7d33f4a7fb2cfedfe942de6b482758c5dd6e171ad3fc0cc"
+            },
+            "stderr": {
+              "bytes": 25510,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_scope_escape_rejected/oracle.stderr",
+              "sha256": "8c20bba32d2bf972d21b6b84722c04d9772b3c3766fe9538f06484dc0076903b"
+            },
+            "stdout": {
+              "bytes": 113,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_scope_escape_rejected/oracle.stdout",
+              "sha256": "37b0d7dd05e601b3ed5c050cf54362b45e3d79ec09494e580b4b5ba9e824d1ff"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_scope_escape_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3500,
+          "resource_limit_gib": 6,
+          "seconds": 0.05515219701919705,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_scope_escape_rejected/rust.metrics",
+              "sha256": "1bce5c46b035401522f3e728edc026e488c0b04d0f2413e7a5ba9d53851e1aaf"
+            },
+            "stderr": {
+              "bytes": 209,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_scope_escape_rejected/rust.stderr",
+              "sha256": "1e1d7e846ccb1f1d8e175b6f10a881736193219f848f6397add766480739aa3a"
+            },
+            "stdout": {
+              "bytes": 85,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_scope_escape_rejected/rust.stdout",
+              "sha256": "51ca9d624f9bdb4155363047a8ac72852173f7312a5fb3ce2b73fd570a20d6a2"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_scope_escape_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5388,
+          "resource_limit_gib": 6,
+          "seconds": 0.03315751999616623,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "duplicate_formals_rejected.atlas",
+        "fixture_sha256": "415b19b51a610127802ecb2c9dff7142a12bfd9c3efb1f3f29506a2211ada868",
+        "id": "generic_duplicate_formals_rejected",
+        "intent": "accept",
+        "scope": "Historical probe ID retained: capture3833740 disproves the rejection hypothesis. Original accepts duplicate names and prints (A,A); investigate substitution separately.",
+        "source_sha256": "1cda3e988419aa26eac642899c9c78357467d5af7fe1390bd74f0bc4f56b56a8"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:23: syntax error, unexpected $undefined",
+          "  | set_type MathDuplicate<T,T> = (T duplicate_fst,T duplicate_snd) !",
+          "  |                       ^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_rejected/oracle.metrics",
+              "sha256": "c0b7fb0b4d273ac6467c83a5f0605354106fe8f72e6a198fbd5d090ee717b7e5"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_rejected/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 187,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_rejected/oracle.stdout",
+              "sha256": "07f5e5d2fb1368e5925ef559ee667eab2c336d813183c2926bb267dd7a3956c0"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3464,
+          "resource_limit_gib": 6,
+          "seconds": 0.05452475097263232,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 887,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_rejected/rust.metrics",
+              "sha256": "63816c93a62755968455519e79a546876c7ffc4510fbf21866d5bc18b0fe9550"
+            },
+            "stderr": {
+              "bytes": 164,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_rejected/rust.stderr",
+              "sha256": "dc14eca82fd53d03221c6b85329af67a9f8b37e358f697d675beeea580ed6d64"
+            },
+            "stdout": {
+              "bytes": 95,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_rejected/rust.stdout",
+              "sha256": "03f286784515c5433aca2c0785a7c8982f4c53f990db19627f1789fec3538a90"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5360,
+          "resource_limit_gib": 6,
+          "seconds": 0.07333079999079928,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "independent_formals.atlas",
+        "fixture_sha256": "9eabcd6693b6631517d8f74a29501e0dafa38c0640d330804ee95b519d7a7823",
+        "id": "generic_independent_formals",
+        "intent": "accept",
+        "scope": "Different type variables remain independent within one function, and instances do not leak constraints to later calls.",
+        "source_sha256": "66020bc04587e787a6b7e31a43f3d708a17afc83ce73a539c5e1afc90bf09272"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type S,T begin",
+          "  |          ^",
+          "Name error at <stdin>:5:19: Undefined identifier 'probe_pair'",
+          "  | prints(\"DISTINCT\",probe_pair(2,\"abc\"),probe_pair(true,3/4))",
+          "  |                   ^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_independent_formals/oracle.metrics",
+              "sha256": "1b14afc141f3f719107d321b22f8e6c6bed21fe650d5376e91d00dd02d6bb72c"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_independent_formals/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 140,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_independent_formals/oracle.stdout",
+              "sha256": "41583e2dc0d98faa09a3bf4c31846c92243061d18208812967dcf29b6cea0218"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_independent_formals/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3592,
+          "resource_limit_gib": 6,
+          "seconds": 0.04790491604944691,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 887,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_independent_formals/rust.metrics",
+              "sha256": "4336d9a6ff4a1722ba136c36d289f1908ce391ac23b58018e64d6081ad1b3848"
+            },
+            "stderr": {
+              "bytes": 267,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_independent_formals/rust.stderr",
+              "sha256": "8aa03b262d0b9dddc6b3eac45859f9cf9dbcc87ddeb487bb609de4fbbb324706"
+            },
+            "stdout": {
+              "bytes": 81,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_independent_formals/rust.stdout",
+              "sha256": "a29850ef37e70837a9818fc442e2730f8b2fd974051acb44c6e0b00a6695dd8b"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_independent_formals/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5436,
+          "resource_limit_gib": 6,
+          "seconds": 0.07328283099923283,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "duplicate_formals_instantiated.atlas",
+        "fixture_sha256": "987bb9c0500d9a84c8f75637cf8ee747fbfe0a4bee9a5d249623a87b000fe890",
+        "id": "generic_duplicate_formals_instantiated",
+        "intent": "accept",
+        "scope": "Determine which supplied type argument a repeated formal name denotes; retain projector types and values, not just declaration acceptance.",
+        "source_sha256": "8b9709c39ff446c14cec52cf3c6d479b6a734544684bdb4710b84a8de05f494e"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:22: syntax error, unexpected $undefined",
+          "  | set_type MathRepeated<T,T> = (T repeated_fst,T repeated_snd) !",
+          "  |                      ^",
+          "Syntax error at <stdin>:3:27: syntax error, unexpected $undefined",
+          "  | set repeated=MathRepeated<int,rat>:(1,2)",
+          "  |                           ^^^",
+          "Name error at <stdin>:4:19: Undefined identifier 'repeated'",
+          "  | prints(\"REPEATED\",repeated,repeated.repeated_fst,repeated.repeated_snd)",
+          "  |                   ^^^^^^^^",
+          "Name error at <stdin>:5:10: Undefined identifier 'repeated_fst'",
+          "  | whattype repeated.repeated_fst",
+          "  |          ^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_instantiated/oracle.metrics",
+              "sha256": "a31d14e2c13d0e18c7866c0dc802bf123123d020cf4f3e4ec011e4212d158d23"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_instantiated/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 269,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_instantiated/oracle.stdout",
+              "sha256": "dcf9ce14e841923edd33af0a93d87ebd5d4cbba44492f428f0030b0e226478bc"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_instantiated/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3540,
+          "resource_limit_gib": 6,
+          "seconds": 0.04334032902261242,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_instantiated/rust.metrics",
+              "sha256": "18681ef118c53cadfc0abf0667208fc5d971cc1ccd10ee12a34ebd6f624faabd"
+            },
+            "stderr": {
+              "bytes": 740,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_instantiated/rust.stderr",
+              "sha256": "faa92607af14a00e867c2b8422c466bc3309e865ccf8ca0bf09c3528bf84cdba"
+            },
+            "stdout": {
+              "bytes": 103,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_instantiated/rust.stdout",
+              "sha256": "4966bcbf7922cbaf75a8c6f9e4a41d23f9b95e76a1bc34a621797fa7a6310148"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_duplicate_formals_instantiated/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5440,
+          "resource_limit_gib": 6,
+          "seconds": 0.038210454978980124,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "explicit_generic_selection.atlas",
+        "fixture_sha256": "e7742dbb0fae8eb98abaf278400da949776b9d9d856a88be467dc9d61ee1b836",
+        "id": "generic_explicit_generic_selection",
+        "intent": "accept",
+        "scope": "Use a rigid type variable during explicit overload selection to distinguish the generic definition from a concrete int overload.",
+        "source_sha256": "f08ea57ee7bbe614f69cbdccf5403a6b1762238524c917173d5d8aeac26c632e"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Syntax error at <stdin>:6:31: syntax error, unexpected $undefined",
+          "  | set probe_generic=probe_select@ T (T)",
+          "  |                               ^",
+          "Name error at <stdin>:7:18: Undefined identifier 'probe_generic'",
+          "  | prints(\"GENERIC\",probe_generic(2),probe_generic(3/4))",
+          "  |                  ^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_generic_selection/oracle.metrics",
+              "sha256": "d524596b86c71720eef3f47ef188d271f0cf286450a0c9b331876d92ee719971"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_generic_selection/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 215,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_generic_selection/oracle.stdout",
+              "sha256": "30ff38c5efd733121bb9346f42d9e34282a7f7468e0804337276892bf8e407b0"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_generic_selection/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3592,
+          "resource_limit_gib": 6,
+          "seconds": 0.04025408497545868,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_generic_selection/rust.metrics",
+              "sha256": "5ca9117987846febfb918af178dd00cdb254ce0c21c9d45f1c91355200138956"
+            },
+            "stderr": {
+              "bytes": 402,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_generic_selection/rust.stderr",
+              "sha256": "a4d31fcee9513d501a22d91da28c28e4d3d9bed86d50ab6e506a321895fbdc8f"
+            },
+            "stdout": {
+              "bytes": 128,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_generic_selection/rust.stdout",
+              "sha256": "0a0d6f6f6c57d611b7bbcf3dcae16bf05e91b9a259e8e60b5965d3c5df36d74e"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_explicit_generic_selection/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5552,
+          "resource_limit_gib": 6,
+          "seconds": 0.03411114803748205,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "occurs_check_rejected.atlas",
+        "fixture_sha256": "106a9996d75af4bc0fd1b4681c3b24df40c14378fb2ea226d633797aef9e617c",
+        "id": "generic_occurs_check_rejected",
+        "intent": "reject",
+        "scope": "The same variable cannot simultaneously be S and [S]; unification must not invent a recursive type to accept an identity function here.",
+        "source_sha256": "810823711415edd9a19039b5f4848eefc6a3fedacd60b6f7e8f8e5dbd5071030"
+      },
+      "categories": {
+        "oracle": "REJECTED_TYPE",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:8:19-39",
+          "Type error:",
+          "  Subexpression probe_id at <standard input>:8:30-38",
+          "  has wrong type: found (A->A) while (A->[A]) was needed.",
+          "Error in 'set' command at <standard input>:8:0-40:",
+          "Expression analysis failed",
+          "  Command 'set probe_infinite' not executed, nothing defined."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type S begin",
+          "  |          ^",
+          "Syntax error at <stdin>:5:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Name error at <stdin>:8:20: Undefined identifier 'probe_need'",
+          "  | set probe_infinite=probe_need(probe_id)",
+          "  |                    ^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_occurs_check_rejected/oracle.metrics",
+              "sha256": "3e4eed997cd20e1b05960330abab0cff091bc538bc5027a80ce50eff3f04ad8b"
+            },
+            "stderr": {
+              "bytes": 327,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_occurs_check_rejected/oracle.stderr",
+              "sha256": "ab03e6528d10cf6a846cb330ea7167aa2d20d9262547e32a852d24b5bbb7480c"
+            },
+            "stdout": {
+              "bytes": 151,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_occurs_check_rejected/oracle.stdout",
+              "sha256": "6796b46807a2992253164dca51101dfe1444901cb5d79e4b36634ea2a85e7a3f"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_occurs_check_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3660,
+          "resource_limit_gib": 6,
+          "seconds": 0.04471904702950269,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_occurs_check_rejected/rust.metrics",
+              "sha256": "c332e50eebecf266001a1f2e5904db0e4204cdd405d3be181762d557f1ac1c92"
+            },
+            "stderr": {
+              "bytes": 344,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_occurs_check_rejected/rust.stderr",
+              "sha256": "260249064d3720bd51c81054928a4835c2305545a933a5cc8f86238fb48c01cc"
+            },
+            "stdout": {
+              "bytes": 85,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_occurs_check_rejected/rust.stdout",
+              "sha256": "6f6e360505d2a7a9053af2b92aae304918f5e0e81c46a5c208d19db6d45d3d83"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_occurs_check_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5400,
+          "resource_limit_gib": 6,
+          "seconds": 0.0544633130193688,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "polymorphic_assignment_rejected.atlas",
+        "fixture_sha256": "add93a918ee3a0164f3d7e6adfd6fabcce9e72ab3e1ed4e7c1da6fd1163ff71c",
+        "id": "generic_polymorphic_assignment_rejected",
+        "intent": "reject",
+        "scope": "A polymorphic non-function value is implicitly constant; assignment must not monomorphize an already bound empty list.",
+        "source_sha256": "366621e6e46b39eebcdba1c0733ab57bda7fd8a4ffc33dc53750e726bac183f8"
+      },
+      "categories": {
+        "oracle": "REJECTED_PROGRAM",
+        "rust": "ACCEPTED"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:3:0-16",
+          "  Name 'probe_empty' is constant in assignment probe_empty:=[1]",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": []
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_assignment_rejected/oracle.metrics",
+              "sha256": "d3439bb3760a6a76b9c43a9d17c31fe947a45acd2bf3aba65d7330b45b96d4fc"
+            },
+            "stderr": {
+              "bytes": 189,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_assignment_rejected/oracle.stderr",
+              "sha256": "7c899aa0905b092cbd1c7b28ef129a3058851d2941484275ae600271edd4b5e0"
+            },
+            "stdout": {
+              "bytes": 131,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_assignment_rejected/oracle.stdout",
+              "sha256": "a6541fde924468f0045d3a04157fc2ac806ee11d6df61fbfc5108b67362f08e9"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_assignment_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3648,
+          "resource_limit_gib": 6,
+          "seconds": 0.06324603303801268,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 849,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_assignment_rejected/rust.metrics",
+              "sha256": "a03d5aa3a99c520afaa1b76030137158bf72785188ddb3cbd3d86b0272230fe2"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_assignment_rejected/rust.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 142,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_assignment_rejected/rust.stdout",
+              "sha256": "2aeb1d78ac2fcd05371fd8e6572b56dbb64beedafb02681aca2af7b2d59cedee"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_assignment_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5456,
+          "resource_limit_gib": 6,
+          "seconds": 0.035269954008981586,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "monomorphic_empty_assignment.atlas",
+        "fixture_sha256": "46e3c4646a3a9f91181418ff1406f8d2c2ce51442e7f932d58093f9c2f709308",
+        "id": "generic_monomorphic_empty_assignment",
+        "intent": "accept",
+        "scope": "An explicit concrete element type removes polymorphism; an empty [int] row must remain assignable, unlike the paired polymorphic case.",
+        "source_sha256": "4248c68c3eb9191c06e0398824033d5f8d591e15af83b456e3063c3aa780ef4e"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "ACCEPTED"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_empty_assignment/oracle.metrics",
+              "sha256": "9ca1cc306996153a0cbf204f2cda2056fd7a64cdc2ce16d8f223e25b37f3a174"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_empty_assignment/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 148,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_empty_assignment/oracle.stdout",
+              "sha256": "d2df4f55cbbea198bc6be1d63a309dd3c994eab0fa3c4ae414ce8e70df086859"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_empty_assignment/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3548,
+          "resource_limit_gib": 6,
+          "seconds": 0.039399808971211314,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 849,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_empty_assignment/rust.metrics",
+              "sha256": "2e3f3fb4347d9d8d1f33a1d43596c8124134864b2bb8ad185472f17fc2754e58"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_empty_assignment/rust.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 148,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_empty_assignment/rust.stdout",
+              "sha256": "d2df4f55cbbea198bc6be1d63a309dd3c994eab0fa3c4ae414ce8e70df086859"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_empty_assignment/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5516,
+          "resource_limit_gib": 6,
+          "seconds": 0.03620036697247997,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "fixed_local_assignment.atlas",
+        "fixture_sha256": "3b196f8fc89806788a1162e9784bffac6199eeeb9215b78be4a41ce39bdea423",
+        "id": "generic_fixed_local_assignment",
+        "intent": "accept",
+        "scope": "A fixed type variable inside its abstraction is not polymorphic; a local of that type remains mutable.",
+        "source_sha256": "6b416f5caacd4fa738bde6ecf347d5e477f398beeca67bce4b15a7fda9fb6ca0"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:10: syntax error, unexpected IDENT",
+          "  | any_type T begin",
+          "  |          ^",
+          "Name error at <stdin>:5:22: Undefined identifier 'probe_reassign'",
+          "  | prints(\"FIXED_LOCAL\",probe_reassign(2,7),probe_reassign(\"old\",\"new\"))",
+          "  |                      ^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_fixed_local_assignment/oracle.metrics",
+              "sha256": "5dd6661f75d4181c0529e3cc729534d2bf92382276ef2fca2eda0cd229593c49"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_fixed_local_assignment/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 136,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_fixed_local_assignment/oracle.stdout",
+              "sha256": "ac267d80b48d41b6d3a03fab0668c11bbea34e883f2e007f45c9059712aac4fb"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_fixed_local_assignment/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3556,
+          "resource_limit_gib": 6,
+          "seconds": 0.04231507400982082,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_fixed_local_assignment/rust.metrics",
+              "sha256": "f74c8882f0b3d0c54f0e550f7ca8a9bb3a5115cd51d355df4e269573c5c9d987"
+            },
+            "stderr": {
+              "bytes": 282,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_fixed_local_assignment/rust.stderr",
+              "sha256": "423cc12d426fa9e6285d7a9c3c66cde33f28f91fca96052705a1a7a36bed295c"
+            },
+            "stdout": {
+              "bytes": 87,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_fixed_local_assignment/rust.stdout",
+              "sha256": "8a8a5862f929f9f120c73602f0e4498897c048068f6ce32400e14151de8caafc"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_fixed_local_assignment/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5408,
+          "resource_limit_gib": 6,
+          "seconds": 0.032034989970270544,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "polymorphic_local_assignment.atlas",
+        "fixture_sha256": "85801bbf78f819b4c97beebf27967cf09b5e60dd9e80121c25acf87ce9d07acf",
+        "id": "generic_polymorphic_local_assignment",
+        "intent": "reject",
+        "scope": "Discover whether implicit constness applies to a genuinely polymorphic local empty row as well as a global.",
+        "source_sha256": "3a25f6597c08d263f2660e2f5524a8034f8f875c556b892e82c2d25554e70b95"
+      },
+      "categories": {
+        "oracle": "REJECTED_PROGRAM",
+        "rust": "ACCEPTED"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "Error during analysis of expression at <standard input>:2:0-45",
+          "  Name 'xs' is constant in assignment xs:=[1]",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": []
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_local_assignment/oracle.metrics",
+              "sha256": "7b6be1d69bb2846b819aa4de189226cf606340966f448d4df5031bd3cf4fac73"
+            },
+            "stderr": {
+              "bytes": 171,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_local_assignment/oracle.stderr",
+              "sha256": "069faedd6c78a4a437e7ae2c7140c110b9317ba599d7745bed18c1623a53b328"
+            },
+            "stdout": {
+              "bytes": 99,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_local_assignment/oracle.stdout",
+              "sha256": "ed6fd8e9e4ffdef66f03d1cc1b99787c284ca533e21632b0ac3eb0013e588cd1"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_local_assignment/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3664,
+          "resource_limit_gib": 6,
+          "seconds": 0.03461739601334557,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 849,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_local_assignment/rust.metrics",
+              "sha256": "67a0e5cda4b7bd87b6a708c0e11615817835df363ec593270b94530d151cc439"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_local_assignment/rust.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 113,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_local_assignment/rust.stdout",
+              "sha256": "ffab13714fa08c94f7e4411c9ab5c79c5c22412fa2118799aad4fe266ce31492"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_polymorphic_local_assignment/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5492,
+          "resource_limit_gib": 6,
+          "seconds": 0.03668982902308926,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "nested_abstraction.atlas",
+        "fixture_sha256": "f3934700fc8641cc781b8a570433b6888c039851428fe87c8fef0f2e74cc5668",
+        "id": "generic_nested_abstraction",
+        "intent": "accept",
+        "scope": "Nested abstractions retain outer fixed variables while freshening the inner function's independent type parameter.",
+        "source_sha256": "2352622cddaabab440c2f1b1d00a8d14825a12a3ede6634723ebf3464f8f92f8"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": [
+          "Syntax error at <stdin>:2:26: syntax error, unexpected IDENT",
+          "  | set probe_outer=any_type T ((T x):any_type S ((S y):(T,S):(x,y)))",
+          "  |                          ^",
+          "Name error at <stdin>:3:17: Undefined identifier 'probe_outer'",
+          "  | prints(\"NESTED\",probe_outer(2)(\"abc\"),probe_outer(true)(3/4))",
+          "  |                 ^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_nested_abstraction/oracle.metrics",
+              "sha256": "d98e865a4c1c7989edd3cde499eb87b1ffb8a552ea73b57c63168e2a9103a4bd"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_nested_abstraction/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 140,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_nested_abstraction/oracle.stdout",
+              "sha256": "55bd70209afb3eb9b1a4431de59145e768b0c84aadf5818d01fe3984a8532085"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_nested_abstraction/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3588,
+          "resource_limit_gib": 6,
+          "seconds": 0.03587319701910019,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_nested_abstraction/rust.metrics",
+              "sha256": "7aea9dec9e3a2dddddbebb59e2ad5f0884354072f4d106b52767d4d33993d8d9"
+            },
+            "stderr": {
+              "bytes": 326,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_nested_abstraction/rust.stderr",
+              "sha256": "df0eb15e8ca1c669be084f44cb597dca39c88c0b98e8dc5c9a109ec15e09e830"
+            },
+            "stdout": {
+              "bytes": 79,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_nested_abstraction/rust.stdout",
+              "sha256": "a7ff1caed733d0a7a39afe5a981a74fb48a3d14fe9727ba07287183d6ba824da"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_nested_abstraction/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5448,
+          "resource_limit_gib": 6,
+          "seconds": 0.06071422295644879,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "shadowed_abstraction.atlas",
+        "fixture_sha256": "0df291b2b6fdfbc0ef1c62728dd6b4e8ae10f439a530c724a332aa42da012e59",
+        "id": "generic_shadowed_abstraction",
+        "intent": "reject",
+        "scope": "Capture3834266 disproves shadowing acceptance: the existing type name is TYPE_VAR, whereas a new abstraction requires IDENT. Preserve the rejected input.",
+        "source_sha256": "f5dbe1753bf6f5b8ac7b2ac84207b1ea22540caa22c7fbd5c8452fd112efae08"
+      },
+      "categories": {
+        "oracle": "REJECTED_PROGRAM+SYNTAX",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ",
+          "syntax error, unexpected TYPE_VAR, expecting IDENT",
+          "Error in expression probe_shadow at <standard input>:3:16-28",
+          "  Undefined identifier 'probe_shadow'",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:27: syntax error, unexpected IDENT",
+          "  | set probe_shadow=any_type T ((T x):any_type T ((T y):T:y))",
+          "  |                           ^",
+          "Name error at <stdin>:3:17: Undefined identifier 'probe_shadow'",
+          "  | prints(\"SHADOW\",probe_shadow(2)(\"abc\"),probe_shadow(true)(3/4))",
+          "  |                 ^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 877,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_shadowed_abstraction/oracle.metrics",
+              "sha256": "0f266f4606c5ac2ed504eb5b2fdde84e7aee857100da9f942c01dd21810e21f2"
+            },
+            "stderr": {
+              "bytes": 25703,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_shadowed_abstraction/oracle.stderr",
+              "sha256": "816345fd0a00964cd60168882429326dcab7ffacd04beeafd47dbb5a919ef4cf"
+            },
+            "stdout": {
+              "bytes": 83,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_shadowed_abstraction/oracle.stdout",
+              "sha256": "2a3a6f8b24a877a99399c207ff5e4ad4e603010202f28d7362f1d7997c2c15ec"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_shadowed_abstraction/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3608,
+          "resource_limit_gib": 6,
+          "seconds": 0.0720947430236265,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_shadowed_abstraction/rust.metrics",
+              "sha256": "28eae88e01a3f6724e74df501188a660d6a2e52a0a6c11071449fd115639432e"
+            },
+            "stderr": {
+              "bytes": 324,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_shadowed_abstraction/rust.stderr",
+              "sha256": "87f8b62fb557b3aaaeaf9303cfe54f06aaad21779f28eb66cec44d0284d8fb1d"
+            },
+            "stdout": {
+              "bytes": 83,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_shadowed_abstraction/rust.stdout",
+              "sha256": "2a3a6f8b24a877a99399c207ff5e4ad4e603010202f28d7362f1d7997c2c15ec"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_shadowed_abstraction/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5456,
+          "resource_limit_gib": 6,
+          "seconds": 0.030472578015178442,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "unused_constructor_parameter.atlas",
+        "fixture_sha256": "46eb4a9a602d2bf8d6aa88ffd3f4cc36103df6034cb9d0b3e39b8f16f35ed7a1",
+        "id": "generic_unused_constructor_parameter",
+        "intent": "reject",
+        "scope": "Historical discovery input retained: capture3834266 tokenizes adjacent >= as OPERATOR, before testing any unused-parameter semantics. The spaced companion exercises the intended constructor.",
+        "source_sha256": "a264ee1f39f95e91ababa5cedba3421697b9a48b00c65447b4fbdd5e39782185"
+      },
+      "categories": {
+        "oracle": "REJECTED_PROGRAM+SYNTAX",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ",
+          "syntax error, unexpected OPERATOR, expecting '>'",
+          "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ",
+          "syntax error, unexpected PRIMTYPE",
+          "No such variable or function: probe_phantom",
+          "Error in expression unphantom at <standard input>:5:31-40",
+          "  Undefined identifier 'unphantom'",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:21: syntax error, unexpected $undefined",
+          "  | set_type MathPhantom<S,T>=(S unphantom) !",
+          "  |                     ^",
+          "Syntax error at <stdin>:3:31: syntax error, unexpected $undefined",
+          "  | set probe_phantom=MathPhantom<int,rat>:7",
+          "  |                               ^^^",
+          "Name error at <stdin>:4:10: Undefined identifier 'probe_phantom'",
+          "  | whattype probe_phantom",
+          "  |          ^^^^^^^^^^^^^",
+          "Name error at <stdin>:5:18: Undefined identifier 'unphantom'",
+          "  | prints(\"PHANTOM\",probe_phantom.unphantom)",
+          "  |                  ^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 878,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter/oracle.metrics",
+              "sha256": "cbcb3299aa480bde7c03ed31dca271ca334cd83ca7ef22eb8731bed0188486c7"
+            },
+            "stderr": {
+              "bytes": 51233,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter/oracle.stderr",
+              "sha256": "165b7eed5aefd12f40c6bb05084a59526b4acbf348d3142a4a6e64a218bf048a"
+            },
+            "stdout": {
+              "bytes": 99,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter/oracle.stdout",
+              "sha256": "54b0b2646f96116550135435649153f157fe5615a2082506d498bebf41cf1c69"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3624,
+          "resource_limit_gib": 6,
+          "seconds": 0.07617536402540281,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 888,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter/rust.metrics",
+              "sha256": "ed3a4c231c00cb3b432d38204c1b74bae57ae2605bf15bd21446b2295a34f515"
+            },
+            "stderr": {
+              "bytes": 558,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter/rust.stderr",
+              "sha256": "6fdb29d170e2ef6d3494ee9eac9c974e5f6f20f9f385e3e4fa85b17381155f4c"
+            },
+            "stdout": {
+              "bytes": 99,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter/rust.stdout",
+              "sha256": "54b0b2646f96116550135435649153f157fe5615a2082506d498bebf41cf1c69"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5432,
+          "resource_limit_gib": 6,
+          "seconds": 0.033125980000477284,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    },
+    {
+      "case": {
+        "file": "unused_constructor_parameter_spaced.atlas",
+        "fixture_sha256": "eeea8b042d33641236a2d4ed658838b295501d2b8c078697a99376b8750df07f",
+        "id": "generic_unused_constructor_parameter_spaced",
+        "intent": "accept",
+        "scope": "Separate > and = so the original reaches the two-parameter constructor with an unused slot; preserve type reporting and projector value.",
+        "source_sha256": "094659938da2560b69685c03b79fc043547f3958abbed281e1bca70bbf1afefe"
+      },
+      "categories": {
+        "oracle": "REJECTED_PROGRAM+SYNTAX",
+        "rust": "REJECTED_NAME+SYNTAX"
+      },
+      "first_diagnostics": {
+        "oracle": [
+          "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ",
+          "syntax error, unexpected ')', expecting ',' or '|'",
+          "                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ",
+          "syntax error, unexpected PRIMTYPE",
+          "No such variable or function: probe_phantom",
+          "Error in expression unphantom at <standard input>:5:31-40",
+          "  Undefined identifier 'unphantom'",
+          "Program error: Expression analysis failed",
+          "Evaluation aborted."
+        ],
+        "rust": [
+          "Syntax error at <stdin>:2:21: syntax error, unexpected $undefined",
+          "  | set_type MathPhantom<S,T> = (S unphantom) !",
+          "  |                     ^",
+          "Syntax error at <stdin>:3:31: syntax error, unexpected $undefined",
+          "  | set probe_phantom=MathPhantom<int,rat>:7",
+          "  |                               ^^^",
+          "Name error at <stdin>:4:10: Undefined identifier 'probe_phantom'",
+          "  | whattype probe_phantom",
+          "  |          ^^^^^^^^^^^^^",
+          "Name error at <stdin>:5:18: Undefined identifier 'unphantom'",
+          "  | prints(\"PHANTOM\",probe_phantom.unphantom)",
+          "  |                  ^^^^^^^^^^^^^^^^^^^^^^^"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": true,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 878,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter_spaced/oracle.metrics",
+              "sha256": "427a32caf1147b345e663b8d566e5aa4a81bf419266957dbd643160aa763396b"
+            },
+            "stderr": {
+              "bytes": 51250,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter_spaced/oracle.stderr",
+              "sha256": "483edbf1317e95f57c7aa089a27ac3164f393bda5e6b77dc2d511a81d4e58858"
+            },
+            "stdout": {
+              "bytes": 113,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter_spaced/oracle.stdout",
+              "sha256": "3df762dac6d667f793caec0baeb64ca22b67f8119bcc55f0bdb8f70b4f1aaa06"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter_spaced/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3628,
+          "resource_limit_gib": 6,
+          "seconds": 0.07959166500950232,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 887,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter_spaced/rust.metrics",
+              "sha256": "b00dca9edaa8d7e7759a2ad9baec8db3fe481ae3e303667d9775b814b258d7ec"
+            },
+            "stderr": {
+              "bytes": 560,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter_spaced/rust.stderr",
+              "sha256": "22242a651c70be2fe959674e0e5a28b66af181e20536c968b75a0e43bce0b4fc"
+            },
+            "stdout": {
+              "bytes": 113,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter_spaced/rust.stdout",
+              "sha256": "3df762dac6d667f793caec0baeb64ca22b67f8119bcc55f0bdb8f70b4f1aaa06"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_unused_constructor_parameter_spaced/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5424,
+          "resource_limit_gib": 6,
+          "seconds": 0.06868511799257249,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": false
+    },
+    {
+      "case": {
+        "file": "monomorphic_local_assignment.atlas",
+        "fixture_sha256": "bca309217cfbbb57247d5474045e1fe09af4dde5b43473a12f8cd818b538bb83",
+        "id": "generic_monomorphic_local_assignment",
+        "intent": "accept",
+        "scope": "Concrete [int] annotation removes local polymorphism and must preserve mutability, paired with the new local wrong-acceptance regression.",
+        "source_sha256": "e802c48708bcd905fa24efbce507eb2d41fe01b24b6574aa8900937710d4019a"
+      },
+      "categories": {
+        "oracle": "ACCEPTED",
+        "rust": "ACCEPTED"
+      },
+      "first_diagnostics": {
+        "oracle": [],
+        "rust": []
+      },
+      "full_stderr_equal": true,
+      "full_stdout_equal": true,
+      "observations": {
+        "oracle": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 838,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_local_assignment/oracle.metrics",
+              "sha256": "446114b7fa4a466b3e5270a59d8299d34214ec423e93817f4e4cd5823c6eda4b"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_local_assignment/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 113,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_local_assignment/oracle.stdout",
+              "sha256": "ebef5ea5c2ffde890cf3e8949eff4125f9e88fd0f3386c8d1ed57ec8c6ed7ccb"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_local_assignment/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3552,
+          "resource_limit_gib": 6,
+          "seconds": 0.044305367046035826,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        },
+        "rust": {
+          "artifacts": {
+            "metrics": {
+              "bytes": 849,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_local_assignment/rust.metrics",
+              "sha256": "e531ab678fb8fb103398b1eac7b3d532f3936056f41ec8f8cf5e8009a994ba93"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_local_assignment/rust.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 113,
+              "path": "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_local_assignment/rust.stdout",
+              "sha256": "ebef5ea5c2ffde890cf3e8949eff4125f9e88fd0f3386c8d1ed57ec8c6ed7ccb"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-math-generic-probe-r5-20260928.lTHGWtA8/results/3834282/generic_monomorphic_local_assignment/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/target-after/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5536,
+          "resource_limit_gib": 6,
+          "seconds": 0.051394361013080925,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45
+        }
+      },
+      "oracle_matches_provisional_intent": true
+    }
+  ],
+  "checker": {
+    "exit_status": 0,
+    "log_sha256": "51afd9f24047f0ea3ae7f342fd48148232b4128debb935b208498866bc3a0bc9"
+  },
+  "job": "3834282",
+  "node": "cu057",
+  "pin": {
+    "build": "/public/home/majj/atlas-math-endgame-repair-20260928.IMRdjiLk/results/3833612/build.json",
+    "build_sha256": "e2ce570826277bf24377b4e0b627f071f264c8ff8144ae789d04c9692e448b8f",
+    "inputs": {
+      "hpc/math_baseline_build.py": "931ec63f850d2a3769de1d5fb7836fc8eba7097e6d302ea30c2a6e47417c2ed7",
+      "hpc/math_cycle_check.py": "d02f8412972249d18f5bdd98f15df85633c4d676063063041b08186190c61131",
+      "hpc/math_generic_probe.py": "2688e5bf1dbe2be7e941f3dee7d9cb11ee4c51e66029b48c239d9042a2d08b15",
+      "hpc/math_generic_probe.sbatch": "97bdac2d7c70c2f0468d4949dda4907993c08f1eee86e4411bc5930865ef8355",
+      "hpc/math_suite.py": "dc58a89944b022a2b3406edd25d0192bb421fd5bf828b281f4f1f962ca92f205",
+      "hpc/math_suite_review.py": "6b101f7aa62f1abcfda70b382efd0928a648f4f032e4870f87bfeb5e32084ad8",
+      "hpc/test_math_generic_probe.py": "eda1e19799316cc5c8abf74da8ea3b4692818516a01c3ddd48b196e88b0c7769",
+      "tests/math/baseline.json": "f35d8e463fe3eb0666ebb23c81de59b5fb2d6968aa32dcd1f378b4658d46ec49",
+      "tests/math/generics/catalog.json": "ac0acc067416a8baecb201238f7f7acfcffad11ed48d09c9db77b2602091128c",
+      "tests/math/generics/concrete_overload.atlas": "7b459a4ae989b8d6964698ae5e2272aa01ca98a6e0614b56d5e0099a33d6505a",
+      "tests/math/generics/constructor_arity_few_rejected.atlas": "ed6c675cb4ebc1f29e77461036fa637ea2f2acc145dcfaa442de94aef2a4fce2",
+      "tests/math/generics/constructor_arity_many_rejected.atlas": "ed05e9f37a62682e6aec5f45a5d090be68e060e8eacb45c7ae5937d958ffe16f",
+      "tests/math/generics/duplicate_formals_instantiated.atlas": "987bb9c0500d9a84c8f75637cf8ee747fbfe0a4bee9a5d249623a87b000fe890",
+      "tests/math/generics/duplicate_formals_rejected.atlas": "415b19b51a610127802ecb2c9dff7142a12bfd9c3efb1f3f29506a2211ada868",
+      "tests/math/generics/explicit_generic_selection.atlas": "e7742dbb0fae8eb98abaf278400da949776b9d9d856a88be467dc9d61ee1b836",
+      "tests/math/generics/explicit_operator_scheme.atlas": "c3670e09e1b9678f50d6221f92e04a5854c103f44b8a9ed14c111e5a0e2fe1d4",
+      "tests/math/generics/fixed_local_assignment.atlas": "3b196f8fc89806788a1162e9784bffac6199eeeb9215b78be4a41ce39bdea423",
+      "tests/math/generics/identity_instances.atlas": "04eea5c53fb3bf494ad60a2590d4e4fb40059636f1527c4ccb53472d34b87d3d",
+      "tests/math/generics/independent_formals.atlas": "9eabcd6693b6631517d8f74a29501e0dafa38c0640d330804ee95b519d7a7823",
+      "tests/math/generics/mixed_same_type_rejected.atlas": "ebdef8774d4588338b9db5fce3dcdd4a25559981c61bb92cb6f5dd41f3860e9d",
+      "tests/math/generics/monomorphic_empty_assignment.atlas": "46e3c4646a3a9f91181418ff1406f8d2c2ce51442e7f932d58093f9c2f709308",
+      "tests/math/generics/monomorphic_local_assignment.atlas": "bca309217cfbbb57247d5474045e1fe09af4dde5b43473a12f8cd818b538bb83",
+      "tests/math/generics/nested_abstraction.atlas": "f3934700fc8641cc781b8a570433b6888c039851428fe87c8fef0f2e74cc5668",
+      "tests/math/generics/occurs_check_rejected.atlas": "106a9996d75af4bc0fd1b4681c3b24df40c14378fb2ea226d633797aef9e617c",
+      "tests/math/generics/pair_nested.atlas": "8bfcfc34530c105cb352b60753ab0891394087e553c0776bdaea7b3cb730b5b8",
+      "tests/math/generics/polymorphic_assignment_rejected.atlas": "add93a918ee3a0164f3d7e6adfd6fabcce9e72ab3e1ed4e7c1da6fd1163ff71c",
+      "tests/math/generics/polymorphic_local_assignment.atlas": "85801bbf78f819b4c97beebf27967cf09b5e60dd9e80121c25acf87ce9d07acf",
+      "tests/math/generics/result_context.atlas": "2f7a12b2e33b80d9ed752a98389b5e9ddccd718fe53bdbc5c4f89599085feb2d",
+      "tests/math/generics/rigid_body_rejected.atlas": "c11c7650881eaa7aea9f9a68efdda698ade7fc6bea791732270ca0b706f54b7a",
+      "tests/math/generics/scope_escape_rejected.atlas": "cf52a92d5024d031e1c81ef1099c67a7e46adb05229b36f626700bb324a3adaa",
+      "tests/math/generics/shadowed_abstraction.atlas": "0df291b2b6fdfbc0ef1c62728dd6b4e8ae10f439a530c724a332aa42da012e59",
+      "tests/math/generics/unused_constructor_parameter.atlas": "46eb4a9a602d2bf8d6aa88ffd3f4cc36103df6034cb9d0b3e39b8f16f35ed7a1",
+      "tests/math/generics/unused_constructor_parameter_spaced.atlas": "eeea8b042d33641236a2d4ed658838b295501d2b8c078697a99376b8750df07f"
+    },
+    "schema": "atlas-generic-contract-probe-pin-v1"
+  },
+  "schema": "atlas-generic-contract-capture-v1",
+  "scope": "All raw streams, time and RSS retained. Reject intent is provisional; a Rust syntax error must not count as matching an oracle type error. This capture is not mathematical or language-feature acceptance.",
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "status": "CAPTURED_NOT_YET_ACCEPTED_AS_LANGUAGE_CONTRACTS"
+}

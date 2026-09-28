@@ -1,0 +1,17 @@
+{
+  "schema": "atlas-language-regression-probe-submission-v1",
+  "stage": "/public/home/majj/atlas-math-polymorphic-local-probe-20260928.jPmq9lgO",
+  "job": "3834285",
+  "status": "EXECUTED_WRONG_ACCEPTANCE_REPRODUCED_NOT_REPAIRED",
+  "elapsed": "00:03:32",
+  "report_sha256": "86d014395dcd80a10fbccae10e99383df336b15a0658251f6e2c817c34c606c9",
+  "unit_log_sha256": "ef6b31db28667dcfe34650393c855ef9397c7d500135fbd9791759622023458f",
+  "probe_sha256": "04f97c31ee60769df6364f9f06c29a953ca777261f27eadf17255e35c37104c7",
+  "source_archive_sha256": "ff998b6226d8c8b6bd5255484152ab907dbb41396146f9c38c50cd27b2f0eb21",
+  "module_sha256": "087e2155837b1f38082f27af36823e36bc766f8cd640533f0e12c3075e019b90",
+  "patch_sha256": "a60e08bbb618f7ad71d34deb56a8a0b37a5f6e697ea75f2158a9e94f18750858",
+  "parent_build": "3833716",
+  "parent_build_sha256": "62aa96181c87d0ae816928dcbab37b5b7b448d1d1d00632106e28214319b2e63",
+  "observed": "Concrete local [int] assignment succeeds first. Polymorphic local then prints rejected=false and fails the required rejection assertion: executed0passed1failed, not a compiler failure.",
+  "scope": "Only one unit added to parent3833716; no type foundation/global regression or runtime change. The test body matches current typed.rs; wrong acceptance remains unrepaired."
+}

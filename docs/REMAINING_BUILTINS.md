@@ -2,6 +2,24 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+NEW TYPE FOUNDATION (not language acceptance):3833858 COMPLETE,17 type units,
+3 coercion units and CLI check pass; the existing global assignment regression
+still fails. Owned schemes/substitutions are implemented but not integrated
+with syntax, analyzer and overload resolution. R4/R5 captures3834266/3834282
+add nested-scope/local-binding contracts and expose a second wrong acceptance:
+polymorphic local empty-row assignment. Concrete local [int] assignment fully
+matches. Local before-unit3834285 COMPLETE executes0pass/1fail; no repair.
+R6 capture3834288 COMPLETE confirms25oracle intents. Foundation R2 job3834296
+COMPLETE: structure unit before-fail/after-pass,18type/3coercion units and CLI
+check pass. Do not duplicate these terminal jobs. No high-level support yet.
+See `slices/generic_language_2026-09-28.md` for exact evidence and the remaining
+scope-carrying analysis migration. High-level mathematics remains blocked on
+that real port; do not replace or preprocess latest original scripts.
+
+Parallel-computation A/B is now an explicit user requirement. Existing timing
+records forced Rayon1; new same-binary Rayon1/4 E7 KGB screening is separate,
+oracle/full-stream gated and pending review. See `slices/parallel_ab_2026-09-28.md`.
+
 CURRENT: E6 Cayley build3833716 and independent review3833739 COMPLETE:
 14mathmatches/1rejection across15 retained cases, including complete E6 core
 KL and F4 history coefficients. Unchanged E6 regression executes/fails before

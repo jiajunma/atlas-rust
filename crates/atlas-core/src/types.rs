@@ -11,6 +11,8 @@
 
 use std::fmt;
 
+pub mod polymorphic;
+
 /// All twenty upstream primitive types, in the upstream prim_names order
 /// (axis-types.w:295-315). Every name is load-bearing from B1 on: the lexer
 /// reserves them all positionally, even before a primitive's value layer
@@ -101,6 +103,9 @@ pub struct TypeNumber(pub(crate) usize);
 pub enum Type {
     /// `*` — as-yet-undetermined, narrowed only by `specialise`.
     Undetermined,
+    /// A linked type variable. Rigidity is determined by the enclosing
+    /// scheme/assignment's fixed-variable threshold, not by this node.
+    Variable(usize),
     Primitive(Prim),
     /// Argument and result; multi-argument functions carry a tuple argument.
     Function(Box<(Type, Type)>),
@@ -111,6 +116,9 @@ pub enum Type {
     /// A typedef-table entry; equality is by number (the table
     /// canonicalises, so distinct numbers are distinct types).
     Tabled(TypeNumber),
+    /// An application of a declared type constructor, retaining its name and
+    /// arguments even when its structural expansion contains unused formals.
+    Applied(TypeNumber, Vec<Type>),
 }
 
 impl Type {
@@ -160,6 +168,25 @@ impl Type {
                 true
             }
             (Type::Tabled(own), Type::Tabled(other)) => own == other,
+            (Type::Applied(own, _), Type::Applied(other, _))
+            | (Type::Applied(own, _), Type::Tabled(other))
+            | (Type::Tabled(own), Type::Applied(other, _))
+                if own != other && table.is_recursive(*own) && table.is_recursive(*other) => false,
+            (Type::Applied(own, args), Type::Applied(other, patterns)) if own == other => {
+                args.len() == patterns.len()
+                    && args.iter_mut().zip(patterns).all(|(a, b)| a.specialise(b, table))
+            }
+            (Type::Applied(..), _) => {
+                // Unlike a read-only compatibility query, successful
+                // specialisation exposes the requested structural shape.
+                // Preserve refinements to holes in constructor arguments.
+                let Ok(mut expanded) = table.expand_application(self) else { return false; };
+                if !expanded.specialise(pattern, table) { return false; }
+                *self = expanded;
+                true
+            }
+            (_, Type::Applied(..)) => table.expand_application(pattern)
+                .is_ok_and(|expanded| self.specialise(&expanded, table)),
             (Type::Tabled(number), _) => {
                 // Table types contain no holes, so this is a pure check.
                 let expansion = table.expansion(*number).clone();
@@ -170,6 +197,7 @@ impl Type {
                 self.specialise(&expansion, table)
             }
             (Type::Primitive(own), Type::Primitive(other)) => own == other,
+            (Type::Variable(own), Type::Variable(other)) => own == other,
             (Type::Function(own), Type::Function(other)) => {
                 own.0.specialise(&other.0, table) && own.1.specialise(&other.1, table)
             }
@@ -190,9 +218,22 @@ impl Type {
         match (self, pattern) {
             (_, Type::Undetermined) | (Type::Undetermined, _) => true,
             (Type::Tabled(own), Type::Tabled(other)) => own == other,
+            (Type::Applied(own, _), Type::Applied(other, _))
+            | (Type::Applied(own, _), Type::Tabled(other))
+            | (Type::Tabled(own), Type::Applied(other, _))
+                if own != other && table.is_recursive(*own) && table.is_recursive(*other) => false,
+            (Type::Applied(own, args), Type::Applied(other, patterns)) if own == other => {
+                args.len() == patterns.len()
+                    && args.iter().zip(patterns).all(|(a, b)| a.can_specialise(b, table))
+            }
+            (Type::Applied(..), _) => table.expand_application(self)
+                .is_ok_and(|expanded| expanded.can_specialise(pattern, table)),
+            (_, Type::Applied(..)) => table.expand_application(pattern)
+                .is_ok_and(|expanded| self.can_specialise(&expanded, table)),
             (Type::Tabled(number), _) => table.expansion(*number).can_specialise(pattern, table),
             (_, Type::Tabled(number)) => self.can_specialise(table.expansion(*number), table),
             (Type::Primitive(own), Type::Primitive(other)) => own == other,
+            (Type::Variable(own), Type::Variable(other)) => own == other,
             (Type::Function(own), Type::Function(other)) => {
                 own.0.can_specialise(&other.0, table) && own.1.can_specialise(&other.1, table)
             }
@@ -231,6 +272,9 @@ pub struct TypeBinding {
 pub struct TypeTable {
     bindings: Vec<TypeBinding>,
     aliases: std::collections::BTreeMap<String, Type>,
+    /// Only new constructor entries occur here. Legacy tabled entries retain
+    /// their nominal recursive-type behavior until the declaration layer moves.
+    constructors: std::collections::BTreeMap<usize, (usize, bool)>,
 }
 
 impl TypeTable {
@@ -254,6 +298,69 @@ impl TypeTable {
 
     pub fn binding(&self, number: TypeNumber) -> &TypeBinding {
         &self.bindings[number.0]
+    }
+
+    pub fn add_constructor(
+        &mut self,
+        binding: TypeBinding,
+        arity: usize,
+        recursive: bool,
+    ) -> TypeNumber {
+        let number = self.add(binding);
+        self.constructors.insert(number.0, (arity, recursive));
+        number
+    }
+
+    pub fn constructor_arity(&self, number: TypeNumber) -> usize {
+        self.constructors.get(&number.0).map_or(0, |entry| entry.0)
+    }
+
+    pub fn is_recursive(&self, number: TypeNumber) -> bool {
+        self.constructors.get(&number.0).is_none_or(|entry| entry.1)
+    }
+
+    /// Check applications without expanding definitions, so recursive names
+    /// remain finite. Validate even equal applications and variable bindings:
+    /// neither fast path is permission to accept a malformed constructor.
+    pub fn validate_applications(&self, ty: &Type) -> Result<(), polymorphic::TypeError> {
+        match ty {
+            Type::Tabled(number) => self.validate_constructor(*number, 0),
+            Type::Applied(number, args) => {
+                self.validate_constructor(*number, args.len())?;
+                args.iter().try_for_each(|arg| self.validate_applications(arg))
+            }
+            Type::Row(component) => self.validate_applications(component),
+            Type::Function(parts) => {
+                self.validate_applications(&parts.0)?;
+                self.validate_applications(&parts.1)
+            }
+            Type::Tuple(parts) | Type::Union(parts) =>
+                parts.iter().try_for_each(|part| self.validate_applications(part)),
+            Type::Primitive(_) | Type::Undetermined | Type::Variable(_) => Ok(()),
+        }
+    }
+
+    fn validate_constructor(&self, number: TypeNumber, found: usize) -> Result<(), polymorphic::TypeError> {
+        if self.bindings.get(number.0).is_none() {
+            return Err(polymorphic::TypeError::UnknownConstructor(number.0));
+        }
+        let expected = self.constructor_arity(number);
+        if found != expected {
+            return Err(polymorphic::TypeError::Arity { expected, found });
+        }
+        Ok(())
+    }
+
+    /// One expansion only: recursive applications in the body stay references.
+    pub fn expand_application(&self, applied: &Type) -> Result<Type, polymorphic::TypeError> {
+        let (number, args) = match applied {
+            Type::Tabled(number) => (*number, &[][..]),
+            Type::Applied(number, args) => (*number, args.as_slice()),
+            other => return Ok(other.clone()),
+        };
+        self.validate_applications(applied)?;
+        let binding = &self.bindings[number.0];
+        polymorphic::substitute_parameters(&binding.definition, args)
     }
 
     pub fn expansion(&self, number: TypeNumber) -> &Type {
@@ -300,6 +407,14 @@ impl fmt::Display for TypeDisplay<'_> {
 fn write_type(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) -> fmt::Result {
     match type_ {
         Type::Undetermined => write!(out, "*"),
+        Type::Variable(number) => {
+            // axis-types.w prints a single character starting at A (including
+            // punctuation after Z), not spreadsheet-style AA, AB, ... .
+            let code = u32::try_from(*number).ok()
+                .and_then(|n| u32::from('A').checked_add(n))
+                .and_then(char::from_u32).ok_or(fmt::Error)?;
+            write!(out, "{code}")
+        }
         Type::Primitive(prim) => write!(out, "{}", prim.name()),
         Type::Row(component) => {
             write!(out, "[")?;
@@ -313,6 +428,14 @@ fn write_type(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) -> 
             write!(out, ")")
         }
         Type::Tabled(number) => write!(out, "{}", table.binding(*number).name),
+        Type::Applied(number, args) => {
+            write!(out, "{}<", table.binding(*number).name)?;
+            for (i, arg) in args.iter().enumerate() {
+                if i != 0 { write!(out, ",")?; }
+                write_type(arg, table, out)?;
+            }
+            write!(out, ">")
+        }
     }
 }
 

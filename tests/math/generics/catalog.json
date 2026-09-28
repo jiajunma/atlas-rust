@@ -103,6 +103,54 @@
       "intent": "accept",
       "scope": "An explicit concrete element type removes polymorphism; an empty [int] row must remain assignable, unlike the paired polymorphic case.",
       "file": "monomorphic_empty_assignment.atlas"
+    },
+    {
+      "id": "fixed_local_assignment",
+      "intent": "accept",
+      "scope": "A fixed type variable inside its abstraction is not polymorphic; a local of that type remains mutable.",
+      "file": "fixed_local_assignment.atlas"
+    },
+    {
+      "id": "polymorphic_local_assignment",
+      "intent": "reject",
+      "scope": "Discover whether implicit constness applies to a genuinely polymorphic local empty row as well as a global.",
+      "file": "polymorphic_local_assignment.atlas"
+    },
+    {
+      "id": "nested_abstraction",
+      "intent": "accept",
+      "scope": "Nested abstractions retain outer fixed variables while freshening the inner function's independent type parameter.",
+      "file": "nested_abstraction.atlas"
+    },
+    {
+      "id": "shadowed_abstraction",
+      "intent": "reject",
+      "scope": "Capture3834266 disproves shadowing acceptance: the existing type name is TYPE_VAR, whereas a new abstraction requires IDENT. Preserve the rejected input.",
+      "file": "shadowed_abstraction.atlas"
+    },
+    {
+      "id": "unused_constructor_parameter",
+      "intent": "reject",
+      "scope": "Historical discovery input retained: capture3834266 tokenizes adjacent >= as OPERATOR, before testing any unused-parameter semantics. The spaced companion exercises the intended constructor.",
+      "file": "unused_constructor_parameter.atlas"
+    },
+    {
+      "id": "unused_constructor_parameter_spaced",
+      "intent": "reject",
+      "scope": "Capture3834282 removes the >= lexical trap but reveals a separate fixture error: a named struct specification needs multiple fields. Preserve this rejected single-field case; the tuple companion exercises unused formals.",
+      "file": "unused_constructor_parameter_spaced.atlas"
+    },
+    {
+      "id": "monomorphic_local_assignment",
+      "intent": "accept",
+      "scope": "Concrete [int] annotation removes local polymorphism and must preserve mutability, paired with the new local wrong-acceptance regression.",
+      "file": "monomorphic_local_assignment.atlas"
+    },
+    {
+      "id": "unused_constructor_tuple",
+      "intent": "accept",
+      "scope": "Two named fields both use S, leaving distinct formal T unused. Verify the declared two-argument arity, application report and both projector types/values.",
+      "file": "unused_constructor_tuple.atlas"
     }
   ]
 }

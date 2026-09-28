@@ -10,6 +10,14 @@ is updated in place.
 All tests, builds, differential runs and benchmarks run on **HPC compute
 nodes**. Local work is limited to source inspection, editing and synchronization.
 
+The separate `generics/catalog.json` now retains25 prerequisite-language
+discovery cases (not part of the108 mathematical-case index space). It includes
+global/local polymorphic-constness failures, their concrete mutable controls,
+fixed-type local mutation, nested abstractions and retained rejected syntax
+probes. See `docs/slices/generic_language_2026-09-28.md` for evidence and
+disproved fixture hypotheses. Passing internal type units does not close the
+latest `basic.at` gate or establish any high-level mathematical feature.
+
 ## Coverage and honest status
 
 `catalog.json` expands nine cases (eight positive, one negative) for each of

@@ -133,11 +133,13 @@ def verify_build(build, lock):
     return scripts
 
 
-def observe(engine, binary, scripts, case, output, timeout):
+def observe(engine, binary, scripts, case, output, timeout, *, rayon_threads=1):
+    if type(rayon_threads) is not int or rayon_threads < 1:
+        raise ValueError("positive integer Rayon thread count required")
     paths = {suffix: output / (engine + "." + suffix)
              for suffix in ("stdout", "stderr", "metrics")}
     env = {k: v for k, v in os.environ.items() if not k.startswith("ATLAS_")}
-    env.update(LC_ALL="C", RAYON_NUM_THREADS="1", OMP_NUM_THREADS="1",
+    env.update(LC_ALL="C", RAYON_NUM_THREADS=str(rayon_threads), OMP_NUM_THREADS="1",
                OPENBLAS_NUM_THREADS="1")
     def limit():
         resource.setrlimit(resource.RLIMIT_AS, (6 * 1024**3, 6 * 1024**3))
@@ -151,10 +153,16 @@ def observe(engine, binary, scripts, case, output, timeout):
     elapsed = time.monotonic() - start
     metrics = paths["metrics"].read_text()
     rss = re.search(r"Maximum resident set size \(kbytes\):\s*(\d+)", metrics)
+    user_cpu = re.search(r"User time \(seconds\):\s*([0-9.]+)", metrics)
+    system_cpu = re.search(r"System time \(seconds\):\s*([0-9.]+)", metrics)
     record = {"engine": engine, "command": command, "exit_status": proc.returncode,
               "timed_out": proc.returncode == 124, "seconds": elapsed,
               "termination_uncertain": proc.returncode < 0 or proc.returncode >= 128,
               "maxrss_kb": int(rss[1]) if rss else None, "maxrss_approximate": False,
+              "user_cpu_seconds": float(user_cpu[1]) if user_cpu else None,
+              "system_cpu_seconds": float(system_cpu[1]) if system_cpu else None,
+              "rayon_num_threads_requested": rayon_threads,
+              "affinity_cpu_ids": sorted(os.sched_getaffinity(0)),
               "resource_limit_gib": 6, "timeout_seconds": timeout,
               "artifacts": {key: {"path": str(path), "sha256": digest(path),
                                    "bytes": path.stat().st_size} for key, path in paths.items()}}

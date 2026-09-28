@@ -1,0 +1,2 @@
+set probe_outer=any_type T ((T x):any_type S ((S y):(T,S):(x,y)))
+prints("NESTED",probe_outer(2)("abc"),probe_outer(true)(3/4))

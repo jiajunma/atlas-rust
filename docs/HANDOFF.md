@@ -6,6 +6,50 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
+LATEST LANGUAGE IMPLEMENTATION: internal type foundation job3833858 COMPLETE
+4:12;17 type tests,3 coercion tests and CLI cargo check pass. The prior global
+assignment regression remains an executed failure, NOT repaired. New owned
+TypeScheme/TypeAssignment and variable/applied-constructor representation are
+not yet connected to the parser/analyzer. Exact report/source pins are in
+tests/reference/hpc/math_type_foundation_2026_09_28.json and the indexed
+generic-language slice; do not claim generic or latest-basic.at support.
+R4 capture3834266 COMPLETE22cases discovers the analogous LOCAL empty-row
+wrong acceptance; it also disproves same-name nested type shadowing. R5
+capture3834282 COMPLETE24cases confirms the concrete local assignment control
+matches fully. Preserve both discovery fixture mistakes (>= lexical trap,
+single named struct field), and collect the separate valid two-field probe.
+The new local unchanged-runtime unit probe3834285 COMPLETE3:32 at
+/public/home/majj/atlas-math-polymorphic-local-probe-20260928.jPmq9lgO;
+executes0pass/1fail after the concrete control succeeds. It adds only that unit to accepted
+mathematical runtime3833716; it does NOT include the new type foundation or
+the global unit. Neither global nor local constness is repaired yet.
+R6 capture3834288 COMPLETE25cases/6checker tests; all oracle intents confirmed,
+including the valid two-field constructor with an unused argument slot.
+Foundation R2 job3834296 COMPLETE6:25 at
+/public/home/majj/atlas-type-foundation-r2-20260928.GFARslae: same structural
+Applied-specialisation unit executes/fails before and passes after among18
+type tests;3 coercion tests and CLI check pass. Report SHA
+adbc4b8f88ea06825ec2623eccf811aca4c7920a972a7ec7dd7f43c748906902.
+Current types.rs46fab125.../polymorphic.rs07082292... match the tested source.
+All language foundation/capture/local-probe jobs above are terminal.
+
+USER GOAL EXTENSION: investigate computational parallelism and select speedups
+using HPC A/B. Existing observer forced one Rayon thread, despite parallel
+Weyl/inner-class/KGB code. The new1/4-thread E7 KGB experiment uses accepted
+build3833716 (same binary both Rust arms), four balanced fresh-process rounds,
+full oracle/stdout/stderr equality, wall/CPU/RSS/affinity capture and independent
+review before any speed claim. See `slices/parallel_ab_2026-09-28.md` and the
+parallel submission receipt. Do not conflate serial-to-parallel scaling with
+Rust-versus-original performance; no new speedup is accepted yet.
+Active A/B job3834321 was submitted at
+/public/home/majj/atlas-parallel-ab-20260928.15hQxOhx with4CPUs/8G.
+Pin535e979fde936c98c02a04b2561ee17b7ec423e4c2bd6287413e19975aeba889.
+Snapshot00:01:38 confirms RUNNING,6 checker tests pass,one completed round,
+affinity54-57/four allocated CPUs on Xeon Gold6338. No final ratio reviewed.
+Collect this exact job, then independently review full raw streams, metrics,
+source pins and the four-round schedule. Do not rerun while it is live and do
+not report a preliminary or failed arm as an accepted speedup.
+
 LATEST COMPLETED WAVE: E6 imaginary-II Cayley repair at
 /public/home/majj/atlas-math-cayley-repair-20260928.FFGcIkPi.
 Preflight3833713 PASS56 checker tests; build3833716 COMPLETE10:21 and
@@ -54,7 +98,8 @@ basic.at starts with Pair/One_of/Maybe/Iterator and many polymorphic scopes.
 Rust lex.rs still explicitly tests any_type as an ordinary identifier. The
 generic gap is not just one missing keyword. Preserve current oracle cases
 72-74; port scoping, type substitution and overload behavior with negative
-fixtures rather than rewriting upstream scripts. No language runtime edited.
+fixtures rather than rewriting upstream scripts. See the newer foundation
+status above; the active parser/analyzer is still unchanged.
 
 LATEST LANGUAGE EVIDENCE: capture3833758 COMPLETE16cases/6checker tests,
 reportc321581d1666d9856951701ba1ab0c83955643f5447ba20b9b77f381de3d29d6.

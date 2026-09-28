@@ -178,6 +178,12 @@ does not get past script loading; they cannot support a speedup claim.
 
 ## New kernel regressions and Hodge diagnostics
 
+The user now also requires computational parallelism evaluated by A/B tests.
+Existing observer timings below force one Rayon thread. The controlled1/4
+thread experiment and its correctness/resource gates are documented in
+[`slices/parallel_ab_2026-09-28.md`](slices/parallel_ab_2026-09-28.md).
+No multicore scaling or original-versus-parallel speedup is accepted yet.
+
 R9 independently reviewed benchmark3832228 now provides four alternating,
 fresh-process pairs for E7 and D6 KGB. Every mathematical byte agrees both
 within and across those rounds:

@@ -89,8 +89,44 @@ not a source-level C++ translation.
    Verify resulting source hashes; do not upload whole source/target trees
    when the baseline is already available. Do not push unverified code merely
    as a transport shortcut. Builds and tests still belong on compute nodes.
+7. **Evaluate parallel acceleration with controlled A/B tests.** The user's
+   2026-09-28 extension requires investigating computational parallelism and
+   selecting effective changes by HPC evidence. First require full output
+   equality with the original and between serial/parallel candidates. Hold
+   source, input, compiler, node and resource limits fixed; alternate arm order,
+   repeat fresh processes and record wall time, CPU time, peak RSS and thread
+   settings. Distinguish Rust serial-to-parallel scaling from Rust-versus-C++
+   speedup. Failed or mathematically unequal runs yield no accepted speed ratio.
+   Prefer60-600s workloads where possible; small tests are correctness controls.
+   Existing math-suite observations explicitly force RAYON_NUM_THREADS=1;
+   never present those timings as measurements of the multicore configuration.
 
 ## Verified repair guard
+
+### Structural specialisation must expose the receiver's components
+
+- Foundation3834296's same test fails with the earlier Applied implementation
+  and passes after: a read-only can_specialise check returned true but left the
+  receiver Applied instead of the Row the caller needed to inspect.
+- Follow axis-types.w:942-979: expand/refine the receiver on successful
+  structural specialisation. Preserve the distinct-recursive-name termination
+  guard and use disjoint before/after build targets. This internal fix is not
+  generic-language support; the active analyzer still needs its scope migration.
+
+### Type abstraction is not conventional lexical shadowing
+
+- Generic capture3834266 accepts nested abstractions with distinct T/S names,
+  but rejects an inner `any_type T` while outer T is still a TYPE_VAR token:
+  the declaration grammar expects IDENT. Duplicate constructor formals in one
+  not-yet-installed list are a different case and remain accepted.
+- The same capture shows that polymorphic LOCAL empty rows are implicitly
+  constant too (`axis.w::thread_bindings`), not just global bindings. Preserve
+  both failing regressions, concrete [int] assignment controls and mutation of
+  fixed-T locals; neither a global-only nor an empty-value-only fix is sound.
+- Discovery fixtures must reach the intended semantics. Adjacent `>=` is one
+  operator, and named struct specifications require at least two fields. Keep
+  the rejected discovery inputs and add valid companions; do not interpret
+  these syntax failures as evidence about unused type-parameter substitution.
 
 ### Missing upward Cayley images have a zero polynomial, not a missing descent
 

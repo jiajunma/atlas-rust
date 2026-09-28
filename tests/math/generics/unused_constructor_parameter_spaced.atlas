@@ -1,0 +1,4 @@
+set_type MathPhantom<S,T> = (S unphantom) !
+set probe_phantom=MathPhantom<int,rat>:7
+whattype probe_phantom
+prints("PHANTOM",probe_phantom.unphantom)

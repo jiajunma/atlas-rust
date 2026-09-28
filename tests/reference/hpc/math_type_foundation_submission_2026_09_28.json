@@ -1,0 +1,20 @@
+{
+  "schema": "atlas-type-foundation-submission-v1",
+  "stage": "/public/home/majj/atlas-type-foundation-20260928.n2mr04Dg",
+  "job": "3833858",
+  "status": "FOUNDATION_UNITS_PASS_LANGUAGE_NOT_PORTED",
+  "elapsed": "00:04:12",
+  "report_sha256": "4179f3ec973864a988da06f953589add340f31dd6b340cebc68d62e4a9c1118e",
+  "pin_sha256": "2040aaa8d2646e3d574260f62beb927bd88360ba51d33d0b5c6fdebf5a9dfe61",
+  "patch_sha256": "ba0b837b25894814e9b6429a6ade95d9065484e0658a8d96196bcff09a29c6fa",
+  "source_files": 1213,
+  "type_tests": 17,
+  "coercion_tests": 3,
+  "cli_check": "PASS",
+  "global_regression": "Executed 0 passed,1 failed; wrong acceptance still present.",
+  "source_changes": {
+    "crates/atlas-core/src/types.rs": "0c63695d2aa89db126606d53914c2a9634be934c350aa0666e118b4a2ee55654",
+    "crates/atlas-core/src/types/polymorphic.rs": "f1c52aff5a0b30e674b24e35c63f58e67dd9ad9208077693b918279e7b8fb64a"
+  },
+  "scope": "No lexer/parser/analyzer integration; no generic or mathematical feature acceptance. Hashes identify this tested candidate, not later edits. Formatting outputs are separate artifacts, not applied."
+}
