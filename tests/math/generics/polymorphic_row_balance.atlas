@@ -1,0 +1,3 @@
+prints("BALANCED",[([],[3/4,5]),([2],[])])
+prints("EMPTY",[[],[]])
+prints("RECOVER",17)

@@ -18,6 +18,21 @@ KNOWN_FAILURES = {
 }
 
 
+def regression_contracts(repaired=False):
+    if type(repaired) is not bool:
+        raise ValueError("assignment repair gate must be an explicit boolean")
+    return {name: {"exit_status": 0 if repaired else 101,
+                   "marker": marker.replace("=false", "=true") if repaired else marker}
+            for name, marker in KNOWN_FAILURES.items()}
+
+
+def check_regression(text, name, repaired, test_count):
+    contract = regression_contracts(repaired)[name]
+    check_summary(text, int(repaired), int(not repaired), test_count - 1)
+    if contract["marker"] not in text or name not in text:
+        raise ValueError("regression did not execute its exact asserted state")
+
+
 def inventory(text):
     names = re.findall(r"^([^\s]+): test$", text, re.M)
     if len(names) != len(set(names)) or not set(KNOWN_FAILURES).issubset(names):
@@ -57,7 +72,9 @@ def main():
         if digest(parent_path) != pin["parent_report_sha256"]:
             raise ValueError("parent report changed")
         parent = json.loads(parent_path.read_text())
-        if parent["status"] != "FOUNDATION_UNITS_PASS_LANGUAGE_NOT_PORTED":
+        if not (parent["status"] == "FOUNDATION_UNITS_PASS_LANGUAGE_NOT_PORTED"
+                or (parent["status"] == "FOUNDATION_UNITS_PASS_ORACLE_UNAVAILABLE"
+                    and parent.get("source_integrity_rechecked") is True)):
             raise ValueError("parent build is not verified")
         source = parent_path.parent / "source"
         binary = Path(pin["test_binary"])
@@ -101,28 +118,30 @@ def main():
 
         checker = run("checker", [sys.executable, "-m", "unittest", "discover", "-s", "hpc",
                                   "-p", "test_math_language_unit_review.py", "-v"], cwd=root)
-        if not re.search(r"Ran 3 tests.*\n\nOK", checker, re.S):
+        if not re.search(r"Ran 5 tests.*\n\nOK", checker, re.S):
             raise ValueError("review checker did not execute its tests")
         names = inventory(run("inventory", [str(binary), "--list"]))
         report["test_count"] = len(names)
         report["source_files_rehashed"] = len(parent["source_files"])
+        repaired = parent["pin"].get("polymorphic_assignment_repair", False)
+        contracts = regression_contracts(repaired)
+        remaining = [] if repaired else list(KNOWN_FAILURES)
         args = [str(binary), "--test-threads=2", "--nocapture"]
-        for name in KNOWN_FAILURES:
+        for name in remaining:
             args.extend(["--skip", name])
         log = run("core-suite", args)
-        check_summary(log, len(names) - len(KNOWN_FAILURES), 0, len(KNOWN_FAILURES))
-        for index, (name, marker) in enumerate(KNOWN_FAILURES.items()):
+        check_summary(log, len(names) - len(remaining), 0, len(remaining))
+        for index, (name, contract) in enumerate(contracts.items()):
             log = run("retained-failure-" + str(index),
-                      [str(binary), name, "--exact", "--nocapture"], expected=101)
-            check_summary(log, 0, 1, len(names) - 1)
-            if marker not in log or "polymorphic " not in log:
-                raise ValueError("retained regression did not reach its intended assertion")
+                      [str(binary), name, "--exact", "--nocapture"], expected=contract["exit_status"])
+            check_regression(log, name, repaired, len(names))
         if (file_manifest(source) != parent["source_files"]
                 or digest(binary) != pin["test_binary_sha256"]
                 or digest(parent_path) != pin["parent_report_sha256"]
                 or any(digest(root / n) != h for n, h in pin["inputs"].items())):
             raise ValueError("review inputs changed during execution")
-        report["status"] = "CORE_SUITE_PASS_EXCEPT_TWO_REPRODUCED_KNOWN_FAILURES"
+        report["status"] = ("CORE_SUITE_PASS_INCLUDING_REPAIRED_ASSIGNMENT_REGRESSIONS" if repaired
+                            else "CORE_SUITE_PASS_EXCEPT_TWO_REPRODUCED_KNOWN_FAILURES")
     except Exception:
         report["error"] = traceback.format_exc()
     path = out / "report.json"

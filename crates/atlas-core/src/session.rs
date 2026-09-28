@@ -230,6 +230,146 @@ mod tests {
     }
 
     #[test]
+    fn captured_generic_and_builtin_functions_are_first_class() {
+        // Before3836435/3836533: original succeeds; Rust reports missing
+        // identifiers. Each captured scheme must be instantiated per use.
+        for (source, expected) in [
+            (include_str!("../../../tests/math/generics/constructor_function_values.atlas"),
+             vec!["DIRECT7\n", "LOCAL(2,3/4)\n", "TUPLE(2,\"b\")\n"]),
+            (include_str!("../../../tests/math/generics/captured_result_selection.atlas"),
+             vec!["GENERIC7\n", "CONCRETEtrue\n"]),
+            (include_str!("../../../tests/math/generics/captured_builtin_function.atlas"),
+             vec!["BUILTIN8\n", "RETURNED10\n", "TUPLE(8,6)\n"]),
+            // Original3837308 supplies argument context for the tuple too.
+            (include_str!("../../../tests/math/generics/direct_function_argument_context.atlas"),
+             vec!["CONTEXT8\n", "RETURNED10\n"]),
+        ] {
+            let events = run_source(&SourceText::new(source));
+            assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{source}\n{events:?}");
+            for expected in expected {
+                assert!(events.iter().any(|e| matches!(e,
+                    SessionEvent::ReportLine { text, .. } if text == expected)), "{source}\n{events:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn captured_builtin_values_preserve_display_and_variadic_packing() {
+        // Before3836975/3837092: ordinary builtins retain their original
+        // registry name, while variadic arguments stay one packed value.
+        let events = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/captured_builtin_display.atlas"
+        )));
+        assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
+        for expected in ["SUCC{succ@int}\n", "PAIR({succ@int},{pred@int})\n",
+                         "PRINTER{prints@A}\n", "PACKED(1,2)[3,4]\n"] {
+            assert!(events.iter().any(|e| matches!(e,
+                SessionEvent::ReportLine { text, .. } if text == expected)), "{events:?}");
+        }
+        assert!(events.iter().any(|e| matches!(e,
+            SessionEvent::Value { value, .. } if value.to_string() == "{succ@int}")), "{events:?}");
+    }
+
+    #[test]
+    fn polymorphic_list_balance_preserves_acceptance_and_rejection() {
+        // Original3837421 accepts independent empty row components, but
+        // refuses simultaneous coercion/substitution across tuple entries.
+        // The unchanged3836533 Rust does the opposite on these two fixtures.
+        let accepted = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/polymorphic_row_balance.atlas"
+        )));
+        assert!(!accepted.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{accepted:?}");
+        for expected in ["BALANCED[([],[3/4,5/1]),([2],[])]\n", "EMPTY[[],[]]\n", "RECOVER17\n"] {
+            assert!(accepted.iter().any(|e| matches!(e,
+                SessionEvent::ReportLine { text, .. } if text == expected)), "{accepted:?}");
+        }
+        let rejected = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/polymorphic_row_balance_mixed_rejected.atlas"
+        )));
+        let diagnostics: Vec<_> = rejected.iter().filter_map(|e| match e {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).collect();
+        assert_eq!(diagnostics.len(), 1, "{rejected:?}");
+        assert_eq!(diagnostics[0].message, "No common type found between components of list expression: { ([rat],[bool]), ([int],[A]) }");
+        assert!(rejected.iter().any(|e| matches!(e,
+            SessionEvent::ReportLine { text, .. } if text == "RECOVER17\n")), "{rejected:?}");
+        assert!(!rejected.iter().any(|e| matches!(e,
+            SessionEvent::ReportLine { text, .. } if text.starts_with("MIXED"))), "{rejected:?}");
+    }
+
+    #[test]
+    fn implicit_polymorphic_constants_preserve_concrete_siblings_and_shadowing() {
+        // Original3837531: three global and two local assignments reject.
+        // Before3837531 Rust accepts them and mutates the protected values.
+        for (source, messages, lines) in [
+            (include_str!("../../../tests/math/generics/polymorphic_binding_mutations.atlas"),
+             vec!["Name 'frozen_row' is constant in assignment frozen_row:=[3]",
+                  "Name 'frozen_row' is constant in multiple assignment set (mutable_count,frozen_row):=(4,[3])",
+                  "Name 'frozen_tuple' is constant in assignment frozen_tuple:=([3],2)"],
+             vec!["Constant frozen_row: [A]\n", "UNCHANGED2[]\n",
+                  "Constant frozen_tuple: ([A],int)\n", "TUPLE([],1)\n",
+                  "Variable frozen_row: [int] (overriding previous instance, which had type [A] (constant))\n",
+                  "REBOUND[5]\n"]),
+            (include_str!("../../../tests/math/generics/polymorphic_local_binding_mutations.atlas"),
+             vec!["Name 'xs' is constant in assignment xs:=[3]",
+                  "Name 'xs' is constant in multiple assignment set (n,xs):=(4,[3])"],
+             vec!["MONO[1]\n", "SHADOW[2]\n", "LEAF(2,[])\n", "RECOVER17\n"]),
+        ] {
+            let events = run_source(&SourceText::new(source));
+            let diagnostics: Vec<_> = events.iter().filter_map(|e| match e {
+                SessionEvent::Diagnostic(d) => Some(d), _ => None,
+            }).collect();
+            assert_eq!(diagnostics.len(), messages.len(), "{events:?}");
+            for (diagnostic, expected) in diagnostics.iter().zip(messages) {
+                assert_eq!(diagnostic.kind, ErrorKind::Name, "{events:?}");
+                assert_eq!(diagnostic.message, expected, "{events:?}");
+            }
+            for expected in lines {
+                assert!(events.iter().any(|e| matches!(e,
+                    SessionEvent::ReportLine { text, .. } if text == expected)), "{events:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn row_loop_bindings_are_constant_but_counted_loop_index_is_mutable() {
+        // Before3837531: Rust accepts ROW/INDEX and rejects COUNT; original
+        // does exactly the opposite. Keep both directions and recovery.
+        let events = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/loop_binding_mutations.atlas"
+        )));
+        let diagnostics: Vec<_> = events.iter().filter_map(|e| match e {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).collect();
+        assert_eq!(diagnostics.len(), 2, "{events:?}");
+        for (diagnostic, expected) in diagnostics.iter().zip([
+            "Name 'x' is constant in assignment x:=3",
+            "Name 'i' is constant in assignment i:=3",
+        ]) {
+            assert_eq!(diagnostic.kind, ErrorKind::Name, "{events:?}");
+            assert_eq!(diagnostic.message, expected, "{events:?}");
+        }
+        let lines: Vec<_> = events.iter().filter_map(|e| match e {
+            SessionEvent::ReportLine { text, .. } => Some(text.as_str()), _ => None,
+        }).collect();
+        assert_eq!(lines, ["COUNT[3,3]\n", "RECOVER17\n"]);
+    }
+
+    #[test]
+    fn captured_complete_signature_ambiguity_rejects_and_recovers() {
+        let events = run_source(&SourceText::new(include_str!(
+            "../../../tests/math/generics/captured_function_ambiguity.atlas"
+        )));
+        let errors: Vec<_> = events.iter().filter_map(|e| match e {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).collect();
+        assert_eq!(errors.len(), 1, "{events:?}");
+        assert_eq!(errors[0].message, "Ambiguous overloaded symbol 'captured_first': its context type (CaptureAmbiguous<int>->int) matches\n  both (CaptureAmbiguous<A>->A) and (CaptureAmbiguous<int>->int) in overload table");
+        assert!(events.iter().any(|e| matches!(e,
+            SessionEvent::ReportLine { text, .. } if text == "RECOVER17\n")), "{events:?}");
+    }
+
+    #[test]
     fn generic_and_concrete_exact_overloads_are_ambiguous_and_recover() {
         let events = run_source(&SourceText::new(include_str!(
             "../../../tests/math/generics/constructor_projector_ambiguity.atlas")));

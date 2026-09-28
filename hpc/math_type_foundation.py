@@ -84,6 +84,13 @@ def main():
 
         run("rustc-version", ["rustc", "-vV"])
         run("cargo-version", ["cargo", "-V"])
+        if "language_capture" in pin:
+            # Harness files live in the submitted stage, not in the older
+            # frozen Rust archive. Check their exact script before compiling.
+            checker = run("bridge-review-checker", [sys.executable,
+                str(root / "hpc/test_math_language_bridge.py"), "-v"])
+            if not re.search(r"Ran 5 tests.*\n\nOK", checker, re.S):
+                raise ValueError("bridge status checker did not execute its tests")
         if "before_types" in pin:
             # A focused before/after proof uses the same new regression body;
             # only the types.rs implementation is restored for the before run.
@@ -118,46 +125,51 @@ def main():
             match = re.search(r"test result: ok\. (\d+) passed; 0 failed;", log)
             if not match or int(match.group(1)) == 0:
                 raise ValueError(name + " did not execute passing tests")
-        # Keep the before regression untouched. This foundation does not yet
-        # connect schemes to global bindings or claim to repair the language.
+        # Both old failures remain unchanged assertions. A repair candidate
+        # must explicitly opt into their after-pass contracts, never skip them.
+        from math_language_unit_review import regression_contracts
+        repaired = pin.get("polymorphic_assignment_repair", False)
+        contracts = regression_contracts(repaired)
+        global_name = "typed::tests::polymorphic_empty_global_is_not_assignable"
         log = run("known-global-failure", ["cargo", "test", "--offline", "--locked", "-p", "atlas-core",
-                  "--lib", "typed::tests::polymorphic_empty_global_is_not_assignable",
-                  "--", "--exact", "--nocapture"], expected_exit=101)
-        if ("test result: FAILED. 0 passed; 1 failed;" not in log
-                or "POLYMORPHIC_GLOBAL_REGRESSION constant=false rejected=false" not in log
-                or "polymorphic global must reject assignment" not in log):
+                  "--lib", global_name, "--", "--exact", "--nocapture"],
+                  expected_exit=contracts[global_name]["exit_status"])
+        expected_summary = ("test result: ok. 1 passed; 0 failed;" if repaired
+                            else "test result: FAILED. 0 passed; 1 failed;")
+        if (expected_summary not in log or contracts[global_name]["marker"] not in log
+                or (not repaired and "polymorphic global must reject assignment" not in log)):
             raise ValueError("known language regression changed unexpectedly")
         run("cli-check", ["cargo", "check", "--offline", "--locked", "-p", "atlas-cli"])
         if pin.get("full_core_review", False):
-            from math_language_unit_review import KNOWN_FAILURES, check_summary, inventory
+            from math_language_unit_review import KNOWN_FAILURES, check_regression, check_summary, inventory
             checker = run("core-review-checker", [sys.executable,
                 str(root / "hpc/test_math_language_unit_review.py"), "-v"])
-            if not re.search(r"Ran 3 tests.*\n\nOK", checker, re.S):
+            if not re.search(r"Ran 5 tests.*\n\nOK", checker, re.S):
                 raise ValueError("full-core checker did not execute its tests")
             test = ["cargo", "test", "--offline", "--locked", "-p", "atlas-core", "--lib"]
             names = inventory(run("core-inventory", test + ["--", "--list"]))
             args = test + ["--", "--test-threads=2", "--nocapture"]
-            for name in KNOWN_FAILURES:
+            remaining = [] if repaired else list(KNOWN_FAILURES)
+            for name in remaining:
                 args.extend(["--skip", name])
             log = run("core-suite", args)
-            check_summary(log, len(names) - len(KNOWN_FAILURES), 0, len(KNOWN_FAILURES))
-            for index, (name, marker) in enumerate(KNOWN_FAILURES.items()):
+            check_summary(log, len(names) - len(remaining), 0, len(remaining))
+            for index, (name, contract) in enumerate(contracts.items()):
                 log = run("retained-failure-" + str(index),
-                          test + [name, "--", "--exact", "--nocapture"], expected_exit=101)
-                check_summary(log, 0, 1, len(names) - 1)
-                if marker not in log or "polymorphic " not in log:
-                    raise ValueError("retained regression missed its intended assertion")
+                          test + [name, "--", "--exact", "--nocapture"], expected_exit=contract["exit_status"])
+                check_regression(log, name, repaired, len(names))
             report["full_core_review"] = {
-                "test_count": len(names), "passed": len(names) - len(KNOWN_FAILURES),
-                "known_failures_executed": list(KNOWN_FAILURES), "ignored": 0,
+                "test_count": len(names), "passed": len(names) - len(remaining),
+                "known_failures_executed": remaining, "ignored": 0,
+                "repaired_regressions_executed": list(contracts) if repaired else [],
             }
+        completion_status = "FOUNDATION_UNITS_PASS_LANGUAGE_NOT_PORTED"
         if "language_capture" in pin:
             run("cli-build", ["cargo", "build", "--offline", "--locked", "-p", "atlas-cli"])
-            from math_language_bridge import capture
+            from math_language_bridge import capture, foundation_completion_status
             report["language_capture"] = capture(root, out, pin["language_capture"],
                                                   out / "target/debug/atlas-cli")
-            if report["language_capture"]["status"] != "CAPTURED_NOT_LANGUAGE_ACCEPTANCE":
-                raise ValueError("oracle execution failed; capture is not differential evidence")
+            completion_status = foundation_completion_status(report["language_capture"])
         # Emit formatting as an artifact; never modify the pinned tested source.
         for index, name in enumerate(n for n in pin["changed_files"] if n.endswith(".rs")):
             run("formatted-" + str(index), ["rustfmt", "--edition", "2021", "--config",
@@ -168,14 +180,17 @@ def main():
             raise ValueError("before source changed during checks")
         if any(digest(root / n) != h for n, h in pin["inputs"].items()):
             raise ValueError("inputs changed during checks")
-        report["status"] = "FOUNDATION_UNITS_PASS_LANGUAGE_NOT_PORTED"
+        report["source_integrity_rechecked"] = True
+        report["status"] = completion_status
     except Exception:
         report["error"] = traceback.format_exc()
     path = out / "report.json"
     path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     path.with_suffix(".sha256").write_text(digest(path) + "\n")
     print(report["status"], path, flush=True)
-    return int(report["status"] == "FAIL")
+    # Oracle-unavailable jobs stay nonzero; only their separately completed
+    # source/build/unit checks may be reused in subsequent discovery.
+    return int(report["status"] != "FOUNDATION_UNITS_PASS_LANGUAGE_NOT_PORTED")
 
 
 if __name__ == "__main__":

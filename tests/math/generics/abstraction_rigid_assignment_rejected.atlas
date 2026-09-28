@@ -1,0 +1,2 @@
+set imported_bad=any_type T ((T x):let fixed=x in any_type S ((S y):fixed:=y))
+prints("RECOVER",17)

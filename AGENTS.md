@@ -103,6 +103,42 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### Keep oracle availability separate from candidate integrity
+
+- R2 function build3837402 passes units/CLI, but an original signal makes
+  its driver exit before final source hashes. R4 build3837531 retains that
+  invalid case AND finishes source/input rechecks, with explicit
+  FOUNDATION_UNITS_PASS_ORACLE_UNAVAILABLE status and nonzero scheduler exit.
+  Only its separately verified build/unit artifacts may be reused. Never
+  classify a signal as rejection or silently drop it to turn a gate green.
+- Staged checker scripts must be invoked from their pinned stage, not via
+  relative discovery in an older source archive that lacks them. R3 was
+  cancelled before this path defect ran; R4 tests the absolute script first.
+- Balance discovery3837421 finds both wrong rejection and wrong acceptance.
+  Preserve the positive and mixed-coercion negative, all recovery values and
+  unchanged printer assertion. Full-core3837531 passes the new balance unit;
+  a negative's matching message is not matching full stderr presentation.
+
+### Binding constness depends on type scope and actual flag bits
+
+- Original3837531 rejects five global/local polymorphic assignments while
+  preserving concrete sibling mutation, atomic multiple-assignment failure,
+  monomorphic shadowing and rebinding. global.w::definition_group and
+  axis.w::thread_bindings use per-leaf schemes; fixed lexical variables are
+  not free variables. Require both unchanged old before failures to pass
+  explicitly after repair, never hide them by filtering/ignoring tests.
+  Repair3837694 passes429/429core, both unchanged assertions separately, CLI
+  and final integrity guards. Four mutation fixtures gain stdout equality and
+  correct rejection; stderr envelopes remain different, so do not call them
+  full diagnostic matches. The master still retains original's signal.
+- Original3837531 rejects row-loop element/index mutation but ACCEPTS a
+  counted-loop index assignment. layer::add takes unsigned-char flags; the
+  counted call's true is1, not const-bit0x4, despite its stale comment.
+  Follow executable flags plus original output, not the comment. Keep the
+  loop fixture and its recovery; this repair is not in constness job3837694.
+  Separate3837799 passes430core checks, CLI and final source guards; the loop
+  fixture now matches stdout, but its stderr formatting still differs.
+
 ### A frozen source archive is not necessarily a complete Git tree
 
 - Overload build3836297 stopped at the exact manifest guard before compiling:
@@ -152,6 +188,20 @@ not a source-level C++ translation.
   reject normally; corrected uppercase runtime probes also recover. Keep the
   five-case isolation catalog explicit, retain the failing single-command
   source, and do not silently shrink the master91-case contract corpus.
+- Function-value build3837257 compiles and passes capture/result-selection
+  and ambiguity units, but the original-backed captured-printer unit fails:
+  a free context variable D is rejected as a non-row before [3,4] is analysed.
+  Follow current axis.w::list_display's scoped row specialisation. Balancing
+  must also unify polymorphic types (axis-types.w::join_to), not compare them
+  with the old monomorphic broader_eq relation or final bare specialisation.
+  Keep that unchanged failing unit and require the full core gate after repair.
+- Scope discovery3837308 accepts outer polymorphic global/local imports inside
+  rigid scopes and preserves outer fixed T across an inner S closure. Assigning
+  inner S to outer T rejects. It also DISPROVES concrete casts surrounding an
+  abstraction: (int->int):any_type T ((T x):x) rejects inside its rigid body.
+  Preserve both concrete-cast errors and recovery; do not infer conventional
+  instantiate-after-body semantics from the older prose. The full95-case probe
+  retains the separate original signal and is not an accepted differential run.
 
 ### Generic declarations and angle tokens have nonstandard boundaries
 

@@ -2,6 +2,137 @@
 
 ## Current mathematical-validation frontier — 2026-09-28
 
+LATEST VERIFIED BUILD/UNIT CHECKPOINT: loop-constness repair3837799 at
+atlas-loop-constness-20260928.q5u8C75q, pin
+e478c719ed408bff7750b2aec7154791bd4488973a32ecf056f55f1f30c015fc.
+Includes implicit-constness repair below plus original3837531 loop regression:
+row element/index immutable, counted index mutable. All430core pass, zero
+skips/ignored, both prior assignment assertions separately pass; CLI and final
+source/input hashes pass. Report
+041bcb284df25afc75d7615ce364c471c2a1093470ca73e1e194a8b234fd8cc9.
+On identical100inputs versus3837694, loop stdout now matches and none are lost;
+whole matches remain33. Loop rejection messages are right but stderr envelopes
+still differ. Scheduler FAILED7:20 because the full master retains original's
+signal, with explicit FOUNDATION_UNITS_PASS_ORACLE_UNAVAILABLE status. This is
+not full language/math acceptance. Frozen source is independent of3837694.
+
+NEXT: binding scope before3837952 submitted, stage
+atlas-binding-scope-before-20260928.pYR0z0ne, pin
+1cab87a46ab7ca84202abd8f34de53dfd4216bde0434d770cee13cea3d18ea40.
+It adds ONLY a global-identifier import assertion to3837799 runtime. Expected
+global_imported=false test failure, not a compile/staging failure. Original
+3837308 already accepts the source-level scope contract. A separate after
+candidate stores each TypeCell's defining floor and imports free variables
+under inner scopes without mutating the binding; pending HPC verification.
+Current local typed.rs contains this UNVERIFIED candidate beyond3837799.
+No any_type grammar has been added and basic.at remains blocked.
+
+Implicit-constness repair3837694 FAILED7:08 with explicit unavailable-oracle
+status (all build/unit/integrity gates pass), stage
+atlas-constness-repair-20260928.FD2wMFAo, pin
+357207caa13fc992c8e473385ca42c07b5b4f5afbd3d4f739b70283b7f187496.
+Expected429 core tests ALL passing, zero skips/ignored, plus both unchanged
+global/local regression assertions separately passing. The pin explicitly
+sets polymorphic_assignment_repair=true; the checker tests reject missing or
+wrong markers and non-boolean mode switches. Runtime derives implicit
+constness per pattern leaf at its lexical fixed-variable floor. One new
+internal floor test and one original-backed global/local mutation session test.
+Final report confirms429pass/0fail/0ignored/0filtered (12.21s), and
+both unchanged assertions separately pass: global constant=true rejected=true,
+local rejected=true. CLI and final source/input rechecks PASS. Report SHA
+ac328bd10b24c73fa7662199a6df4e216a14764ffc6ffe36dc04375e42e504c5.
+Against R4 on identical100source hashes, four previously wrongly accepted
+mutation fixtures now reject and match complete stdout; concrete assignment
+controls remain whole-stream matches. Whole matches stay33, none lost; error
+messages are correct but stderr envelope remains different. Only original signal
+is generic_captured_selection_rejected. This is a scoped behavior repair, not
+full diagnostic/language/math compatibility. Snapshot is frozen; see receipt.
+The complete100-case master still includes original's signal. Do not infer
+any_type/basic.at or mathematical acceptance from the build/unit gate.
+
+Function R4 job3837531 FAILED7:41 only at the explicit unavailable-oracle exit:
+status FOUNDATION_UNITS_PASS_ORACLE_UNAVAILABLE, full427 inventory425pass,
+0ignored, both known assignment failures separately reproduced. CLI, all
+checker/filtered checks, formatting artifacts and FINAL source/input hashes
+pass. Stage atlas-function-build-r4-20260928.JljCv98L, pin
+3bb8682fb3343d5c2b0d099f60d49cd4be319515ce23a74008806c9bb279aa36;
+report512b0d51e559e6cf9405798069ff1cbff55bcedbaee9b78fc0f3ec27a848b787.
+Master100 has33 whole-stream matches; retained generic_captured_selection_rejected
+is the only original signal. R4 includes NO implicit-constness repair.
+New balance acceptance matches fully; the mixed-coercion negative now rejects
+and recovers but stderr envelope still differs. No debug timing ratios.
+
+R4 original mutation contracts: globals reject3 assignments and preserve
+UNCHANGED2[]/TUPLE([],1), then permit monomorphic rebinding REBOUND[5]. Locals
+reject2 assignments, but accept MONO[1]/SHADOW[2]/LEAF(2,[])/RECOVER17. R4 Rust
+wrongly accepts all5. Row-loop element/index assignments reject in original,
+while counted-loop assignment succeeds COUNT[3,3]; Rust does the opposite.
+The loop mismatch is separate from submitted3837694. In current axis.w,
+thread_bindings forces flag0x4 for row loops, but counted-loop bind.add(...,true)
+passes numeric1 to unsigned-char flags, despite its stale constant comment.
+Follow executable flags plus captured behavior, not that comment.
+
+R3 job3837495 is confirmed CANCELLED by32367 after1:09, not a test failure.
+Its new checker path used relative discovery inside the old Rust archive,
+which lacks the new script. R4 runs the absolute stage-pinned checker before
+compilation. Preserve both frozen stages and the cancellation receipt.
+
+FUNCTION-VALUE CANDIDATE3837257 FAILED2:27. Stage
+atlas-function-build-20260928.vIRqFh8S, pin
+74fc657b480387d39dfc487695dccc552b9d253ce7c556fd7c48371263ca76e0.
+Adds opaque builtin function values, complete-signature overload capture,
+shared direct-call argument/result inference and independent tuple-component
+imports. Three original-backed session tests cover generic captures, builtins,
+display/variadic packing and ambiguity recovery. Full core inventory expected426;
+both known polymorphic-assignment failures remain separately required.
+Type44/coercion3/syntax48 pass; session51pass1fail. Capture/ambiguity units
+pass, but the unchanged captured-printer unit rejects [3,4] against free D.
+Full-core/CLI/capture were NOT reached. Failed report SHA
+860b557737794596989ad3fd95939a4c0449435b389f339d3348dab86d0d21f3.
+The planned capture retains the complete91-case master, including the
+original signal isolated by3837092. Therefore the differential acceptance gate
+remains unavailable if that signal recurs; do not discard it or infer a passing
+build from submitted source. Inspect command checks and per-case streams
+separately. No high-level math acceptance or debug speed ratio. Receipt:
+tests/reference/hpc/math_function_value_build_submission_2026_09_28.json.
+
+Scope discovery3837308 FAILED1:30 due to the retained original signal, not a
+new scope-case crash. Report5ba5290c9c95262571ae5ce6beb004f4f47b6cd057cd8403c9046f447264cb58.
+Original accepts outer polymorphic empty-row imports under rigid scopes:
+GLOBAL[][], LOCAL([],[]), FIXED(7,"a")(true,3/4). Outer fixed-T assignment
+from inner fixed-S rejects (B while A needed). Direct higher-order calls
+supply tuple argument context: CONTEXT8/RETURNED10. The concrete abstraction
+context hypothesis is disproved: both int->int and rat->rat contexts reject
+inside the rigid body, then RECOVER17. Current catalog95 has51accept/44reject;
+frozen discovery preserves its initial52accept hypothesis and full signal case.
+Do not change expected outputs to Rust or infer a successful differential gate.
+
+R2 job3837402 FAILED8:19 at atlas-function-build-r2-20260928.CkhXMtK0, pin
+bef0db4176d62bd7d0c69603fc49b693e05d4e75e40c9214023562d6ca239731.
+It specialises list contexts to rows and replaces monomorphic-only balancing
+with scoped joins, retaining independent first-pass contexts and monomorphic
+coercion reconsideration. Same failed printer assertion plus original3837308
+direct-call control. Full426 core inventory and all95 capture cases required.
+Full426 inventory424pass, known2 separately fail,167filtered checks and CLI
+pass. All95 inputs match scope-discovery3837308 hashes:32whole-stream matches
+versus27, five gained and none lost (function capture/display/direct contexts).
+Original signal prevents valid full capture; this older driver stopped before
+final source rehash/format artifacts. R4 fixes that reporting/integrity path.
+Reportbf6f140046c3ad314effd52c1a9037ee16e6972e64d24804b67fb78cdc58156a.
+
+Balance discovery3837421 FAILED50s at atlas-balance-discovery-20260928.D9rfTLkB,
+pin56ed08c40157bf5ab2bd41dbd8f774b2dc9ddf6904ba56882b2a20d0fd8c5528.
+It uses unchanged verified3836533 and the full97-case master, adding the
+current axis.w polymorphic tuple/row balancing example and its documented
+mixed-coercion negative. Original accepts BALANCED[([],[3/4,5/1]),([2],[])]
+and EMPTY[[],[]], but rejects the mixed rat/bool versus int/free-row list.
+Before3836533 does the opposite on both. The overall failure is the retained
+original signal, not either new case. Report
+1eb50e3e60b1f46fa22debca4dd3a935c200c7569df8d08c5382898e3472d54d.
+R2's already frozen95-case gate is unaffected. Keep the original signal in
+both; neither submitting a job nor collecting normal per-case output proves
+all-language acceptance. No local builds/tests/checkers were run.
+
 CURRENT WAVE:3836397 FAILED5:59, full421-test inventory416pass/3fail/2filtered;
 all163 filtered checks and CLI check pass. Report
 b822046943c022d690d1f4df8acf34d8d5513cec8748625fc808d59bd3a8aaf5.

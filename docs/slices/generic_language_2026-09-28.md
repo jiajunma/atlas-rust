@@ -55,6 +55,98 @@ No repair/after-pass yet. All these jobs are terminal; do not duplicate.
 
 ## Source-backed causes and port order
 
+### Implicit constness and loop flags (current frontier)
+
+Function R4 build3837531 finishes its full427-test inventory (425pass, two
+unchanged known assignment failures), CLI and final source/input rehash. Its
+FOUNDATION_UNITS_PASS_ORACLE_UNAVAILABLE status does not forgive the retained
+original signal: scheduler exit remains1 and the full100-case capture is NOT
+accepted (33whole-stream matches). Report SHA
+512b0d51e559e6cf9405798069ff1cbff55bcedbaee9b78fc0f3ec27a848b787.
+
+Its new mutation fixtures prove five wrong Rust acceptances: three global
+assignments and two local assignments to polymorphic leaves. Original keeps
+UNCHANGED2[] and TUPLE([],1), permits concrete sibling mutation, monomorphic
+rebinding REBOUND[5] and shadowing SHADOW[2]. The per-leaf type scheme is the
+rule, not value emptiness or blanket constness of a tuple's siblings. Locally
+fixed variables do not make a scheme polymorphic. Repair3837694 is submitted
+with429expected all-pass core tests and both unchanged regression assertions
+separately required to pass. Final report confirms all429pass (no skips/ignored),
+both unchanged assertions separately passing, CLI and final source/input hashes.
+Reportac328bd10b24c73fa7662199a6df4e216a14764ffc6ffe36dc04375e42e504c5.
+Same100inputs as3837531 retain33whole matches with no losses; four mutation
+fixtures gain complete stdout equality and now reject all forbidden writes.
+Their stderr presentation differs from original, so this is not full diagnostic
+compatibility. The only invalid oracle remains the captured-selection signal;
+overall job FAILED7:08 with FOUNDATION_UNITS_PASS_ORACLE_UNAVAILABLE, not a
+successful full differential gate. Exact pin is in its receipt.
+
+The loop fixture also disproves the counted-variable constant comment in
+axis.w:7070. Original rejects row element/index writes but accepts counted
+index mutation (COUNT[3,3]); Rust currently does the reverse. layer::add takes
+unsigned-char FLAGS, not a bool: row thread_bindings sets0x4, while the counted
+call passes true, i.e.1. Preserve this executable contract and recovery rather
+than porting the stale comment. This loop repair is NOT in3837694. Separate
+candidate3837799 passes430core tests, both unchanged assignment assertions,
+CLI and final source/input hashes. Loop stdout now matches; stderr still differs.
+Report041bcb284df25afc75d7615ce364c471c2a1093470ca73e1e194a8b234fd8cc9.
+Same100inputs keep33whole matches and lose none. The retained original signal
+keeps its overall job FAILED7:20/unavailable, not full differential acceptance.
+
+### Defining-floor binding imports (next candidate, not yet verified)
+
+Bare TypeCells lose the floor at which a binding was introduced. In a deeper
+scope, reading a global row with free variable0 reinterprets it as rigid inner
+T. Before probe3837952 adds only one unit to3837799 runtime: ordinary global
+empty-row definition, then analysis under fixed floor1 requiring [int]. It must
+reach global_imported=false and fail its assertion, not fail compilation.
+Original3837308 already establishes the source-level accepted contract.
+
+The separate after candidate replaces the Rc alias with a TypeCell carrying
+an immutable defining floor plus its shared refinement storage. All local
+creation sites (let, loops, cases, lambda and recursive self/parameters) record
+that floor; globals use0. Reads raise only free variables on an owned inference
+copy. A second test keeps outer fixed-T distinct from inner fixed-S while an
+outer free row independently instantiates as int and bool, without mutating its
+stored type. Lower-scope escape rejects. This does NOT implement any_type grammar
+or claim full abstraction support; both candidates require HPC results.
+
+### Function values, row contexts and abstraction discovery (active)
+
+Build3837257 FAILED2:27;44type/3coercion/48syntax tests pass, session51pass1fail.
+The new generic/user/builtin capture and ambiguity tests pass. The retained
+captured-printer unit reaches correct value printers but rejects [3,4] against
+the free required variable D. The list converter had a raw non-row switch;
+current axis.w::list_display instead first specialises a scoped row pattern.
+The downstream balance routine also needs axis-types.w::join_to: polymorphic
+types unify, monomorphic types use coercion ordering. Never erase repeated
+variables into independent holes to make this case pass. R2 source is staged
+with the unchanged failed assertion, full426 core inventory and95-case capture.
+R2 job3837402 passes424core checks, known2fail separately, and CLI; its32whole
+matches versus27for3837308 use identical95inputs, five gains/no losses. Original
+signal stopped the old driver before final integrity recheck. R4 completes that
+recheck without treating the signal as rejection. R3 was cancelled before its
+wrong relative checker path ran; absolute stage script is checked before build.
+Balance discovery3837421 proves both directions of the scoped-join defect:
+empty-row tuple list wrongly rejected, mixed-coercion tuple list wrongly
+accepted. R4's new unchanged-input session unit passes; the positive matches
+whole streams, negative recovers correctly but stderr envelope still differs.
+No full-generic/basic.at acceptance or debug timing ratio is claimed.
+
+Discovery3837308 retains the full95-case master and original signal, so its
+overall status is CAPTURE_FAILED_ORACLE_EXECUTION. The four NEW cases execute
+normally in original: polymorphic outer global/local imports succeed under
+rigid scopes, fixed-T capture survives an inner S closure, S-to-T assignment
+rejects, and direct higher-order calls select their overloaded argument using
+the known tuple parameter context (8 and10). Concrete casts surrounding
+any_type are DISPROVED acceptance hypotheses: (int->int) and (rat->rat)
+contexts are raised into the body and reject its fixed-T function. Both errors
+and recovery remain in the source. Current intent is rejection; the frozen
+discovery report retains the failed hypothesis. Report SHA
+5ba5290c9c95262571ae5ce6beb004f4f47b6cd057cd8403c9046f447264cb58.
+This confirms that the executable abstraction action, not the stale prose
+claiming an unconstrained body, must guide the next parser/analyzer migration.
+
 ### Active overload and member integration (current wave)
 
 Candidate3836397 FAILED5:59 in

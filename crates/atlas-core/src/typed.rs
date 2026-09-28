@@ -28,7 +28,7 @@ use crate::syntax::{
 };
 use crate::types::{Prim, Type, TypeBinding, TypeNumber, TypeTable};
 use crate::types::polymorphic::{shift, InferredType, TypeError as InferenceError, TypeScheme};
-use crate::value::{Closure, SlotShape, Value};
+use crate::value::{BuiltinFunction, Closure, SlotShape, Value};
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
@@ -93,13 +93,16 @@ pub enum AssignTarget {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TransformOperation {
     Builtin(usize),
-    Closure(Rc<Closure>),
+    Function(Value),
 }
 
 /// A typed executable expression.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypedExpr {
     Denotation(Value),
+    /// Frozen overload value with its expression spelling, distinct from
+    /// the value's own printer (axis.w::capture_expression).
+    Captured { value: Value, name: String },
     TupleDisplay(Vec<TypedExpr>),
     ListDisplay(Vec<TypedExpr>),
     /// A registered coercion applied to a fully converted inner expression.
@@ -278,7 +281,7 @@ pub enum TypedExpr {
     Return {
         value: Box<TypedExpr>,
     },
-    /// A user-function call: the callee evaluates to a closure and the
+    /// A dynamic function call: the callee may be a builtin or closure and the
     /// argument is passed as one value (a tuple for several parameters).
     FunctionCall {
         function: Box<TypedExpr>,
@@ -375,7 +378,7 @@ pub enum TypedExpr {
     },
     /// A counted for loop (upstream `counted_for_expression`): `count`
     /// iterations collecting each body value; with `name` the counter is
-    /// bound (as a constant) in a per-iteration frame, increasing from the
+    /// bound mutably in a per-iteration frame, increasing from the
     /// bound (default 0), or decreasing to it inclusive when `decreasing`.
     CountedFor {
         name: Option<String>,
@@ -659,6 +662,7 @@ impl OverloadState {
 fn typed_expression_print(expression: &TypedExpr) -> String {
     match expression {
         TypedExpr::Denotation(value) => value.to_string(),
+        TypedExpr::Captured { name, .. } => name.clone(),
         TypedExpr::GlobalIdent { name, .. } | TypedExpr::LocalIdent { name, .. } => name.clone(),
         TypedExpr::BuiltinCall {
             builtin: _,
@@ -1379,7 +1383,7 @@ impl TypedContext {
                     }
                 };
                 let mut events = self.drain_printed(*span);
-                events.push(self.define_variable(name, type_, value, false, *span));
+                events.push(self.define_variable(name, type_, value, false, *span)?);
                 Ok(events)
             }
             Command::Declare {
@@ -1603,7 +1607,8 @@ impl TypedContext {
         value: Value,
         constant: bool,
         span: SourceSpan,
-    ) -> TypedCommandEvent {
+    ) -> Result<TypedCommandEvent, Diagnostic> {
+        let constant = binding_is_constant(constant, &type_, 0, span)?;
         let previous = self.globals.lookup(name).map(|(type_, _)| {
             // global.w:911-994: an overridden CONSTANT binding is noted
             // with a ` (constant)` suffix after its type.
@@ -1630,7 +1635,7 @@ impl TypedContext {
             ));
         }
         text.push('\n');
-        TypedCommandEvent::ReportLine { text, span }
+        Ok(TypedCommandEvent::ReportLine { text, span })
     }
 
     /// Add a user function definition to the overload table and report it
@@ -1684,7 +1689,7 @@ impl TypedContext {
             for binding in bindings {
                 let mut found = pattern_type(&binding.pattern);
                 let typed = convert_expr(&binding.initializer, &mut found, &analysis)?;
-                let leaves = bind_pattern_leaves(&binding.pattern, &found, &self.types)?;
+                let leaves = bind_pattern_leaves(&binding.pattern, &found, &self.types, 0)?;
                 pending.push(Pending {
                     shape: pattern_slot_shape(&binding.pattern),
                     leaves,
@@ -1720,7 +1725,7 @@ impl TypedContext {
                 let event = if matches!(&*leaf_type.expanded(&self.types), Type::Function(_)) {
                     self.add_overload(&name, leaf_type, value, name_span)?
                 } else {
-                    self.define_variable(&name, leaf_type, value, constant, name_span)
+                    self.define_variable(&name, leaf_type, value, constant, name_span)?
                 };
                 events.push(event);
             }
@@ -2070,21 +2075,31 @@ fn convert_list_expression(
         return conform_types(&Type::row(component), required, display, span, analysis)
             .map_err(BalanceConversionError::Diagnostic);
     }
-    let (mut component, coercion_tag) = match &*required.expanded(analysis.types) {
-        Type::Undetermined => (Type::Undetermined, None),
-        Type::Row(component) => (component.as_ref().clone(), None),
-        other => match row_coercion(other, analysis.types) {
+    // Current axis.w::list_display specialises the context to a row first.
+    // A free variable supplied by a direct generic function is not a rigid
+    // non-row target (the retained3837257 captured-printer failure).
+    let mut context = inferred_type(required, analysis, span)
+        .map_err(BalanceConversionError::Diagnostic)?;
+    let mut row_pattern = Type::row(Type::Undetermined);
+    let accepts_row = context.try_unify_specialise(&mut row_pattern, analysis.types)
+        .map_err(|e| BalanceConversionError::Diagnostic(inference_error(e, span)))?;
+    let (mut component, coercion_tag) = if accepts_row {
+        let Type::Row(component) = row_pattern else { unreachable!("specialised row pattern") };
+        (*component, None)
+    } else {
+        let target = required.expanded(analysis.types);
+        match row_coercion(&target, analysis.types) {
             Some((coercion, component)) => (component.clone(), Some(coercion.tag)),
             None => {
                 return Err(BalanceConversionError::Diagnostic(type_error(
                     format!(
                         "list display does not match required pattern {}",
-                        other.display(analysis.types),
+                        target.display(analysis.types),
                     ),
                     span,
                 )))
             }
-        },
+        }
     };
     let branches = elements.iter().collect::<Vec<_>>();
     let converted = balance(&branches, &mut component, span, analysis)?;
@@ -2206,6 +2221,67 @@ fn conform_types(
     ))
 }
 
+/// A bare overloaded identifier is a value only when its complete function
+/// signature is unique in the required context (current axis.w:1630-1750).
+/// Failed trials own their substitutions and cannot constrain later variants.
+fn capture_overloaded_identifier(
+    name: &str,
+    required: &mut Type,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> Result<Option<TypedExpr>, Diagnostic> {
+    let variants = merged_variants(name, analysis.overloads, analysis.types);
+    if variants.is_empty() { return Ok(None); }
+    let mut context = inferred_type(required, analysis, span)?;
+    let mut pattern = Type::function(Type::Undetermined, Type::Undetermined);
+    if !context.try_unify_specialise(&mut pattern, analysis.types)
+        .map_err(|e| inference_error(e, span))? { return Ok(None); }
+    context.wring_out().map_err(|e| inference_error(e, span))?;
+    let mut selected: Option<(TypedExpr, Type)> = None;
+    let mut previous: Option<Type> = None;
+    for variant in &variants {
+        let signature = Type::function(variant.arg_type.clone(), variant.result_type.clone());
+        let mut model = InferredType::wrap(&signature, 0).map_err(|e| inference_error(e, span))?;
+        model.raise_floor(analysis.type_floor).map_err(|e| inference_error(e, span))?;
+        let mut trial = context.clone();
+        if !trial.try_unify_to(&model, analysis.types).map_err(|e| inference_error(e, span))? {
+            if variants.len() == 1 {
+                // Original3837092 crashes on one such source. Return a safe
+                // type error as its source intends; do not claim an exact
+                // oracle rejection contract for that unavailable outcome.
+                return Err(type_error(format!("found {} while {} was needed.",
+                    signature.display(analysis.types), context.body().display(analysis.types)), span));
+            }
+            continue;
+        }
+        if let Some(previous) = &previous {
+            return Err(type_error(format!(
+                "Ambiguous overloaded symbol '{name}': its context type {} matches\n  both {} and {} in overload table",
+                context.body().display(analysis.types), previous.display(analysis.types),
+                signature.display(analysis.types)), span));
+        }
+        let (arg_type, _) = trial.function_parts(analysis.types).map_err(|e| inference_error(e, span))?;
+        let value = match variant.origin {
+            OverloadOrigin::Builtin(index) => {
+                let builtin = &builtin_registry()[index];
+                Value::BuiltinFunction(Rc::new(BuiltinFunction {
+                    index,
+                    print_name: format!("{}@{}", builtin.name, builtin.arg_type.display(analysis.types)),
+                }))
+            }
+            OverloadOrigin::User(index) => analysis.overloads.user_variants(name)[index].value.clone(),
+        };
+        selected = Some((TypedExpr::Captured {
+            value, name: format!("{name}@{}", arg_type.display(analysis.types)),
+        }, trial.bake().map_err(|e| inference_error(e, span))?));
+        previous = Some(signature);
+    }
+    match selected {
+        Some((capture, type_)) => { *required = type_; Ok(Some(capture)) }
+        None => Ok(None),
+    }
+}
+
 /// Convert `expression` against the in/out `required` pattern.
 pub fn convert_expr(
     expression: &Expr,
@@ -2281,7 +2357,9 @@ pub fn convert_expr(
             // against undetermined slots and the coercion applies directly;
             // failing that, the error is the standard found/needed wording.
             let mut pattern = Type::Tuple(vec![Type::Undetermined; elements.len()]);
-            if !pattern.can_specialise(required, analysis.types) {
+            let mut context = inferred_type(required, analysis, *span)?;
+            if !context.try_unify_specialise(&mut pattern, analysis.types)
+                .map_err(|e| inference_error(e, *span))? {
                 let mut components = vec![Type::Undetermined; elements.len()];
                 let converted = elements
                     .iter()
@@ -2307,7 +2385,6 @@ pub fn convert_expr(
                     *span,
                 ));
             }
-            pattern.specialise(required, analysis.types);
             let components = match &mut pattern {
                 Type::Tuple(components) => components,
                 // A 1-element display collapsed; treat as the single type.
@@ -2331,8 +2408,15 @@ pub fn convert_expr(
                 .zip(components.iter_mut())
                 .map(|(element, component)| convert_expr(element, component, analysis))
                 .collect::<Result<Vec<_>, _>>()?;
+            // Component inference ranges are independent even if they use
+            // the same printed variable name. Recheck the linked outer
+            // requirement only after importing each component freshly.
+            let found = InferredType::wrap_tuple(
+                components.iter().map(|t| inferred_type(t, analysis, *span))
+                    .collect::<Result<Vec<_>, _>>()?, analysis.type_floor,
+            ).and_then(|t| t.bake()).map_err(|e| inference_error(e, *span))?;
             conform_types(
-                &pattern,
+                &found,
                 required,
                 TypedExpr::TupleDisplay(converted),
                 *span,
@@ -2360,6 +2444,9 @@ pub fn convert_expr(
                 );
             }
             let Some((type_, cell)) = analysis.globals.lookup(name) else {
+                if let Some(capture) = capture_overloaded_identifier(name, required, *span, analysis)? {
+                    return Ok(capture);
+                }
                 return Err(Diagnostic::new(
                     ErrorKind::Name,
                     format!("Undefined identifier '{name}'"),
@@ -2663,7 +2750,7 @@ pub fn convert_expr(
                     // The pattern supplies the RHS context first. Omitted
                     // slots stay open, while an explicit `()` is void.
                     let leaves =
-                        bind_pattern_leaves(&binding.pattern, &binding_type, analysis.types)?;
+                        bind_pattern_leaves(&binding.pattern, &binding_type, analysis.types, analysis.type_floor)?;
                     pending.push((pattern_slot_shape(&binding.pattern), leaves, converted));
                 }
                 let mut names = BTreeSet::new();
@@ -2814,8 +2901,10 @@ pub fn convert_expr(
             // carry the upstream wording (axis-types.w:2403-2410).
             let mut callee_type = Type::Undetermined;
             let function = convert_expr(callee, &mut callee_type, analysis)?;
+            let mut function_type = inferred_type(&callee_type, analysis, *span)?;
             let mut function_pattern = Type::function(Type::Undetermined, Type::Undetermined);
-            if !function_pattern.specialise(&callee_type, analysis.types) {
+            if !function_type.try_unify_specialise(&mut function_pattern, analysis.types)
+                .map_err(|e| inference_error(e, *span))? {
                 return Err(type_error(
                     format!(
                         "found {} while {} was needed.",
@@ -2825,10 +2914,8 @@ pub fn convert_expr(
                     callee.span(),
                 ));
             }
-            let Type::Function(parts) = function_pattern else {
-                unreachable!("a specialised (*->*) pattern stays a function type")
-            };
-            let (argument_type, result_type) = *parts;
+            let (mut argument_type, _) = function_type.function_parts(analysis.types)
+                .map_err(|e| inference_error(e, *span))?;
             // Closures take their argument as ONE value (axis.w:3222): a
             // bare expression for a single argument, otherwise the tuple.
             let argument_source = if arguments.len() == 1 {
@@ -2839,30 +2926,24 @@ pub fn convert_expr(
                     span: *span,
                 }
             };
-            // A-priori conversion, as for overloads: convert once in
-            // undetermined context, then re-convert only when the parameter
-            // pattern needs a coercion; a genuine mismatch reports the
-            // a-priori type against the pattern.
-            let mut a_priori = Type::Undetermined;
-            let converted_argument = convert_expr(&argument_source, &mut a_priori, analysis)?;
-            let mut expected = argument_type.clone();
-            let argument = if expected.specialise(&a_priori, analysis.types) {
-                converted_argument
-            } else {
-                if crate::coercions::is_close(&a_priori, &argument_type, analysis.types) & 0x1 == 0
-                {
-                    return Err(type_error(
-                        format!(
-                            "found {} while {} was needed.",
-                            a_priori.display(analysis.types),
-                            argument_type.display(analysis.types)
-                        ),
-                        argument_source.span(),
-                    ));
-                }
-                expected = argument_type;
-                convert_expr(&argument_source, &mut expected, analysis)?
-            };
+            // Current axis.w:2763+: unlike overload dispatch, a direct
+            // function supplies the argument context. Solve that argument
+            // against the WHOLE function so the result shares its assignments.
+            let mut argument = convert_expr(&argument_source, &mut argument_type, analysis)?;
+            if argument_type.expanded(analysis.types).is_void()
+                && !matches!(&argument_source, Expr::Tuple { elements, .. } if elements.is_empty()) {
+                argument = TypedExpr::Void(Box::new(argument));
+            }
+            let actual = inferred_type(&argument_type, analysis, argument_source.span())?;
+            if !function_type.matches_argument(&actual, analysis.types)
+                .map_err(|e| inference_error(e, *span))? {
+                let (expected, _) = function_type.function_parts(analysis.types)
+                    .map_err(|e| inference_error(e, *span))?;
+                return Err(type_error(format!("found {} while {} was needed.",
+                    argument_type.display(analysis.types), expected.display(analysis.types)), *span));
+            }
+            let (_, result_type) = function_type.function_parts(analysis.types)
+                .map_err(|e| inference_error(e, *span))?;
             conform_types(
                 &result_type,
                 required,
@@ -3015,7 +3096,7 @@ pub fn convert_expr(
             // the 0-based index as int (the upstream (index, pattern) pair
             // wrap, in that slot order).
             let leaves = match pattern {
-                Some(pattern) => bind_pattern_leaves(pattern, &component, analysis.types)?,
+                Some(pattern) => bind_pattern_leaves(pattern, &component, analysis.types, analysis.type_floor)?,
                 None => Vec::new(),
             };
             let mut names = BTreeSet::new();
@@ -3057,19 +3138,17 @@ pub fn convert_expr(
                     index.value.clone(),
                     (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, offset),
                 );
-                constant_locals.remove(&index.value);
+                // axis.w::thread_bindings forces the const bit for ALL
+                // row-loop bindings, including the integer index.
+                constant_locals.insert(index.value.clone());
                 offset += 1;
             }
-            for (name, _, constant, leaf_type) in &leaves {
+            for (name, _, _, leaf_type) in &leaves {
                 locals.insert(
                     name.clone(),
                     (Rc::new(RefCell::new(leaf_type.clone())), 0, offset),
                 );
-                if *constant {
-                    constant_locals.insert(name.clone());
-                } else {
-                    constant_locals.remove(name);
-                }
+                constant_locals.insert(name.clone());
                 offset += 1;
             }
             let shape = pattern
@@ -3228,7 +3307,7 @@ pub fn convert_expr(
                                 pattern.span(),
                             ));
                         }
-                        let leaves = bind_pattern_leaves(pattern, &payload, analysis.types)?;
+                        let leaves = bind_pattern_leaves(pattern, &payload, analysis.types, analysis.type_floor)?;
                         (pattern_slot_shape(pattern), leaves)
                     }
                     None => (SlotShape::Discard, Vec::new()),
@@ -3421,7 +3500,9 @@ pub fn convert_expr(
                 }
                 None => None,
             };
-            // The loop variable is bound as a CONSTANT int (axis.w:6484).
+            // Current axis.w passes true (=1) to layer::add's flags, not
+            // const-bit0x4. Despite its old comment, original3837531 allows
+            // counted-index assignment. Shadow an outer constant as mutable.
             let mut locals = analysis.locals.clone();
             let mut constant_locals = analysis.constant_locals.clone();
             if let Some(name) = name {
@@ -3432,7 +3513,7 @@ pub fn convert_expr(
                     name.value.clone(),
                     (Rc::new(RefCell::new(Type::Primitive(Prim::Int))), 0, 0),
                 );
-                constant_locals.insert(name.value.clone());
+                constant_locals.remove(&name.value);
             }
             let mut body_type = Type::Undetermined;
             let body = convert_expr(
@@ -3742,9 +3823,6 @@ fn factor_transform_call(
             let TypedExpr::Denotation(value) = *function else {
                 unreachable!("a user overload applies its denotation")
             };
-            let Value::Closure(closure) = value else {
-                unreachable!("user overloads always hold closures")
-            };
             let rhs = match *argument {
                 TypedExpr::TupleDisplay(mut arguments) => Box::new(
                     arguments
@@ -3753,7 +3831,7 @@ fn factor_transform_call(
                 ),
                 single => Box::new(single),
             };
-            (TransformOperation::Closure(closure), rhs, conversion)
+            (TransformOperation::Function(value), rhs, conversion)
         }
         other => unreachable!("transform conversion yields a call, found {other:?}"),
     }
@@ -4326,6 +4404,19 @@ fn pattern_type(pattern: &Pattern) -> Type {
 /// duplicate diagnostics, constness, and the claimed component type.
 type PatternLeaf = (String, SourceSpan, bool, Type);
 
+/// Original global.w::definition_group / axis.w::thread_bindings make each
+/// polymorphic leaf constant. Fixed variables belong to the lexical scope
+/// and do not themselves imply constness (e.g. a mutable local of fixed T).
+fn binding_is_constant(
+    explicit: bool,
+    type_: &Type,
+    fixed: usize,
+    span: SourceSpan,
+) -> Result<bool, Diagnostic> {
+    Ok(explicit || TypeScheme::wrap(type_, fixed)
+        .map_err(|e| inference_error(e, span))?.is_polymorphic())
+}
+
 /// The names a pattern binds, in slot order (whole-value name first), each
 /// with the component type claimed from `found`. A structural mismatch is
 /// the upstream `found … while … was needed.` error (`bind_pattern`).
@@ -4333,6 +4424,7 @@ fn bind_pattern_leaves(
     pattern: &Pattern,
     found: &Type,
     types: &TypeTable,
+    fixed: usize,
 ) -> Result<Vec<PatternLeaf>, Diagnostic> {
     match pattern {
         Pattern::Discard { .. } | Pattern::Omitted { .. } => Ok(Vec::new()),
@@ -4341,7 +4433,8 @@ fn bind_pattern_leaves(
             name_span,
             constant,
             ..
-        } => Ok(vec![(name.clone(), *name_span, *constant, found.clone())]),
+        } => Ok(vec![(name.clone(), *name_span,
+            binding_is_constant(*constant, found, fixed, *name_span)?, found.clone())]),
         Pattern::Tuple {
             elements,
             whole,
@@ -4365,10 +4458,10 @@ fn bind_pattern_leaves(
             }
             let mut leaves = Vec::new();
             if let Some(whole) = whole {
-                leaves.extend(bind_pattern_leaves(whole, found, types)?);
+                leaves.extend(bind_pattern_leaves(whole, found, types, fixed)?);
             }
             for (element, component) in elements.iter().zip(components) {
-                leaves.extend(bind_pattern_leaves(element, component, types)?);
+                leaves.extend(bind_pattern_leaves(element, component, types, fixed)?);
             }
             Ok(leaves)
         }
@@ -4390,11 +4483,12 @@ fn resolve_annotation(
 fn convert_parameter(
     parameter: &LambdaParam,
     types: &TypeTable,
+    fixed: usize,
 ) -> Result<(Type, SlotShape, Vec<PatternLeaf>), Diagnostic> {
     match parameter {
         LambdaParam::Typed(typed) => {
             let declared = resolve_annotation(&typed.type_expr, types)?;
-            let leaves = bind_pattern_leaves(&typed.pattern, &declared, types)?;
+            let leaves = bind_pattern_leaves(&typed.pattern, &declared, types, fixed)?;
             Ok((declared, pattern_slot_shape(&typed.pattern), leaves))
         }
         LambdaParam::Tuple { elements, .. } => {
@@ -4402,7 +4496,7 @@ fn convert_parameter(
             let mut shapes = Vec::with_capacity(elements.len());
             let mut leaves = Vec::new();
             for element in elements {
-                let (element_type, shape, element_leaves) = convert_parameter(element, types)?;
+                let (element_type, shape, element_leaves) = convert_parameter(element, types, fixed)?;
                 element_types.push(element_type);
                 shapes.push(shape);
                 leaves.extend(element_leaves);
@@ -4428,7 +4522,7 @@ fn convert_lambda_expression(
 ) -> Result<TypedExpr, Diagnostic> {
     let mut converted_parameters = Vec::with_capacity(parameters.len());
     for parameter in parameters {
-        converted_parameters.push(convert_parameter(parameter, analysis.types)?);
+        converted_parameters.push(convert_parameter(parameter, analysis.types, analysis.type_floor)?);
     }
     let mut names = BTreeSet::new();
     for (_, _, leaves) in &converted_parameters {
@@ -4545,7 +4639,7 @@ fn convert_rec_lambda_expression(
     names.insert(self_name.as_str());
     let mut converted_parameters = Vec::with_capacity(parameters.len());
     for parameter in parameters {
-        converted_parameters.push(convert_parameter(parameter, analysis.types)?);
+        converted_parameters.push(convert_parameter(parameter, analysis.types, analysis.type_floor)?);
     }
     for (_, _, leaves) in &converted_parameters {
         for (name, name_span, _, _) in leaves {
@@ -4781,6 +4875,36 @@ fn convert_overload_application(
     conform_types(&variant.result_type, required, call, span, analysis)
 }
 
+/// Current axis-types.w::join_to distinguishes polymorphic unification from
+/// monomorphic coercion ordering. Free variables cannot be compared using the
+/// old structural broader_eq relation alone.
+fn join_balanced_type(
+    common: &mut Type,
+    other: &Type,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> Result<bool, Diagnostic> {
+    if common.expanded(analysis.types).is_void() { return Ok(true); }
+    if other.expanded(analysis.types).is_void() { *common = other.clone(); return Ok(true); }
+    let mut left = inferred_type(common, analysis, span)?;
+    let right = inferred_type(other, analysis, span)?;
+    if left.is_polymorphic() || right.is_polymorphic() {
+        let matched = left.try_unify_to(&right, analysis.types)
+            .map_err(|e| inference_error(e, span))?;
+        if matched { *common = left.bake().map_err(|e| inference_error(e, span))?; }
+        return Ok(matched);
+    }
+    if common.equivalent(other, analysis.types)
+        || crate::coercions::broader_eq(common, other, analysis.types) {
+        return Ok(true);
+    }
+    if crate::coercions::broader_eq(other, common, analysis.types) {
+        *common = other.clone();
+        return Ok(true);
+    }
+    Ok(false)
+}
+
 /// Balance branch expressions to a common type (upstream `balance`,
 /// axis.w:1022-1122): convert each against a copy of the target, keep the
 /// broadest comparable type, defer incomparable types, then prune those
@@ -4793,20 +4917,13 @@ fn balance(
 ) -> Result<Vec<TypedExpr>, BalanceConversionError> {
     let mut converted = Vec::with_capacity(branches.len());
     let mut types = Vec::new();
-    let mut common = Type::Undetermined;
+    let mut common = target.clone();
     let mut conflicts = Vec::new();
     for branch in branches {
         let mut slot = target.clone();
         match convert_balanced_branch(branch, &mut slot, analysis) {
             Ok(expression) => {
                 converted.push(Some(expression));
-                if !crate::coercions::broader_eq(&common, &slot, analysis.types) {
-                    if crate::coercions::broader_eq(&slot, &common, analysis.types) {
-                        common = slot.clone();
-                    } else {
-                        conflicts.push(slot.clone());
-                    }
-                }
             }
             Err(BalanceConversionError::Diagnostic(diagnostic)) => {
                 return Err(BalanceConversionError::Diagnostic(diagnostic));
@@ -4837,10 +4954,26 @@ fn balance(
     if types.is_empty() {
         return Ok(Vec::new());
     }
-    conflicts.retain(|type_| !crate::coercions::broader_eq(&common, type_, analysis.types));
+    // Convert all branches against the same original context before joining;
+    // one earlier branch must not constrain a later branch's first analysis.
+    for type_ in &types {
+        if !join_balanced_type(&mut common, type_, span, analysis)
+            .map_err(BalanceConversionError::Diagnostic)? {
+            conflicts.push(type_.clone());
+        }
+    }
+    let mut remaining = Vec::new();
+    for type_ in conflicts {
+        if !join_balanced_type(&mut common, &type_, span, analysis)
+            .map_err(BalanceConversionError::Diagnostic)? {
+            remaining.push(type_);
+        }
+    }
+    let conflicts = remaining;
     if let Some(conflict) = conflicts.first().cloned() {
         let mut variants = Vec::with_capacity(conflicts.len() + 1);
-        if common != Type::Undetermined {
+        if common != Type::Undetermined
+            && !matches!(common, Type::Variable(n) if n >= analysis.type_floor) {
             variants.push(common.clone());
         }
         variants.extend(conflicts);
@@ -4851,18 +4984,14 @@ fn balance(
             container: BalanceContainer::Unknown,
         }));
     }
-    if !target.specialise(&common, analysis.types) {
-        return Err(BalanceConversionError::Diagnostic(type_error(
-            format!(
-                "balanced type {} does not match required pattern {}",
-                common.display(analysis.types),
-                target.display(analysis.types),
-            ),
-            span,
-        )));
-    }
+    *target = common.clone();
+    let common_is_polymorphic = inferred_type(&common, analysis, span)
+        .map_err(BalanceConversionError::Diagnostic)?.is_polymorphic();
     for (index, type_) in types.iter().enumerate() {
-        if type_ != &common {
+        let component_is_polymorphic = inferred_type(type_, analysis, span)
+            .map_err(BalanceConversionError::Diagnostic)?.is_polymorphic();
+        if !common_is_polymorphic && (converted[index].is_none()
+            || (!component_is_polymorphic && !type_.equivalent(&common, analysis.types))) {
             let mut slot = common.clone();
             converted[index] = Some(
                 convert_expr(branches[index], &mut slot, analysis)
@@ -10418,7 +10547,7 @@ impl TypedExpr {
     ) -> Result<Option<Value>, Control> {
         let _ = context;
         match self {
-            Self::Denotation(value) => Ok(at_level(level, || value.clone())),
+            Self::Denotation(value) | Self::Captured { value, .. } => Ok(at_level(level, || value.clone())),
             Self::TupleDisplay(elements) => {
                 let values = elements
                     .iter()
@@ -11093,15 +11222,12 @@ impl TypedExpr {
                 name,
                 span,
             } => {
-                let closure = force(function, context)?;
-                let Value::Closure(closure) = closure else {
-                    panic!("analysis let a non-function callee through: {closure}")
-                };
+                let callable = force(function, context)?;
                 // The callee and argument evaluate OUTSIDE the traced
                 // region (axis.w:2184-2189): only errors from the call
                 // itself earn the call line.
                 let argument = force(argument, context)?;
-                match apply_closure(&closure, argument, context, level) {
+                match apply_function(&callable, argument, *span, context, level) {
                     Err(Control::Runtime(mut diagnostic)) => {
                         // A dynamically computed callee prints its function
                         // expression (call_expression::function_name,
@@ -11111,9 +11237,9 @@ impl TypedExpr {
                             .clone()
                             .unwrap_or_else(|| typed_expression_print(function));
                         diagnostic.trace(format!(
-                            "In call of {callee} {}, defined {}.",
+                            "In call of {callee} {}, {}.",
                             trace_location(context, span),
-                            trace_location(context, &closure.span)
+                            function_origin(&callable, context)
                         ));
                         Err(Control::Runtime(diagnostic))
                     }
@@ -11298,7 +11424,7 @@ impl TypedExpr {
             Self::UnionCase {
                 subject,
                 branches,
-                span: _,
+                span,
             } => {
                 let subject = force(subject, context)?;
                 let Value::Union { tag, value, .. } = subject else {
@@ -11307,10 +11433,7 @@ impl TypedExpr {
                 // The positional branch evaluates to a function, applied
                 // to the payload (axis.w:5041-5049).
                 let function = force(&branches[usize::from(tag)], context)?;
-                let Value::Closure(closure) = function else {
-                    panic!("analysis let a non-function union-case branch through: {function}")
-                };
-                apply_closure(&closure, value.as_ref().clone(), context, level)
+                apply_function(&function, value.as_ref().clone(), *span, context, level)
             }
             Self::CountedFor {
                 name,
@@ -11430,6 +11553,43 @@ fn take_pilfered(
                 span,
             )
         })
+}
+
+/// Apply a function value without adding a call trace. Call nodes keep callee
+/// and argument evaluation outside that trace, then attach the value's origin.
+fn apply_function(
+    function: &Value,
+    argument: Value,
+    span: SourceSpan,
+    context: &mut EvaluationContext,
+    level: Level,
+) -> Result<Option<Value>, Control> {
+    match function {
+        Value::Closure(closure) => apply_closure(closure, argument, context, level),
+        Value::BuiltinFunction(function) => {
+            let builtin = &builtin_registry()[function.index];
+            // Variadic builtins have a bare variable argument and consume
+            // one value even when that value is a tuple (global.w:2990+).
+            let arguments = if matches!(builtin.arg_type, Type::Tuple(_)) {
+                let Value::Tuple(components) = argument else {
+                    panic!("analysis let a non-tuple builtin argument through")
+                };
+                components
+            } else {
+                vec![argument]
+            };
+            builtin.run(arguments, span, level, context)
+        }
+        other => panic!("analysis let a non-function callee through: {other}"),
+    }
+}
+
+fn function_origin(function: &Value, context: &EvaluationContext) -> String {
+    match function {
+        Value::BuiltinFunction(_) => "built-in".into(),
+        Value::Closure(closure) => format!("defined {}", trace_location(context, &closure.span)),
+        other => panic!("analysis let a non-function callee through: {other}"),
+    }
 }
 
 /// Apply a closure value to one argument value (upstream `apply`,
@@ -11858,13 +12018,14 @@ fn apply_transform(
         TransformOperation::Builtin(builtin) => builtin_registry()[*builtin]
             .run(vec![old, operand], span, Level::SingleValue, context)?
             .expect("a transform builtin call yields a single value"),
-        TransformOperation::Closure(closure) => apply_closure(
-            closure,
+        TransformOperation::Function(function) => apply_function(
+            function,
             Value::Tuple(vec![old, operand]),
+            span,
             context,
             Level::SingleValue,
         )?
-        .expect("a transform closure call yields a single value"),
+        .expect("a transform function call yields a single value"),
     };
     match conversion {
         Some(tag) => apply_conversion(tag, result, span),
@@ -16686,6 +16847,21 @@ mod tests {
     }
 
     // Regression: latest-original global.w:992 makes polymorphic bindings constant.
+    #[test]
+    fn binding_constness_is_per_leaf_and_respects_fixed_type_variables() {
+        let Command::Set { bindings, .. } = command("set (fixed,free,mono)=(1,2,3)") else {
+            panic!("set binding fixture")
+        };
+        let found = Type::tuple(vec![Type::Variable(0), Type::row(Type::Variable(1)), int_type()]);
+        let leaves = bind_pattern_leaves(&bindings[0].pattern, &found, &TypeTable::new(), 1)
+            .expect("outer T fixed, row element S free");
+        assert_eq!(leaves.iter().map(|leaf| leaf.2).collect::<Vec<_>>(), [false, true, false]);
+        let all_fixed = bind_pattern_leaves(&bindings[0].pattern, &found, &TypeTable::new(), 2)
+            .expect("both variables fixed");
+        assert!(all_fixed.iter().all(|leaf| !leaf.2));
+    }
+
+    // Keep the same original-backed before assertion from3833788/3837402.
     #[test]
     fn polymorphic_empty_global_is_not_assignable() {
         // The concrete annotation removes polymorphism, so this remains mutable.

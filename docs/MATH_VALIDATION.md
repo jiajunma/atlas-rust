@@ -49,6 +49,20 @@ cases with easier inputs under the same ID.
 
 ## Repair candidates (not remote main)
 
+Function-value R4 candidate3837531 passes425 of427 core tests with the two
+known assignment failures separately reproduced, plus CLI and final integrity
+checks. It repairs3837257's retained captured-printer failure and the two-sided
+list-balance defect. Its100-case master has33whole-stream matches, but an
+original signal keeps full capture invalid. R2's same95-input comparison to
+3837308 increases full matches27to32 with no losses. Implicit-constness repair
+3837694 finishes429all-pass including the unchanged old failures, CLI and final
+integrity checks. Four mutation fixtures now reject and match full stdout but
+not stderr presentation; the original signal still invalidates full capture.
+Loop repair3837799 passes430core tests, CLI and final integrity, and now matches
+loop stdout but not stderr. Next binding-scope before3837952 and separate after
+candidate are pending. These are prerequisites for unmodified basic.at, not enlarged
+mathematical acceptance or performance evidence. See HANDOFF for exact pins.
+
 Latest script-loading prerequisite: constructor commitadf40792 is verified
 by HPC3835776 (413core tests:411pass, two retained known assignment failures
 each executed separately;155filtered checks and CLI pass). Its62-case capture

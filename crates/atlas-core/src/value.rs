@@ -41,6 +41,16 @@ pub enum Value {
     /// A non-recursive closure: the shared typed body plus the captured
     /// frame chain (upstream `closure_value`, axis.w:3209-3236).
     Closure(Rc<Closure>),
+    /// A captured builtin keeps its registry identity and argument policy;
+    /// it is not a user closure and has no captured lexical frame.
+    BuiltinFunction(Rc<BuiltinFunction>),
+}
+
+/// Opaque outside the core: only the typed builtin registry constructs these.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct BuiltinFunction {
+    pub(crate) index: usize,
+    pub(crate) print_name: String,
 }
 
 /// The payload of a closure value. The body is shared between every closure
@@ -171,6 +181,7 @@ impl fmt::Display for Value {
             // (typed.rs `closure_trace_string`) renders the full multi-line
             // form.
             Self::Closure(_) => write!(formatter, "Function defined"),
+            Self::BuiltinFunction(function) => write!(formatter, "{{{}}}", function.print_name),
             Self::List(values) => {
                 write!(formatter, "[")?;
                 for (index, value) in values.iter().enumerate() {

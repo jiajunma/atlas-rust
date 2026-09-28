@@ -19,6 +19,27 @@ def oracle_execution_valid(cases):
         or c["categories"]["oracle"].startswith("REJECTED_") for c in cases)
 
 
+def foundation_completion_status(capture_report):
+    """Keep build evidence usable without declaring an unavailable oracle valid."""
+    cases = capture_report.get("cases", [])
+    valid = oracle_execution_valid(cases)
+    status = capture_report.get("status")
+    if status == "CAPTURED_NOT_LANGUAGE_ACCEPTANCE" and valid:
+        return "FOUNDATION_UNITS_PASS_LANGUAGE_NOT_PORTED"
+    if status == "CAPTURE_FAILED_ORACLE_EXECUTION" and cases and not valid:
+        return "FOUNDATION_UNITS_PASS_ORACLE_UNAVAILABLE"
+    raise ValueError("capture status contradicts its oracle execution evidence")
+
+
+def candidate_unit_gate_passed(parent):
+    # These are only candidate eligibility states. Callers must still rehash
+    # source, inputs, binaries and every successful/expected-failure command.
+    if parent.get("status") == "FOUNDATION_UNITS_PASS_LANGUAGE_NOT_PORTED":
+        return True
+    return (parent.get("status") == "FOUNDATION_UNITS_PASS_ORACLE_UNAVAILABLE"
+            and parent.get("source_integrity_rechecked") is True)
+
+
 def capture(root, out, pin, candidate):
     # The caller pins all harness/fixture files, exact candidate sources,
     # its fresh target and successful build log before entering this helper.
@@ -95,7 +116,7 @@ def main():
         if digest(parent_path) != pin["parent_report_sha256"]:
             raise ValueError("build evidence changed")
         parent = json.loads(parent_path.read_text())
-        if parent["status"] != "FOUNDATION_UNITS_PASS_LANGUAGE_NOT_PORTED":
+        if not candidate_unit_gate_passed(parent):
             raise ValueError("candidate build checks did not pass")
         source = parent_path.parent / "source"
         if file_manifest(source) != parent["source_files"]:

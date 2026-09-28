@@ -278,6 +278,7 @@ pub fn broader_eq(a: &Type, b: &Type, table: &TypeTable) -> bool {
         return is_close(a, b, table) & 0x2 != 0;
     }
     match (a, b) {
+        (Type::Variable(a), Type::Variable(b)) => a == b,
         (Type::Row(a), Type::Row(b)) => broader_eq(a, b, table),
         (Type::Tuple(xs), Type::Tuple(ys)) | (Type::Union(xs), Type::Union(ys)) => {
             xs.len() == ys.len() && xs.iter().zip(ys).all(|(a, b)| broader_eq(a, b, table))

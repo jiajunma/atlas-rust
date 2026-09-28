@@ -1,0 +1,6 @@
+prints("MONO",let xs=[int]:[] in xs:=[1]; xs)
+prints("SHADOW",let xs=[] in let xs=[int]:[] in xs:=[2]; xs)
+let (n,xs)=(1,[]) in xs:=[3]
+let (n,xs)=(1,[]) in set (n,xs):=(4,[3])
+prints("LEAF",let (n,xs)=(1,[]) in n:=2; (n,xs))
+prints("RECOVER",17)

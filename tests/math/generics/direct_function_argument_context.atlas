@@ -1,0 +1,5 @@
+set apply_context((int->int) f,int x)=f(x)
+set context_choice(int x)=x+1
+set context_choice(string x)=#x
+prints("CONTEXT",let f=apply_context in f(context_choice,7))
+prints("RETURNED",(let f=apply_context in f)(context_choice,9))

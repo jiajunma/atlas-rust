@@ -2,6 +2,26 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+Function-value R4 job3837531 passes425/427core tests, with the same two known
+assignment failures separately executed, CLI and final source integrity checks.
+The failed3837257 printer assertion now passes. Master100 has33full-stream
+matches but retains original's signal; status explicitly separates verified
+build/unit checks from unavailable complete differential acceptance. R2's same
+95-input comparison gains five exact matches27to32 with none lost. Balance
+discovery3837421 confirms wrong rejection AND wrong acceptance before repair.
+Implicit-constness repair3837694 finishes429core all-pass, zero skips, both
+unchanged old failures separately passing, CLI and final integrity checks.
+Four mutation fixtures now reject and match stdout; stderr envelopes remain
+different. Same100inputs retain33whole matches with no losses. Original signal
+keeps overall status unavailable/nonzero, not complete differential acceptance.
+New original-backed mutation tests preserve concrete siblings, shadowing/rebinding
+and state. Loop repair3837799 passes430core tests, CLI and final integrity;
+loop stdout now matches (whole stderr still differs). Original permits counted
+index assignment contrary to its source comment. Next binding-scope before
+probe3837952 must execute the new assertion failure, while a separate after
+candidate stores defining floors with variable types. any_type grammar remains
+unported. See HANDOFF and the generic-language slice for exact pins.
+
 Active overload/member wave3836397 failed full core:416pass/3fail/2filtered
 (all163 filtered checks pass). Original3836455/3836507 confirms the next repair:
 ordinary generic row/printer/error overloads must replace the old hidden

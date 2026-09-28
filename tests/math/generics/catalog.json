@@ -547,6 +547,60 @@
       "intent": "reject",
       "scope": "Isolate the historical case/in/function-branch syntax without generic constructors: latest original rejects this form, whereas Rust's old casefor_b6 unit still treats it as accepted.",
       "file": "legacy_union_case_functions.atlas"
+    },
+    {
+      "id": "abstraction_binding_imports",
+      "intent": "accept",
+      "scope": "Provisional lexical-scope import contract: outer polymorphic global/local empty rows instantiate under rigid scopes, while nested closures retain the outer fixed variable.",
+      "file": "abstraction_binding_imports.atlas"
+    },
+    {
+      "id": "abstraction_rigid_assignment_rejected",
+      "intent": "reject",
+      "scope": "Provisional rigid-floor negative: an outer fixed-T local must not be assigned a value of inner fixed-S type; recovery remains observable.",
+      "file": "abstraction_rigid_assignment_rejected.atlas"
+    },
+    {
+      "id": "direct_function_argument_context",
+      "intent": "accept",
+      "scope": "Provisional direct-call context contract: a known higher-order function supplies its tuple parameter context to select a captured overloaded argument.",
+      "file": "direct_function_argument_context.atlas"
+    },
+    {
+      "id": "abstraction_concrete_context",
+      "intent": "reject",
+      "scope": "Original3837308 disproves acceptance: concrete function context reaches the rigid abstraction body and rejects T->T against int->int and rat->rat. Retain both type errors and recovery, not conventional instantiate-after-body behavior.",
+      "file": "abstraction_concrete_context.atlas"
+    },
+    {
+      "id": "polymorphic_row_balance",
+      "intent": "accept",
+      "scope": "Original3837421 accepts independent empty-row components with int/rat types and two empty rows; unchanged Rust3836533 wrongly rejects the mixed tuple list. Preserve all printed values and recovery.",
+      "file": "polymorphic_row_balance.atlas"
+    },
+    {
+      "id": "polymorphic_row_balance_mixed_rejected",
+      "intent": "reject",
+      "scope": "Original3837421 rejects simultaneous polymorphic joining and monomorphic coercion across tuple components; unchanged Rust3836533 wrongly accepts. Preserve the exact type conflict and recovery.",
+      "file": "polymorphic_row_balance_mixed_rejected.atlas"
+    },
+    {
+      "id": "polymorphic_binding_mutations",
+      "intent": "reject",
+      "scope": "Original3837531 rejects three assignments to polymorphic rows/tuples, preserves UNCHANGED2[] and TUPLE([],1), and permits concrete sibling mutation plus monomorphic rebinding. Rust3837531 wrongly accepts all three assignments.",
+      "file": "polymorphic_binding_mutations.atlas"
+    },
+    {
+      "id": "polymorphic_local_binding_mutations",
+      "intent": "reject",
+      "scope": "Original3837531 rejects two local polymorphic leaf assignments while accepting MONO[1], SHADOW[2], LEAF(2,[]) and recovery. Rust3837531 wrongly accepts both assignments.",
+      "file": "polymorphic_local_binding_mutations.atlas"
+    },
+    {
+      "id": "loop_binding_mutations",
+      "intent": "reject",
+      "scope": "Original3837531 rejects row-element and row-index assignments, but ACCEPTS counted-loop mutation and prints COUNT[3,3], then RECOVER17. Do not generalize row-loop constness to counted loops; Rust mismatch remains tracked.",
+      "file": "loop_binding_mutations.atlas"
     }
   ]
 }

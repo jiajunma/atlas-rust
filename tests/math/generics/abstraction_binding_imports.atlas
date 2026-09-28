@@ -1,0 +1,5 @@
+set imported_empty=[]
+prints("GLOBAL",(any_type T ((T x):[T]:imported_empty))(7),(any_type S ((S x):[S]:imported_empty))("a"))
+prints("LOCAL",let empty=[] in ((any_type T ((T x):[T]:empty))(7),(any_type S ((S x):[S]:empty))("a")))
+set imported_fixed=any_type T ((T x):let fixed=x in any_type S ((S y):(T,S):(fixed,y)))
+prints("FIXED",imported_fixed(7)("a"),imported_fixed(true)(3/4))

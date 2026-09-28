@@ -1,0 +1,11 @@
+set (mutable_count,frozen_row)=(1,[])
+mutable_count:=2
+frozen_row:=[3]
+set (mutable_count,frozen_row):=(4,[3])
+prints("UNCHANGED",mutable_count,frozen_row)
+set frozen_tuple=([],1)
+frozen_tuple:=([3],2)
+prints("TUPLE",frozen_tuple)
+set frozen_row=[int]:[]
+frozen_row:=[5]
+prints("REBOUND",frozen_row)

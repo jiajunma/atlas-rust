@@ -1,0 +1,4 @@
+prints("ROW",for x in [1,2] do x:=3 od)
+prints("INDEX",for x@i in [1,2] do i:=3 od)
+prints("COUNT",for i:2 do i:=3 od)
+prints("RECOVER",17)
