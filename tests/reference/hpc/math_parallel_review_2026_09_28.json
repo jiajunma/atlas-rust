@@ -1,0 +1,254 @@
+{
+  "checker": {
+    "exit_status": 0,
+    "log_sha256": "2b4cdba7bc44a0de0a16e34941952ffb1d56cb88b8e64bc92a881129e24d1853"
+  },
+  "job": "3834377",
+  "pin": {
+    "experiment_job": "3834321",
+    "inputs": {
+      "hpc/math_baseline_build.py": "931ec63f850d2a3769de1d5fb7836fc8eba7097e6d302ea30c2a6e47417c2ed7",
+      "hpc/math_cycle_check.py": "d02f8412972249d18f5bdd98f15df85633c4d676063063041b08186190c61131",
+      "hpc/math_parallel_review.py": "969db1b46f45394120599aca5afc4439558cabb03079ab93de20d4ad9546e2e9",
+      "hpc/math_parallel_review.sbatch": "0df51b7ed4e969e543d52ccc6469f5754ecc3f125a8042242756c6001c97b272",
+      "hpc/math_suite.py": "07e26500b9541a16398ba8c884dfebe85936cdb3abe716ed375b15b90021a7f2",
+      "hpc/math_suite_review.py": "6b101f7aa62f1abcfda70b382efd0928a648f4f032e4870f87bfeb5e32084ad8",
+      "hpc/test_math_cycle_check.py": "22dc5294b2150e1b2195d80a870da4c54c5171e12567cc7046f5c4505f43ca7a",
+      "hpc/test_math_parallel_review.py": "32f1699b35a1f20252f9598b74f6d95af414b7ce24410518c1bd492fd24395a9",
+      "hpc/test_math_suite.py": "628f3203044a3fabe5bd5ae1cdd11ebe3890431ead060bcb61b9a46ffb1594a4",
+      "hpc/test_math_suite_review.py": "998f49dc63b0f9469c56969f247f704b4bfe7cf63016df2ce2bcd88283a44c3d",
+      "tests/math/README.md": "f25c7ed9dd745c998dd0a1a34118ca02e7b9fc28a19659f1df46d2ae54366cd8",
+      "tests/math/baseline.json": "d6cde071931e8d2a039f39235fbcce64390811ac25e967bf648f8a947b2dcdaf",
+      "tests/math/benchmarks.json": "44529e64dec6cdc6066094002af3202bd5cee0bd5cd4fc229d669483af0ec323",
+      "tests/math/catalog.json": "e89b77c2738f1842c279cb6257d6b4bb9a1d1874e5c59cb25766d4634a088ae6",
+      "tests/math/templates/annihilator_variety.atlas": "de1ae088b74034eb6387b35860fb5e2d9291b3ff0a7fa7fd08edfe607f4a2926",
+      "tests/math/templates/basic_load.atlas": "448862a14277a7fc9cbd83464d2aa7c1ce85b9e21cf2a7c458bcfaffe46502c0",
+      "tests/math/templates/core_klv.atlas": "70b406a943df816d96a97c39676fe74f57603f8ec9e5de4bd1c01c586987c1d9",
+      "tests/math/templates/cycle_foundation.atlas": "3e5b846ee2767cd58e6833432896a8250053ee2a20fb08765a4ecf4edb892270",
+      "tests/math/templates/cycle_product_ranks.atlas": "a33737449af1c4121e0262a8cc10ee8027e0a563ce4e7f31de6239085b807ddd",
+      "tests/math/templates/fpp.atlas": "3eb846445e62b336f70f0a1d28ad1cd3b112024ee89a3e959aa8f9439b758c5e",
+      "tests/math/templates/fpp_d4_wall.atlas": "79c2a4bd17c0ed344cff692dc50c6a7eb952da9373169f9f918d36baa0d61f34",
+      "tests/math/templates/fpp_rank_rejected.atlas": "5a476cec81e25e47e102d92686180bee871396adde1db379a95ff634965bbdb3",
+      "tests/math/templates/generic_identity.atlas": "054712c54376390ae6776cf8f4759e2a66a256ae5d7792b84d0448dde181d91f",
+      "tests/math/templates/generic_pair.atlas": "3529533063872373e623b22f0c3f8aff4dd22a23c56ae6a1b50c2b7606e203f9",
+      "tests/math/templates/hodge.atlas": "56217ff1974be61455a92b0cc3a4caa3e389ce69169c16134ff165990346dc0e",
+      "tests/math/templates/hodge_nontrivial.atlas": "9259c8d8f6449f828a030abed14cec84374862e6610c60b5641cafa920b320b1",
+      "tests/math/templates/hodge_trace.atlas": "a9ffc0d18ad55fed0ae79f935d625de2c56974b6e9381fa76228ed299f6abf95",
+      "tests/math/templates/kgb.atlas": "0ff3bc044f157cad18920c2f62d2d7f0633783b1632b91f7a0614dda66e7e26d",
+      "tests/math/templates/klv.atlas": "f30e03ba1fff856569377a1c94be6eca516454ae61934cb53d3353f18b30cb21",
+      "tests/math/templates/partial_kl_containment.atlas": "e51d4719a411c866d74c73a65f2610dff84061c8dc0365bd3f0b685b0a082879",
+      "tests/math/templates/partial_kl_history.atlas": "afa4ed7e3d657b2c56d28d1f208072d01cf635138494aef99c20bf854785bb5b",
+      "tests/math/templates/partial_kl_nonstandard_rejected.atlas": "f35ea9aaf7391f808f035ba4cdbe34ea8ccbfeed9a726d3361c69430a12f4242",
+      "tests/math/templates/partial_kl_regression.atlas": "b25a8c9548347106398c9aac98858d19ee31e9c8b3f22ec20f7b399e85723af9",
+      "tests/math/templates/root_data.atlas": "0083b63e7b8ff1baf9c2243ce0e1f43dc2c5ea91d011ae7a640c61d822854e84",
+      "tests/math/templates/unitarity.atlas": "e23cea8f4c60a45e53b2aba0648f7d12af4c838bcf78d38989b3c3d4f09bdb68"
+    },
+    "parallel_pin_sha256": "535e979fde936c98c02a04b2561ee17b7ec423e4c2bd6287413e19975aeba889",
+    "report": "/public/home/majj/atlas-parallel-ab-20260928.15hQxOhx/results/3834321/report.json",
+    "report_sha256": "28edde93bc5092005001b84cbe17143a75896d7ae8c211778d95947b88beb7a0",
+    "scheduler": {
+      "path": "/public/home/majj/atlas-parallel-review-20260928.fL023YvY/scheduler.txt",
+      "sha256": "134a94e99eeff5f567f9ba10ccff175268375e149282ebcca17d67005a299f7b"
+    },
+    "schema": "atlas-parallel-review-pin-v1",
+    "scope": "Independently review frozen E7 KGB full outputs, source/build hashes, four balanced rounds and GNU time. No interpreter rerun, default change or broad mathematics claim."
+  },
+  "review": {
+    "artifacts_rehashed": 36,
+    "binaries": {
+      "oracle": {
+        "path": "/public/home/majj/atlas-math-cayley-repair-20260928.FFGcIkPi/results/3833716/oracle-source/atlas",
+        "sha256": "093066582e908115022188debf348f77535e10cc7bfb2e06bb32ee5b3a03b71b"
+      },
+      "rust": {
+        "path": "/public/home/majj/atlas-math-cayley-repair-20260928.FFGcIkPi/results/3833716/target-after/release/atlas-cli",
+        "sha256": "3135dd98ef33dfa65bec53b7b505f624eae106965bdf970e852b06efdbf0075e"
+      }
+    },
+    "case": {
+      "expected": "accept",
+      "family": "exceptional",
+      "id": "E7_kgb",
+      "input_sha256": "8165e40e7982f2e4ba07cd959a230292a382d0af10bbf0bf25083e7de890ff03",
+      "operation": "kgb",
+      "rank": 7,
+      "scope": "All KGB elements of the split form, every simple-root status/cross/Cayley, involutions and lengths.",
+      "template": "kgb.atlas",
+      "template_sha256": "0ff3bc044f157cad18920c2f62d2d7f0633783b1632b91f7a0614dda66e7e26d",
+      "tier": "large",
+      "type": "E7"
+    },
+    "decision": "SELECTED_FOR_THIS_WORKLOAD",
+    "default_thread_setting_changed": false,
+    "experiment_job": "3834321",
+    "node": "cu025",
+    "resources": {
+      "affinity_cpu_ids": [
+        54,
+        55,
+        56,
+        57
+      ],
+      "allocated_cpus": 4,
+      "child_address_space_gib": 6,
+      "cpu_model": "Intel(R) Xeon(R) Gold 6338 CPU @ 2.00GHz",
+      "logical_processor_count": 64,
+      "omp_threads": 1,
+      "openblas_threads": 1,
+      "same_runtime_binary_all_arms": true
+    },
+    "rounds": [
+      {
+        "cpu_seconds": {
+          "oracle": 1.29,
+          "rust-1": 69.05,
+          "rust-4": 70.33
+        },
+        "gnu_wall_seconds": {
+          "oracle": 1.3,
+          "rust-1": 69.22,
+          "rust-4": 23.64
+        },
+        "index": 0,
+        "status": "FULL_ORACLE_MATCH"
+      },
+      {
+        "cpu_seconds": {
+          "oracle": 1.31,
+          "rust-1": 69.47,
+          "rust-4": 70.26
+        },
+        "gnu_wall_seconds": {
+          "oracle": 1.32,
+          "rust-1": 69.64,
+          "rust-4": 23.63
+        },
+        "index": 1,
+        "status": "FULL_ORACLE_MATCH"
+      },
+      {
+        "cpu_seconds": {
+          "oracle": 1.32,
+          "rust-1": 70.2,
+          "rust-4": 69.32000000000001
+        },
+        "gnu_wall_seconds": {
+          "oracle": 1.33,
+          "rust-1": 70.43,
+          "rust-4": 23.37
+        },
+        "index": 2,
+        "status": "FULL_ORACLE_MATCH"
+      },
+      {
+        "cpu_seconds": {
+          "oracle": 1.31,
+          "rust-1": 69.28999999999999,
+          "rust-4": 69.39
+        },
+        "gnu_wall_seconds": {
+          "oracle": 1.32,
+          "rust-1": 69.53,
+          "rust-4": 23.4
+        },
+        "index": 3,
+        "status": "FULL_ORACLE_MATCH"
+      }
+    ],
+    "scope": "Four fresh-process E7 KGB trials only; not other mathematics, real forms, hardware or statistical significance.",
+    "scripts_rehashed": 264,
+    "source_files_rehashed": {
+      "oracle": 606,
+      "rust": 1212
+    },
+    "summary": {
+      "accepted": true,
+      "arms": {
+        "oracle": {
+          "all_in_60_to_600_seconds": false,
+          "max_seconds": 1.3369189210352488,
+          "maxrss_kb": [
+            41652,
+            41652,
+            41656,
+            41656
+          ],
+          "median_seconds": 1.3279841894982383,
+          "min_seconds": 1.3129089159774594,
+          "seconds": [
+            1.3129089159774594,
+            1.3293561059981585,
+            1.3369189210352488,
+            1.326612272998318
+          ]
+        },
+        "rust-1": {
+          "all_in_60_to_600_seconds": true,
+          "max_seconds": 70.44455403601751,
+          "maxrss_kb": [
+            1461900,
+            1460636,
+            1471876,
+            1459064
+          ],
+          "median_seconds": 69.5951956739882,
+          "min_seconds": 69.22489952499745,
+          "seconds": [
+            69.22489952499745,
+            69.653406523983,
+            70.44455403601751,
+            69.53698482399341
+          ]
+        },
+        "rust-4": {
+          "all_in_60_to_600_seconds": false,
+          "max_seconds": 23.65473245398607,
+          "maxrss_kb": [
+            1742276,
+            1675804,
+            1744768,
+            1708416
+          ],
+          "median_seconds": 23.523671236500377,
+          "min_seconds": 23.37980068498291,
+          "seconds": [
+            23.65473245398607,
+            23.638356397044845,
+            23.37980068498291,
+            23.40898607595591
+          ]
+        }
+      },
+      "original_over_rust": {
+        "rust-1": [
+          0.01896584791001916,
+          0.019085299231422884,
+          0.018978314780042433,
+          0.019077794016466712
+        ],
+        "rust-4": [
+          0.055503012707134654,
+          0.05623724778785162,
+          0.057182648348835824,
+          0.05667106933610091
+        ]
+      },
+      "parallel_efficiency": 0.7396439674937584,
+      "parallel_serial_peak_rss_ratio": 1.1854042052455507,
+      "scope": "Four paired fresh-process trials, same node/build/input; filesystem caches not flushed. Screening only, independent review required.",
+      "selection": "PROMISING_PENDING_REVIEW",
+      "serial_parallel_speedup": {
+        "definition": "Rust1_seconds / Rust4_seconds",
+        "median": 2.9585758699750335,
+        "paired": [
+          2.926471464416514,
+          2.9466264639571444,
+          3.0130519496372257,
+          2.9705252759929226
+        ]
+      }
+    }
+  },
+  "schema": "atlas-parallel-independent-review-v1",
+  "status": "PARALLEL_ARTIFACTS_VERIFIED"
+}

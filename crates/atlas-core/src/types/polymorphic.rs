@@ -14,6 +14,7 @@ pub enum TypeError {
     UnknownConstructor(usize),
     Arity { expected: usize, found: usize },
     UndeterminedInAssignment,
+    PendingAssignments,
     ScopeCapture,
     IndexOverflow,
 }
@@ -115,6 +116,22 @@ impl TypeAssignment {
 
     pub fn fixed(&self) -> usize { self.fixed }
     pub fn degree(&self) -> usize { self.equivalents.len() }
+
+    /// Import another assignment into a disjoint variable range, including
+    /// substitutions already pending there (axis-types.w::append). Merely
+    /// reserving new holes would silently discard its inferred constraints.
+    pub fn append(&mut self, other: &Self) -> Result<usize, TypeError> {
+        if self.fixed < other.fixed { return Err(TypeError::ScopeCapture); }
+        let start = self.fixed.checked_add(self.degree()).ok_or(TypeError::IndexOverflow)?;
+        let degree = self.degree().checked_add(other.degree()).ok_or(TypeError::IndexOverflow)?;
+        self.fixed.checked_add(degree).ok_or(TypeError::IndexOverflow)?;
+        let diff = start - other.fixed;
+        let shifted = other.equivalents.iter().map(|value| {
+            value.as_ref().map(|t| shift(t, other.fixed, diff)).transpose()
+        }).collect::<Result<Vec<_>, _>>()?;
+        self.equivalents.extend(shifted);
+        Ok(diff)
+    }
 
     /// Import a fresh use of a scheme, leaving its rigid variables alone.
     pub fn instantiate(&mut self, scheme: &TypeScheme) -> Result<Type, TypeError> {
@@ -249,6 +266,125 @@ impl TypeAssignment {
             };
             Ok(Type::Variable(n))
         })
+    }
+}
+
+/// A type expression together with the scope that gives its variable numbers
+/// meaning. Pending substitutions stay owned by this inference/overload trial.
+/// Following original `type` in axis-types.w:2990+, this is the bridge needed
+/// before replacing bare Type cells in the active analyzer; it is not that
+/// integration and does not by itself make generic Atlas programs supported.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InferredType {
+    body: Type,
+    assignment: TypeAssignment,
+}
+
+impl InferredType {
+    pub fn from_scheme(scheme: TypeScheme) -> Result<Self, TypeError> {
+        Ok(Self {
+            assignment: TypeAssignment::new(scheme.fixed, scheme.degree)?,
+            body: scheme.body,
+        })
+    }
+
+    pub fn wrap(body: &Type, fixed: usize) -> Result<Self, TypeError> {
+        Self::from_scheme(TypeScheme::wrap(body, fixed)?)
+    }
+
+    pub fn bottom(fixed: usize) -> Result<Self, TypeError> {
+        Self::wrap(&Type::Undetermined, fixed)
+    }
+
+    /// Component scopes are independent. Bake and re-pack each with its OWN
+    /// threshold before importing into the tuple's current scope.
+    pub fn wrap_tuple(components: Vec<Self>, fixed: usize) -> Result<Self, TypeError> {
+        let mut assignment = TypeAssignment::new(fixed, 0)?;
+        let mut bodies = Vec::with_capacity(components.len());
+        for component in components {
+            let scheme = TypeScheme::wrap(&component.bake()?, component.fixed())?;
+            bodies.push(assignment.instantiate(&scheme)?);
+        }
+        Ok(Self { body: Type::tuple(bodies), assignment })
+    }
+
+    /// Raw body access does not substitute pending assignments. Keep its scope
+    /// attached; use bake only at an explicit scope-transfer boundary.
+    pub fn body(&self) -> &Type { &self.body }
+    pub fn assignments(&self) -> &TypeAssignment { &self.assignment }
+    pub fn fixed(&self) -> usize { self.assignment.fixed() }
+    pub fn degree(&self) -> usize { self.assignment.degree() }
+    pub fn is_clean(&self) -> bool { self.assignment.equivalents.iter().all(Option::is_none) }
+    pub fn is_polymorphic(&self) -> bool { self.assignment.equivalents.iter().any(Option::is_none) }
+
+    pub fn bake(&self) -> Result<Type, TypeError> {
+        self.assignment.substitution(&self.body)
+    }
+
+    /// Bake/re-pack only when there are assignments, preserving declared but
+    /// unused constructor parameters when the type is already clean.
+    pub fn wring_out(&mut self) -> Result<(), TypeError> {
+        if !self.is_clean() { *self = Self::wrap(&self.bake()?, self.fixed())?; }
+        Ok(())
+    }
+
+    pub fn raise_floor(&mut self, count: usize) -> Result<(), TypeError> {
+        let mut shifted = self.clone();
+        shifted.wring_out()?;
+        let fixed = shifted.fixed().checked_add(count).ok_or(TypeError::IndexOverflow)?;
+        let body = shift(&shifted.body, shifted.fixed(), count)?;
+        shifted.assignment = TypeAssignment::new(fixed, shifted.degree())?;
+        shifted.body = body;
+        *self = shifted;
+        Ok(())
+    }
+
+    pub fn lower_floor(&mut self, count: usize) -> Result<(), TypeError> {
+        self.assignment.lower_floor(count)
+    }
+
+    /// Forget trial assignments and restore its original number of slots.
+    /// Reject restoring a range too short for the unchanged body.
+    pub fn clear(&mut self, degree: usize) -> Result<(), TypeError> {
+        let assignment = TypeAssignment::new(self.fixed(), degree)?;
+        assignment.validate(&self.body)?;
+        self.assignment = assignment;
+        Ok(())
+    }
+
+    /// Original unify_to retains partial substitutions on a failed match and
+    /// never mutates the other type. Use try_unify_to for a transactional trial.
+    pub fn unify_to(&mut self, other: &Self, table: &TypeTable) -> Result<bool, TypeError> {
+        if self.fixed() < other.fixed() { self.raise_floor(other.fixed() - self.fixed())?; }
+        let body = if other.is_polymorphic() {
+            let diff = self.assignment.append(&other.assignment)?;
+            shift(&other.body, other.fixed(), diff)?
+        } else {
+            other.bake()?
+        };
+        self.assignment.unify(&self.body, &body, table)
+    }
+
+    pub fn try_unify_to(&mut self, other: &Self, table: &TypeTable) -> Result<bool, TypeError> {
+        let saved = self.clone();
+        let result = self.unify_to(other, table);
+        if result != Ok(true) { *self = saved; }
+        result
+    }
+
+    /// Test one global overload's formal argument, returning the shift that
+    /// MUST also be applied when substituting that overload's result type.
+    /// The caller clears/restores the original degree between candidate trials;
+    /// success does not select an overload or resolve ambiguity by itself.
+    pub fn matches(&mut self, formal: &Type, degree: usize, table: &TypeTable)
+        -> Result<(bool, usize), TypeError>
+    {
+        if !self.is_clean() { return Err(TypeError::PendingAssignments); }
+        TypeScheme::constructor(formal.clone(), degree)?;
+        table.validate_applications(formal)?;
+        let diff = self.assignment.append(&TypeAssignment::new(0, degree)?)?;
+        let formal = shift(formal, 0, diff)?;
+        Ok((self.assignment.unify(&formal, &self.body, table)?, diff))
     }
 }
 
@@ -428,5 +564,126 @@ mod tests {
         assert!(applied.can_specialise(&pattern, &table));
         assert!(applied.specialise(&pattern, &table));
         assert_eq!(applied, pattern);
+    }
+
+    #[test]
+    fn appended_assignments_shift_pending_values_and_preserve_rigid_variables() {
+        let table = TypeTable::new();
+        let mut source = TypeAssignment::new(1, 2).unwrap();
+        assert!(source.unify(&var(1), &Type::tuple(vec![var(0), var(2)]), &table).unwrap());
+        let mut target = TypeAssignment::new(3, 1).unwrap();
+        let diff = target.append(&source).unwrap();
+        assert_eq!(diff, 3);
+        assert!(target.unify(&var(5), &int(), &table).unwrap());
+        assert_eq!(target.substitution(&var(4)).unwrap(), Type::tuple(vec![var(0), int()]));
+        assert_eq!(source.substitution(&var(1)).unwrap(), Type::tuple(vec![var(0), var(1)]));
+        let mut too_low = TypeAssignment::new(0, 1).unwrap();
+        let saved = too_low.clone();
+        assert_eq!(too_low.append(&source), Err(TypeError::ScopeCapture));
+        assert_eq!(too_low, saved);
+    }
+
+    #[test]
+    fn inferred_tuple_freshens_components_without_capturing_new_fixed_types() {
+        let component = InferredType::wrap(&Type::tuple(vec![var(7), var(7)]), 0).unwrap();
+        let tuple = InferredType::wrap_tuple(vec![component.clone(), component], 2).unwrap();
+        assert_eq!(tuple.body(), &Type::tuple(vec![
+            Type::tuple(vec![var(2), var(2)]), Type::tuple(vec![var(3), var(3)])]));
+        assert_eq!((tuple.fixed(), tuple.degree()), (2, 2));
+        let empty = InferredType::wrap_tuple(vec![], 3).unwrap();
+        assert_eq!((empty.fixed(), empty.degree()), (3, 0));
+        assert_eq!(empty.body(), &Type::tuple(vec![]));
+        let fixed = InferredType::wrap(&var(1), 2).unwrap();
+        assert_eq!(InferredType::wrap_tuple(vec![fixed], 1), Err(TypeError::ScopeCapture));
+    }
+
+    #[test]
+    fn raising_floor_bakes_pending_types_before_shifting_free_variables() {
+        let table = TypeTable::new();
+        let mut value = InferredType::wrap(&Type::tuple(vec![var(0), var(1)]), 0).unwrap();
+        let requirement = InferredType::wrap(&Type::tuple(vec![int(), Type::Undetermined]), 0).unwrap();
+        assert!(value.unify_to(&requirement, &table).unwrap());
+        assert!(!value.is_clean());
+        value.raise_floor(2).unwrap();
+        assert!(value.is_clean());
+        assert_eq!((value.fixed(), value.degree()), (2, 1));
+        assert_eq!(value.body(), &Type::tuple(vec![int(), var(2)]));
+        assert_eq!(requirement.bake().unwrap(), Type::tuple(vec![int(), var(0)]));
+    }
+
+    #[test]
+    fn inferred_constness_distinguishes_fixed_types_from_free_types() {
+        let table = TypeTable::new();
+        let mut fixed = InferredType::wrap(&Type::row(var(0)), 1).unwrap();
+        assert!(!fixed.is_polymorphic());
+        fixed.lower_floor(1).unwrap();
+        assert!(fixed.is_polymorphic());
+        let concrete = InferredType::wrap(&Type::row(int()), 0).unwrap();
+        assert!(fixed.unify_to(&concrete, &table).unwrap());
+        assert!(!fixed.is_polymorphic());
+        assert_eq!(fixed.bake().unwrap(), Type::row(int()));
+        fixed.wring_out().unwrap();
+        assert_eq!(fixed.degree(), 0);
+    }
+
+    #[test]
+    fn unify_to_raises_scope_and_imports_pending_other_assignments() {
+        let table = TypeTable::new();
+        let mut other = InferredType::wrap(&Type::tuple(vec![var(0), var(2), var(3)]), 1).unwrap();
+        let expected = InferredType::wrap(&Type::tuple(vec![var(0), int(), Type::Undetermined]), 1).unwrap();
+        assert!(other.unify_to(&expected, &table).unwrap());
+        let saved = other.clone();
+        let mut bottom = InferredType::bottom(0).unwrap();
+        assert!(bottom.unify_to(&other, &table).unwrap());
+        assert_eq!(bottom.fixed(), 1);
+        assert_eq!(bottom.bake().unwrap(), Type::tuple(vec![var(0), int(), var(1)]));
+        assert_eq!(other, saved);
+    }
+
+    #[test]
+    fn failed_inferred_trial_restores_scope_and_all_assignments() {
+        let table = TypeTable::new();
+        let mut actual = InferredType::wrap(&Type::tuple(vec![var(0), var(0)]), 0).unwrap();
+        let other = InferredType::wrap(&Type::tuple(vec![int(), rat()]), 2).unwrap();
+        let saved = actual.clone();
+        assert!(!actual.try_unify_to(&other, &table).unwrap());
+        assert_eq!(actual, saved);
+    }
+
+    #[test]
+    fn overload_trial_shift_is_reused_for_the_function_result() {
+        let table = TypeTable::new();
+        let mut argument = InferredType::wrap(&Type::tuple(vec![var(0), int()]), 1).unwrap();
+        let (matched, diff) = argument.matches(&Type::tuple(vec![var(0), var(1)]), 2, &table).unwrap();
+        assert!(matched);
+        assert_eq!(diff, 1);
+        let result = shift(&Type::tuple(vec![var(1), var(0)]), 0, diff).unwrap();
+        assert_eq!(argument.assignments().substitution(&result).unwrap(), Type::tuple(vec![int(), var(0)]));
+        assert_eq!(argument.matches(&int(), 0, &table), Err(TypeError::PendingAssignments));
+        argument.clear(0).unwrap();
+        assert!(argument.is_clean());
+    }
+
+    #[test]
+    fn failed_overload_trial_can_be_cleared_before_next_candidate() {
+        let table = TypeTable::new();
+        let mut argument = InferredType::wrap(&Type::tuple(vec![int(), rat()]), 0).unwrap();
+        assert!(!argument.matches(&Type::tuple(vec![var(0), var(0)]), 1, &table).unwrap().0);
+        argument.clear(0).unwrap();
+        let (matched, shift) = argument.matches(&Type::tuple(vec![var(0), var(1)]), 2, &table).unwrap();
+        assert!(matched);
+        assert_eq!(shift, 0);
+        assert_eq!(argument.assignments().substitution(&var(1)).unwrap(), rat());
+    }
+
+    #[test]
+    fn constructor_scope_keeps_unused_parameters_until_explicit_repacking() {
+        let scheme = TypeScheme::constructor(Type::tuple(vec![var(0), var(0)]), 2).unwrap();
+        let mut constructor = InferredType::from_scheme(scheme).unwrap();
+        constructor.wring_out().unwrap();
+        assert_eq!(constructor.degree(), 2); // clean: no implicit re-packing
+        constructor.raise_floor(2).unwrap();
+        assert_eq!((constructor.fixed(), constructor.degree()), (2, 2));
+        assert_eq!(constructor.body(), &Type::tuple(vec![var(2), var(2)]));
     }
 }

@@ -2,6 +2,12 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+NEW TYPE SCOPE:3834389 COMPLETE4:15;27type/3coercion tests and CLI check pass.
+Owned InferredType + nine new internal tests carry pending substitutions and
+fixed/free ranges together. Known global unit still fails. This foundation
+is not yet connected to the parser/analyzer; no latest-script support claim.
+See HANDOFF and `slices/generic_language_2026-09-28.md`; no duplicate job needed.
+
 NEW TYPE FOUNDATION (not language acceptance):3833858 COMPLETE,17 type units,
 3 coercion units and CLI check pass; the existing global assignment regression
 still fails. Owned schemes/substitutions are implemented but not integrated
@@ -17,8 +23,11 @@ scope-carrying analysis migration. High-level mathematics remains blocked on
 that real port; do not replace or preprocess latest original scripts.
 
 Parallel-computation A/B is now an explicit user requirement. Existing timing
-records forced Rayon1; new same-binary Rayon1/4 E7 KGB screening is separate,
-oracle/full-stream gated and pending review. See `slices/parallel_ab_2026-09-28.md`.
+records forced Rayon1; same-binary Rayon1/4 E7 KGB screening is now verified
+by3834377 (54 checker tests, four whole-output matches,36 rehashed artifacts).
+Median paired scaling2.958576x, peak RSS+18.54%; Rust4 still about17.7x slower
+than original. Selected only for this E7 workload, no global default change.
+See `slices/parallel_ab_2026-09-28.md`; all upper-level math gates remain open.
 
 CURRENT: E6 Cayley build3833716 and independent review3833739 COMPLETE:
 14mathmatches/1rejection across15 retained cases, including complete E6 core

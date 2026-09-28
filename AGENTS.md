@@ -103,6 +103,34 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### Type imports must carry pending assignments and their scope
+
+- Source-backed scope foundation3834389 passes27 type tests (nine new),
+  three coercion tests and CLI check. Import both the type body AND shifted
+  pending substitutions; adding fresh empty slots alone discards constraints.
+- Bake pending substitutions before raising the rigid-variable threshold.
+  Pack tuple components with each component's own threshold, then freshen
+  their free ranges separately. Reuse the overload argument's variable shift
+  when substituting its result, and clear/restore failed candidate trials.
+- Preserve unused declared constructor slots while the scope is clean.
+  These are internal contracts, not generic-language acceptance: the active
+  parser/analyzer migration and global/local wrong-assignment repairs remain.
+
+### Parallel scaling is not removal of excess mathematical work
+
+- E7 A/B3834321 and independent review3834377 verify all four whole-output
+  comparisons: Rayon4 is2.958576x faster than Rayon1 with18.54% more peak RSS.
+  Yet both Rust arms still consume about69-70 CPU seconds; Rust4 remains
+  about17.7x slower than original. Keep algorithmic work reduction separate
+  from serial/parallel scaling, and profile before attributing the CPU gap.
+- Recheck full streams across rounds, not just within each pair. Bind the
+  scheduler job/node/CPU count, affinity, binaries, source, GNU time metrics
+  and alternating schedule. Reject incomplete/failing trials even if their
+  reported summary looks fast; test the reviewer against those failures.
+- Scoped four-thread selection does not justify a global thread default,
+  D8 limit increase or claims about unitarity/Hodge/FPP/AV/cycles. See the
+  indexed parallel A/B slice for the exact retained experiment and review.
+
 ### Structural specialisation must expose the receiver's components
 
 - Foundation3834296's same test fails with the earlier Applied implementation

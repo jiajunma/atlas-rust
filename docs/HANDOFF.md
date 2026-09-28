@@ -6,6 +6,19 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
+NEWEST LANGUAGE FOUNDATION: owned `InferredType` scope wrapper and nine new
+tests verified by3834389 COMPLETE4:15 at atlas-type-scope-20260928.VbWRGzcY. Pin
+29c461ae28757dfe1b52fba2e953baeba432b8c326ca5dd5127e452bdcaf002d;
+polymorphic.rs a45e0edf329baaf3ef0fbd6d5e59a0cf077d36604033fdb18a5036cc24864b02.
+It carries pending assignments through disjoint tuple/overload imports,
+bakes before raising floors, and keeps argument/result substitutions linked.
+It does not change the active parser/analyzer or claim either constant-binding
+regression repaired. All27type/3coercion tests and CLI check pass; the known
+global unit still executes/fails as expected. Report SHA
+40946d39c30790af6504e76a3a2130ac7cfc629b2ba263866e8044eff8ccacbe.
+No active jobs remain from this wave. See generic-language slice and
+math_type_scope_submission_2026_09_28.json; do not duplicate terminal jobs.
+
 LATEST LANGUAGE IMPLEMENTATION: internal type foundation job3833858 COMPLETE
 4:12;17 type tests,3 coercion tests and CLI cargo check pass. The prior global
 assignment regression remains an executed failure, NOT repaired. New owned
@@ -40,15 +53,18 @@ build3833716 (same binary both Rust arms), four balanced fresh-process rounds,
 full oracle/stdout/stderr equality, wall/CPU/RSS/affinity capture and independent
 review before any speed claim. See `slices/parallel_ab_2026-09-28.md` and the
 parallel submission receipt. Do not conflate serial-to-parallel scaling with
-Rust-versus-original performance; no new speedup is accepted yet.
-Active A/B job3834321 was submitted at
+Rust-versus-original performance. A/B job3834321 COMPLETE6:23 at
 /public/home/majj/atlas-parallel-ab-20260928.15hQxOhx with4CPUs/8G.
 Pin535e979fde936c98c02a04b2561ee17b7ec423e4c2bd6287413e19975aeba889.
-Snapshot00:01:38 confirms RUNNING,6 checker tests pass,one completed round,
-affinity54-57/four allocated CPUs on Xeon Gold6338. No final ratio reviewed.
-Collect this exact job, then independently review full raw streams, metrics,
-source pins and the four-round schedule. Do not rerun while it is live and do
-not report a preliminary or failed arm as an accepted speedup.
+Independent review3834377 COMPLETE1:01 at atlas-parallel-review-20260928.fL023YvY,
+54 checker tests pass; all36 raw artifacts, source/binary/script pins and the
+four-round schedule verified. Report SHA537d2a1a986e2dcfc9ac341994eef4b90577e152d0ddcf3007620de55bb008ea.
+E7 KGB median original1.327984s/Rust1 69.595196s/Rust4 23.523671s. Paired
+scaling2.958576x; peak-RSS ratio1.185404. Selected FOR THIS WORKLOAD only,
+not a global setting or algorithm change. Rust4 remains about17.7x slower
+than original and uses about41.9x its maximum RSS. Both Rust arms spend
+about69-70 CPU seconds, so the excess work remains. See the indexed slice
+and math_parallel_review_2026_09_28.json; both jobs terminal, do not duplicate.
 
 LATEST COMPLETED WAVE: E6 imaginary-II Cayley repair at
 /public/home/majj/atlas-math-cayley-repair-20260928.FFGcIkPi.

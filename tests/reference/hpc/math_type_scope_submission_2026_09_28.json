@@ -1,0 +1,35 @@
+{
+  "schema": "atlas-type-scope-submission-v1",
+  "stage": "/public/home/majj/atlas-type-scope-20260928.VbWRGzcY",
+  "job": "3834389",
+  "status": "COMPLETE_FOUNDATION_CHECKS_PASS_LANGUAGE_NOT_PORTED",
+  "observed": "sacct3834389 COMPLETED00:04:15 exit0:0.27 type tests (9 new),3 coercion tests and CLI check pass. Known global regression executes0pass/1fail at intended wrong-acceptance assertion, as required by the foundation-only driver.",
+  "report": "tests/reference/hpc/math_type_scope_2026_09_28.json",
+  "report_sha256": "40946d39c30790af6504e76a3a2130ac7cfc629b2ba263866e8044eff8ccacbe",
+  "pin_sha256": "29c461ae28757dfe1b52fba2e953baeba432b8c326ca5dd5127e452bdcaf002d",
+  "pin": {
+    "schema": "atlas-type-foundation-pin-v1",
+    "parent_archive": "/public/home/majj/atlas-math-polymorphic-global-probe-20260928.wiD9I1kY/rust-probe.tar",
+    "parent_archive_sha256": "76e76e589fe775734849807bf438650a6d7b9c8d0622c402bf0ff9acbef1bf53",
+    "parent_report": "/public/home/majj/atlas-math-polymorphic-global-probe-20260928.wiD9I1kY/results/3833788/report.json",
+    "parent_report_sha256": "1ab2f23b5b520f0a29a88ef6469ab41bddbbce5012b6e0043a650b78d7c301c0",
+    "changed_files": {
+      "crates/atlas-core/src/types.rs": "46fab12516542df0f47a2c6403e6e1cc9b67c34a394f93a86a08e614aa0bfacf",
+      "crates/atlas-core/src/types/polymorphic.rs": "a45e0edf329baaf3ef0fbd6d5e59a0cf077d36604033fdb18a5036cc24864b02"
+    },
+    "inputs": {
+      "candidate.patch": "a40c17b97f2e29e1d9ab88d0a97ee6db7a4defdde8b985e2d1721855e269ce15",
+      "hpc/math_baseline_build.py": "931ec63f850d2a3769de1d5fb7836fc8eba7097e6d302ea30c2a6e47417c2ed7",
+      "hpc/math_type_foundation.py": "4ed2a113d0eda091c61396d89ba35b6b36ea62874ab8f948ef2c83b302081bd8",
+      "hpc/math_type_foundation.sbatch": "25d2a27292ce1bd6539e5e6fbc3addd10701258f1886088ae493a2d273bb2e3e"
+    },
+    "scope": "Add owned scope-carrying InferredType, pending-assignment append, tuple freshening, floor changes, one-sided unification and rollback, overload argument/result shift. Nine new internal contract tests; known global assignment remains failing. No parser/analyzer integration or high-level mathematics support claim."
+  },
+  "expected_checks": [
+    "27 type tests (9 new scope contracts)",
+    "3 coercion tests",
+    "known global-assignment regression still executes/fails",
+    "cargo check -p atlas-cli"
+  ],
+  "acceptance_limit": "Internal foundation only. Active parser/analyzer unchanged; no generic-language or upper-level mathematical support claim. Existing local/global regression tests remain unignored."
+}

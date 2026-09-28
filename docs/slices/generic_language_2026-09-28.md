@@ -98,6 +98,47 @@ Current display implements the original A/B/... spelling including ASCII
 punctuation after Z. Non-ASCII/large-index behavior needs a separate contract;
 do not claim full diagnostic compatibility from the foundation units.
 
+### Scope-carrying foundation verified (not language acceptance)
+
+The next candidate adds `InferredType { body, assignment }`, porting owned
+scope operations from axis-types.w:2990-3435/3625-3641. It includes baking and
+repacking pending substitutions before raising the fixed-variable threshold,
+lowering the threshold on abstraction exit, disjoint tuple component imports,
+and importing BOTH an expression and its pending assignment values. Overload
+matching returns the shift needed to substitute the function result; failed
+trials can restore their original assignment degree. One-sided unification
+has an explicit full-snapshot rollback variant. Clean constructor scopes keep
+their unused declared parameter slots, as in the captured phantom contract.
+
+Nine new internal tests were added before the implementation. Compute job3834389
+COMPLETE4:15 at `/public/home/majj/atlas-type-scope-20260928.VbWRGzcY`, pinned
+by29c461ae28757dfe1b52fba2e953baeba432b8c326ca5dd5127e452bdcaf002d.
+The source is the prior global-probe baseline plus the two type foundation
+files; it does not change the active analyzer or include the separately retained
+local-probe unit. New polymorphic.rs SHAa45e0edf329baaf3ef0fbd6d5e59a0cf077d36604033fdb18a5036cc24864b02.
+All27type/3coercion tests and CLI check pass. The known global regression still
+executes/fails at its intended assertion; it is not repaired. Report SHA
+40946d39c30790af6504e76a3a2130ac7cfc629b2ba263866e8044eff8ccacbe,
+`tests/reference/hpc/math_type_scope_2026_09_28.json`. All source hashes match
+the tested archive+patch tree; do not duplicate this terminal job.
+
+Still missing before analyzer integration: two-sided unification, structural
+pattern specialisation, named/assigned function component access and direct
+function-argument matching; then migrate Analysis/TypeCell/convert_expr and
+parser type environments together. No global/local assignment after-pass,
+25-contract differential acceptance or latest basic.at loading is claimed.
+
+Parser integration audit: `session::execute_tokens` currently calls
+`parse_command(tokens, source)` without the live type table. The general
+`TypeExprNode` deliberately excludes defined names; only `SpecTypeNode`
+allows a raw identifier. A keyword-only `any_type` patch cannot resolve named
+constructor casts or type variables in lambda signatures. Preserve the LR
+type/expression distinction via a scoped type-name/type-variable environment,
+including scope changes inside one command; do not blindly add identifiers
+to every type production. Original TYPE_VAR versus IDENT classification is
+observable in the same-name nested-abstraction rejection. The session's
+command-at-a-time boundary is necessary but not sufficient for that behavior.
+
 ### Additional original-backed discovery
 
 R4 job3834266 COMPLETE9s captures22cases;6 checker tests pass. Report SHA

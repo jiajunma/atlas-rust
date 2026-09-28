@@ -47,11 +47,53 @@ a global default or blanket algorithm-performance claim. The filesystem cache
 is not flushed; in-process state is fresh. Independent result review is still
 required before declaring a selected optimization.
 
+## Accepted scoped result: E7 KGB, build3833716
+
+Experiment3834321 COMPLETE6:23; independent review3834377 COMPLETE1:01.
+The reviewer runs54 tests (including14 new negative/positive A/B checks),
+rehashes606 original/1212 Rust source files,264 scripts, both executables and
+all36 raw output/metrics files. It independently checks four alternating
+orders, successful exits, whole stdout/stderr within AND between rounds,
+CPU affinity, GNU-time CPU/RSS and elapsed time, and recomputes every ratio.
+An external sacct snapshot binds completion,4 CPUs and nodecu025. The trial
+uses Xeon Gold6338, affinity54-57; requested threads are not measured worker
+counts. No interpreter rerun was needed for review.
+
+| Arm | Median wall seconds | Observed wall range | Maximum peak RSS (KiB) |
+|---|---:|---:|---:|
+| Current original |1.327984|1.312909-1.336919|41,656|
+| Rust, Rayon1 |69.595196|69.224900-70.444554|1,471,876|
+| Same Rust, Rayon4 |23.523671|23.379801-23.654732|1,744,768|
+
+Paired serial/parallel speedup median2.958576 (range2.926471-3.013052),
+four-thread efficiency73.96%; maximum-peak-RSS ratio1.185404 (+18.54%).
+All four pairs pass the predeclared screening rule. Decision:
+**SELECTED_FOR_THIS_WORKLOAD**. This selects the existing four-thread path for
+this workload, not a newly implemented algorithm or a global default change.
+The experiment's retained summary still says PROMISING_PENDING_REVIEW; the
+separate review's `decision` records final scoped acceptance.
+
+Crucially, Rust4 is still about17.7 times slower than original (ratio of
+median wall times), and its maximum RSS is about41.9 times original. Rust1
+is about52.4 times slower. CPU totals remain about69-70s for BOTH Rust arms:
+parallelism distributes existing work; it has not removed that excess work.
+Only Rust1 lies in the60-600s band here. Neither this case nor its speedup
+establishes minute-scale original performance, D8 feasibility, general KGB,
+FPP, unitarity, Hodge, AV-ann or associated-cycle acceptance.
+
+Evidence:
+- Experiment report SHA28edde93bc5092005001b84cbe17143a75896d7ae8c211778d95947b88beb7a0.
+- Review report SHA537d2a1a986e2dcfc9ac341994eef4b90577e152d0ddcf3007620de55bb008ea,
+  `tests/reference/hpc/math_parallel_review_2026_09_28.json`.
+- Review stage `/public/home/majj/atlas-parallel-review-20260928.fL023YvY`,
+  pin353ac2152f403ceeb7de3b9434992e14d9cc93e2d1a0ab8d0a5f26e34e2e1194.
+
 ## Follow-up candidates, not implemented or accepted
 
-1. Measure where existing1/4 scaling helps before adding more threads. If gains
-   saturate, investigate sequential Weyl enumeration/orbit setup and allocation
-   overhead; do not merely increase D8's enumeration cap.
+1. Four-thread E7 scaling is now verified, but the CPU-work gap remains. Profile
+   Weyl enumeration/orbit setup and allocation before adding more threads or
+   selecting a new algorithm. Source inspection alone does not attribute the
+   measured69-70 CPU seconds. Do not merely increase D8's enumeration cap.
 2. Preserve deterministic external KGB numbering: parallelize read-only
    transition computation, then merge/intern in a fixed order. Test cross,
    Cayley, lengths, involutions and all output records, not just counts.
@@ -63,5 +105,5 @@ required before declaring a selected optimization.
    from accelerating one mathematical calculation. Keep unitarity/Hodge/FPP,
    AV-ann and associated-cycle validation requirements unchanged.
 
-No parallel speedup is accepted yet. Active stages/jobs are indexed in HANDOFF
-and `tests/reference/hpc/math_parallel_*` receipts.
+The E7 result above is the only accepted parallel screening here. Other stages
+and open work are indexed in HANDOFF and `tests/reference/hpc` receipts.

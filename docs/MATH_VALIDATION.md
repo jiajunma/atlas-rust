@@ -182,7 +182,13 @@ The user now also requires computational parallelism evaluated by A/B tests.
 Existing observer timings below force one Rayon thread. The controlled1/4
 thread experiment and its correctness/resource gates are documented in
 [`slices/parallel_ab_2026-09-28.md`](slices/parallel_ab_2026-09-28.md).
-No multicore scaling or original-versus-parallel speedup is accepted yet.
+Experiment3834321 and independent review3834377 now verify four whole-output
+matches on E7 KGB, with54 reviewer tests and36 rehashed raw artifacts. On repaired
+build3833716, medians are original1.327984s, Rust1 69.595196s and Rust4 23.523671s.
+Paired scaling2.958576x, peak RSS+18.54%; selected for this workload only, no
+global thread setting change. Rust4 remains about17.7x slower than original,
+so this is NOT Rust beating C++. The historical main05625 table below remains
+a separate serial baseline; do not silently substitute this later build.
 
 R9 independently reviewed benchmark3832228 now provides four alternating,
 fresh-process pairs for E7 and D6 KGB. Every mathematical byte agrees both
