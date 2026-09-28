@@ -2,6 +2,40 @@
 
 ## Current mathematical-validation frontier — 2026-09-28
 
+Current user objective now ALSO requires root-cause analysis and sequential
+repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
+Do not stop at inventorying defects. All testing/builds remain HPC-only.
+
+R9 catalog103cases: D6/D8 KGB at93/94, eight nontrivial Hodge probes at95-102.
+Preflight3832208 passes36tests. Hodge array3832211/review3832222 are complete:
+all8 original cases fail (A2 internal negative branch bound, G2 owner mismatch)
+at half/zero scale and bounds4/20; Rust independently fails generic loading.
+Repeated benchmark array3832212 is source-bound to current main. Actual jobs
+E7=3832215, D6=3832216, D8=3832212; independent review3832228 is COMPLETE.
+E7/D6 pass4 fresh-process, full-output-stable pairs. Median original/Rust:
+E7 1.35766/69.4160s, D6 0.150402/0.822140s. D8 original completes3.757s;
+Rust fails the4000000 enumeration cap; no ratio. All R9 jobs are terminal.
+Stage /public/home/majj/atlas-math-suite-r9-20260928.L9clrgy7.
+See math_suite_r9_submissions_2026_09_28.json; do not duplicate live jobs.
+
+FPP repair candidate is IN PROGRESS, NOT ACCEPTED. Local core changes add an
+exact root-reflection identity unit test over A2/B2/C2/D4/D6/D8/G2/F4/E6/E7,
+both root numberings, and reverse the conjugating suffix of reflection_word.
+The old/new archives are frozen from main05625 with only this core file
+overlaid. The main baseline, original scripts and installed defaults remain
+untouched. Before-unit must fail an executed assertion (not compile), after-unit
+must pass, then the candidate must reproduce full FPP oracle output. Record
+the before/after build and differential results before claiming acceptance.
+Exact repair stage: /public/home/majj/atlas-math-fpp-repair-20260928.rraUQUz4.
+Preflight3832250 passes36checker tests; build3832260 submitted afterok and
+must be collected, not duplicated. Source-only tar archives were generated on
+HPC from the existing immutable baseline plus checksummed small patches.
+Core SHA before9973a807... /after8a52ffb1... agrees exactly with local files.
+The slow local full-tar upload was explicitly terminated; its partial file is
+retained as abandoned-before-upload.partial. HPC GitHub connectivity was
+verified with git ls-remote; origin/main remains05625c5d.
+See AGENTS working convention6: prefer HPC fetch/pinned commits or small patches.
+
 NEW R7: broad array3832011 and independent review3832103 are COMPLETE.
 The54-case review SHA is31c0e62d1a6b9b3227cfc2b55fc5ea213a29bb75f82a5f5cb28f1986feea1250,
 stored in math_suite_broad_review_2026_09_28.json. Counts14mathmatches,

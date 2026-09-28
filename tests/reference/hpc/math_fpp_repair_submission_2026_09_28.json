@@ -1,0 +1,32 @@
+{
+  "schema": "atlas-math-repair-submission-v1",
+  "stage": "/public/home/majj/atlas-math-fpp-repair-20260928.rraUQUz4",
+  "inputs_sha256": "aa54ff94b759c45085a0c7957a8369936da5377558075d7a2e5f1c9c58876ef5",
+  "review_code_sha256": "20dd328103975317d7bde0ac492aaa8ff12018ed3770c338c774f3a925feb4e1",
+  "preflight_job": "3832250",
+  "preflight_status": "PASSED_36_CHECKER_TESTS",
+  "preflight_artifact": "math_fpp_repair_preflight_2026_09_28.json",
+  "preflight_sha256": "8374aa1a02c6554a6c8ca8c51a9f2816af8f04a1bdafdb42497f76be20586510",
+  "candidate_baseline_sha256": "204a434866af40180fc7076ae10f2c8176f99d985d5ad9c8e83bc802e53d42a5",
+  "build_driver_sha256": "b149a4e06c9eb92ea976f0ee3216ae663dc61a4c7ed7f30ff13f6788f0a0de20",
+  "build_batch_sha256": "2c8648f588b8e54d555da0d783889a143580723cad3433d9628902ff90f42f3e",
+  "build_job": "3832260",
+  "build_dependency": "afterok:3832250",
+  "status": "SUBMITTED_NOT_DIFFERENTIALLY_ACCEPTED",
+  "parent_build": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/build.json",
+  "parent_build_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "before_archive_sha256": "2a27467d44881c47eb9fa9cbe992773d115b54bdb0bd9fadd47a622ed7d7f061",
+  "candidate_archive_sha256": "10c8e5401e7dcf0a8184544ff0c51976ff4e1f61a9b307137c2faeedea599493",
+  "before_core_sha256": "9973a807d3e6f361eea8c346320173576a9abe3b76f0704616ea5d62aa2919dc",
+  "candidate_core_sha256": "8a52ffb113486824d349fac7f5b2d77821605cd65c7f011ca5a32236d5e4abae",
+  "regression_patch_sha256": "7df3e0aa8a5aa716558fbf7b3a479c3540252566cad410e604f7d173146188a7",
+  "fix_patch_sha256": "252d0229ac173d142cce2e1ea5adbba4fe83d614e2a14976c76d565084fb1226",
+  "required_gates": [
+    "Before exact root-reflection regression executes and fails an assertion, not compilation.",
+    "After the suffix reversal, the exact same regression passes for ten Lie types and both root-numbering preferences.",
+    "Source-bound release CLI builds with unchanged original binary/scripts.",
+    "Full HPC FPP differential cases, including preserved D4 wall regression and rejected inputs, pass before acceptance."
+  ],
+  "transport": "Slow full-tar upload explicitly terminated. Candidate archives generated on HPC from immutable base plus tiny patches; local/remote core SHA equality verified. Partial upload retained recoverably.",
+  "scope": "Uncommitted repair candidate; no push, installation, default/main change or claim that the bug is fixed yet."
+}

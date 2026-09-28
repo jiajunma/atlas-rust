@@ -80,6 +80,14 @@ not a source-level C++ translation.
    (blockers, root causes, disproven hypotheses, HPC quirks) goes into
    `docs/REMAINING_BUILTINS.md` and `docs/HANDOFF.md`; do not rely on
    session scratch files for project state.
+6. **Prefer HPC-side Git synchronization.** The HPC login node can access
+   GitHub. For published source, fetch there and materialize the exact pinned
+   commit in a fresh job stage; never pull into the shared dirty development
+   checkout. For an unpushed candidate, transfer a small checksummed patch
+   against an already pinned HPC baseline and build its source archive on HPC.
+   Verify resulting source hashes; do not upload whole source/target trees
+   when the baseline is already available. Do not push unverified code merely
+   as a transport shortcut. Builds and tests still belong on compute nodes.
 
 ## Verified repair guard
 

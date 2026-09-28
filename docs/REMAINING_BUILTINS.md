@@ -2,6 +2,27 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+The user has explicitly added sequential repair of discovered errors to the
+objective. Next repair: conjugating suffix in FPP reflection_word, guarded by
+the already-failing D4 wall fixture and new exact root-action unit regression.
+Do not call it fixed until the HPC before/after and differential artifacts pass.
+Subsequent root causes remain partial-KL parameter/Bruhat lookup, E6 construction,
+and latest generic-script compatibility. Record reusable repair lessons.
+FPP candidate preflight3832250 passes36checks; before/after unit + release
+build3832260 is submitted in atlas-math-fpp-repair-20260928.rraUQUz4.
+It is NOT differentially accepted yet. Keep current main baseline separate.
+
+R9 now has103cases with D6/D8 KGB and nontrivial A2/G2 Hodge at half/zero
+scale and bounds4/20. Review3832222 verifies all8 original Hodge failures:
+negative branch bounds in A2, real-form mismatches in G2. These are not limited
+to trivial parameters. Source-bound repeated benchmark3832212 and its
+dependent review3832228 are recorded in math_suite_r9_submissions_2026_09_28.json.
+That benchmark review is now complete: four E7/D6 pairs match every output byte;
+E7 median1.35766s original versus69.4160s Rust, D6 both below1s. D8 is blocked
+by Rust's4000000 enumeration cap while original succeeds. The source enumerates
+the entire compact Weyl group before filtering twisted involutions; analyze
+that algorithm instead of simply raising the limit.
+
 R3 broad54review3832103 is complete (artifact math_suite_broad_review_2026_09_28.json).
 MATH_VALIDATION now has the full initial72-case operation-by-group matrix.
 E6 KGB fails Rust construction. E7 KGB is exact but69.80s vs1.30s original

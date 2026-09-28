@@ -1,0 +1,29 @@
+{
+  "schema": "atlas-math-extension-progress-v1",
+  "stage": "/public/home/majj/atlas-math-suite-r9-20260928.L9clrgy7",
+  "inputs_sha256": "0af13a923ade94dd9d32c51bdf8e17db39f83b8d7ccd4acdc7b965f6bae6d3d7",
+  "review_code_sha256": "f8231376bef1d5b75a183f523a6a6158713249248813a2402328bbabb4cf780e",
+  "preflight": {
+    "job": "3832208", "tests_passed": 36,
+    "artifact": "math_suite_r9_preflight_2026_09_28.json",
+    "sha256": "a7acc26a94d635cc5767912e1b8bf69511520dc51f34786bf3a44a4e82a5904c"
+  },
+  "nontrivial_hodge": {
+    "array_job": "3832211", "indices": "95-102",
+    "review_job": "3832222", "review_status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS",
+    "artifact": "math_suite_nontrivial_hodge_review_2026_09_28.json",
+    "sha256": "b433dcceaad511ff664e9b1b889aa2dd870735c131f36669f5bc66e0fb85a827",
+    "findings": "All8 original cases fail: A2 negative internal branch level; G2 real-form mismatch. Rust independently fails latest basic.at loading. Existing failures are not limited to trivial parameters."
+  },
+  "benchmark": {
+    "array_job": "3832212", "indices": "0-2",
+    "jobs": {"E7_kgb": "3832215", "D6_kgb": "3832216", "D8_kgb": "3832212"},
+    "rounds": 4, "timeout_per_engine_seconds": 300,
+    "review_job": "3832228", "review_dependency": "afterany:3832212",
+    "review_status": "BENCHMARK_ARTIFACTS_VERIFIED",
+    "artifact": "math_suite_benchmark_review_2026_09_28.json",
+    "sha256": "2bf2059d8147c0f2223e91646cd1d926a22b368c6997128e67e138d539cbe408",
+    "findings": "E7/D6 each pass4 full-output stable repetitions. E7 median original1.35766s/Rust69.4160s; D6 median0.150402s/0.822140s. D8 original passes, Rust fails4000000 enumeration cap before KGB; no speed ratio. Only E7 Rust meets60-600s per execution."
+  },
+  "scope": "Current main and latest original only. A failed pair stops repetitions and cannot produce a speed ratio. No runtime repair acceptance in this receipt."
+}

@@ -135,3 +135,22 @@ array uses cpu, 8 GiB per job, 6 GiB child address-space limit and a 300-second
 limit per engine. A capacity failure remains visible as incomplete evidence;
 it must not be replaced by a smaller calculation labelled as equivalent.
 No E8 or fat jobs are enabled by this library.
+
+## Repeated benchmarks and additional Hodge inputs
+
+R9 appends D6/D8 full KGB cases at93/94 and eight nontrivial A2/G2 Hodge
+cases at95-102 (103catalog cases total). Hodge includes half-scaled
+nonintegral and zero-scaled singular spherical parameters at bounds4/20,
+complete standard/irreducible branching, specialization checks and full
+Hodge K-type matrices with upstream coefficient positivity. The original
+trivial-module failures remain unchanged, not replaced by these additions.
+
+`benchmarks.json` pins E7/D6/D8 catalog identities. The benchmark driver
+runs four fresh-process pairs on the same node with alternating engine order,
+retaining each complete output and exact RSS. A nonmatching, failed or timed-out
+pair stops further repetitions and cannot produce a speed ratio. Even if both
+engines agree within each pair, changed mathematics across rounds is rejected.
+The review rehashes the full source archives/binaries and every raw round before
+acceptance. Per-engine 60-600-second calibration is reported separately:
+short workloads are not padded and are not claimed to satisfy that time window.
+The CPU8GiB/child6GiB envelope remains in force. A capacity failure stays visible.

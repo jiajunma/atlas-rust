@@ -1,0 +1,11 @@
+{
+  "schema": "atlas-math-benchmarks-v1",
+  "rounds": 4,
+  "timeout_per_engine_seconds": 300,
+  "cases": [
+    {"case_index": 64, "id": "E7_kgb"},
+    {"case_index": 93, "id": "D6_kgb"},
+    {"case_index": 94, "id": "D8_kgb"}
+  ],
+  "scope": "Fresh process, alternating order, same node; every full output must match within and across all rounds. Stop after first nonmatch. Report per-engine minute-window calibration; do not pad short cases into minute workloads."
+}

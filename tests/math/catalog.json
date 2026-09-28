@@ -73,6 +73,27 @@
       "operations": [
         {"id": "cycle_product_ranks", "template": "cycle_product_ranks.atlas", "mathematical_check": "sl2_su2_numerical_cycles", "scope": "SL(2,R) x SU(2), 15 irreducibles at two bounds with multiplicities1/2/3. Full Phi sign binding, exact rational kernel completeness, integral residual and independent tensor-dimension expectations. Numerical maximal-orbit ranks only, not general cycles or cutoff completeness."}
       ]
+    },
+    {
+      "groups": [
+        {"type": "D6", "family": "classical", "rank": 6, "tier": "large"},
+        {"type": "D8", "family": "classical", "rank": 8, "tier": "large"}
+      ],
+      "operations": [
+        {"id": "kgb", "template": "kgb.atlas", "scope": "Full split KGB and every simple-root operation at the user-requested larger D ranks; bounded correctness/capacity calibration before repeated performance acceptance."}
+      ]
+    },
+    {
+      "groups": [
+        {"type": "A2", "family": "classical", "rank": 2, "tier": "medium"},
+        {"type": "G2", "family": "exceptional", "rank": 2, "tier": "medium"}
+      ],
+      "operations": [
+        {"id": "hodge_half_bound4", "template": "hodge_nontrivial.atlas", "parameters": {"SCALE": "1/2", "BOUND": 4}, "scope": "Nonintegral half-scaled spherical parameter, full standard/irreducible gradings and bounded K-type branching with specializations and positivity."},
+        {"id": "hodge_half_bound20", "template": "hodge_nontrivial.atlas", "parameters": {"SCALE": "1/2", "BOUND": 20}, "scope": "Preserve bound4 and add higher-bound20 nonintegral Hodge branching; no lowered bound substituted."},
+        {"id": "hodge_zero_bound4", "template": "hodge_nontrivial.atlas", "parameters": {"SCALE": "0", "BOUND": 4}, "scope": "Singular nu=0 spherical parameter, full standard/irreducible grading and branching; not the trivial-module anchor."},
+        {"id": "hodge_zero_bound20", "template": "hodge_nontrivial.atlas", "parameters": {"SCALE": "0", "BOUND": 20}, "scope": "Additional singular nu=0 Hodge branch at bound20, retaining all smaller-bound failures."}
+      ]
     }
   ],
   "standalone_note": "Additional product case is numerical maximal-orbit multiplicity coverage only, not general-cycle acceptance.",

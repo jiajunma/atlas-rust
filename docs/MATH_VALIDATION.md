@@ -36,7 +36,7 @@ Reviewed JSON artifacts:
 - `tests/reference/hpc/math_suite_corrective_review_2026_09_28.json`
 - `tests/reference/hpc/math_suite_r3_preflight_2026_09_28.json`
 
-The catalog now contains93 cases, not93 verified successes. Broad array3832011
+The catalog now contains103 cases, not103 verified successes. Broad array3832011
 and independent review3832103 are complete. The review rehashed the pinned
 sources, scripts, binaries and all54 complete result sets. Artifact:
 `tests/reference/hpc/math_suite_broad_review_2026_09_28.json`, SHA
@@ -78,6 +78,30 @@ is claimed. D4/F4 original cycle-foundation cases take66.6s/146.7s but Rust
 does not get past script loading; they cannot support a speedup claim.
 
 ## New kernel regressions and Hodge diagnostics
+
+R9 independently reviewed benchmark3832228 now provides four alternating,
+fresh-process pairs for E7 and D6 KGB. Every mathematical byte agrees both
+within and across those rounds:
+
+| Full KGB workload | Original median | Rust median | Observed scope |
+|---|---:|---:|---|
+| E7 |1.35766s|69.4160s|Rust range69.3362-69.5214s; about51x slower. Only Rust meets the60-600s target.|
+| D6 |0.15040s|0.82214s|Both below1s; not a minute-scale workload.|
+| D8 |3.75700s (one run)|fails|Rust reaches its4000000 enumeration limit before constructing the group; no accepted ratio.|
+
+E7 peak RSS was41640-41656KiB original and1460808-1470724KiB Rust.
+This is current main05625 against original7e1, not the historical optimized
+or PGO builds. The verified artifact is
+`tests/reference/hpc/math_suite_benchmark_review_2026_09_28.json` (SHA
+`2bf2059d8147c0f2223e91646cd1d926a22b368c6997128e67e138d539cbe408`).
+Benchmarks stop after a failed pair and never calculate a failure speedup.
+
+R9 Hodge review3832222 preserves eight additional nontrivial probes:
+A2/G2 at half-scale and singular zero-scale, bounds4/20. Original A2
+still fails with negative internal branching level; G2 still reports
+K-type real-form mismatch. Rust independently fails generic script loading.
+Full grading, character, trace and matrix outputs remain in the raw artifacts.
+These failures are not confined to the earlier trivial-module probes.
 
 R5 independent review3832147 confirms genuine problems beyond script loading:
 D4 FPP returns Weyl representatives that violate the positive integral-simple

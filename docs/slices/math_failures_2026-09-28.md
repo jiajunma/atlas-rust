@@ -122,3 +122,27 @@ R8 changes only the two fixture success predicates to succeeds, retaining
 every assertion and unchanged latest scripts. No old output is reused as
 the expected mathematics. R7's checker tests passed31cases on HPC, but
 the failed Atlas execution never reached numerical acceptance.
+
+## Larger-rank and nontrivial follow-up
+
+R9 benchmark review3832228 rehashes four E7 and four D6 fresh-process pairs;
+full mathematical output is identical within and across rounds. E7's median
+is1.35766s original versus69.4160s Rust (about51x slower), with1.39-1.40GiB
+Rust peak RSS versus40.7MiB original. D6 remains sub-second and is not a
+minute-scale benchmark. D8 original completes in3.757s; Rust refuses to
+construct the group at its4000000 enumeration cap. This is a capacity/algorithm
+gap, not an accepted computation or a speedup.
+
+Source lead for the larger-rank problem: domain_builtins.rs defines
+WEYL_BUDGET=4000000 and passes it into CartanClassification. In
+inner_class.rs:639-662, enumerated_twisted_involutions calls compact.enumerate
+for the entire Weyl group before filtering twisted involutions. Do not merely
+raise the cap: inspect the original's direct construction and prove its
+adaptation on the existing complete KGB tests before claiming improvement.
+
+R9 Hodge review3832222 adds half-scaled nonintegral and zero-scaled singular
+parameters for A2/G2, bounds4/20. All8 original executions still fail; A2
+reports negative internal branch level and G2 reports real-form mismatch.
+They retain full back traces, grading/character and attempted matrix output.
+Rust independently fails latest basic.at loading. Fixing only the original
+trivial parameter or lowering bounds would not address this broader evidence.

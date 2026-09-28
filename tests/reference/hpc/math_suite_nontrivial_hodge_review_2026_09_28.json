@@ -1,0 +1,406 @@
+{
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/target/release/atlas-cli",
+      "sha256": "be266b308e13110b357c2adf32f010b74cecf8ac4f8eccd9b5b66f0108e26104"
+    }
+  },
+  "build_report_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "cases": [
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in 'set' command at <standard input>:12:0-29:",
+          "Maximum level in branch cannot be negative",
+          "  Command 'set HS' interrupted, nothing defined.",
+          "Error in 'set' command at <standard input>:14:0-29:",
+          "Maximum level in branch cannot be negative"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "A2",
+      "id": "A2_hodge_half_bound4",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 95,
+      "input_sha256": "618bfe56dfe5e95af9c2b81b0d2b8ad1a70b2748d58bf5eb0a9d47b00ace3ad9",
+      "job": "3832213",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13492,
+          "seconds": 0.3618854396045208
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5916,
+          "seconds": 0.030820218846201897
+        }
+      },
+      "operation": "hodge_half_bound4",
+      "report_sha256": "d4d5149b740bfd4db0100bea2f647a696bdcabb37fbd5d9b61f80b65d062f5c6",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in 'set' command at <standard input>:12:0-30:",
+          "Maximum level in branch cannot be negative",
+          "  Command 'set HS' interrupted, nothing defined.",
+          "Error in 'set' command at <standard input>:14:0-30:",
+          "Maximum level in branch cannot be negative"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "A2",
+      "id": "A2_hodge_half_bound20",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 96,
+      "input_sha256": "bd4f1c99f6330fcfa565568b6954cdb3ccabe8421e1bade28624263fbfdae6bc",
+      "job": "3832214",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13496,
+          "seconds": 0.3822306953370571
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3884,
+          "seconds": 0.031048929318785667
+        }
+      },
+      "operation": "hodge_half_bound20",
+      "report_sha256": "f7894c3ddae05321d971d6ccaeb037ae96b2c2cf7b0658300501861af8037a6d",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in 'set' command at <standard input>:12:0-29:",
+          "Maximum level in branch cannot be negative",
+          "  Command 'set HS' interrupted, nothing defined.",
+          "Error in 'set' command at <standard input>:14:0-29:",
+          "Maximum level in branch cannot be negative"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "A2",
+      "id": "A2_hodge_zero_bound4",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 97,
+      "input_sha256": "4c696ab1bd3fb61a181a3fe60fa7b49a6a9a9b6a0d0630288cfc65f252707d69",
+      "job": "3832217",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13536,
+          "seconds": 0.36111806333065033
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5916,
+          "seconds": 0.012885741889476776
+        }
+      },
+      "operation": "hodge_zero_bound4",
+      "report_sha256": "3e7bb2ce970639a36b5966e6d18eb1b9e83a30fccd6f6899410d66e3979e90f1",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in 'set' command at <standard input>:12:0-30:",
+          "Maximum level in branch cannot be negative",
+          "  Command 'set HS' interrupted, nothing defined.",
+          "Error in 'set' command at <standard input>:14:0-30:",
+          "Maximum level in branch cannot be negative"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "A2",
+      "id": "A2_hodge_zero_bound20",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 98,
+      "input_sha256": "dfe26cfaa3714c0442687d32fa8ce5cd9821c42bc5a0c49293ab36c0ec792208",
+      "job": "3832218",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13536,
+          "seconds": 0.3622094262391329
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5920,
+          "seconds": 0.011956708505749702
+        }
+      },
+      "operation": "hodge_zero_bound20",
+      "report_sha256": "2742a10a239834cda2900d183e24f1773b49de1b448fb3966c98ca6ca1e0bfb6",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in 'set' command at <standard input>:12:0-29:",
+          "Real form mismatch when adding terms to a K_type",
+          "  Command 'set HS' interrupted, nothing defined.",
+          "Error in 'set' command at <standard input>:14:0-29:",
+          "Real form mismatch when adding terms to a K_type"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "G2",
+      "id": "G2_hodge_half_bound4",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 99,
+      "input_sha256": "c24a8d471365e65de26b621f78902a39ad86d42171629859fb65346fd6d70beb",
+      "job": "3832219",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13740,
+          "seconds": 1.5450159559841268
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5888,
+          "seconds": 0.0422112459782511
+        }
+      },
+      "operation": "hodge_half_bound4",
+      "report_sha256": "e060666704269a9938c131b1c2599a5f5354a10d806f279f27f36c7203f714c0",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in 'set' command at <standard input>:12:0-30:",
+          "Real form mismatch when adding terms to a K_type",
+          "  Command 'set HS' interrupted, nothing defined.",
+          "Error in 'set' command at <standard input>:14:0-30:",
+          "Real form mismatch when adding terms to a K_type"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "G2",
+      "id": "G2_hodge_half_bound20",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 100,
+      "input_sha256": "8bd77b72cb9a75490ff162005548ef00571013e431a61f502716d0809f2e65f9",
+      "job": "3832220",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13812,
+          "seconds": 1.5169960781931877
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5920,
+          "seconds": 0.012295054271817207
+        }
+      },
+      "operation": "hodge_half_bound20",
+      "report_sha256": "572819f36726bcb1bc056d591d3637119f346931f6aa2b1bc74f98e0802e0f80",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in 'set' command at <standard input>:12:0-29:",
+          "Real form mismatch when adding terms to a K_type",
+          "  Command 'set HS' interrupted, nothing defined.",
+          "Error in 'set' command at <standard input>:14:0-29:",
+          "Real form mismatch when adding terms to a K_type"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "G2",
+      "id": "G2_hodge_zero_bound4",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 101,
+      "input_sha256": "7c3a20b5afe9e6d28b50ac9cb8bab1b66147fc435338de587273a66bbb09c4b9",
+      "job": "3832221",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13716,
+          "seconds": 1.4751495644450188
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5916,
+          "seconds": 0.012747988104820251
+        }
+      },
+      "operation": "hodge_zero_bound4",
+      "report_sha256": "cf38f302952b4f53680efaeaf99711409f8032e515c51b43587153ce399be230",
+      "status": "ORACLE_FAILURE"
+    },
+    {
+      "first_diagnostics": {
+        "oracle": [
+          "Error in 'set' command at <standard input>:12:0-30:",
+          "Real form mismatch when adding terms to a K_type",
+          "  Command 'set HS' interrupted, nothing defined.",
+          "Error in 'set' command at <standard input>:14:0-30:",
+          "Real form mismatch when adding terms to a K_type"
+        ],
+        "rust": [
+          "Syntax error at basic.at:3:14: syntax error, unexpected $undefined",
+          "  | set_type Pair<S,T>   = ( S fst , T snd ) !",
+          "  |              ^",
+          "Io error: Abandoning reading of file 'basic.at' at line 3",
+          "Io error: Abandoning reading of file 'hodge_deform.at' at line 1"
+        ]
+      },
+      "full_stderr_equal": false,
+      "full_stdout_equal": false,
+      "group": "G2",
+      "id": "G2_hodge_zero_bound20",
+      "independent_checks": {
+        "oracle": null,
+        "rust": null
+      },
+      "index": 102,
+      "input_sha256": "ff871923bece131a1beeda4ac66ca36caeeb622f5a1fcb1e1bd4a60253c5595b",
+      "job": "3832211",
+      "metrics": {
+        "oracle": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 13768,
+          "seconds": 1.4901481997221708
+        },
+        "rust": {
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 5920,
+          "seconds": 0.026939433068037033
+        }
+      },
+      "operation": "hodge_zero_bound20",
+      "report_sha256": "48566188a923a758381eb68d1a7ad89c7b6fd29d5838f7ad99ca6604bc347b4e",
+      "status": "ORACLE_FAILURE"
+    }
+  ],
+  "counts": {
+    "ORACLE_FAILURE": 8
+  },
+  "input_manifest_sha256": "0af13a923ade94dd9d32c51bdf8e17db39f83b8d7ccd4acdc7b965f6bae6d3d7",
+  "job": "3832222",
+  "open_requirements": [
+    "General associated cycles: orbit-by-orbit multiplicities, independent rank checks, support and cutoff completeness, for classical AND exceptional groups. No current template closes this requirement.",
+    "Hodge filtration: additional nontrivial irreducibles, singular/nonintegral parameters, higher bounds and positivity, not only trivial-module anchors.",
+    "FPP: add script-level fundamental-parallelepiped applications beyond the complete builtin orbits.",
+    "Real forms/isogenies: compact, nonsplit noncompact, complex, adjoint, torus/product coverage beyond this split simply-connected initial grid.",
+    "Dedicated repeated 60-600 second workloads, including D6/D8 and E7, after correctness and resource calibration.",
+    "Other current Rust development builds must be pinned and reported separately from remote main; historical PGO numbers are not this baseline.",
+    "E8 is not submitted in this grid; existing resource restrictions remain in force."
+  ],
+  "performance_scope": "single-shot observations; no stable speedup claimed",
+  "schema": "atlas-math-independent-review-v1",
+  "scripts_rehashed": 264,
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "stage": "/public/home/majj/atlas-math-suite-r9-20260928.L9clrgy7",
+  "status": "ARTIFACTS_VERIFIED_NOT_ALL_MATH_PASS"
+}

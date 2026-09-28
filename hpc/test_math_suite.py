@@ -11,8 +11,8 @@ class MathSuiteTests(unittest.TestCase):
 
     def test_catalog_cross_product(self):
         catalog, matrix = cases(Path(__file__).resolve().parents[1])
-        self.assertEqual(len(matrix), 93)
-        self.assertEqual(sum(x["family"] != "language" for x in matrix), 90)
+        self.assertEqual(len(matrix), 103)
+        self.assertEqual(sum(x["family"] != "language" for x in matrix), 100)
         self.assertEqual({x["family"] for x in matrix}, {"classical", "exceptional", "language"})
         self.assertTrue(catalog["open_requirements"])
         for case in matrix:
@@ -131,6 +131,16 @@ class MathSuiteTests(unittest.TestCase):
                          'succeeds(v)', 'succeeds(solution0)'):
             self.assertIn(required, case["source"])
         self.assertNotIn("any(solution0)", case["source"])
+
+    def test_large_d_and_nontrivial_hodge_are_additive(self):
+        matrix = cases(Path(__file__).resolve().parents[1])[1]
+        self.assertEqual([c["id"] for c in matrix[93:95]], ["D6_kgb", "D8_kgb"])
+        self.assertEqual(len(matrix[95:]), 8)
+        self.assertEqual({c["type"] for c in matrix[95:]}, {"A2", "G2"})
+        for case in matrix[95:]:
+            self.assertIn("hodge_branch_irr(p,", case["source"])
+            self.assertIn("nontrivial Hodge probe unexpectedly became trivial", case["source"])
+            self.assertIn("HS.v_to_1=branch_std", case["source"])
 
 
 if __name__ == "__main__":

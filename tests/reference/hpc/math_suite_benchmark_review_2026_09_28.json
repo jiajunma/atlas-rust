@@ -1,0 +1,480 @@
+{
+  "benchmarks": [
+    {
+      "benchmark_sha256": "c988965fbbf203945e8c05c68ac36142b5753e148ecca9e55908e70820422ed2",
+      "case": {
+        "case_index": 64,
+        "id": "E7_kgb"
+      },
+      "job": "3832215",
+      "node": "cu008",
+      "rounds": [
+        {
+          "first_diagnostics": {
+            "oracle": [],
+            "rust": []
+          },
+          "full_stderr_equal": true,
+          "full_stdout_equal": true,
+          "group": "E7",
+          "id": "E7_kgb",
+          "independent_checks": {
+            "oracle": null,
+            "rust": null
+          },
+          "index": 64,
+          "input_sha256": "8165e40e7982f2e4ba07cd959a230292a382d0af10bbf0bf25083e7de890ff03",
+          "job": "3832215",
+          "metrics": {
+            "oracle": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 41656,
+              "seconds": 1.384093809989281
+            },
+            "rust": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 1461884,
+              "seconds": 69.52135266101686
+            }
+          },
+          "operation": "kgb",
+          "report_sha256": "dff271f1d704b91b9786fbfeb130b10b336f2fdc0c2b128575974df23ca0f459",
+          "status": "MATH_MATCH"
+        },
+        {
+          "first_diagnostics": {
+            "oracle": [],
+            "rust": []
+          },
+          "full_stderr_equal": true,
+          "full_stdout_equal": true,
+          "group": "E7",
+          "id": "E7_kgb",
+          "independent_checks": {
+            "oracle": null,
+            "rust": null
+          },
+          "index": 64,
+          "input_sha256": "8165e40e7982f2e4ba07cd959a230292a382d0af10bbf0bf25083e7de890ff03",
+          "job": "3832215",
+          "metrics": {
+            "oracle": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 41656,
+              "seconds": 1.338134011020884
+            },
+            "rust": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 1470580,
+              "seconds": 69.49082461802755
+            }
+          },
+          "operation": "kgb",
+          "report_sha256": "fb51f140a913a4c291725eea658d11141ec82c7a5a25412bb15edb3526fc10fb",
+          "status": "MATH_MATCH"
+        },
+        {
+          "first_diagnostics": {
+            "oracle": [],
+            "rust": []
+          },
+          "full_stderr_equal": true,
+          "full_stdout_equal": true,
+          "group": "E7",
+          "id": "E7_kgb",
+          "independent_checks": {
+            "oracle": null,
+            "rust": null
+          },
+          "index": 64,
+          "input_sha256": "8165e40e7982f2e4ba07cd959a230292a382d0af10bbf0bf25083e7de890ff03",
+          "job": "3832215",
+          "metrics": {
+            "oracle": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 41656,
+              "seconds": 1.3620860620285384
+            },
+            "rust": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 1470724,
+              "seconds": 69.33622236800147
+            }
+          },
+          "operation": "kgb",
+          "report_sha256": "6e0091e57763e117156a61a35b81faa97b19d4792d6b0e82072376287b3b5895",
+          "status": "MATH_MATCH"
+        },
+        {
+          "first_diagnostics": {
+            "oracle": [],
+            "rust": []
+          },
+          "full_stderr_equal": true,
+          "full_stdout_equal": true,
+          "group": "E7",
+          "id": "E7_kgb",
+          "independent_checks": {
+            "oracle": null,
+            "rust": null
+          },
+          "index": 64,
+          "input_sha256": "8165e40e7982f2e4ba07cd959a230292a382d0af10bbf0bf25083e7de890ff03",
+          "job": "3832215",
+          "metrics": {
+            "oracle": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 41640,
+              "seconds": 1.3532304280088283
+            },
+            "rust": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 1460808,
+              "seconds": 69.3411695099785
+            }
+          },
+          "operation": "kgb",
+          "report_sha256": "fa5868aab3b7c74f3007ef29838f2bcaba75f7cebddc831632ad833a81350057",
+          "status": "MATH_MATCH"
+        }
+      ],
+      "summary": {
+        "accepted": true,
+        "engines": {
+          "oracle": {
+            "all_runs_in_60_to_600_seconds": false,
+            "max_seconds": 1.384093809989281,
+            "maxrss_kb": [
+              41656,
+              41656,
+              41656,
+              41640
+            ],
+            "median_seconds": 1.3576582450186834,
+            "min_seconds": 1.338134011020884,
+            "seconds": [
+              1.384093809989281,
+              1.338134011020884,
+              1.3620860620285384,
+              1.3532304280088283
+            ]
+          },
+          "rust": {
+            "all_runs_in_60_to_600_seconds": true,
+            "max_seconds": 69.52135266101686,
+            "maxrss_kb": [
+              1461884,
+              1470580,
+              1470724,
+              1460808
+            ],
+            "median_seconds": 69.41599706400302,
+            "min_seconds": 69.33622236800147,
+            "seconds": [
+              69.52135266101686,
+              69.49082461802755,
+              69.33622236800147,
+              69.3411695099785
+            ]
+          }
+        },
+        "scope": "four fresh-process repetitions on one node, not a universal speed claim",
+        "speed_ratio": {
+          "definition": "original_seconds / rust_seconds; >1 means Rust faster",
+          "max": 0.019908902186326308,
+          "median": 0.019580097178318153,
+          "min": 0.019256268987686478,
+          "paired_values": [
+            0.019908902186326308,
+            0.019256268987686478,
+            0.019644653479955643,
+            0.019515540876680663
+          ]
+        }
+      }
+    },
+    {
+      "benchmark_sha256": "e549d57da1881e523d7d1ac3ad93aa9dbc32778ca6b79f8b78d44ddc90b6a9b3",
+      "case": {
+        "case_index": 93,
+        "id": "D6_kgb"
+      },
+      "job": "3832216",
+      "node": "cu008",
+      "rounds": [
+        {
+          "first_diagnostics": {
+            "oracle": [],
+            "rust": []
+          },
+          "full_stderr_equal": true,
+          "full_stdout_equal": true,
+          "group": "D6",
+          "id": "D6_kgb",
+          "independent_checks": {
+            "oracle": null,
+            "rust": null
+          },
+          "index": 93,
+          "input_sha256": "d64758d4f9be71eda83be0c48790ecaf55dbcb9306d9ce12b8fa393f7b020591",
+          "job": "3832216",
+          "metrics": {
+            "oracle": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 6580,
+              "seconds": 0.18090176302939653
+            },
+            "rust": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 37940,
+              "seconds": 0.8170642979675904
+            }
+          },
+          "operation": "kgb",
+          "report_sha256": "484387441e56e857d1dea3354ffec608c9317a4ea3db16a250bcb9dbae7a2f88",
+          "status": "MATH_MATCH"
+        },
+        {
+          "first_diagnostics": {
+            "oracle": [],
+            "rust": []
+          },
+          "full_stderr_equal": true,
+          "full_stdout_equal": true,
+          "group": "D6",
+          "id": "D6_kgb",
+          "independent_checks": {
+            "oracle": null,
+            "rust": null
+          },
+          "index": 93,
+          "input_sha256": "d64758d4f9be71eda83be0c48790ecaf55dbcb9306d9ce12b8fa393f7b020591",
+          "job": "3832216",
+          "metrics": {
+            "oracle": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 6592,
+              "seconds": 0.16667324304580688
+            },
+            "rust": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 38068,
+              "seconds": 0.8159167269477621
+            }
+          },
+          "operation": "kgb",
+          "report_sha256": "16c9527fa0c397f90dd5c7c17742f3e1b2abb3c84d2eecd0562d40501c9ea8a1",
+          "status": "MATH_MATCH"
+        },
+        {
+          "first_diagnostics": {
+            "oracle": [],
+            "rust": []
+          },
+          "full_stderr_equal": true,
+          "full_stdout_equal": true,
+          "group": "D6",
+          "id": "D6_kgb",
+          "independent_checks": {
+            "oracle": null,
+            "rust": null
+          },
+          "index": 93,
+          "input_sha256": "d64758d4f9be71eda83be0c48790ecaf55dbcb9306d9ce12b8fa393f7b020591",
+          "job": "3832216",
+          "metrics": {
+            "oracle": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 6588,
+              "seconds": 0.13180856895633042
+            },
+            "rust": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 38208,
+              "seconds": 0.838244191952981
+            }
+          },
+          "operation": "kgb",
+          "report_sha256": "961517e80f0aeaf9fc7a8412725213f091eb2d31b4fd25bd2354cf7802d8c7b3",
+          "status": "MATH_MATCH"
+        },
+        {
+          "first_diagnostics": {
+            "oracle": [],
+            "rust": []
+          },
+          "full_stderr_equal": true,
+          "full_stdout_equal": true,
+          "group": "D6",
+          "id": "D6_kgb",
+          "independent_checks": {
+            "oracle": null,
+            "rust": null
+          },
+          "index": 93,
+          "input_sha256": "d64758d4f9be71eda83be0c48790ecaf55dbcb9306d9ce12b8fa393f7b020591",
+          "job": "3832216",
+          "metrics": {
+            "oracle": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 6592,
+              "seconds": 0.13412993599195033
+            },
+            "rust": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 37816,
+              "seconds": 0.8272152809659019
+            }
+          },
+          "operation": "kgb",
+          "report_sha256": "b2cf266db78b04bdc1ab80e99361050af6573712cd89406ae707ca088838bbd9",
+          "status": "MATH_MATCH"
+        }
+      ],
+      "summary": {
+        "accepted": true,
+        "engines": {
+          "oracle": {
+            "all_runs_in_60_to_600_seconds": false,
+            "max_seconds": 0.18090176302939653,
+            "maxrss_kb": [
+              6580,
+              6592,
+              6588,
+              6592
+            ],
+            "median_seconds": 0.1504015895188786,
+            "min_seconds": 0.13180856895633042,
+            "seconds": [
+              0.18090176302939653,
+              0.16667324304580688,
+              0.13180856895633042,
+              0.13412993599195033
+            ]
+          },
+          "rust": {
+            "all_runs_in_60_to_600_seconds": false,
+            "max_seconds": 0.838244191952981,
+            "maxrss_kb": [
+              37940,
+              38068,
+              38208,
+              37816
+            ],
+            "median_seconds": 0.8221397894667462,
+            "min_seconds": 0.8159167269477621,
+            "seconds": [
+              0.8170642979675904,
+              0.8159167269477621,
+              0.838244191952981,
+              0.8272152809659019
+            ]
+          }
+        },
+        "scope": "four fresh-process repetitions on one node, not a universal speed claim",
+        "speed_ratio": {
+          "definition": "original_seconds / rust_seconds; >1 means Rust faster",
+          "max": 0.22140456201474143,
+          "median": 0.18321180943043996,
+          "min": 0.15724364119867812,
+          "paired_values": [
+            0.22140456201474143,
+            0.20427727185997244,
+            0.15724364119867812,
+            0.16214634700090752
+          ]
+        }
+      }
+    },
+    {
+      "benchmark_sha256": "d05f07db70044a585dd25b2718d403575f0802146d7f4ab064495a33101c5003",
+      "case": {
+        "case_index": 94,
+        "id": "D8_kgb"
+      },
+      "job": "3832212",
+      "node": "cu125",
+      "rounds": [
+        {
+          "first_diagnostics": {
+            "oracle": [],
+            "rust": [
+              "Runtime error at <stdin>:4:23: enumeration exceeded its resource limit of 4000000",
+              "  | set G=quasisplit_form(inner_class(rd,0-id_mat(8)))",
+              "  |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+              "Name error at <stdin>:6:16: Undefined identifier 'G'",
+              "  | prints(\"GROUP\",G,\"KGB_SIZE\",KGB_size(G))"
+            ]
+          },
+          "full_stderr_equal": false,
+          "full_stdout_equal": false,
+          "group": "D8",
+          "id": "D8_kgb",
+          "independent_checks": {
+            "oracle": null,
+            "rust": null
+          },
+          "index": 94,
+          "input_sha256": "47a00168726ae590f21d6b03f4fd7f0d86a423238255a76ceb2e79b47b152d27",
+          "job": "3832212",
+          "metrics": {
+            "oracle": {
+              "exit_status": 0,
+              "maxrss_approximate": false,
+              "maxrss_kb": 83936,
+              "seconds": 3.7570039592683315
+            },
+            "rust": {
+              "exit_status": 1,
+              "maxrss_approximate": false,
+              "maxrss_kb": 118820,
+              "seconds": 2.1641981825232506
+            }
+          },
+          "operation": "kgb",
+          "report_sha256": "108faf68896a087e533653d4e4cfb94318ecab318abb2bf60475ff8963044f4c",
+          "status": "RUST_FAILURE"
+        }
+      ],
+      "summary": {
+        "accepted": false,
+        "speed_ratio": null
+      }
+    }
+  ],
+  "binaries": {
+    "oracle": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/oracle-source/atlas",
+      "sha256": "86db8282dbeee12bd7b0bf96c89049a2e150fb3e9d372f4d67b02add4a3cb6a4"
+    },
+    "rust": {
+      "path": "/public/home/majj/atlas-math-baseline-20260928.iMXyKqJ5/results/3831844/target/release/atlas-cli",
+      "sha256": "be266b308e13110b357c2adf32f010b74cecf8ac4f8eccd9b5b66f0108e26104"
+    }
+  },
+  "build_report_sha256": "167cd7e783ee07b617c3a7ee027158343c2fecd2d90074f8ff5b0ab4c37b57cb",
+  "input_manifest_sha256": "0af13a923ade94dd9d32c51bdf8e17db39f83b8d7ccd4acdc7b965f6bae6d3d7",
+  "job": "3832228",
+  "schema": "atlas-math-benchmark-review-v1",
+  "source_files_rehashed": {
+    "oracle": 606,
+    "rust": 1212
+  },
+  "status": "BENCHMARK_ARTIFACTS_VERIFIED"
+}

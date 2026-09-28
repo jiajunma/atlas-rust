@@ -161,11 +161,12 @@ def observe(engine, binary, scripts, case, output, timeout):
     return record, (paths["stdout"].read_bytes(), paths["stderr"].read_bytes())
 
 
-def run(root, index, build_path, timeout):
+def run(root, index, build_path, timeout, *, output=None,
+        spool_name="hpc/math_suite.sbatch", order=None):
     job = os.environ.get("SLURM_JOB_ID")
     if not job:
         raise SystemExit("Differential execution requires a SLURM compute job")
-    output = root / "results" / job
+    output = output if output is not None else root / "results" / job
     output.mkdir(parents=True, exist_ok=False)
     report = {"schema": "atlas-math-survey-v1", "status": "HARNESS_FAILURE",
               "job_id": job, "node": platform.node(), "case_index": index,
@@ -180,7 +181,7 @@ def run(root, index, build_path, timeout):
             raise ValueError("submission input manifest changed")
         if harness != expected:
             raise ValueError("suite inputs changed")
-        if digest(Path(os.environ["MATH_SUITE_SPOOL"])) != harness["hpc/math_suite.sbatch"]:
+        if digest(Path(os.environ["MATH_SUITE_SPOOL"])) != harness[spool_name]:
             raise ValueError("submitted batch script differs")
         report["harness"] = harness
         catalog, all_cases = cases(root)
@@ -196,7 +197,10 @@ def run(root, index, build_path, timeout):
                       baseline=lock, binary_pins=build["binaries"])
         scripts = verify_build(build, lock)
         streams = {}
-        order = ("oracle", "rust") if index % 2 == 0 else ("rust", "oracle")
+        if order is None:
+            order = ("oracle", "rust") if index % 2 == 0 else ("rust", "oracle")
+        if len(order) != 2 or set(order) != {"oracle", "rust"}:
+            raise ValueError("both engines required exactly once")
         report["order"] = order
         for engine in order:
             report["observations"][engine], streams[engine] = observe(
