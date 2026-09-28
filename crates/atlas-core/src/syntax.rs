@@ -803,6 +803,8 @@ pub enum ParserToken {
     Boolean(SpannedValue<bool>),
     String(SpannedValue<String>),
     Identifier(SpannedValue<String>),
+    /// A type name classified using the current session's type environment.
+    TypeName(SpannedValue<String>),
     Operator(SpannedValue<FormulaOperator>),
     /// An operator immediately followed by `:=` (lexer.w:507-516), e.g.
     /// `+:=`; the payload is the bare operator symbol.
@@ -874,6 +876,7 @@ impl ParserToken {
             Self::Boolean(value) => value.span,
             Self::String(value) => value.span,
             Self::Identifier(value) => value.span,
+            Self::TypeName(value) => value.span,
             Self::Operator(value) => value.span,
             Self::OperatorBecomes(value) => value.span,
             Self::PrimitiveType(value) => value.span,
@@ -941,6 +944,7 @@ impl fmt::Display for ParserToken {
             Self::Boolean(_) => "boolean",
             Self::String(_) => "string",
             Self::Identifier(_) => "identifier",
+            Self::TypeName(_) => "type name",
             Self::Operator(operator) => operator.value.symbol.as_str(),
             Self::OperatorBecomes(operator) => {
                 return write!(formatter, "{}:=", operator.value);
@@ -1240,7 +1244,16 @@ pub fn parse(source: &SourceText) -> Result<Program, ParseError> {
 /// for command boundaries; this adapter deliberately does not tokenize the
 /// rest of the source, so session state can change before the next command.
 pub fn parse_command(tokens: &[Token], source: &SourceText) -> Result<Command, ParseError> {
-    let parsed = parser_tokens_from_tokens(tokens.iter().cloned())?;
+    parse_command_in(tokens, source, &crate::types::TypeTable::new())
+}
+
+/// Session entry point: classification must see preceding type declarations.
+/// This is the persistent environment only; intra-command type abstractions
+/// require their own scoped classification when that grammar is integrated.
+pub fn parse_command_in(
+    tokens: &[Token], source: &SourceText, types: &crate::types::TypeTable,
+) -> Result<Command, ParseError> {
+    let parsed = parser_tokens_in(tokens, types)?;
     let spans: Vec<SourceSpan> = parsed.iter().map(|(_, span)| *span).collect();
     grammar::CommandParser::new()
         .parse(TokenStream::new(parsed))
@@ -1252,11 +1265,31 @@ pub fn parse_command(tokens: &[Token], source: &SourceText) -> Result<Command, P
 /// `TOFILE expr`), parsed before the sink is opened (main.w:498-511), so
 /// the session layer validates redirect bodies with this entry.
 pub fn parse_expression(tokens: &[Token], source: &SourceText) -> Result<Expr, ParseError> {
-    let parsed = parser_tokens_from_tokens(tokens.iter().cloned())?;
+    parse_expression_in(tokens, source, &crate::types::TypeTable::new())
+}
+
+/// Redirect bodies use the same live environment as ordinary commands.
+pub fn parse_expression_in(
+    tokens: &[Token], source: &SourceText, types: &crate::types::TypeTable,
+) -> Result<Expr, ParseError> {
+    let parsed = parser_tokens_in(tokens, types)?;
     let spans: Vec<SourceSpan> = parsed.iter().map(|(_, span)| *span).collect();
     grammar::ExprParser::new()
         .parse(TokenStream::new(parsed))
         .map_err(|error| syntax_error(error, source, &spans))
+}
+
+fn parser_tokens_in(
+    tokens: &[Token], types: &crate::types::TypeTable,
+) -> Result<Vec<(ParserToken, SourceSpan)>, ParseError> {
+    Ok(parser_tokens_from_tokens(tokens.iter().cloned())?.into_iter().map(|(token, span)| {
+        let token = match token {
+            ParserToken::Identifier(name) if types.is_type_name(&name.value) =>
+                ParserToken::TypeName(name),
+            other => other,
+        };
+        (token, span)
+    }).collect())
 }
 
 fn syntax_error(
@@ -1400,6 +1433,7 @@ fn bison_expecting(token: &ParserToken, expected: &[String]) -> Option<&'static 
 fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
     match token {
         ParserToken::Identifier(_) => Some("IDENT"),
+        ParserToken::TypeName(_) => Some("TYPE_ID"),
         ParserToken::Integer(_) => Some("INT"),
         ParserToken::Unsupported(_) => None, // maps to `$undefined` below
         ParserToken::If(_) => Some("IF"),

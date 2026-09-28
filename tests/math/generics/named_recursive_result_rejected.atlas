@@ -1,0 +1,2 @@
+set_type MathRow = [int]
+set rec_fun invalid(int n) = MathRow: ["abc"]

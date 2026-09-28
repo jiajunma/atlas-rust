@@ -6,6 +6,35 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
+LANGUAGE BRIDGE BUILD:3834754 COMPLETE6:17 at
+/public/home/majj/atlas-language-bridge-20260928.Zdtz3EAN, pin
+c23be725d1153c89df51bf5b7d2015eec13c074ccea2819f2628449d59db1d97.
+Candidate connects persistent type-name classification to session/redirect
+parsing and resolves semantic cast/parameter/recursive-result annotations
+against the live table. Five session/redirect tests added first; syntax,
+session, session-frame, type/coercion suites and CLI build run on compute.
+All136 related tests and CLI check/build pass. The36case capture is INVALID:
+all original arms fail startup with GLIBCXX_3.4.26/29 missing, due to the
+build-only batch environment lacking GCC's runtime-library path. Retain report
+24929729a67f2ce0d28fcec03d0008903088b4b0ecb6499e3e3742e1600c964e.
+Corrected replay3834785 COMPLETE52s at atlas-language-replay-20260928.sZ06vqxJ,
+pin20b933551b59ad0e09e5c4378bb81d0c05f184ca3f2817537c803e5c10c8d05e.
+It reuses the exact binary and rehashes1213candidate/606oracle/1212before-Rust
+source files, logs/inputs/scripts; all36 oracle intents confirmed (19accept,
+17reject),9 checker tests pass. Report SHA
+bf738be8f6ab362be0cfe0b2988f2881b0611daec378b4d9a47be986f2a2db1e.
+Named casts/parameters and recursive result calls now execute correct values;
+bad components reach type rejection. TYPE_ID parameter binding was wrongly
+accepted before and is rejected now. Complete outputs still differ in retained
+type names/query reports and diagnostics; only two existing mutable controls
+match fully. Bare TYPE_ID rejection has an end-of-file versus newline location
+mismatch. Preserve those differences; do not claim general language acceptance.
+Debug timings must NOT become a speed ratio. Existing
+generic scopes, implicit constness, named-type retention/reporting remain open.
+Both jobs terminal, no active jobs from this wave. See bridge/replay receipts.
+Next: retained named-type table/definition locations, then scoped TYPE_VAR and
+the scheme-carrying analyzer; source-audit boundaries are in the generic slice.
+
 NEWEST LANGUAGE FOUNDATION: matching3834447 COMPLETE4:44 passes38 type tests,
 3 coercion tests and CLI check. Eleven new tests cover structural matching,
 two-sided rollback, direct-function argument/result substitution and differing

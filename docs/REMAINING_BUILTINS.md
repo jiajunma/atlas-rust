@@ -2,6 +2,19 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+Persistent type-name parser/annotation bridge3834754 COMPLETE6:17 passes136
+unit tests and CLI check/build. Its36case capture is INVALID: original startup
+fails GLIBCXX_3.4.26/29 due to missing GCC runtime-library path. Corrected
+replay3834785 COMPLETE52s reuses the exact candidate;9 checker tests and all36
+oracle intents confirmed. Named annotation/recursive calls now execute and
+bad components reach type rejection; TYPE_ID parameter binding wrong acceptance
+is removed. Names/query reports and diagnostics still differ, and only the two
+existing monomorphic controls match whole streams. Both jobs terminal; source,
+failed capture and corrected replay retained separately. No duplicate needed.
+Full generic scopes and scheme-carrying analyzer, implicit constness and named
+type retention remain separate required integration work. No speed comparison
+from the debug candidate. See HANDOFF and the generic-language slice.
+
 NEW TYPE MATCHING:3834447 COMPLETE4:44;38type/3coercion tests and CLI check
 pass. Structural matching, direct-function substitution and full two-sided
 rollback verified internally; active parser/analyzer still unmigrated.

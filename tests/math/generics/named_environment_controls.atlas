@@ -1,0 +1,5 @@
+set_type MathRow = [int]
+whattype MathRow
+whattype MathRow ?
+set_type MathRow = [string]
+prints("NAMED_ENV",MathRow:["x"])

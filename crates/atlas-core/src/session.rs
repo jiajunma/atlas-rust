@@ -7,7 +7,7 @@ use crate::{
     diagnostic::{Diagnostic, SourceSpan},
     lex::{Lexer, Token, TokenKind},
     source::SourceText,
-    syntax::parse_command,
+    syntax::parse_command_in,
     typed::{TypedCommandEvent, TypedContext},
     value::Value,
 };
@@ -88,7 +88,7 @@ pub(crate) fn execute_tokens(
         return;
     }
 
-    let command = match parse_command(tokens, source) {
+    let command = match parse_command_in(tokens, source, context.types()) {
         Ok(command) => command,
         Err(diagnostic) => {
             events.push(SessionEvent::Diagnostic(diagnostic));
@@ -133,6 +133,74 @@ fn session_event(event: TypedCommandEvent) -> SessionEvent {
 mod tests {
     use super::*;
     use crate::{diagnostic::ErrorKind, source::SourceText, value::Value};
+
+    #[test]
+    fn named_types_use_the_live_session_environment() {
+        // R7 original capture3834702 accepts the named row cast and parameter,
+        // and rejects a string component at type analysis, not at parsing.
+        let source = SourceText::new(concat!(
+            "set_type MathMonoRow = [int]\n",
+            "set probe_mono = MathMonoRow:[2,3]\n",
+            "set probe_mono_function(MathMonoRow xs) = xs\n",
+            "probe_mono_function(probe_mono)\n",
+            "set bad = MathMonoRow:[\"abc\"]\n",
+        ));
+        let events = run_source(&source);
+        let errors: Vec<_> = events.iter().filter_map(|e| match e {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).collect();
+        assert_eq!(errors.len(), 1, "{events:?}");
+        assert_eq!(errors[0].kind, ErrorKind::Type, "{events:?}");
+        assert!(events.iter().any(|e| matches!(e,
+            SessionEvent::Value { value, .. } if value.to_string() == "[2,3]")));
+    }
+
+    #[test]
+    fn named_type_tokens_preserve_type_queries_and_redefinitions() {
+        let source = SourceText::new(concat!(
+            "set_type MathRow = [int]\n",
+            "whattype MathRow\n",
+            "whattype MathRow ?\n",
+            "set_type MathRow = [string]\n",
+            "MathRow:[\"x\"]\n",
+        ));
+        let events = run_source(&source);
+        assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
+        let queries = events.iter().filter(|e| matches!(e,
+            SessionEvent::ReportLine { text, .. } if text == "Defined type: [int]\n")).count();
+        assert_eq!(queries, 2, "{events:?}");
+        assert!(events.iter().any(|e| matches!(e,
+            SessionEvent::Value { value, .. } if value.to_string() == "[\"x\"]")));
+    }
+
+    #[test]
+    fn named_types_are_not_expression_identifiers_or_parameter_bindings() {
+        for program in ["MathRow", "set bad(int MathRow) = 1"] {
+            let mut context = TypedContext::new();
+            run_source_with_context(&SourceText::new("set_type MathRow = [int]\n"), &mut context);
+            let events = run_source_with_context(&SourceText::new(program), &mut context);
+            assert!(events.iter().any(|e| matches!(e,
+                SessionEvent::Diagnostic(d) if d.kind == ErrorKind::Syntax)), "{events:?}");
+        }
+    }
+
+    #[test]
+    fn named_recursive_result_annotations_are_resolved() {
+        let source = SourceText::new(concat!(
+            "set_type MathRow = [int]\n",
+            "set rec_fun repeated(int n) = MathRow: if n=0 then [1] else repeated(n-1) fi\n",
+            "repeated(2)\n",
+            "set rec_fun invalid(int n) = MathRow: [\"abc\"]\n",
+        ));
+        let events = run_source(&source);
+        let errors: Vec<_> = events.iter().filter_map(|e| match e {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).collect();
+        assert_eq!(errors.len(), 1, "{events:?}");
+        assert_eq!(errors[0].kind, ErrorKind::Type, "{events:?}");
+        assert!(events.iter().any(|e| matches!(e,
+            SessionEvent::Value { value, .. } if value.to_string() == "[1]")));
+    }
 
     #[test]
     fn kgb_pipeline_is_scriptable_end_to_end() {

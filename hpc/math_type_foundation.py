@@ -106,7 +106,12 @@ def main():
                     or "Applied(TypeNumber(0), [Undetermined])" not in log):
                 raise ValueError("before must execute the unreplaced applied-type assertion")
             report["before_source_files"] = before_expected
-        for name, test_filter in (("type-units", "types::"), ("coercion-units", "coercions::tests::")):
+        test_filters = [("type-units", "types::"), ("coercion-units", "coercions::tests::")]
+        test_filters.extend(pin.get("additional_test_filters", []))
+        if (len({name for name, _ in test_filters}) != len(test_filters)
+                or any(not re.fullmatch(r"[a-z][a-z-]*", name) for name, _ in test_filters)):
+            raise ValueError("invalid or duplicate test command name")
+        for name, test_filter in test_filters:
             log = run(name, ["cargo", "test", "--offline", "--locked", "-p", "atlas-core", "--lib",
                              test_filter, "--", "--nocapture"])
             match = re.search(r"test result: ok\. (\d+) passed; 0 failed;", log)
@@ -122,6 +127,13 @@ def main():
                 or "polymorphic global must reject assignment" not in log):
             raise ValueError("known language regression changed unexpectedly")
         run("cli-check", ["cargo", "check", "--offline", "--locked", "-p", "atlas-cli"])
+        if "language_capture" in pin:
+            run("cli-build", ["cargo", "build", "--offline", "--locked", "-p", "atlas-cli"])
+            from math_language_bridge import capture
+            report["language_capture"] = capture(root, out, pin["language_capture"],
+                                                  out / "target/debug/atlas-cli")
+            if report["language_capture"]["status"] != "CAPTURED_NOT_LANGUAGE_ACCEPTANCE":
+                raise ValueError("oracle execution failed; capture is not differential evidence")
         # Emit formatting as an artifact; never modify the pinned tested source.
         for index, name in enumerate(n for n in pin["changed_files"] if n.endswith(".rs")):
             run("formatted-" + str(index), ["rustfmt", "--edition", "2021", "--config",

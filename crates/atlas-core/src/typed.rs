@@ -1221,6 +1221,10 @@ impl TypedContext {
         &self.globals
     }
 
+    pub(crate) fn types(&self) -> &TypeTable {
+        &self.types
+    }
+
     /// Record a source buffer's trace display name (buffer.w:694): the
     /// session frame calls this as it registers each buffer.
     pub fn note_source_name(&mut self, id: crate::diagnostic::SourceId, name: String) {
@@ -2238,7 +2242,7 @@ pub fn convert_expr(
         Expr::Cast { target, body, .. } => {
             // The cast's whole effect is conversion-time: convert the body
             // against the denoted type, then conform THAT to the context.
-            let mut cast_type = target.resolve();
+            let mut cast_type = resolve_annotation(target, analysis.types)?;
             let converted = convert_expr(body, &mut cast_type, analysis)?;
             conform_types(&cast_type, required, converted, expression.span(), analysis)
         }
@@ -4357,6 +4361,18 @@ fn bind_pattern_leaves(
     }
 }
 
+/// Semantic annotations must not use the diagnostic-only empty-table resolver.
+fn resolve_annotation(
+    expression: &crate::syntax::TypeExpr,
+    types: &TypeTable,
+) -> Result<Type, Diagnostic> {
+    expression.resolve_in(types).map_err(|unknown| Diagnostic::new(
+        ErrorKind::Name,
+        format!("undefined type name '{}'", unknown.value),
+        Some(unknown.span),
+    ))
+}
+
 /// One lambda parameter (parser.y `id_spec`): the declared argument type,
 /// the slot shape, and the bound leaves in slot order. A tuple parameter
 /// composes its specs; `type pattern` claims the pattern's leaves from the
@@ -4367,7 +4383,7 @@ fn convert_parameter(
 ) -> Result<(Type, SlotShape, Vec<PatternLeaf>), Diagnostic> {
     match parameter {
         LambdaParam::Typed(typed) => {
-            let declared = typed.type_expr.resolve();
+            let declared = resolve_annotation(&typed.type_expr, types)?;
             let leaves = bind_pattern_leaves(&typed.pattern, &declared, types)?;
             Ok((declared, pattern_slot_shape(&typed.pattern), leaves))
         }
@@ -4536,7 +4552,8 @@ fn convert_rec_lambda_expression(
         parameter_types.push(parameter_type.clone());
         shapes.push(shape.clone());
     }
-    let function_type = Type::function(Type::tuple(parameter_types), result_type.resolve());
+    let declared_result = resolve_annotation(result_type, analysis.types)?;
+    let function_type = Type::function(Type::tuple(parameter_types), declared_result.clone());
     let mut locals = analysis.locals.clone();
     let mut constant_locals = analysis.constant_locals.clone();
     // The call frame always holds the self binding, so depths shift by one
@@ -4584,7 +4601,7 @@ fn convert_rec_lambda_expression(
         param_names: Rc::from(param_names),
     };
     if required.is_void() {
-        let mut dummy = result_type.resolve();
+        let mut dummy = declared_result;
         let converted = convert_expr(body, &mut dummy, &body_analysis)?;
         return Ok(TypedExpr::Void(Box::new(closure(converted))));
     }
@@ -4598,7 +4615,7 @@ fn convert_rec_lambda_expression(
             *span,
         ));
     }
-    let mut result_required = result_type.resolve();
+    let mut result_required = declared_result;
     let converted = convert_expr(body, &mut result_required, &body_analysis)?;
     Ok(closure(converted))
 }

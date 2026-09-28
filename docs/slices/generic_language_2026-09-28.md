@@ -55,6 +55,88 @@ No repair/after-pass yet. All these jobs are terminal; do not duplicate.
 
 ## Source-backed causes and port order
 
+### Persistent-environment integration: scoped progress, remaining output gaps
+
+Job3834754 COMPLETE6:17, pin
+c23be725d1153c89df51bf5b7d2015eec13c074ccea2819f2628449d59db1d97.
+`parse_command_in`/`parse_expression_in` classify known type names separately
+from IDENT, at the session/redirect boundary. Only grammar positions matching
+original `id` accept either class; expression/parameter bindings remain IDENT.
+Casts, parameters and recursive results now call the live-table resolver and
+cannot silently turn an unknown name into Undetermined. Five tests added
+before implementation, plus five source probes (catalog36). HPC passes38type/
+3coercion/40syntax/36session/19session-frame tests and CLI check/build. Its
+capture is invalid: all36 oracle arms fail at loader startup with missing
+GLIBCXX_3.4.26/29. The build-only batch environment lacked the GCC runtime
+library path. Report SHA
+24929729a67f2ce0d28fcec03d0008903088b4b0ecb6499e3e3742e1600c964e
+is retained as environment failure, not new oracle contracts. Replay3834785
+COMPLETE52s in a fresh stage uses the same source/binary, corrected library path,
+rehashed build evidence and9 checker tests. All36 oracle intents confirmed
+(19accept/17reject). Report SHA
+bf738be8f6ab362be0cfe0b2988f2881b0611daec378b4d9a47be986f2a2db1e,
+`tests/reference/hpc/math_language_bridge_replay_2026_09_28.json`.
+
+The new candidate executes named row casts/parameters and recursive results,
+printing NAMED_TYPE[2,3][4,5], NAMED_ENV["x"] and NAMED_REC[1]. Wrong named
+components now produce type errors, not syntax errors. The old Rust wrongly
+accepted TYPE_ID as a parameter binding; the unchanged fixture now rejects it.
+The full streams still differ: names expand away in variable/function reports,
+queries use the old format, redefinition says defined instead of redefined,
+and diagnostic formatting/locations differ. A bare TYPE_ID's missing colon is
+reported at the file's EOF rather than the original's command newline; keep
+this explicit. Original stderr for the two TYPE_ID syntax cases contains about
+25KiB of leading caret indentation; raw bytes/hashes are retained, not normalized
+as acceptance. Only the two pre-existing concrete mutable controls match whole
+streams. Both jobs are terminal. No full generic/math/performance acceptance.
+
+This first integration does NOT implement intra-command TYPE_VAR scopes or
+scheme-carrying expression inference. The legacy alias map still expands
+names, so named reports remain incompatible. Original global.w:1485-1518
+and axis-types.w:1507-1618 retain even zero-arity definitions as table entries:
+add_simple_typedef expands the top constructor only, preserves nested names,
+and deduplicates using name plus textual structure, not structural equivalence
+alone. Distinct nonrecursive named types can nevertheless be structurally
+equal; distinct recursive definitions remain nominal. Name lookup/redefinition
+must not mutate the meaning of types already stored in variables. Port those
+semantics and the query/projector/forget paths together; switching add_alias to
+the current legacy Tabled path alone is unsound (its comparison is nominal and
+several consumers inspect unexpanded raw variants).
+
+Query formatting has also changed: latest global.w:2106 `type_of_type_name`
+prints the definition location, retained name/formals and expansion (fields
+vertically), not the legacy Rust `Defined type:` line. The bridge's unit gate
+only checks its two query syntaxes reach the same legacy query path; the full
+R8 capture must retain this output mismatch. Do not take that unit expectation
+as the latest-original golden when migrating type-definition metadata.
+Similarly, global.w comments about removing a type-map entry must be read with
+the implementation: Id_table::remove erases the active identifier binding;
+old table entries remain available to values/types already holding them.
+
+Next scoped-token migration must be lazy, not a whole-command name rewrite.
+Original lexer.w:499-520 pushes clutches for LET, BEGIN/IF/WHILE/FOR/CASE,
+pops LET at IN and block clutches at END/FI/OD/ESAC; parentheses/brackets do
+the same at scanner time (672-677). parser.y:933-950 installs type variables
+only after the complete declaration list and its opening lookahead have been
+seen. lexer.w:530-614 assigns indices by outer-clutch sizes and first occurrence
+within the current clutch; duplicate slots remain counted, unused, and scoped.
+A parser-local shared environment plus a lazily classifying TokenStream can
+carry those syntax-only effects without mutating TypedContext. However the
+outer raw Lexer currently collects the entire command first: constructor
+formals' virtual nest also affects newline termination and recovery. Audit
+that command boundary while adding ANY_TYPE/TYPE_VAR/TYPE_CONSTR; a token-only
+second pass must not silently diverge on multiline constructor declarations.
+
+For active inference, follow executable CWEB sections rather than stale prose:
+axis.w:4097 claims the surrounding type is not passed into a type abstraction,
+but the actual case at4110 raises the existing tp floor, calls convert_expr on
+that same tp, then lowers its assignment floor. The Rust port must preserve
+that context and pending-substitution behavior (the internal raise/lower API is
+already tested), not replace it by an unrelated unconstrained inference pass.
+Likewise the current first-exact/first-coercible overload scan must be replaced
+by the new scheme-aware ambiguity rules; R2 proves a concrete int overload does
+not automatically win against a generic one. Preserve that negative contract.
+
 ### Internal foundation implemented, language integration still open
 
 HPC job3833858 COMPLETE4:12 checks the new `types::polymorphic` module and
@@ -158,21 +240,22 @@ alias map still expands those names, another integration mismatch to fix.
 Preserve old captures with their25-case catalogs; use the new31-case checker
 only with the matching new catalog. Both matching/capture jobs are terminal.
 
-Parser integration audit: `session::execute_tokens` currently calls
-`parse_command(tokens, source)` without the live type table. The general
-`TypeExprNode` deliberately excludes defined names; only `SpecTypeNode`
-allows a raw identifier. A keyword-only `any_type` patch cannot resolve named
+Pre-bridge parser audit: `session::execute_tokens` called
+`parse_command(tokens, source)` without the live type table; `TypeExprNode`
+excluded defined names and only `SpecTypeNode` allowed a raw identifier.
+The bridge above fixes the persistent environment. A keyword-only `any_type`
+patch still cannot resolve scoped generic
 constructor casts or type variables in lambda signatures. Preserve the LR
 type/expression distinction via a scoped type-name/type-variable environment,
 including scope changes inside one command; do not blindly add identifiers
 to every type production. Original TYPE_VAR versus IDENT classification is
 observable in the same-name nested-abstraction rejection. The session's
 command-at-a-time boundary is necessary but not sufficient for that behavior.
-Also replace semantic calls to `TypeExpr::resolve()` in casts, lambda
+The bridge replaces semantic calls to `TypeExpr::resolve()` in casts, lambda
 parameters and recursive-function result analysis: that diagnostic-only helper
-uses an empty table and silently falls back to Undetermined. These paths must
-resolve against the actual environment and report unknown names. Update both
-normal session commands and session-frame redirection parsing. Keep the existing
+uses an empty table and silently falls back to Undetermined. These paths now
+resolve against the actual environment and report unknown names. Both normal
+session commands and session-frame redirection parsing are connected. Keep the existing
 `whattype TypeName` and type redefinition paths working: upstream TYPE_ID is
 allowed by `id`, but not by every IDENT-only binding production. Merely
 reclassifying every identifier without adapting those productions regresses

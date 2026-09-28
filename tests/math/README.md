@@ -10,11 +10,16 @@ is updated in place.
 All tests, builds, differential runs and benchmarks run on **HPC compute
 nodes**. Local work is limited to source inspection, editing and synchronization.
 
-The separate `generics/catalog.json` now retains25 prerequisite-language
+The separate `generics/catalog.json` now retains36 prerequisite-language
 discovery cases (not part of the108 mathematical-case index space). It includes
 global/local polymorphic-constness failures, their concrete mutable controls,
-fixed-type local mutation, nested abstractions and retained rejected syntax
-probes. See `docs/slices/generic_language_2026-09-28.md` for evidence and
+fixed-type local mutation, nested abstractions, named annotations/direct calls,
+recursive result constraints and retained rejected syntax probes. Capture3834702
+confirms the previous31 oracle intents; replay3834785 confirms all36 after
+correcting bridge3834754's oracle loader environment. It compares original,
+old Rust and a new debug candidate (not a speed benchmark); named-type behavior
+improves, but complete output/diagnostic compatibility remains open.
+See `docs/slices/generic_language_2026-09-28.md` for evidence and
 disproved fixture hypotheses. Passing internal type units does not close the
 latest `basic.at` gate or establish any high-level mathematical feature.
 

@@ -17,7 +17,7 @@ use crate::diagnostic::{Diagnostic, ErrorKind, SourceId};
 use crate::lex::{DirectiveKind, Lexer, Token, TokenKind};
 use crate::session::{execute_tokens, SessionEvent};
 use crate::source::SourceText;
-use crate::syntax::parse_expression;
+use crate::syntax::parse_expression_in;
 use crate::typed::TypedContext;
 
 /// Read access to included files. The CLI backs this with the filesystem
@@ -406,7 +406,7 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
         // A failed parse never reaches the sink: `> "x" set qfc = 10` errors
         // at the `=` (the body is an expression, where `set qfc` starts a
         // multi-assignment that expects `:=`) and leaves `x` uncreated.
-        if let Err(diagnostic) = parse_expression(&command, source) {
+        if let Err(diagnostic) = parse_expression_in(&command, source, self.context.types()) {
             events.push(SessionEvent::Diagnostic(diagnostic));
             self.clean = false;
             return Outcome::Abort;
@@ -758,6 +758,17 @@ mod tests {
             frame.sink.writes[1],
             ("out.txt".to_owned(), true, "Value: 7\n".to_owned())
         );
+    }
+
+    #[test]
+    fn redirect_parser_uses_the_current_named_type_environment() {
+        let mut frame = frame(&[], &[]);
+        let events = frame.run_top_level("<stdin>",
+            "set_type MathRow = [int]\n>out.txt MathRow:[2,3]\n");
+        assert!(stderr_of(&events).is_empty(), "{events:?}");
+        assert_eq!(frame.sink.writes,
+            vec![("out.txt".to_owned(), false, "Value: [2,3]\n".to_owned())]);
+        assert!(frame.is_clean());
     }
 
     #[test]

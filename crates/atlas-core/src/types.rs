@@ -389,6 +389,11 @@ impl TypeTable {
             .cloned()
             .or_else(|| self.lookup(name).map(Type::Tabled))
     }
+
+    /// Classify a token without cloning its structural alias expansion.
+    pub fn is_type_name(&self, name: &str) -> bool {
+        self.aliases.contains_key(name) || self.lookup(name).is_some()
+    }
 }
 
 pub struct TypeDisplay<'a> {

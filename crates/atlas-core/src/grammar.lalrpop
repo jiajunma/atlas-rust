@@ -42,13 +42,12 @@ pub Program: Program = {
 // discarding values already produced by earlier commands.
 pub Command: Command = {
     // parser.y:162 `IDENT ':' type`: the full type grammar (tuple, row,
-    // function, void), not just a primitive name. Named types stay out
-    // (the lexer has no type-table token), matching TypeExprNode.
+    // function, void), including names classified by the live type table.
     <name:"identifier"> <_colon:":"> <value_type:TypeExprNode> => declaration(name, value_type),
     <name:"identifier"> <_colon:":"> <value:Expr> => definition(name, value),
     // set_type (parser.y:163-167): the single-name form aliases and the
     // bracketed form enters the tabled type map.
-    <set_type:"set_type"> <name:"identifier"> <_equals:"="> <spec:TypeSpecNode> => {
+    <set_type:"set_type"> <name:TypeOrIdentifier> <_equals:"="> <spec:TypeSpecNode> => {
         let end = type_spec_span(&spec);
         set_type_command(set_type, vec![type_definition(name, spec)], false, end)
     },
@@ -62,6 +61,9 @@ pub Command: Command = {
         show_overloads_command(whattype, name, question)
     },
     <whattype:"whattype"> <target:Expr> => whattype_command(whattype, target),
+    <whattype:"whattype"> <name:"type_name"> <_question:"?"?> => {
+        whattype_command(whattype, Expr::Identifier { name: name.value, span: name.span })
+    },
     <showall:"showall"> => Command::ShowAll { span: showall },
     // set option (parser.y:171-178): `set quiet` / `set verbose` — the
     // command ends at the identifier, unlike the `set bindings` forms
@@ -76,7 +78,7 @@ pub Command: Command = {
     <set:"set"> <bindings:LetBindings> => set_command(set, bindings),
     // forget (parser.y:141-142,155-157): an identifier drops its global
     // binding; `name @ type` (identifier or operator) removes ONE overload.
-    <forget:"forget"> <name:"identifier"> => forget_command(forget, name),
+    <forget:"forget"> <name:TypeOrIdentifier> => forget_command(forget, name),
     <forget:"forget"> <name:ForgetTarget> <_at:"@"> <signature:SpecTypeNode> => {
         forget_overload_command(forget, name, signature)
     },
@@ -91,6 +93,13 @@ ForgetTarget: SpannedValue<String> = {
         value: operator.symbol,
         span: operator.span.expect("grammar operators carry spans"),
     },
+};
+
+// Original `id` accepts TYPE_ID as well as IDENT for type declarations and
+// forgetting. Do not extend IDENT-only expression and binding productions.
+TypeOrIdentifier: SpannedValue<String> = {
+    <name:"identifier"> => name,
+    <name:"type_name"> => name,
 };
 
 pub Expr: Expr = {
@@ -185,6 +194,7 @@ Cast: Expr = {
 
 TypeExprNode: TypeExpr = {
     <prim:"primitive_type"> => type_primitive(prim),
+    <name:"type_name"> => TypeExpr::Named { name: name.value, span: name.span },
     <span:"void"> => TypeExpr::Void { span },
     <open:"["> <inner:TypeUnionList> <close:"]"> => type_row(open, inner, close),
     <open:"["> <_star:"*"> <close:"]"> => type_wild_row(open, close),
@@ -224,13 +234,12 @@ TypeFieldNode: TypeField = {
 };
 
 // Type expressions inside a `set_type` spec additionally allow defined type
-// names (parser.y:784-796). These parallel the shared TypeExprNode rules so
-// the extra `"identifier"` alternative never leaks into expression/cast
-// contexts and perturbs their LR states.
+// names, including new recursive-group references. The extra IDENT alternative
+// never leaks into expression/cast contexts and perturbs their LR states.
 SpecTypeNode: TypeExpr = {
     <prim:"primitive_type"> => type_primitive(prim),
     <span:"void"> => TypeExpr::Void { span },
-    <name:"identifier"> => TypeExpr::Named {
+    <name:TypeOrIdentifier> => TypeExpr::Named {
         name: name.value,
         span: name.span,
     },
@@ -261,7 +270,7 @@ TypeEquations: Vec<TypeDefinition> = {
 };
 
 TypeEquation: TypeDefinition = {
-    <name:"identifier"> <_equals:"="> <spec:TypeSpecNode> => type_definition(name, spec),
+    <name:TypeOrIdentifier> <_equals:"="> <spec:TypeSpecNode> => type_definition(name, spec),
 };
 
 // `|`-separated variant slots; a missing slot is a void variant. Mirrors
@@ -746,6 +755,7 @@ extern {
         "boolean" => ParserToken::Boolean(<SpannedValue<bool>>),
         "string" => ParserToken::String(<SpannedValue<String>>),
         "identifier" => ParserToken::Identifier(<SpannedValue<String>>),
+        "type_name" => ParserToken::TypeName(<SpannedValue<String>>),
         "operator" => ParserToken::Operator(<SpannedValue<FormulaOperator>>),
         "operator_becomes" => ParserToken::OperatorBecomes(<SpannedValue<String>>),
         "primitive_type" => ParserToken::PrimitiveType(<SpannedValue<Prim>>),

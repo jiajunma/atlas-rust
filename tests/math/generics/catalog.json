@@ -187,6 +187,36 @@
       "intent": "reject",
       "scope": "The int result of a local generic identity call cannot satisfy an arbitrary rigid outer T result annotation.",
       "file": "rigid_function_result_rejected.atlas"
+    },
+    {
+      "id": "named_environment_controls",
+      "intent": "accept",
+      "scope": "Live type names in queries, the optional question form and redefinition; complete reports are retained, not only values.",
+      "file": "named_environment_controls.atlas"
+    },
+    {
+      "id": "named_type_expression_rejected",
+      "intent": "reject",
+      "scope": "A TYPE_ID is not an expression identifier; fail at syntax instead of looking it up as a value.",
+      "file": "named_type_expression_rejected.atlas"
+    },
+    {
+      "id": "named_type_binding_rejected",
+      "intent": "reject",
+      "scope": "A defined TYPE_ID cannot bind an ordinary function parameter where IDENT is required.",
+      "file": "named_type_binding_rejected.atlas"
+    },
+    {
+      "id": "named_recursive_result",
+      "intent": "accept",
+      "scope": "Resolve both recursive self signature and body result against the live named type environment.",
+      "file": "named_recursive_result.atlas"
+    },
+    {
+      "id": "named_recursive_result_rejected",
+      "intent": "reject",
+      "scope": "A named recursive [int] result cannot silently degrade to an undetermined result accepting a string row.",
+      "file": "named_recursive_result_rejected.atlas"
     }
   ]
 }

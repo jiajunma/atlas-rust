@@ -103,6 +103,34 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### An oracle loader failure invalidates differential evidence
+
+- Bridge3834754 passes136 unit checks and builds the Rust CLI, but its36
+  oracle arms never start: the build-only batch environment omitted GCC's
+  libstdc++ directory, producing GLIBCXX_3.4.26/29 loader errors.
+- Capture jobs must derive the runtime library directory from the selected
+  g++ and export LD_LIBRARY_PATH. Treat OTHER_FAILURE/timeouts/signals as
+  invalid oracle execution, not type rejection or compatibility evidence.
+- Preserve the failed capture and replay only the interpreters in a fresh
+  stage, rehashing the original build/source/command logs and exact candidate
+  binary. Do not rebuild or alter the already verified candidate just to repair
+  the test environment. The replay helper has explicit negative checker tests.
+
+### Type names need a live parsing and semantic environment
+
+- Original-backed capture3834702 accepts named casts/parameters and rejects
+  a wrong component at type analysis. Distinguish TYPE_ID from IDENT; type
+  names must not become ordinary expression or parameter-binding tokens.
+- Pass the live type table to both command parsing and redirect-body parsing.
+  Semantic casts, parameters and recursive results must use resolve_in, not
+  the diagnostic-only resolve helper that replaces unknown names by holes.
+- Latest type definitions retain names and definition locations. Legacy Rust
+  query/report text is not the latest oracle golden; preserve full-output
+  mismatches while migrating the alias table and scheme-carrying analyzer.
+- Read actual CWEB actions as well as prose: axis.w:4110 raises and lowers
+  the existing inference context through type abstraction, despite nearby
+  older prose claiming an unconstrained fresh context. Preserve substitutions.
+
 ### Type imports must carry pending assignments and their scope
 
 - Matching foundation3834447 passes38 type tests/3 coercion tests and CLI
