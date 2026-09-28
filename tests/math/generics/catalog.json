@@ -337,6 +337,42 @@
       "intent": "accept",
       "scope": "Exact source from alias_name_declares_a_variable: establish current-original declaration reporting and preserved projector/field mutation values before changing its historical unit expectation.",
       "file": "named_declaration_fields.atlas"
+    },
+    {
+      "id": "sequential_comma_declarations",
+      "intent": "accept",
+      "scope": "Provisional source-backed contract: an any_type block executes every comma-separated declaration sequentially, not just each SET group. Capture original before grammar integration.",
+      "file": "sequential_comma_declarations.atlas"
+    },
+    {
+      "id": "sequential_partial_failure",
+      "intent": "reject",
+      "scope": "Discover which earlier and later bindings survive a middle generic initializer's rigid-result type failure; retain full recovery output, not just a rejection label.",
+      "file": "sequential_partial_failure.atlas"
+    },
+    {
+      "id": "ordinary_parallel_declarations",
+      "intent": "reject",
+      "scope": "Ordinary SET parallel-binding control: a sibling initializer cannot reference the new preceding comma binding. Capture whether either declaration survives.",
+      "file": "ordinary_parallel_declarations.atlas"
+    },
+    {
+      "id": "any_type_keyword_rejected",
+      "intent": "reject",
+      "scope": "Latest ANY_TYPE is reserved and cannot be an ordinary value-binding identifier; capture command recovery before replacing the historical lexer expectation.",
+      "file": "any_type_keyword_rejected.atlas"
+    },
+    {
+      "id": "constructor_structural_uses",
+      "intent": "reject",
+      "scope": "Capture3835190 rejects adjacent >>> as one OPERATOR, not three generic closers. Earlier row/index/slice/mutation/function commands succeed. Preserve the rejected discovery source and use the spaced companion for nested expansion.",
+      "file": "constructor_structural_uses.atlas"
+    },
+    {
+      "id": "constructor_structural_uses_spaced",
+      "intent": "accept",
+      "scope": "Explicit constructor row/index/slice/mutation, function invocation and finite repeated constructor expansion, with separated closing angle tokens; preserve names and restore formal scope.",
+      "file": "constructor_structural_uses_spaced.atlas"
     }
   ]
 }

@@ -1,0 +1,12 @@
+set_type MathRows<T> = [T] !
+set xs=MathRows<int>:[2,3,5]
+prints("ROW",xs[1],xs[1:3],#xs)
+xs[0]:=7
+prints("CHANGED",xs)
+set_type MathFunction<T> = (T->T) !
+set f=MathFunction<int>:((int x):x+1)
+prints("FUNCTION",f(11))
+set_type MathId<T> = T !
+prints("NESTED",MathId<MathId<MathId<int>>>:13)
+set T=17
+prints("RESTORED",T)

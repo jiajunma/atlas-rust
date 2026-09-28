@@ -103,6 +103,32 @@ not a source-level C++ translation.
 
 ## Verified repair guard
 
+### Generic declarations and angle tokens have nonstandard boundaries
+
+- Original captures3835190/3835224 show that every comma-separated binding
+  in an any_type block executes separately: a bad middle initializer does
+  not undo the first binding or prevent the last from being installed.
+  Ordinary SET keeps parallel analysis and installs neither sibling when
+  the second refers to the not-yet-installed first. Preserve both fixtures.
+- Adjacent >>> is one relation OPERATOR, not three constructor closers.
+  Keep the rejected discovery source and the accepted spaced companion.
+  lexer.w:720-768 leaves single '<'/'>' without newline suppression;
+  maximal runs over <=> are operators and never fuse with ':='.
+- Name-analysis diagnostics can lack a 'Name error' heading. Test the exact
+  raw indentation/envelope: original Undefined identifier has two leading
+  spaces. A trimmed display is not classifier input; loader failures must
+  remain invalid. Full stdout/stderr equality is a separate gate.
+- A stage manifest must describe the files actually copied from its frozen
+  baseline. Capture3835154 stopped before execution because a local helper
+  hash was mixed with the older staged helper. Correct in a fresh stage,
+  preserving submitted stages and the failed guard.
+- Constructor build3835225 compiles and passes its new grammar-action tests,
+  but the older manually scoped bare-T test expects rejection at TYPE_VAR.
+  Once TYPE_VAR participates in type syntax, bare T still rejects, now at the
+  missing cast colon. Keep that rejection and a binding-position TYPE_VAR
+  rejection/recovery check; token-classification tests must not prohibit valid
+  type-prefix syntax while enforcing that variables are not value identifiers.
+
 ### Type-variable scope is lexical, and command boundaries remain observable
 
 - Capture3834951 accepts sibling `any_type T` scopes, while3834266 rejects

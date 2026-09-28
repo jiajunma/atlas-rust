@@ -55,6 +55,78 @@ No repair/after-pass yet. All these jobs are terminal; do not duplicate.
 
 ## Source-backed causes and port order
 
+### Constructor integration and declaration sequencing (in progress)
+
+R4 capture3835245 COMPLETE21s at atlas-generic-sequence-r4-20260928.iOSwHs6V,
+pin0f86b6a85a55aa0a41c9b6f2c1fd44d247315451dd1bd3765d28511dab58babc.
+All62 original intents now confirmed37accept/25reject;15 prior full-stream
+matches retained, using unchanged3835058candidate. Six classifier tests include
+the exact indented name-error envelope and false-positive checks; three bridge
+checker tests also pass. Report
+4a077edf0c9f07c4e847c74f1e7bfb9011e27a8221b358124ce821fa115b0941.
+This closes the classifier/capture issue, not constructor runtime acceptance.
+
+Constructor build3835225 FAILED5:09 after successful compilation and43type/
+3coercion passes. Syntax47pass1fail: the old manually scoped bare-T unit expects
+an error at TYPE_VAR, but TYPE_VAR is now a legal cast prefix (parser.y type),
+so missing ':' fails later. Both new parser action/application units pass. No
+session/full-core/CLI/capture runs reached. Report
+ea23464991656befd97b985f750c72688f76f7a1eb253494cb59bc80067fe385.
+R2 job3835267 retains rejection of bare T, adds the binding-position TYPE_VAR rejection
+and fresh-command restoration, and preserves Applied required contexts after
+structural matching. Its stage is atlas-constructor-build-r2-20260928.hoUj0ZQt,
+pin4eaeb6d8ce4be9911eaea0400f35143ff7cb1f547ed83c7b2fe1525a7d1a0f05;
+collect its new submission receipt. Do not rerun the terminal first build.
+
+The first build3835225 used atlas-constructor-build-20260928.u6JMxOEe,
+pin f5470e5c7383692b0ce9f9bd8f89323acf8fd6e06e58dc1b555639758627758a.
+Candidate connects constructor formal reductions to shared lazy scopes, parses
+and validates applications, retains arity/names, and uses Cow for structural
+consumers: ordinary types borrow; substituted applications own their expansion.
+It ports maximal relation-token scanning, retaining single angles as comparison
+operators. Six new units, full-core gate and62-case capture requested; no passing
+candidate claim. any_type bodies, sequential commands, generic recursive groups
+and scheme-carrying inference remain incomplete.
+
+Capture3835154 FAILED3s before execution: local math_suite.py hash disagreed
+with the older frozen helper. Report
+da79bd1c6a2ca930091627e53413f7107cd5c33f0f93d638ae3e2067d3fc5d55.
+Capture3835190 FAILED28s at atlas-generic-sequence-r2-20260928.7OYFmnTc
+retains61 three-arm captures using the unchanged3835058candidate. Aggregate
+CAPTURE_FAILED_ORACLE_EXECUTION: ordinary name rejection lacks a literal Name
+error heading, conservatively classified OTHER_FAILURE. Report
+0b43d2526842cbd788aba3997093feeb023d0b266f34bd99d42521f0cf5a34c2.
+Capture3835224 FAILED35s at atlas-generic-sequence-r3-20260928.fngY244h
+adds the spaced companion (62cases,61classified oracle intents confirmed), but
+the new classifier missed two leading spaces. Preserve report
+bd58cdcf27c779edde7c186ef1070e6764c02c4a737c66ef46219b02877b8163.
+The local checker now retains the exact raw error envelope; needs HPC rerun.
+Build3835225's frozen checker predates that indentation fix, so will still flag
+that case if it reaches capture. Never change its submitted stage.
+
+Raw original results establish these next implementation contracts:
+
+- Comma-dependent generic definitions give COMMA7seven. With a bad middle
+  rigid T:1 initializer, partial_first and partial_last still install and give
+  FIRST7seven and LAST11eleven; partial_bad has no overload. T restores to29.
+- Ordinary parallel SET installs neither sibling when the second initializer
+  calls ordinary_first; both queries report no overloads, recovery prints31.
+- `set any_type=3` rejects at ANY_TYPE, but unchanged Rust accepts it. Keep
+  that wrong-acceptance fixture; keyword/AST/analyzer repair is not done.
+- Row constructors give index/slice/length3,[3,5],3, mutation[7,3,5], and a
+  function-constructor call12. Adjacent >>> fails only the nested application
+  command. Spaced closers yield NESTED13 and all commands succeed; T restores
+  to17. Keep both sources, not just the accepted companion.
+
+Next analyzer/event boundary: current TypedContext::execute returns either a
+whole event vector or one error, while Session dispatch appends one diagnostic
+on Err. An any_type sequential block must retain earlier reports AND emit an
+intermediate diagnostic AND keep executing later bindings. Do not reuse ordinary
+execute_set's zipped parallel group or return on its first error. Preserve the
+source order per raw binding (not per SET token), including declaration reports,
+printed runtime effects and recovery. global.w:926-930/do_global_set is the
+executable reference; each initializer gets its own abstraction wrapper.
+
 ### Complete-core gate and declaration expectation migration
 
 Capture3835038 COMPLETE16s independently confirms the exact historical unit

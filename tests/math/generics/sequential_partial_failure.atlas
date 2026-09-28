@@ -1,0 +1,8 @@
+any_type T begin
+set partial_first(T x)=T:x, partial_bad(T x)=T:1, partial_last(T x)=T:partial_first(x)
+end
+prints("FIRST",partial_first(7),partial_first("seven"))
+prints("LAST",partial_last(11),partial_last("eleven"))
+whattype partial_bad ?
+set T=29
+prints("RESTORED",T)

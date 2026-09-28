@@ -2,6 +2,15 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
+Constructor R2 candidate3835267 is in progress (not accepted): actual grammar
+actions/application arity and Cow structural consumers, six new units, full-core
+gate and62-case capture. First3835225 compiles43type/3coercion passes but has one
+stale syntax diagnostic assertion (47pass1fail), now revised with a binding/
+recovery control. Generic abstraction/scheme inference remains open. Capture
+3835245 COMPLETE21s confirms all62 original intents, retaining15 full matches;
+three failed captures remain. See the constructor/sequencing section of
+`slices/generic_language_2026-09-28.md`. Do not duplicate the submitted R2 build.
+
 Current build3835058 COMPLETE7:45 verifies the complete407-test core inventory:
 405pass,0ignored, two known polymorphic assignment failures separately executed.
 150 filtered checks and CLI check/build pass; all56 original intents confirmed,

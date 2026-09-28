@@ -56,6 +56,13 @@ def observed_category(case, record, streams):
                        err, re.I)
     if code == 1 and kinds:
         return "REJECTED_" + "+".join(sorted({x.decode().upper() for x in kinds}))
+    # Capture3835190: original name analysis has no literal "Name error"
+    # header. Require the analysis envelope and anchored identifier message;
+    # a loader failure or printed error words must stay OTHER_FAILURE.
+    if (code == 1 and re.search(rb"(?m)^Error in expression .+ at .+$", err)
+            and re.search(rb"(?m)^  Undefined identifier '[^'\n]+'$", err)
+            and b"Expression analysis failed" in err):
+        return "REJECTED_NAME"
     return "OTHER_FAILURE"
 
 

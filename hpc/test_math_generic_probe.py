@@ -12,9 +12,9 @@ class GenericContractCaptureTests(unittest.TestCase):
 
     def test_catalog_has_positive_and_rejected_cases(self):
         cases = load_cases(Path(__file__).resolve().parents[1])
-        self.assertEqual(len(cases), 56)
-        self.assertEqual(sum(c["intent"] == "accept" for c in cases), 35)
-        self.assertEqual(len({c["id"] for c in cases}), 56)
+        self.assertEqual(len(cases), 62)
+        self.assertEqual(sum(c["intent"] == "accept" for c in cases), 37)
+        self.assertEqual(len({c["id"] for c in cases}), 62)
         self.assertTrue(all(c["source"].endswith("quit\n") for c in cases))
 
     def test_acceptance_requires_markers_and_empty_diagnostics(self):
@@ -27,6 +27,16 @@ class GenericContractCaptureTests(unittest.TestCase):
         self.assertEqual(observed_category(self.case, failed, (self.output, b"Syntax error")), "REJECTED_SYNTAX")
         self.assertEqual(observed_category(self.case, failed, (self.output, b"Type error")), "REJECTED_TYPE")
         self.assertEqual(observed_category(self.case, failed, (self.output, b"unclassified")), "OTHER_FAILURE")
+        # Exact indentation/envelope retained from original3835190/3835224.
+        name_error = (b"Error in expression ordinary_first at <standard input>:2:60-74\n"
+                      b"  Undefined identifier 'ordinary_first'\n"
+                      b"Error in 'set' command at <standard input>:2:0-78:\n"
+                      b"Expression analysis failed\n"
+                      b"  Command 'set (ordinary_first,ordinary_second)' not executed, nothing defined.\n")
+        self.assertEqual(observed_category(self.case, failed, (self.output, name_error)), "REJECTED_NAME")
+        self.assertEqual(observed_category(self.case, failed, (name_error, b"unclassified")), "OTHER_FAILURE")
+        self.assertEqual(observed_category(self.case, self.success, (self.output, name_error)), "OTHER_FAILURE")
+        self.assertEqual(observed_category(self.case, failed, (self.output, b"Undefined identifier 'missing'")), "OTHER_FAILURE")
 
     def test_timeouts_and_signals_never_become_rejections(self):
         for code, expected in ((124, "TIMEOUT"), (137, "RESOURCE_OR_SIGNAL_FAILURE")):

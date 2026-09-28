@@ -1,0 +1,4 @@
+set ordinary_first(int x)=int:x, ordinary_second(int x)=int:ordinary_first(x)
+whattype ordinary_first ?
+whattype ordinary_second ?
+prints("RECOVERED",31)

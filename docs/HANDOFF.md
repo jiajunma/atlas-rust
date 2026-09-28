@@ -6,7 +6,25 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
-CURRENT BUILD3835058 COMPLETE7:45 at atlas-lexical-core-build-20260928.QM7IzLdg,
+IN PROGRESS: constructor R2 candidate3835267, stage
+atlas-constructor-build-r2-20260928.hoUj0ZQt, pin
+4eaeb6d8ce4be9911eaea0400f35143ff7cb1f547ed83c7b2fe1525a7d1a0f05.
+Grammar actions, arity, retained names, Cow structural consumers and relation
+tokens implemented locally; six new units/full413-test core gate submitted.
+First build3835225 FAILED5:09: compiles,43type/3coercion passes, syntax47pass1fail
+on an obsolete bare-T diagnostic location assertion; both new parser tests pass.
+R2 preserves bare-T rejection and adds binding-position TYPE_VAR rejection and
+scope recovery. Full-core/CLI/capture not reached in the first build; do not
+duplicate either job or claim R2 passed. New capture3835245 COMPLETE21s confirms
+all62 original intents37accept/25reject,15 previous full-stream matches using
+unchanged3835058candidate. Exact indented name-error classifier now verified;
+all three preceding failed captures remain. Report
+4a077edf0c9f07c4e847c74f1e7bfb9011e27a8221b358124ce821fa115b0941.
+See the constructor/sequencing section of the indexed generic-language slice.
+Original remains7e1b958c; GitHub main05625c5d unchanged. Preserve this wave's
+uncommitted implementation and collect the exact new job before committing it.
+
+PREVIOUS VERIFIED BUILD3835058 COMPLETE7:45 at atlas-lexical-core-build-20260928.QM7IzLdg,
 pin550899263c93e43a298b1481e353ab936435e19013f6637e0b403e649cf18fa6.
 Full407-test inventory verified:405 pass,0ignored, and both known assignment
 failures execute separately at their exact assertions.150 filtered checks and
