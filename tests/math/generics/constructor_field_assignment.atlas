@@ -1,0 +1,13 @@
+set_type MathWritable<T> = (T writable_first,T writable_second) !
+set w=MathWritable<int>:(2,3)
+w.writable_first:=5
+w.writable_second:=7
+prints("FIELDS_CHANGED",w)
+set writable_first(MathWritable<int> x)=99
+w.writable_first:=11
+prints("INDEPENDENT",w)
+set_type MathMonoWritable = (int mono_first,int mono_second)
+set mono=(MathMonoWritable:(2,3))
+set mono_first(MathMonoWritable x)=99
+mono.mono_first:=13
+prints("MONOMORPHIC",mono,mono.mono_first)

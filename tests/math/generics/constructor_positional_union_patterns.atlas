@@ -1,0 +1,5 @@
+set_type MathPosition<T> = (T position_some | void position_none) !
+set pos=MathPosition<int>:position_some(7)
+set neg=MathPosition<int>:position_none()
+prints("POSITION",case pos | (x):x+1 | ():0 esac)
+prints("EMPTY",case neg | (x):x+1 | ():0 esac)

@@ -128,6 +128,35 @@ not a source-level C++ translation.
   missing cast colon. Keep that rejection and a binding-position TYPE_VAR
   rejection/recovery check; token-classification tests must not prohibit valid
   type-prefix syntax while enforcing that variables are not value identifiers.
+- Constructor R2 build3835267 reaches all expected structural values, but its
+  new session test inspects Output instead of ReportLine. Typed prints emits
+  ReportLine, including a newline. Keep the failed run and assert whole lines
+  in the actual event channel; a log containing right values is not a passing
+  full-core/CLI/capture gate. R3 build3835776 passes the full413-test inventory
+  (411pass, two known failures separately executed) and62-case capture.
+- Member capture3835786 confirms generated generic projectors participate in
+  normal ambiguity: a concrete overload does not win over a generic match.
+  Repeated injector variables reject mixed arguments; result constraints share
+  the argument's substitution. Keep these negatives and their recovery output.
+  The first field-instance probe accidentally binds reserved keyword fi;
+  preserve its rejection and use the separately named valid companion.
+- Capture3836211 verifies that field assignment uses matching type definitions,
+  not the current projector closure. A generic same-name concrete overload and
+  a monomorphic projector replaced by a function returning99 both still allow
+  field writes in original; Rust rejects them. Follow executable axis.w:8824+
+  and axis-types.w:1454 matching_bindings, not stale prose above that code.
+  Search retained type slots and reject multiple field/tag candidates.
+- The positional-union discovery uses invalid ():0; the zero-argument lambda
+  literal is @:0 (parser.y:261). Preserve the rejected source and its valid
+  companion. Syntax failures do not validate applied-union branch inference.
+- Fixing that lambda does NOT make the old positional case syntax valid:
+  capture3836223 rejects case/in/function branches in latest original.
+  parser.y:426/489 uses case subject | (pattern): body | ... esac for untagged
+  union discrimination; case/in is the integer-case grammar. Capture the
+  current patterns and the isolated monomorphic legacy negative before changing
+  historical casefor_b6 tests. R4 capture3836236 confirms original8/0 for the
+  current pattern syntax, Rust rejection, and original rejection/Rust acceptance
+  of the isolated legacy syntax. An old passing unit is not the latest contract.
 
 ### Type-variable scope is lexical, and command boundaries remain observable
 

@@ -1,0 +1,11 @@
+set_type MathMaybe<T> = (T context_just | void context_nothing) !
+set mi=MathMaybe<int>:context_just(7)
+set ms=MathMaybe<string>:context_just("seven")
+set ni=MathMaybe<int>:context_nothing()
+set ns=MathMaybe<string>:context_nothing()
+prints("INT",case mi | context_just(x): x+1 | context_nothing: 0 esac)
+prints("STRING",case ms | context_just(x): x | context_nothing: "none" esac)
+prints("NONE",case ni | context_just: 1 | context_nothing: 0 esac)
+prints("NONE_STRING",case ns | context_just: 1 | context_nothing: 0 esac)
+whattype ni
+whattype ns

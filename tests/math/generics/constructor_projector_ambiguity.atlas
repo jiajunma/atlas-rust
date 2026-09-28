@@ -1,0 +1,6 @@
+set_type MathAmbiguous<S,T> = (S ambiguous_field,T other_field) !
+set ambiguous_field(MathAmbiguous<int,int> x)=99
+set ai=MathAmbiguous<int,int>:(7,9)
+ai.ambiguous_field
+set ar=MathAmbiguous<rat,string>:(3/4,"r")
+prints("RECOVER",ar.ambiguous_field)

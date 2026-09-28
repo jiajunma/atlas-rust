@@ -49,6 +49,20 @@ cases with easier inputs under the same ID.
 
 ## Repair candidates (not remote main)
 
+Latest script-loading prerequisite: constructor commitadf40792 is verified
+by HPC3835776 (413core tests:411pass, two retained known assignment failures
+each executed separately;155filtered checks and CLI pass). Its62-case capture
+has18 complete original matches, previously15. Explicit generic constructors,
+arity rejection and row/function structural uses are now connected; generated
+projector/injector inference, any_type and latest basic.at loading remain open.
+Member replays expose wrong concrete-overload selection and rejected field
+writes, plus obsolete positional-union syntax still accepted by Rust. Keep
+these failures in the separate generic prerequisite corpus; they do not replace
+the108-case classical/exceptional mathematical catalog. See the indexed
+generic-language slice for exact originals, pins and subsequent captures.
+No debug-candidate timings are speed ratios, and no new high-level unitarity,
+Hodge, AV-ann or associated-cycle acceptance is claimed by this language work.
+
 Latest candidate3833716 is independently reviewed by3833739:
 14 complete mathematical matches and1 expected rejection across15 cases.
 This includes A2/B2/C2/D4/G2/F4/E6 core KL, D4 FPP wall, partial-KL

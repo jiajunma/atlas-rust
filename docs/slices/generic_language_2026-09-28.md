@@ -57,6 +57,118 @@ No repair/after-pass yet. All these jobs are terminal; do not duplicate.
 
 ### Constructor integration and declaration sequencing (in progress)
 
+Member R4 replay3836236 COMPLETE26s at
+atlas-constructor-members-r4-20260928.9fKTqaYu, pin
+ad85d47acaf9d5629424abd67db4782055bebb6d4438632ac17e59c860ba5a26.
+Report257b50d1d83d595dfca7cdbccbf105a5132cd68e418986a8e57710af2960d8f1.
+All73 original intents confirmed41accept/32reject;18full-stream matches. Six
+capture-checker and three bridge-checker tests pass; exact3835776 binary/source
+and input hashes are rechecked, every arm retains GNU wall time/peak RSS.
+Current pattern-based positional union gives POSITION8/EMPTY0 in original,
+but Rust rejects its grammar (and earlier generic injection). Conversely the
+isolated monomorphic legacy case/in/function source is rejected by original
+but wrongly accepted by both Rust arms, printing LEGACY4/RECOVER17. Keep this
+explicit wrong acceptance alongside the valid companion. All jobs in this wave
+are terminal; no reruns needed. Next work is active inference/any_type plus
+current discrimination/field-binding semantics, not another unchanged capture.
+
+Constructor R3 build3835776 COMPLETE8:34, report
+cdd254bf8cafe5b01490d722b894e200ae3f1816a9b7fe0e72bad09563959824.
+Full413-test inventory:411pass/0ignored, both known assignment regressions
+separately execute/fail at their expected assertions.155 filtered checks and
+CLI check/build pass. All62 original intents confirmed37accept/25reject;
+18 whole stdout/stderr matches, previously15. New complete matches include
+duplicate formal declaration and the spaced structural constructor fixture;
+named function-application fixture also now matches. Arity negatives reach the
+right error category and match stdout, but stderr presentation still differs.
+Nested pair, repeated/unused formal projectors now parse/construct but fail
+at generic overload matching, not syntax. Core run13.294s/157696KiB; these
+debug metrics are not a performance comparison. FPP/F4/E6 regression units
+remain in the full passing suite. No full generic-language/math acceptance.
+
+R2 constructor build3835267 FAILED4:38, report
+cd6fbcb13feacf29d451b9c748f785303332e3ad2f88280534eab5bbaf0f62e9.
+43type/3coercion/48syntax checks pass; session40pass/1fail. The new structural
+test looked for Output events, while prints actually emits ReportLine. Its
+failure log contains every correct expected value, including NESTED13. R3
+build3835776 changes only that assertion to complete ReportLine strings with
+newlines; all runtime source remains R2. Fresh stage
+atlas-constructor-build-r3-20260928.WDBn6GSS, pin
+b178d4d0449577858f0719957045c2a5a61bc7104fddd0a20da54d76e4803ebd.
+Full-core/CLI/capture evidence is from R3, not the failed R2.
+
+Member discovery3835786 COMPLETE29s, unchanged3835058 candidate; report
+19290257a122c50dac212cd92cfd0e34edaab7d28ac6cf783cf43340328a8456.
+All67 executions classified,66 provisional intents confirmed. The first new
+projector fixture accidentally binds reserved keyword fi; original rejects FI.
+Keep that source and add a valid int_fields/rat_fields companion, not a golden
+based on the failed acceptance hypothesis. Other new original contracts:
+
+- Generic union constructors infer int/string both from payloads and from
+  return-only context; tagged case gives INT8, STRINGseven, NONE0, NONE_STRING0.
+- Repeated (T,T) injector rejects (7,"seven"), then accepts(7,9) and RECOVER16.
+- Generic projector plus concrete overload coexist; int/int invocation is
+  ambiguous, while rat/string recovery yields3/4. No concrete precedence.
+- An int projector cannot satisfy string context; its sibling still returns
+  seven after the failed command. Argument/result substitutions must be linked.
+
+Member R2 replay3836211 COMPLETE36s uses the exact3835776 constructor binary;
+report36bfb7d7cbafeb3c2587eaa8621c8d656cd32745f01223364d87600b74f3f6b7.
+All70 executions classified,69 provisional intents confirmed,18full matches.
+Valid projector calls alternate FIRST7seven, SECOND3/4[2,3], FIRST_AGAIN7seven,
+with int/rat types in original; Rust now parses but rejects the generic calls.
+Rust also returns99 for the ambiguous concrete call, only failing later at
+rat recovery. The overall nonzero exit does NOT mean it rejected the intended
+call: keep full streams, not just rejected categories.
+
+Field assignment original gives FIELDS_CHANGED(5,7), INDEPENDENT(11,7), then
+MONOMORPHIC(13,3)99 after replacing a monomorphic projector by an ordinary
+function. Rust rejects all four writes (improper selection/not-projector).
+This establishes the executable-source repair below; not hypothetical now.
+The positional union discovery fails on invalid empty-lambda literal ():0,
+not on constructor application. Keep the rejected source; a separate companion
+uses (@:0), the actual parser.y:261 lambda form. Replay3836223 COMPLETE26s
+nevertheless DISPROVES its positional-case acceptance: original rejects the
+bar after case/in, despite accepting both constructor initializers. Report
+1bdd5f611420cdff30e7cee87bade9be0bf39995f15775bf53498ba7ec7b6b70.
+71executions classified/70intents confirmed/18full matches. Preserve both
+rejected sources and the originally optimistic _valid filename.
+
+Latest parser.y:426/489 is explicit: untagged union discrimination is
+case subject | (pattern):body | ... esac. case/in has integer commalist
+branches, not function branches. The old Rust grammar and casefor_b6 unit
+still accept the historical form. The new constructor_positional_union_patterns
+fixture uses current syntax; legacy_union_case_functions isolates the obsolete
+form without generics, so constructor failure cannot mask wrong acceptance.
+Catalog73cases41accept32reject is confirmed by R4 replay of the same3835776 binary.
+These new discoveries must be repaired, not erased by retaining historical
+unit expectations or reclassifying the old syntax as supported.
+
+Executable-source audit for the next repair (not implemented yet):
+axis.w:1940+ matches every exact variant by unification, substitutes the result
+with the SAME imported shift, conforms the first result before checking for a
+second match, and rejects ambiguity. Coercion pass skips polymorphic variants.
+Function-valued identifier capture instead unifies the complete function type
+(argument AND result), per axis.w:1660+. Do not repair projectors by name or
+erase each variable to an unrelated Undetermined hole.
+
+The active analyzer still uses bare Type/TypeCell without inference floors.
+Generic argument/result constraints, remaining free variables, and each tuple
+component's independent scope must survive conversion. Existing InferredType
+helpers cover these contracts but their presence is not active integration.
+
+Another executable/prose mismatch: current axis.w:8824+ field assignment uses
+type_expr::matching_bindings, filters by field name, requires one candidate,
+and gets its substituted tuple component. It does NOT consult the current
+projector function value despite preceding older prose. axis-types.w:1454
+searches every retained type-table slot with fields, via has_unifier, including
+constructor applications. Tagged case uses the same candidates filtered by
+all tags (axis.w:5530+); positional case expands the applied union. Rust's
+resolve_projector still requires a matching closure and Expr::Case only accepts
+Tabled, not Applied. New field-assignment and positional-union fixtures await
+capture with the corrected projector companion. Preserve old type slots;
+do not substitute only a single currently named definition for this search.
+
 R4 capture3835245 COMPLETE21s at atlas-generic-sequence-r4-20260928.iOSwHs6V,
 pin0f86b6a85a55aa0a41c9b6f2c1fd44d247315451dd1bd3765d28511dab58babc.
 All62 original intents now confirmed37accept/25reject;15 prior full-stream
@@ -75,8 +187,8 @@ ea23464991656befd97b985f750c72688f76f7a1eb253494cb59bc80067fe385.
 R2 job3835267 retains rejection of bare T, adds the binding-position TYPE_VAR rejection
 and fresh-command restoration, and preserves Applied required contexts after
 structural matching. Its stage is atlas-constructor-build-r2-20260928.hoUj0ZQt,
-pin4eaeb6d8ce4be9911eaea0400f35143ff7cb1f547ed83c7b2fe1525a7d1a0f05;
-collect its new submission receipt. Do not rerun the terminal first build.
+pin4eaeb6d8ce4be9911eaea0400f35143ff7cb1f547ed83c7b2fe1525a7d1a0f05.
+Both failed build reports are retained. Do not rerun either terminal job.
 
 The first build3835225 used atlas-constructor-build-20260928.u6JMxOEe,
 pin f5470e5c7383692b0ce9f9bd8f89323acf8fd6e06e58dc1b555639758627758a.

@@ -12,9 +12,9 @@ class GenericContractCaptureTests(unittest.TestCase):
 
     def test_catalog_has_positive_and_rejected_cases(self):
         cases = load_cases(Path(__file__).resolve().parents[1])
-        self.assertEqual(len(cases), 62)
-        self.assertEqual(sum(c["intent"] == "accept" for c in cases), 37)
-        self.assertEqual(len({c["id"] for c in cases}), 62)
+        self.assertEqual(len(cases), 73)
+        self.assertEqual(sum(c["intent"] == "accept" for c in cases), 41)
+        self.assertEqual(len({c["id"] for c in cases}), 73)
         self.assertTrue(all(c["source"].endswith("quit\n") for c in cases))
 
     def test_acceptance_requires_markers_and_empty_diagnostics(self):

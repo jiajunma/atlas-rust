@@ -2,14 +2,30 @@
 
 ## Mathematical validation against latest original — 2026-09-28
 
-Constructor R2 candidate3835267 is in progress (not accepted): actual grammar
-actions/application arity and Cow structural consumers, six new units, full-core
-gate and62-case capture. First3835225 compiles43type/3coercion passes but has one
-stale syntax diagnostic assertion (47pass1fail), now revised with a binding/
-recovery control. Generic abstraction/scheme inference remains open. Capture
-3835245 COMPLETE21s confirms all62 original intents, retaining15 full matches;
-three failed captures remain. See the constructor/sequencing section of
-`slices/generic_language_2026-09-28.md`. Do not duplicate the submitted R2 build.
+Constructor R3 candidate3835776 COMPLETE8:34: full413-test inventory confirms
+411pass/0ignored and both known assignment failures separately execute;155
+filtered tests and CLI pass.62-case capture confirms all original intents;
+18full-stream matches versus15previously. Explicit structural constructors now
+match; arity negatives reach the right category, but projector unification and
+any_type still need implementation. Report/source pins are in HANDOFF.
+R2 build3835267
+passes43type/3coercion/48syntax checks then fails its new session test because
+it inspects Output rather than typed ReportLine; all expected values are in
+the failure log. R3 changes only that assertion and reruns full-core/CLI/capture.
+Keep both failed builds; source/pin/report details are in HANDOFF and the indexed
+generic-language slice. Member capture3835786 confirms66/67 provisional intents:
+generated-projector ambiguity and linked result constraints are real; the
+accidental reserved fi variable is a fixture syntax failure, retained with a
+separate valid companion. Replay3836211 verifies wrong projector ambiguity
+(Rust returns99) and field-assignment rejection.3836223 disproves the historical
+case/in/function union syntax against latest original. Both discovery failures
+remain. Catalog73cases41accept32reject adds current positional-pattern syntax
+and an isolated monomorphic legacy negative. Replay3836236 COMPLETE26s using
+the exact3835776 candidate confirms all73original intents and18full matches;
+the current pattern case gives8/0, while Rust wrongly accepts the legacy form.
+All jobs terminal; runtime committedadf40792. Continue active inference and
+field/discrimination repairs, not another unchanged contract replay.
+Actual any_type scopes, scheme inference and latest high-level math remain open.
 
 Current build3835058 COMPLETE7:45 verifies the complete407-test core inventory:
 405pass,0ignored, two known polymorphic assignment failures separately executed.

@@ -6,23 +6,58 @@ Current user objective now ALSO requires root-cause analysis and sequential
 repairs of discovered errors, recording reusable lessons in AGENTS/indexed docs.
 Do not stop at inventorying defects. All testing/builds remain HPC-only.
 
-IN PROGRESS: constructor R2 candidate3835267, stage
-atlas-constructor-build-r2-20260928.hoUj0ZQt, pin
-4eaeb6d8ce4be9911eaea0400f35143ff7cb1f547ed83c7b2fe1525a7d1a0f05.
-Grammar actions, arity, retained names, Cow structural consumers and relation
-tokens implemented locally; six new units/full413-test core gate submitted.
-First build3835225 FAILED5:09: compiles,43type/3coercion passes, syntax47pass1fail
-on an obsolete bare-T diagnostic location assertion; both new parser tests pass.
-R2 preserves bare-T rejection and adds binding-position TYPE_VAR rejection and
-scope recovery. Full-core/CLI/capture not reached in the first build; do not
-duplicate either job or claim R2 passed. New capture3835245 COMPLETE21s confirms
-all62 original intents37accept/25reject,15 previous full-stream matches using
-unchanged3835058candidate. Exact indented name-error classifier now verified;
-all three preceding failed captures remain. Report
-4a077edf0c9f07c4e847c74f1e7bfb9011e27a8221b358124ce821fa115b0941.
-See the constructor/sequencing section of the indexed generic-language slice.
-Original remains7e1b958c; GitHub main05625c5d unchanged. Preserve this wave's
-uncommitted implementation and collect the exact new job before committing it.
+VERIFIED constructor R3 candidate3835776 COMPLETE8:34, stage
+atlas-constructor-build-r3-20260928.WDBn6GSS, pin
+b178d4d0449577858f0719957045c2a5a61bc7104fddd0a20da54d76e4803ebd.
+Runtime remains R2; only the new structural unit now checks complete ReportLine
+strings rather than the wrong Output channel. R2 build3835267 FAILED4:38,
+43type/3coercion/48syntax pass, session40pass/1fail, report
+cd6fbcb13feacf29d451b9c748f785303332e3ad2f88280534eab5bbaf0f62e9.
+Its failure log contains all five correct values; no full-core/CLI/capture was
+reached. Keep both failed constructor builds. R3 full413-test inventory confirms
+411pass/0ignored and both known assignment failures execute separately at their
+exact assertions.155filtered tests and CLI check/build pass; all62original
+intents confirmed37accept25reject,18full-stream matches (previously15). Report
+cdd254bf8cafe5b01490d722b894e200ae3f1816a9b7fe0e72bad09563959824.
+Source hashes match the eight runtime files committed as adf40792. Arity rejection category
+matches but stderr differs; generated projectors still fail unification.
+This is not full generic/latest-basic.at acceptance; no debug speed ratios.
+
+Member discovery3835786 COMPLETE29s with unchanged3835058 candidate confirms
+66/67 provisional intents, report
+19290257a122c50dac212cd92cfd0e34edaab7d28ac6cf783cf43340328a8456.
+The failed intent binds reserved fi; keep its rejected source and add a separate
+int_fields/rat_fields companion. Generic union context, repeated-argument
+rejection/recovery, generic/concrete ambiguity and linked result rejection are
+now captured. Replay3836211 COMPLETE36s proves original accepts generic field
+writes and monomorphic writes even after a non-projector overload replaces the
+projector; Rust rejects all four writes. Rust also returns99 for the ambiguous
+concrete call, then fails only at rat recovery. Whole-stream comparison is
+essential. Report36bfb7d7cbafeb3c2587eaa8621c8d656cd32745f01223364d87600b74f3f6b7.
+Its positional case discovery has invalid ():0. Replay3836223 COMPLETE26s then
+disproves acceptance even with (@:0): latest original requires case/bar/pattern
+clauses for positional union discrimination, not case/in/function branches.
+Report1bdd5f611420cdff30e7cee87bade9be0bf39995f15775bf53498ba7ec7b6b70.
+Preserve both rejected discovery sources and the historically named _valid file.
+Catalog73cases41accept32reject adds current pattern syntax and a monomorphic
+legacy-syntax negative. Replay3836236 COMPLETE26s at
+atlas-constructor-members-r4-20260928.9fKTqaYu, pin
+ad85d47acaf9d5629424abd67db4782055bebb6d4438632ac17e59c860ba5a26,
+using the exact verified3835776 binary confirms all73 original intents,18
+full-stream matches,6capture+3bridge checker tests. Report
+257b50d1d83d595dfca7cdbccbf105a5132cd68e418986a8e57710af2960d8f1.
+Original current-pattern case gives POSITION8/EMPTY0; Rust rejects. Original
+rejects the monomorphic legacy syntax, but both Rust arms accept and print
+LEGACY4/RECOVER17. All jobs in this wave are terminal; no duplicate or replay
+needed. Runtime is committedadf40792; proceed to active inference/semantics.
+The indexed generic-language slice records executable field-binding lookup
+versus stale projector-closure prose, and the linked overload inference port.
+Next active integration must preserve linked argument/result substitutions and
+ambiguity while migrating Analysis/TypeCell floors; any_type remains the latest
+basic.at blocker. Field/tag matching must search retained type definitions.
+Historical casefor_b6 syntax expectations need current-original migration,
+not silent golden replacement. No new high-level mathematical acceptance.
+Original7e1b958c and GitHub main05625c5d unchanged; HPC Git ls-remote verified.
 
 PREVIOUS VERIFIED BUILD3835058 COMPLETE7:45 at atlas-lexical-core-build-20260928.QM7IzLdg,
 pin550899263c93e43a298b1481e353ab936435e19013f6637e0b403e649cf18fa6.

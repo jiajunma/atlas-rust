@@ -1,0 +1,8 @@
+set_type MathFields<S,T> = (S instance_left,T instance_right) !
+set fi=MathFields<int,string>:(7,"seven")
+set fr=MathFields<rat,[int]>:(3/4,[2,3])
+prints("FIRST",fi.instance_left,fi.instance_right)
+prints("SECOND",fr.instance_left,fr.instance_right)
+prints("FIRST_AGAIN",fi.instance_left,fi.instance_right)
+whattype fi.instance_left
+whattype fr.instance_left

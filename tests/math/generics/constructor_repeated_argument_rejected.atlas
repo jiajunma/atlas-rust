@@ -1,0 +1,4 @@
+set_type MathTwice<T> = ((T,T) twice_pair | void twice_empty) !
+twice_pair(7,"seven")
+set ok=MathTwice<int>:twice_pair(7,9)
+prints("RECOVER",case ok | twice_pair(a,b): a+b | twice_empty: 0 esac)

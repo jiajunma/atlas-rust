@@ -373,6 +373,72 @@
       "intent": "accept",
       "scope": "Explicit constructor row/index/slice/mutation, function invocation and finite repeated constructor expansion, with separated closing angle tokens; preserve names and restore formal scope.",
       "file": "constructor_structural_uses_spaced.atlas"
+    },
+    {
+      "id": "constructor_field_instances",
+      "intent": "reject",
+      "scope": "Discovery3835786 rejects the accidental binding name fi, a reserved keyword. Preserve the source; the valid companion uses int_fields/rat_fields to reach independent generic projector instantiation.",
+      "file": "constructor_field_instances.atlas"
+    },
+    {
+      "id": "constructor_union_context",
+      "intent": "accept",
+      "scope": "Provisional original contract: generic union injectors infer element types from arguments or return-only context, and case bindings expose the substituted payload type.",
+      "file": "constructor_union_context.atlas"
+    },
+    {
+      "id": "constructor_repeated_argument_rejected",
+      "intent": "reject",
+      "scope": "Provisional original contract: repeated constructor variables in an injector argument must share one substitution; rejection must not poison a later concrete call.",
+      "file": "constructor_repeated_argument_rejected.atlas"
+    },
+    {
+      "id": "constructor_projector_ambiguity",
+      "intent": "reject",
+      "scope": "Provisional original contract: generic generated projector and concrete overload can coexist, but a call matching both is ambiguous; retain independent-rat recovery.",
+      "file": "constructor_projector_ambiguity.atlas"
+    },
+    {
+      "id": "constructor_projector_result_rejected",
+      "intent": "reject",
+      "scope": "Provisional original contract: a projector's argument fixes its result type; incompatible required string context cannot independently reinfer the returned variable.",
+      "file": "constructor_projector_result_rejected.atlas"
+    },
+    {
+      "id": "constructor_field_assignment",
+      "intent": "accept",
+      "scope": "Provisional executable axis.w contract: field assignment locates matching type bindings, not overload function values. Test a generic field with a concrete same-name overload, plus a monomorphic projector replaced by an ordinary function; both must remain writable.",
+      "file": "constructor_field_assignment.atlas"
+    },
+    {
+      "id": "constructor_positional_union",
+      "intent": "reject",
+      "scope": "Discovery3836211 rejects ():0: the empty-argument lambda literal uses @:0. Preserve this source and use the valid companion for applied positional union semantics.",
+      "file": "constructor_positional_union.atlas"
+    },
+    {
+      "id": "constructor_field_instances_valid",
+      "intent": "accept",
+      "scope": "Generic projector calls freshly instantiate independent arguments and link each result to its argument; alternating calls must not retain earlier substitutions. Corrects only the discovery's reserved binding name in a separate source.",
+      "file": "constructor_field_instances_valid.atlas"
+    },
+    {
+      "id": "constructor_positional_union_valid",
+      "intent": "reject",
+      "scope": "Historical ID retained:3836223 disproves acceptance after fixing the empty lambda. Latest original reserves case/in for integer cases; positional union discrimination uses case/bar/pattern clauses, not case/in/function branches.",
+      "file": "constructor_positional_union_valid.atlas"
+    },
+    {
+      "id": "constructor_positional_union_patterns",
+      "intent": "accept",
+      "scope": "Executable parser.y:426/489 contract: untagged union cases use pattern clauses after a bar, with payload types inferred from the applied union constructor.",
+      "file": "constructor_positional_union_patterns.atlas"
+    },
+    {
+      "id": "legacy_union_case_functions",
+      "intent": "reject",
+      "scope": "Isolate the historical case/in/function-branch syntax without generic constructors: latest original rejects this form, whereas Rust's old casefor_b6 unit still treats it as accepted.",
+      "file": "legacy_union_case_functions.atlas"
     }
   ]
 }

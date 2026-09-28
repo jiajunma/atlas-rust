@@ -1,0 +1,4 @@
+set_type MathResult<S,T> = (S result_first,T result_second) !
+set rp=MathResult<int,string>:(7,"seven")
+string:rp.result_first
+prints("RECOVER",rp.result_second)
