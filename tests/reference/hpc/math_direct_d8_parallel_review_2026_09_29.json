@@ -1,0 +1,280 @@
+{
+  "checker": {
+    "exit_status": 0,
+    "log_sha256": "78814dc1d6c84b81bfa2887d8718f4eaa3cab318843c0e4af975b9036605f5c9"
+  },
+  "job": "3841690",
+  "pin": {
+    "experiment_job": "3841648",
+    "inputs": {
+      "hpc/math_baseline_build.py": "931ec63f850d2a3769de1d5fb7836fc8eba7097e6d302ea30c2a6e47417c2ed7",
+      "hpc/math_baseline_build.sbatch": "e0c951b11d08322529bbe18b7d87cd8e64fa898073090adc831a88d3a0d18a7d",
+      "hpc/math_benchmark.py": "53cb3e994b606a1ac8b0dd75ca0bd0c1601885663c04873bd638d9ca7a0d5b97",
+      "hpc/math_benchmark.sbatch": "aae6078c327a0b10d1f8d922128f82e04cbaa7f3c23d00c252ed092ecf7e9107",
+      "hpc/math_benchmark_review.py": "f62a1489044e35baabd465053b68420370bffde6d0c6b2a6bd58cf9adf74722e",
+      "hpc/math_benchmark_review.sbatch": "ab88e9851b81d445b26a253f54319919834e0a87df210a2afcb389abed23cbb3",
+      "hpc/math_cayley_repair_build.py": "d837c222e8ab9d146c111efedfc636fa01471f98d3cbfca7c63477aca86a4a1e",
+      "hpc/math_cayley_repair_build.sbatch": "71319facf2def0c914c3fd86a101f12c010a52016b873b74580b56fd106e6a29",
+      "hpc/math_cycle_check.py": "d02f8412972249d18f5bdd98f15df85633c4d676063063041b08186190c61131",
+      "hpc/math_endgame_repair_build.py": "7caa01a1aa2b944dcae9e1bb2674078270b989f10ff1fbbf116e017562bbd84e",
+      "hpc/math_endgame_repair_build.sbatch": "833577f1f64d20f3ee220791545f8fcb4b54a00587d7ed5f380103ec73eeec37",
+      "hpc/math_form_order_repair_build.py": "4ab0733c55ded03c8431a80d2cd2bc8646d1091c1b04a1a8d612c52909ca7014",
+      "hpc/math_form_order_repair_build.sbatch": "e7bab818e8742b6393fba0c9684a486a5e8254bdf831a067205af2aa9cc57c6c",
+      "hpc/math_kl_boundary_probe.py": "48c4c3641e6bd4ecc88b6c5c0fafa6a774f4b7d143743339f83e5120925da999",
+      "hpc/math_kl_boundary_probe.sbatch": "388394dc21d2b7ad1f1fd9227d092bb0a4b02ad0dcb477f3906cca9fc9b6d1ea",
+      "hpc/math_kl_history_diagnose.py": "dc8386c393856a731ba6bc6316ff1d3718c0337e876d0f0369c708dba3ec6b99",
+      "hpc/math_kl_history_diagnose.sbatch": "7e139ba43b299966d9afa373de834b8f876363b6ae6e260bdb24c35c9197027f",
+      "hpc/math_kl_repair_build.py": "d0831993e6ca1887d436507c0d12160c24debca592687002d2e42e30eba12578",
+      "hpc/math_kl_repair_build.sbatch": "fe2030e7c3ff7941a52693f4f577221b3aeb4d3606320e0fe9aed52d265a6243",
+      "hpc/math_parallel.py": "860ded1d5a6b5308b8b0b8d55e6df8d697598c72d024d3237b1735dff4f6499c",
+      "hpc/math_parallel.sbatch": "6daef32708f3c117a80fc50dc697fef110c1eaef5cbeefa674420911f05b6982",
+      "hpc/math_parallel_review.py": "7c4286a1b304b9b3d814656b091ea9ef8ff437f43d04e43dda32de4141e97bdd",
+      "hpc/math_parallel_review.sbatch": "0df51b7ed4e969e543d52ccc6469f5754ecc3f125a8042242756c6001c97b272",
+      "hpc/math_suite.py": "80668ca64cea631deb2c2d7ebff2380a813eb2142ef54313e65d232f35639ed5",
+      "hpc/math_suite.sbatch": "66bfa0efb9a534361e2f340fe085baf3ed72a5d7eee1bce5ddb59a970af97625",
+      "hpc/math_suite_preflight.sbatch": "7b06df3152c140baa299c7766098e97c5607e624a914fee4915bfe71eebd9da1",
+      "hpc/math_suite_review.py": "6b101f7aa62f1abcfda70b382efd0928a648f4f032e4870f87bfeb5e32084ad8",
+      "hpc/math_suite_review.sbatch": "70562532f078b8ae1eb7112a008d3587c8a8c7096cfcd3e1879155f40ed9e28f",
+      "hpc/test_math_benchmark.py": "90d74365693e7f333568643711dfda92fb5c179ba20f5a9d95a2cd4251b7a096",
+      "hpc/test_math_cycle_check.py": "22dc5294b2150e1b2195d80a870da4c54c5171e12567cc7046f5c4505f43ca7a",
+      "hpc/test_math_history_diagnose.py": "a033055b15559042adca7029efabd197e758ac733e43a42a0bb75e33f22b6a44",
+      "hpc/test_math_kl_repair.py": "56c5bf3a84cabc88c7b386f28e582a2bfadeb07c5d02b864f52ef4dc650fa5a1",
+      "hpc/test_math_parallel.py": "32d60fea4eeabdf6f2f87cca70f919c22764a0705da12781ea2477f1bd60a828",
+      "hpc/test_math_parallel_review.py": "0c535308461107f480bb8ab73fc4c0d49ea182473911097864562574bacffab3",
+      "hpc/test_math_suite.py": "2cf1ccb08f224229623df21781f96dc55f954665aabd9cbb21cca084e6717ea9",
+      "hpc/test_math_suite_review.py": "998f49dc63b0f9469c56969f247f704b4bfe7cf63016df2ce2bcd88283a44c3d",
+      "tests/math/README.md": "f25c7ed9dd745c998dd0a1a34118ca02e7b9fc28a19659f1df46d2ae54366cd8",
+      "tests/math/baseline.json": "db6015fd139c98b1ba7a2ac0ec9dbeb305e8e00960d9bfd67c1eb36b3558b51d",
+      "tests/math/benchmarks.json": "44529e64dec6cdc6066094002af3202bd5cee0bd5cd4fc229d669483af0ec323",
+      "tests/math/catalog.json": "a94d6f638c6f316796345371ef188ed72dcb381ca05fb20edc44c1e849feee90",
+      "tests/math/templates/annihilator_variety.atlas": "de1ae088b74034eb6387b35860fb5e2d9291b3ff0a7fa7fd08edfe607f4a2926",
+      "tests/math/templates/basic_load.atlas": "448862a14277a7fc9cbd83464d2aa7c1ce85b9e21cf2a7c458bcfaffe46502c0",
+      "tests/math/templates/cartan_subsystems.atlas": "8171734882e7a35ce512c6ace22b3498858b8aa82c66a696f0802a02082ae6df",
+      "tests/math/templates/core_klv.atlas": "70b406a943df816d96a97c39676fe74f57603f8ec9e5de4bd1c01c586987c1d9",
+      "tests/math/templates/cycle_foundation.atlas": "3e5b846ee2767cd58e6833432896a8250053ee2a20fb08765a4ecf4edb892270",
+      "tests/math/templates/cycle_product_ranks.atlas": "a33737449af1c4121e0262a8cc10ee8027e0a563ce4e7f31de6239085b807ddd",
+      "tests/math/templates/fpp.atlas": "3eb846445e62b336f70f0a1d28ad1cd3b112024ee89a3e959aa8f9439b758c5e",
+      "tests/math/templates/fpp_d4_wall.atlas": "79c2a4bd17c0ed344cff692dc50c6a7eb952da9373169f9f918d36baa0d61f34",
+      "tests/math/templates/fpp_rank_rejected.atlas": "5a476cec81e25e47e102d92686180bee871396adde1db379a95ff634965bbdb3",
+      "tests/math/templates/generic_identity.atlas": "054712c54376390ae6776cf8f4759e2a66a256ae5d7792b84d0448dde181d91f",
+      "tests/math/templates/generic_pair.atlas": "3529533063872373e623b22f0c3f8aff4dd22a23c56ae6a1b50c2b7606e203f9",
+      "tests/math/templates/hodge.atlas": "56217ff1974be61455a92b0cc3a4caa3e389ce69169c16134ff165990346dc0e",
+      "tests/math/templates/hodge_nontrivial.atlas": "9259c8d8f6449f828a030abed14cec84374862e6610c60b5641cafa920b320b1",
+      "tests/math/templates/hodge_trace.atlas": "a9ffc0d18ad55fed0ae79f935d625de2c56974b6e9381fa76228ed299f6abf95",
+      "tests/math/templates/kgb.atlas": "0ff3bc044f157cad18920c2f62d2d7f0633783b1632b91f7a0614dda66e7e26d",
+      "tests/math/templates/klv.atlas": "f30e03ba1fff856569377a1c94be6eca516454ae61934cb53d3353f18b30cb21",
+      "tests/math/templates/partial_kl_containment.atlas": "e51d4719a411c866d74c73a65f2610dff84061c8dc0365bd3f0b685b0a082879",
+      "tests/math/templates/partial_kl_history.atlas": "afa4ed7e3d657b2c56d28d1f208072d01cf635138494aef99c20bf854785bb5b",
+      "tests/math/templates/partial_kl_nonstandard_rejected.atlas": "f35ea9aaf7391f808f035ba4cdbe34ea8ccbfeed9a726d3361c69430a12f4242",
+      "tests/math/templates/partial_kl_regression.atlas": "b25a8c9548347106398c9aac98858d19ee31e9c8b3f22ec20f7b399e85723af9",
+      "tests/math/templates/root_data.atlas": "0083b63e7b8ff1baf9c2243ce0e1f43dc2c5ea91d011ae7a640c61d822854e84",
+      "tests/math/templates/unitarity.atlas": "e23cea8f4c60a45e53b2aba0648f7d12af4c838bcf78d38989b3c3d4f09bdb68"
+    },
+    "parallel_pin_sha256": "77e496ab5541ac9e4d6d3bfcf9b145b3cfb27ff5fddebcf0ebd1e2c60c3d2aed",
+    "report": "/public/home/majj/atlas-direct-d8-parallel-20260929.36ynzazc/results/3841648/report.json",
+    "report_sha256": "96601d8e168ed1f8094093de5c1c2b9a278697316a32b685076121c32fea0759",
+    "scheduler": {
+      "path": "/public/home/majj/atlas-direct-d8-review-20260929.BR8ZDyvg/scheduler.txt",
+      "sha256": "d1b1a6527910fcb476a1f4f9dccc5f942dfa09944b5cc65cca0169c950038bdd"
+    },
+    "schema": "atlas-parallel-review-pin-v1"
+  },
+  "review": {
+    "artifacts_rehashed": 36,
+    "binaries": {
+      "oracle": {
+        "path": "/public/home/majj/atlas-direct-release-20260929.JvotR2Mh/results/3841502/oracle-source/atlas",
+        "sha256": "75c697570053c7a1976d8348065102218f2c9efedaae14c190ce9d0611dc8742"
+      },
+      "rust": {
+        "path": "/public/home/majj/atlas-direct-release-20260929.JvotR2Mh/results/3841502/target/release/atlas-cli",
+        "sha256": "edc7f68843730262197d6e91b618747298e1cde2abbb84d7bfb2cc1b63c17af1"
+      }
+    },
+    "case": {
+      "expected": "accept",
+      "family": "classical",
+      "id": "D8_kgb",
+      "input_sha256": "47a00168726ae590f21d6b03f4fd7f0d86a423238255a76ceb2e79b47b152d27",
+      "operation": "kgb",
+      "rank": 8,
+      "scope": "Full split KGB and every simple-root operation at the user-requested larger D ranks; bounded correctness/capacity calibration before repeated performance acceptance.",
+      "template": "kgb.atlas",
+      "template_sha256": "0ff3bc044f157cad18920c2f62d2d7f0633783b1632b91f7a0614dda66e7e26d",
+      "tier": "large",
+      "type": "D8"
+    },
+    "decision": "SELECTED_FOR_THIS_WORKLOAD",
+    "default_thread_setting_changed": false,
+    "experiment_job": "3841648",
+    "node": "cu216",
+    "resources": {
+      "affinity_cpu_ids": [
+        56,
+        57,
+        58,
+        59
+      ],
+      "allocated_cpus": 4,
+      "child_address_space_gib": 6,
+      "cpu_model": "Intel(R) Xeon(R) Gold 6338 CPU @ 2.00GHz",
+      "logical_processor_count": 64,
+      "omp_threads": 1,
+      "openblas_threads": 1,
+      "same_runtime_binary_all_arms": true
+    },
+    "rounds": [
+      {
+        "cpu_seconds": {
+          "oracle": 3.81,
+          "rust-1": 31.83,
+          "rust-4": 32.160000000000004
+        },
+        "gnu_wall_seconds": {
+          "oracle": 3.91,
+          "rust-1": 31.93,
+          "rust-4": 13.88
+        },
+        "index": 0,
+        "status": "FULL_ORACLE_MATCH"
+      },
+      {
+        "cpu_seconds": {
+          "oracle": 3.83,
+          "rust-1": 31.88,
+          "rust-4": 32.15
+        },
+        "gnu_wall_seconds": {
+          "oracle": 3.87,
+          "rust-1": 32.0,
+          "rust-4": 13.83
+        },
+        "index": 1,
+        "status": "FULL_ORACLE_MATCH"
+      },
+      {
+        "cpu_seconds": {
+          "oracle": 3.84,
+          "rust-1": 31.88,
+          "rust-4": 32.07
+        },
+        "gnu_wall_seconds": {
+          "oracle": 3.89,
+          "rust-1": 32.01,
+          "rust-4": 13.92
+        },
+        "index": 2,
+        "status": "FULL_ORACLE_MATCH"
+      },
+      {
+        "cpu_seconds": {
+          "oracle": 3.84,
+          "rust-1": 31.86,
+          "rust-4": 32.11
+        },
+        "gnu_wall_seconds": {
+          "oracle": 3.89,
+          "rust-1": 31.97,
+          "rust-4": 13.84
+        },
+        "index": 3,
+        "status": "FULL_ORACLE_MATCH"
+      }
+    ],
+    "scope": "Four fresh-process D8_kgb trials only; not other mathematics, real forms, hardware or statistical significance.",
+    "scripts_rehashed": 264,
+    "source_files_rehashed": {
+      "oracle": 606,
+      "rust": 1423
+    },
+    "summary": {
+      "accepted": true,
+      "arms": {
+        "oracle": {
+          "all_in_60_to_600_seconds": false,
+          "max_seconds": 3.9451694570016116,
+          "maxrss_kb": [
+            84472,
+            84476,
+            84476,
+            84484
+          ],
+          "median_seconds": 3.9152208659797907,
+          "min_seconds": 3.90871765895281,
+          "seconds": [
+            3.9451694570016116,
+            3.9179217849159613,
+            3.91251994704362,
+            3.90871765895281
+          ]
+        },
+        "rust-1": {
+          "all_in_60_to_600_seconds": false,
+          "max_seconds": 32.01822748291306,
+          "maxrss_kb": [
+            510300,
+            510424,
+            510452,
+            510804
+          ],
+          "median_seconds": 32.00425896298839,
+          "min_seconds": 31.975396142923273,
+          "seconds": [
+            31.975396142923273,
+            32.01069135603029,
+            32.01822748291306,
+            31.997826569946483
+          ]
+        },
+        "rust-4": {
+          "all_in_60_to_600_seconds": false,
+          "max_seconds": 13.947856896091253,
+          "maxrss_kb": [
+            512432,
+            512164,
+            513368,
+            512496
+          ],
+          "median_seconds": 13.88571123953443,
+          "min_seconds": 13.847898827982135,
+          "seconds": [
+            13.898273661034182,
+            13.847898827982135,
+            13.947856896091253,
+            13.873148818034679
+          ]
+        }
+      },
+      "original_over_rust": {
+        "rust-1": [
+          0.12338140986174297,
+          0.12239416329188056,
+          0.12219664405631407,
+          0.12215572362105429
+        ],
+        "rust-4": [
+          0.2838603954146092,
+          0.28292536171618365,
+          0.28051047384491484,
+          0.2817469710893315
+        ]
+      },
+      "parallel_efficiency": 0.5758914169329492,
+      "parallel_serial_peak_rss_ratio": 1.005019537826642,
+      "scope": "Four paired fresh-process trials, same node/build/input; filesystem caches not flushed. Screening only, independent review required.",
+      "selection": "PROMISING_PENDING_REVIEW",
+      "serial_parallel_speedup": {
+        "definition": "Rust1_seconds / Rust4_seconds",
+        "median": 2.303565667731797,
+        "paired": [
+          2.300673948633701,
+          2.311591942840239,
+          2.295566101763336,
+          2.306457386829893
+        ]
+      }
+    }
+  },
+  "schema": "atlas-parallel-independent-review-v1",
+  "status": "PARALLEL_ARTIFACTS_VERIFIED"
+}

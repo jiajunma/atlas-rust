@@ -1,0 +1,40 @@
+{
+  "schema": "atlas-direct-generation-parallel-submission-v1",
+  "build_job": "3841502",
+  "build_report_sha256": "f63f32d05e8bb41306019330d813d2bdce3bf68b4f6a2afd1817fd735c843090",
+  "foundation_job": "3841489",
+  "source_scope": "Verified517core direct-generation interpreter; NOT the lazy523candidate and NOT historical3833716.",
+  "runs": [
+    {
+      "case": "E7_kgb",
+      "job": "3841647",
+      "stage": "/public/home/majj/atlas-direct-e7-parallel-20260929.TwcjbExQ",
+      "pin_sha256": "555e9933444e13839453dd5cc192506351493a75dbd8269185c2b2271de4c099",
+      "review_job": "3841670",
+      "review_stage": "/public/home/majj/atlas-direct-e7-review-20260929.bCRvZUxp",
+      "review_pin_sha256": "3b5beb497fd87492d260c9b2b105aed2edfbf5a8a804271ba62033833ac25323",
+      "review_report_sha256": "e049496c5559d67da40ab758b8ba58c2787934a99c4a0b3b214b008a863b1a1c",
+      "decision": "SELECTED_FOR_THIS_WORKLOAD"
+    },
+    {
+      "case": "D8_kgb",
+      "job": "3841648",
+      "stage": "/public/home/majj/atlas-direct-d8-parallel-20260929.36ynzazc",
+      "pin_sha256": "77e496ab5541ac9e4d6d3bfcf9b145b3cfb27ff5fddebcf0ebd1e2c60c3d2aed",
+      "review_job": "3841690",
+      "review_stage": "/public/home/majj/atlas-direct-d8-review-20260929.BR8ZDyvg",
+      "review_pin_sha256": "397adf6352ec3a51f9b31c2308f7b13e357911bf4681933939cb862df5da221d",
+      "review_report_sha256": "eaef5768366ad7df363975fff569687f93d6239017acf1c0f10ea82b5ac2d776",
+      "decision": "SELECTED_FOR_THIS_WORKLOAD"
+    }
+  ],
+  "status": "BOTH_SCOPED_PARALLEL_EXPERIMENTS_INDEPENDENTLY_VERIFIED",
+  "rounds_per_case": 4,
+  "arms": ["original", "same Rust binary with Rayon1", "same Rust binary with Rayon4"],
+  "cpus_per_job": 4,
+  "memory_per_job": "8G",
+  "timeout_per_arm_seconds": 300,
+  "child_address_space_gib": 6,
+  "input_count_per_stage": 59,
+  "scope": "Both independent reviews verify full output equality within/between four alternating fresh-process rounds and source/binary/scheduler/raw-metric provenance. E7Rust1/Rust4 paired median2.183940; D8median2.303566. All arms are now BELOW60s, and Rust4 remains slower than original. No minute-scale/global-thread/high-level-mathematics acceptance."
+}

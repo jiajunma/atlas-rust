@@ -88,7 +88,59 @@ Evidence:
 - Review stage `/public/home/majj/atlas-parallel-review-20260928.fL023YvY`,
   pin353ac2152f403ceeb7de3b9434992e14d9cc93e2d1a0ab8d0a5f26e34e2e1194.
 
-## Follow-up candidates, not implemented or accepted
+## Accepted recalibration: direct-generation build3841502
+
+Independent reviews3841670(E7) and3841690(D8) verify both four-round
+experiments below. Each rehashes36raw artifacts,606original/1423Rust source
+files,264scripts, binaries, metrics and scheduler provenance. Complete KGB
+rows and all simple-root operations match original within AND between rounds.
+Both decisions are SELECTED_FOR_THIS_WORKLOAD; no global default changed.
+
+| Case | Original median s | Rust1 median s | Rust4 median s | Paired Rust1/Rust4 median | Max RSS original/Rust1/Rust4 KiB |
+|---|---:|---:|---:|---:|---|
+| E7 KGB |1.332328|12.795832|5.855221|2.183940|41664 / 242100 / 242060|
+| D8 KGB |3.915221|32.004259|13.885711|2.303566|84484 / 510804 / 513368|
+
+Rust4 remains approximately4.39x(E7)/3.55x(D8) slower than original.
+All arms are BELOW60s: these are accepted bounded screening cases, not the
+requested minute-scale performance coverage. The older69s E7 source/node
+is different; do not present its ratio to this run as a controlled algorithm
+A/B effect. These results validate eager517, NOT the pending lazy523 source.
+
+E7 review SHA e049496c5559d67da40ab758b8ba58c2787934a99c4a0b3b214b008a863b1a1c;
+D8 review SHA eaef5768366ad7df363975fff569687f93d6239017acf1c0f10ea82b5ac2d776.
+Reports and stage/pin bindings are in math_direct_parallel_submission_2026_09_29.json
+and math_direct_{e7,d8}_parallel_review_2026_09_29.json.
+
+The reviewer's scope label now uses the actual case id, not hardcoded E7;
+an additional regression covers both E7/D8 labels. Numerical rules unchanged.
+
+## Submission history and remaining follow-ups
+
+NEW2026-09-29 exact517release3841502 has two frozen recalibration/A-B jobs:
+E7_kgb3841647 at atlas-direct-e7-parallel-20260929.TwcjbExQ and
+D8_kgb3841648 at atlas-direct-d8-parallel-20260929.36ynzazc. These use the
+unchanged four-round original/Rust1/Rust4 driver, full KGB inputs,300s per
+arm,4CPUs/8GiB and6GiB child cap.59inputs are pinned per stage. They test
+the wired direct-generation source, NOT lazy523, and require complete output
+equality before ratios plus independent review. Recalibrate actual durations;
+do not inherit old69s timings or pad a faster input to manufacture minute-scale
+membership. The independent reviews above now accept these scoped results;
+the submitted experiment reports retain their pre-review status.
+
+UPDATE2026-09-29: direct generation is now wired in integration3841489,
+and209capture3841497 confirms complete D8/E7/E8 Cartan inventories with
+98whole positive streams,3gains/no losses. This is a NEW serial source and
+does not inherit the old E7 scaling result above. Recalibrate workloads and
+rerun original/Rust1/Rust4 with complete equality after source-bound KGB
+revalidation; do not combine old69s timings with the new inventory timings.
+See direct_twisted_generation_2026-09-29.md for exact scope and pending116gate.
+
+The current [twisted-orbit source audit](twisted_orbit_search_2026-09-29.md)
+identifies a separate all-Weyl conjugacy sweep and the original's generator
+queue alternative. It also disproves assuming stable raw partition IDs:
+enumerate returns HashSet iteration; external Cartan canonicalization is a
+separate numbering layer. No optimization or speed result is accepted there.
 
 1. Four-thread E7 scaling is now verified, but the CPU-work gap remains. Profile
    Weyl enumeration/orbit setup and allocation before adding more threads or
@@ -105,5 +157,6 @@ Evidence:
    from accelerating one mathematical calculation. Keep unitarity/Hodge/FPP,
    AV-ann and associated-cycle validation requirements unchanged.
 
-The E7 result above is the only accepted parallel screening here. Other stages
-and open work are indexed in HANDOFF and `tests/reference/hpc` receipts.
+Accepted parallel screening now covers the historical E7 case and the new
+direct-generation E7/D8 cases above, not other mathematical operations.
+Other stages and open work are indexed in HANDOFF and reference receipts.

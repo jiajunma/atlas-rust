@@ -23,6 +23,11 @@ from math_suite_review import checked_json, independently_classify, review_build
 ARMS = ("oracle", "rust-1", "rust-4")
 
 
+def experiment_scope(case):
+    return ("Four fresh-process " + case["id"]
+            + " trials only; not other mathematics, real forms, hardware or statistical significance.")
+
+
 def inputs(root):
     return {str(p.relative_to(root)): digest(p)
             for name in ("hpc", "tests") for p in sorted((root / name).rglob("*"))
@@ -197,7 +202,7 @@ def review_experiment(pin):
             "binaries": build["binaries"], "artifacts_rehashed": 36, "rounds": rounds, "summary": summary,
             "decision": "SELECTED_FOR_THIS_WORKLOAD" if summary["selection"] == "PROMISING_PENDING_REVIEW"
                         else "NOT_SELECTED", "default_thread_setting_changed": False,
-            "scope": "Four fresh-process E7 KGB trials only; not other mathematics, real forms, hardware or statistical significance."}
+            "scope": experiment_scope(case)}
 
 
 def main():

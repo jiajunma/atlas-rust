@@ -4,7 +4,7 @@ import tempfile
 import unittest
 
 from math_baseline_build import digest
-from math_parallel_review import check_metrics, recompute_summary, review_rounds
+from math_parallel_review import check_metrics, experiment_scope, recompute_summary, review_rounds
 
 
 class ParallelReviewTests(unittest.TestCase):
@@ -71,6 +71,13 @@ class ParallelReviewTests(unittest.TestCase):
         self.assertEqual(summary["parallel_serial_peak_rss_ratio"], 1.1)
         self.assertEqual(summary["original_over_rust"]["rust-4"], [0.05] * 4)
         self.assertEqual(summary["selection"], "PROMISING_PENDING_REVIEW")
+
+    def test_scope_names_the_actual_case_not_a_historical_workload(self):
+        for case_id in ("E7_kgb", "D8_kgb"):
+            scope = experiment_scope({"id": case_id})
+            self.assertIn(case_id, scope)
+            self.assertIn("not other mathematics", scope)
+        self.assertNotIn("E7", experiment_scope({"id": "D8_kgb"}))
 
     def test_raw_hash_changes_are_rejected(self):
         self.rewrite(0, "rust-4", "stdout", b"1,2,3", b"1,9,3", repin=False)
