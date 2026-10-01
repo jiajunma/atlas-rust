@@ -1,5 +1,17 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
+## Directory-growth guard is durable on GitHub — 2026-10-01
+
+The bounded HPC campaign/worktree lifecycle correction is committed as
+`7db322a313c3bcda1c0628e64b857ed30496e651` and is now pushed to
+`origin/codex/math-benchmark-suite`; local and remote branch tips matched after
+the push. This makes the already HPC-verified stop-growth controls available to
+a fresh checkout. It does **not** authorize deletion of any of the 318
+historical HPC directories, 24 secondary worktrees or 141 `/tmp/atlas*`
+directories. Cleanup still requires a read-only reverse-reference/CAS audit,
+an exact retirement receipt and explicit authorization for each exact path.
+No directory was created or removed during this durability step.
+
 ## Kimi bidirectional ACP interaction verified — 2026-10-01
 
 The follow-up requested a workable Codex–Kimi interaction channel. Implemented

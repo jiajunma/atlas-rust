@@ -150,11 +150,13 @@ following final-component symlinks, rechecks stable file identity, and rejects
 unsafe state before a scheduler call. Source/blob references have exact
 path-free key sets; an extra legacy `path` field is not tolerated.
 
-Durability caveat: job3875239 accepted these helpers and guards only in the
-bounded infrastructure/directory-governance scope. The commit containing this
-slice must include the exact accepted helper/guard bytes and be pushed before a
-fresh clean checkout inherits them; the HPC result alone is not source-control
-durability. Do not call the stop-growth fix permanent from an unpushed tree.
+Durability update, 2026-10-01: job3875239 accepted these helpers and guards only
+in the bounded infrastructure/directory-governance scope. Their exact accepted
+bytes are committed as `7db322a313c3bcda1c0628e64b857ed30496e651` and that
+commit is now pushed to `origin/codex/math-benchmark-suite`; local and remote
+tips matched immediately after the push. A fresh checkout of that branch now
+inherits the stop-growth controls. This does not make any historical directory
+deletion-eligible or broaden the bounded HPC acceptance.
 
 The post-seal source gate also makes the launcher allowlist executable, not
 merely documentary. The superseding exact inventory is70 `stage_*.py` files:
