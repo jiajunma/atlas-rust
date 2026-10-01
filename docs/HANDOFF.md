@@ -1,5 +1,23 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
+## Kimi subagent research — 2026-10-01
+
+The current executable is Kimi Code **2.1.1**, superseding the historical
+0.42.0 version observation.
+Version/help inspection and release-pinned official documentation establish the
+CLI integration contract; see
+[`slices/kimi_subagent_workflow_2026-10-01.md`](slices/kimi_subagent_workflow_2026-10-01.md)
+and its local capability record. Prefer a bounded external CLI worker with an
+explicit Markdown tool profile, frozen task packet and captured JSONL result.
+`-p` uses automatic permissions and cannot combine with `--plan`, `--yolo` or
+`--auto`; legacy Python/YAML/`--print` recipes are not the installed interface.
+The report includes a no-tools patch-proposer template, session/timeout rules,
+and independent review/HPC handoff requirements. No model prompt, programming
+delegation, account verification, source change or HPC job occurred. No
+Kimi-derived coding lesson or acceptance is claimed. The prior storage failure
+remains undiagnosed; `KIMI_CODE_HOME` moves credentials/configuration as well as
+logs. No temporary paths, transports or worktrees were created by this research.
+
 ## Current mathematical-validation frontier — 2026-09-28
 
 LATEST VERIFIED BUILD/UNIT CHECKPOINT: loop-constness repair3837799 at

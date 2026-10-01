@@ -1,5 +1,12 @@
 # Remaining builtin coverage (post-language-gate)
 
+Kimi workflow research2026-10-01: the installed CLI is now2.1.1. The
+[version-pinned integration guide](slices/kimi_subagent_workflow_2026-10-01.md)
+documents external CLI workers, restricted Markdown profiles, task packets,
+session capture and coordinator-owned HPC verification. Version/help were
+inspected; model execution and coding delegation remain unverified. This is
+routine-work tooling guidance, not mathematical coverage or a gate release.
+
 ## Mathematical validation against latest original — 2026-09-28
 
 Function-value R4 job3837531 passes425/427core tests, with the same two known

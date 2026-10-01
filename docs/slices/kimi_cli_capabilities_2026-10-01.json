@@ -1,0 +1,38 @@
+{
+  "schema": "kimi-cli-research-capabilities-v1",
+  "captured_at_utc": "2026-10-01T05:42:43.943132+00:00",
+  "scope": "Local CLI version/help introspection only; no model invocation or coding test",
+  "cli": "/home/hoxide/.kimi-code/bin/kimi",
+  "cli_sha256": "66f47536e40b02bb1d577cdd324768f73d39b8b9472e0ca140e73d8e225cd7de",
+  "observations": [
+    {
+      "argv": [
+        "/home/hoxide/.kimi-code/bin/kimi",
+        "--version"
+      ],
+      "exit_code": 0,
+      "stdout": "2.1.1\n",
+      "stderr": "",
+      "stdout_sha256": "7b3ff271f1373cfb97e9e53349794e1450f3794e4c0788c54a2060c7596da821",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "argv": [
+        "/home/hoxide/.kimi-code/bin/kimi",
+        "--help"
+      ],
+      "exit_code": 0,
+      "stdout": "Usage: kimi [options] [command]\n\nThe Starting Point for Next-Gen Agents\n\nOptions:\n  -V, --version                 output the version number\n  -S, --session [id]            Resume a session. With ID: resume that session. Without ID:\n                                interactively pick.\n  -c, --continue                Continue the previous session for the working directory. (default:\n                                false)\n  -y, --yolo                    Start in Ask When Needed mode: routine edits and commands run\n                                automatically; risky actions, questions, and plans still ask.\n                                (default: false)\n  --auto                        Start in Never Ask mode: never interrupts you; everything runs and\n                                is decided automatically. (default: false)\n  -m, --model <model>           LLM model alias to use for this invocation. Defaults to\n                                default_model in config.toml.\n  -p, --prompt <prompt>         Run one prompt non-interactively and print the response.\n  --output-format <format>      Output format for prompt mode. Defaults to text. (choices: \"text\",\n                                \"stream-json\")\n  --skills-dir <dir>            Load skills from this directory instead of auto-discovered user and\n                                project directories. Can be repeated. (default: [])\n  --agent <name>                Agent profile to start the new session with. Custom profiles are\n                                discovered from agent directories or loaded via --agent-file. Cannot\n                                be combined with --session/--continue.\n  --agent-file <path>           Load an agent definition from a Markdown file and select it for the\n                                new session. Cannot be combined with --session/--continue. (default:\n                                [])\n  --add-dir <dir>               Add an additional workspace directory for this session. Can be\n                                repeated. (default: [])\n  --plan                        Start in plan mode. (default: false)\n  -h, --help                    Show help.\n\nCommands:\n  export [options] [sessionId]  Export a session as a ZIP archive.\n  fork [options] [sessionId]    Fork a session into a new session.\n  provider                      Manage LLM providers non-interactively.\n  session                       Manage sessions non-interactively.\n  acp [options]                 Run kimi-code as an Agent Client Protocol (ACP) server over stdio.\n  web [options]                 Run the local Kimi server and open the web UI.\n  server                        Deprecated — use `kimi web` instead.\n  rc|remote [options]           Run the local Kimi server and open the web UI through Remote\n                                Control.\n  login [options]               Authenticate with Kimi Code CLI via the device-code flow.\n  doctor                        Validate Kimi Code configuration files.\n  vis [options] [sessionId]     Launch the session visualizer in your browser.\n  install-desktop               Print the Kimi Code desktop app page and open it in your browser.\n  migrate [options]             Migrate data from a legacy kimi-cli installation into kimi-code.\n  upgrade|update [options]      Upgrade Kimi Code to the latest version.\n\nDocumentation:        https://moonshotai.github.io/kimi-code/\n\n",
+      "stderr": "",
+      "stdout_sha256": "38366cf8f3a746da0527b722bb8f017d5cdcecd16e6885148a05b19794ef0ca0",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "prompt": null,
+  "model_session": null,
+  "kimi_owned_files": [],
+  "kimi_work_product": null,
+  "model_execution_verified": false,
+  "coding_delegation_verified": false,
+  "temporary_paths_created": []
+}
