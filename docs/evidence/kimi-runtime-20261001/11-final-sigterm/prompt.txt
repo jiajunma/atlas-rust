@@ -1,0 +1,1 @@
+This is an intentionally interruptible Codex-to-Kimi subprocess lifecycle check. You have no tools and own no files. Start writing a numbered list of 5000 short programming topic names, one per line. The coordinator will interrupt this request before completion. Do not create any background work or claim that the task finished early.

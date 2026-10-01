@@ -1,0 +1,1 @@
+You are being called as an external subagent of Codex. This is a connection and normal-exit check. Do not use tools. Reply with exactly this one line and nothing else: CODEX_KIMI_READY_20261001

@@ -1,0 +1,6 @@
+{
+  "wrapper_exit_code": 143,
+  "signal_sent_to_recorded_wrapper_pid": "SIGTERM",
+  "temporary_directory": "/tmp/codex-kimi-final-syw69cg2",
+  "temporary_directory_removed": true
+}

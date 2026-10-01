@@ -1,5 +1,12 @@
 # Remaining builtin coverage (post-language-gate)
 
+Kimi runtime verification2026-10-01: actual local Codex-to-Kimi delegation,
+Read/Edit coding, exact-session continuation and bounded exit paths now have
+eleven recorded invocations under the user's explicit local-integration
+exception. Root AGENTS.md records the verified runner/profiles and limitations;
+see [runtime report](slices/kimi_runtime_validation_2026-10-01.md). No generated
+program test, Atlas source change, mathematical acceptance or HPC gate occurred.
+
 Kimi workflow research2026-10-01: the installed CLI is now2.1.1. The
 [version-pinned integration guide](slices/kimi_subagent_workflow_2026-10-01.md)
 documents external CLI workers, restricted Markdown profiles, task packets,

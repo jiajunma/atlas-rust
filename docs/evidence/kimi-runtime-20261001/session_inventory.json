@@ -1,0 +1,118 @@
+{
+  "/tmp/codex-kimi-connect-7j8qhgvc": {
+    "exit_code": 0,
+    "sessions": [
+      {
+        "id": "session_1ea2571c-0ed9-43cc-8260-94cba1120e65",
+        "workDir": "/tmp/codex-kimi-connect-7j8qhgvc",
+        "sessionDir": "/home/hoxide/.kimi-code/sessions/wd_codex-kimi-connect-7j8qhgvc_dc4a8da00255/session_1ea2571c-0ed9-43cc-8260-94cba1120e65",
+        "createdAt": 1790834017484,
+        "updatedAt": 1790834021441,
+        "archived": false,
+        "metadata": {},
+        "lastTurnReason": "completed"
+      }
+    ],
+    "stderr": ""
+  },
+  "/tmp/codex-kimi-edit-gi3ingyo": {
+    "exit_code": 0,
+    "sessions": [
+      {
+        "id": "session_f9c7bd36-01b9-4d68-82a7-1f6701e68493",
+        "workDir": "/tmp/codex-kimi-edit-gi3ingyo",
+        "sessionDir": "/home/hoxide/.kimi-code/sessions/wd_codex-kimi-edit-gi3ingyo_ecd90d41ba16/session_f9c7bd36-01b9-4d68-82a7-1f6701e68493",
+        "createdAt": 1790834088642,
+        "updatedAt": 1790834121488,
+        "archived": false,
+        "metadata": {},
+        "lastTurnReason": "completed"
+      }
+    ],
+    "stderr": ""
+  },
+  "/tmp/codex-kimi-exit-lu4gr37h": {
+    "exit_code": 0,
+    "sessions": [],
+    "stderr": ""
+  },
+  "/tmp/codex-kimi-exit-42mq4jxf": {
+    "exit_code": 0,
+    "sessions": [],
+    "stderr": ""
+  },
+  "/tmp/codex-kimi-exit-klprhrwx": {
+    "exit_code": 0,
+    "sessions": [
+      {
+        "id": "session_44eff067-08cc-4824-93b6-d8c09f2ea203",
+        "workDir": "/tmp/codex-kimi-exit-klprhrwx",
+        "sessionDir": "/home/hoxide/.kimi-code/sessions/wd_codex-kimi-exit-klprhrwx_5a68350457a7/session_44eff067-08cc-4824-93b6-d8c09f2ea203",
+        "createdAt": 1790834181532,
+        "updatedAt": 1790834182223,
+        "archived": false,
+        "metadata": {},
+        "lastTurnReason": "cancelled"
+      }
+    ],
+    "stderr": ""
+  },
+  "/tmp/codex-kimi-exit-ly157o0d": {
+    "exit_code": 0,
+    "sessions": [],
+    "stderr": ""
+  },
+  "/tmp/codex-kimi-inflight-w8q51gia": {
+    "exit_code": 0,
+    "sessions": [
+      {
+        "id": "session_57afb0ba-00a4-4366-9793-9f5f8fffeb38",
+        "workDir": "/tmp/codex-kimi-inflight-w8q51gia",
+        "sessionDir": "/home/hoxide/.kimi-code/sessions/wd_codex-kimi-inflight-w8q51gia_59b69012997a/session_57afb0ba-00a4-4366-9793-9f5f8fffeb38",
+        "createdAt": 1790834254321,
+        "updatedAt": 1790834258152,
+        "archived": false,
+        "metadata": {},
+        "lastTurnReason": "cancelled"
+      }
+    ],
+    "stderr": ""
+  },
+  "/tmp/codex-kimi-invalid-47uuwus2": {
+    "exit_code": 0,
+    "sessions": [],
+    "stderr": ""
+  },
+  "/tmp/codex-kimi-final-ornpmvgw": {
+    "exit_code": 0,
+    "sessions": [
+      {
+        "id": "session_33f8834f-918a-45f1-b268-c86e01ad62fc",
+        "workDir": "/tmp/codex-kimi-final-ornpmvgw",
+        "sessionDir": "/home/hoxide/.kimi-code/sessions/wd_codex-kimi-final-ornpmvgw_5a4997d05899/session_33f8834f-918a-45f1-b268-c86e01ad62fc",
+        "createdAt": 1790834344104,
+        "updatedAt": 1790834348099,
+        "archived": false,
+        "metadata": {},
+        "lastTurnReason": "completed"
+      }
+    ],
+    "stderr": ""
+  },
+  "/tmp/codex-kimi-final-syw69cg2": {
+    "exit_code": 0,
+    "sessions": [
+      {
+        "id": "session_d2b72ba9-9905-436f-a3c2-5e19bb5b4508",
+        "workDir": "/tmp/codex-kimi-final-syw69cg2",
+        "sessionDir": "/home/hoxide/.kimi-code/sessions/wd_codex-kimi-final-syw69cg2_e3b8ded14c74/session_d2b72ba9-9905-436f-a3c2-5e19bb5b4508",
+        "createdAt": 1790834351985,
+        "updatedAt": 1790834352730,
+        "archived": false,
+        "metadata": {},
+        "lastTurnReason": "cancelled"
+      }
+    ],
+    "stderr": ""
+  }
+}

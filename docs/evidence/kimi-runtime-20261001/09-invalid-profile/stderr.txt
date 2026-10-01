@@ -1,0 +1,8 @@
+error: failed to run prompt: Invalid agent file "/home/hoxide/mycodes/atlas-rust/docs/evidence/kimi-runtime-20261001/09-invalid-profile/agent.md": Invalid frontmatter in /home/hoxide/mycodes/atlas-rust/docs/evidence/kimi-runtime-20261001/09-invalid-profile/agent.md: unexpected end of the stream within a flow collection (4:1)
+
+ 1 | name: deliberately-invalid-profile
+ 2 | description: Intentional parser- ...
+ 3 | tools: [Read
+ 4 | 
+-----^
+See log: /home/hoxide/.kimi-code/logs/kimi-code.log

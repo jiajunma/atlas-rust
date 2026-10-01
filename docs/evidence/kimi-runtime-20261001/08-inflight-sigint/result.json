@@ -1,0 +1,27 @@
+{
+  "schema": "codex-kimi-result-v1",
+  "finished_at": "2026-10-01T05:57:38.422780+00:00",
+  "status": "interrupted",
+  "process_exit_code": 143,
+  "elapsed_seconds": 5.579,
+  "received_signals": [
+    2
+  ],
+  "cleanup_signals": [
+    {
+      "signal": "SIGTERM",
+      "at": "2026-10-01T05:57:38.089809+00:00"
+    }
+  ],
+  "remaining_live_group_members": [],
+  "owned_files": [
+    {
+      "path": "/tmp/codex-kimi-inflight-w8q51gia/input.txt",
+      "before_sha256": "309d10c992c3da1f1c9dd2413d60f8f7e497bfd110fe508091fc61e720941a16",
+      "after_sha256": "309d10c992c3da1f1c9dd2413d60f8f7e497bfd110fe508091fc61e720941a16"
+    }
+  ],
+  "error": null,
+  "stdout.jsonl_sha256": "c08bd477d02fff28d87277088d1fad19ec888dabe04054145cd39090d3917b19",
+  "stderr.txt_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

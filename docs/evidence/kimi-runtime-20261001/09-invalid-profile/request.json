@@ -1,0 +1,33 @@
+{
+  "schema": "codex-kimi-request-v1",
+  "frozen_at": "2026-10-01T05:57:39.845028+00:00",
+  "argv": [
+    "/home/hoxide/.kimi-code/bin/kimi",
+    "--model",
+    "kimi-code/k3-256k",
+    "--output-format",
+    "stream-json",
+    "--agent-file",
+    "/home/hoxide/mycodes/atlas-rust/docs/evidence/kimi-runtime-20261001/09-invalid-profile/agent.md",
+    "--prompt",
+    "You are being called as an external subagent of Codex. This is a connection and normal-exit check. Do not use tools. Reply with exactly this one line and nothing else: CODEX_KIMI_READY_20261001\n"
+  ],
+  "cwd": "/tmp/codex-kimi-invalid-47uuwus2",
+  "model_alias": "kimi-code/k3-256k",
+  "session_to_resume": null,
+  "cli_version": "2.1.1",
+  "binary_sha256": "66f47536e40b02bb1d577cdd324768f73d39b8b9472e0ca140e73d8e225cd7de",
+  "prompt_sha256": "d78d0bfb9eadc6b86c156260cc57d6912aba8d4f7acc7961edd9d10a21645e76",
+  "agent_sha256": "1a301bcdbfb49aca8a881035ab82090735399924a2624c3b6cf95945bbe0a474",
+  "owned_files": [],
+  "timeout_seconds": 30.0,
+  "grace_seconds": 5,
+  "environment_controls": {
+    "KIMI_CODE_NO_AUTO_UPDATE": "1",
+    "KIMI_DISABLE_TELEMETRY": "1",
+    "KIMI_CODE_INFINITE_RETRY": "0",
+    "KIMI_LOOP_MAX_STEPS_PER_TURN": "12",
+    "KIMI_LOOP_MAX_ATTEMPTS_PER_STEP": "2",
+    "KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT": "0"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "case": "04-sigint",
+  "wrapper_exit_code": 130,
+  "injected_signal": {
+    "target": "wrapper",
+    "pid": 1374326,
+    "signal": "SIGINT"
+  },
+  "result_status": "interrupted",
+  "cleanup_signals": [
+    {
+      "signal": "SIGTERM",
+      "at": "2026-10-01T05:56:14.055266+00:00"
+    }
+  ],
+  "remaining_live_group_members": [],
+  "temporary_directory": "/tmp/codex-kimi-exit-lu4gr37h",
+  "temporary_directory_removed": true
+}

@@ -1,5 +1,10 @@
 # Kimi as a programming subagent — 2026-10-01
 
+Follow-up: the later user-authorized [runtime validation](kimi_runtime_validation_2026-10-01.md)
+now records real local delegation, coding edits, resumption and exit checks.
+The research-only observations below remain historical; use root AGENTS.md
+for the subsequently verified operational recipe.
+
 ## Decision and evidence boundary
 
 Use a bounded Kimi Code CLI subprocess as an external worker of the current

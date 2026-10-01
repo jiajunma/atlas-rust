@@ -4,6 +4,81 @@ Rust reimplementation of the [Atlas of Lie Groups](https://github.com/jeffreyada
 The compatibility target is the Atlas language and its observable behavior,
 not a source-level C++ translation.
 
+## Verified local Kimi delegation — 2026-10-01
+
+The user explicitly authorized local verification of the Kimi integration.
+Kimi is installed and logged in **on this local machine**; use that installation
+and account. Do not move its credentials to HPC. This exception covers Kimi
+invocation, task delivery and process lifecycle checks only. Atlas builds,
+program tests, fixtures, mathematical verification and benchmarks remain HPC-only.
+
+The verified route is **Codex coordinator -> local Kimi CLI subprocess ->
+reviewed handoff**, not a Kimi model argument to Codex's native `spawn_agent`.
+Actual checks passed with `/home/hoxide/.kimi-code/bin/kimi` **2.1.1**, model
+alias `kimi-code/k3-256k`: response, Read/Edit programming task, exact-session
+continuation, startup and in-flight cancellation, timeout, forced-kill fallback,
+and intentional startup-error reporting. See
+[`docs/slices/kimi_runtime_validation_2026-10-01.md`](docs/slices/kimi_runtime_validation_2026-10-01.md)
+for raw evidence and limits. Recheck version/help after an upgrade; old Python
+`kimi-cli` flags and YAML agent definitions are not this installed interface.
+
+Use the verified Linux runner from the repository root (replace placeholders):
+
+```sh
+python3 tools/kimi_subagent.py \
+  --model kimi-code/k3-256k \
+  --agent-file .agents/kimi/editor.md \
+  --prompt-file /absolute/path/to/frozen-task.txt \
+  --work-dir /absolute/path/to/existing/workspace \
+  --owned-file relative/path/to/existing-file \
+  --output-dir /absolute/path/to/new/task-evidence \
+  --timeout 180 --max-steps 12
+```
+
+- Give Kimi one bounded routine task, exact read/edit scope, necessary context,
+  deliverable, exclusions and a no-local-program-test rule. It does not inherit
+  this Codex conversation. Freeze the prompt before calling; the runner records
+  the exact prompt/profile, hashes, model, owned files and deadline before the
+  model-bearing launch. Capture failures as well as successes.
+- `.agents/kimi/editor.md` permits only `Read` and `Edit`; it excludes Shell,
+  builds, network tools and nested delegation. `.agents/kimi/probe.md` has no
+  tools and can return proposals from supplied text. These are tool restrictions,
+  **not filesystem sandboxes**. Keep file ownership explicit, preserve user
+  changes and inspect all output/diffs. Do not grant mathematical acceptance,
+  job submission, commit/push, secrets or destructive work to Kimi.
+- The runner uses `-p` and `--output-format stream-json`. Never combine `-p`
+  with `--plan`, `--yolo` or `--auto`: `-p` already uses automatic permissions.
+  A plain unrestricted `kimi -p` can modify files and execute commands.
+- Parse stdout as JSONL containing `meta`, `assistant` and `tool` messages.
+  A trailing `meta` record is not the answer. The `session.resume_hint` record
+  contains the actual session ID. To continue, use the same work directory and
+  replace `--agent-file ...` with `--session <actual-ID>`; never pass both.
+  Prefer the explicit ID to `--continue`, which may select another task.
+- Leave the existing Kimi data root/authentication in place. `KIMI_CODE_HOME`
+  relocates configuration and credentials as well as logs; an empty `/tmp`
+  root is not a fix for storage errors. No credentials belong in task evidence.
+  Use a new evidence directory per invocation; the runner refuses overwrite.
+- The runner sets finite step/attempt limits, disables infinite request retry
+  and auto-update, closes stdin, separates stdout/stderr and starts Kimi in its
+  own process group. **Stop the recorded `wrapper_pid` in `process.json` with
+  SIGINT or SIGTERM**. It sends SIGTERM to its own Kimi group, waits the grace
+  period (default5s), escalates to SIGKILL if necessary, reaps the child and
+  records remaining live group members. Never use broad `pkill kimi`.
+- Runner exit codes: **0** CLI completed, **124** deadline, **130** SIGINT,
+  **143** SIGTERM, **1** other failure. Inspect `result.json`, raw streams and
+  actual files: exit0 alone is not task acceptance. Interruption does not roll
+  back edits. Review partial files and the exact session before any retry.
+- Do not SIGKILL the wrapper itself: no process can execute its cleanup after
+  SIGKILL. The verified cleanup covers its process group, not independently
+  detached daemons. Do not enable Shell/background delegation on this evidence.
+  The coordinator owns the tool-session handle and must collect/reap completion.
+
+Every actual invocation needs its model/session, prompt scope, files touched,
+result, independent review, rejected suggestions and lesson in the task report
+and handoff. This integration proof is not a mathematical or generated-program
+test pass. Apply project changes only after review and run their required HPC
+gates before committing/pushing them. No new worktree is authorized.
+
 ## Hard rules
 
 1. **All testing and builds run on HPC compute nodes.** The user's latest

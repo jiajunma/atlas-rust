@@ -1,0 +1,206 @@
+#!/usr/bin/env python3
+"""Run a bounded local Kimi worker; retain request, streams and exit evidence.
+
+Linux only. Tool profiles are not filesystem sandboxes. This runner owns one
+Kimi process group; it does not claim to contain independently detached daemons.
+"""
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import signal
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+
+
+def now():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def write_json(path, value):
+    with path.open("x", encoding="utf-8") as stream:
+        json.dump(value, stream, ensure_ascii=False, indent=2)
+        stream.write("\n")
+
+
+def members(pgid):
+    """Read this group only; exclude zombies, which cannot execute work."""
+    found = []
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            raw = (entry / "stat").read_text()
+            fields = raw[raw.rfind(")") + 2:].split()
+            if int(fields[2]) == pgid and fields[0] != "Z":
+                found.append(int(entry.name))
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+    return sorted(found)
+
+
+def stop_group(proc, events, grace):
+    for sig, wait in ((signal.SIGTERM, grace), (signal.SIGKILL, 3.0)):
+        if not members(proc.pid):
+            break
+        try:
+            os.killpg(proc.pid, sig)
+            events.append({"signal": sig.name, "at": now()})
+        except ProcessLookupError:
+            break
+        until = time.monotonic() + wait
+        while time.monotonic() < until:
+            proc.poll()
+            if not members(proc.pid):
+                break
+            time.sleep(0.1)
+    proc.wait(timeout=3)
+    return members(proc.pid)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--prompt-file", required=True, type=Path)
+    profile = parser.add_mutually_exclusive_group(required=True)
+    profile.add_argument("--agent-file", type=Path)
+    profile.add_argument("--session")
+    parser.add_argument("--work-dir", required=True, type=Path)
+    parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--model", required=True)
+    parser.add_argument("--kimi", default=shutil.which("kimi"))
+    parser.add_argument("--timeout", type=float, default=180)
+    parser.add_argument("--grace", type=float, default=5)
+    parser.add_argument("--max-steps", type=int, default=12)
+    parser.add_argument("--owned-file", action="append", default=[])
+    args = parser.parse_args()
+    if sys.platform != "linux" or not args.kimi:
+        parser.error("This runner requires Linux and an installed Kimi executable")
+    if not (0 < args.timeout <= 3600 and 0 < args.grace <= 30):
+        parser.error("timeout must be in (0, 3600]; grace in (0, 30]")
+    if not 1 <= args.max_steps <= 100:
+        parser.error("max-steps must be in [1, 100]")
+    cwd = args.work_dir.resolve(strict=True)
+    if not cwd.is_dir():
+        parser.error("work-dir must be a directory")
+    binary = Path(args.kimi).resolve(strict=True)
+    prompt_bytes = args.prompt_file.read_bytes()
+    prompt = prompt_bytes.decode("utf-8")
+    owned = []
+    for name in args.owned_file:
+        path = (cwd / name).resolve(strict=True)
+        if not path.is_relative_to(cwd) or not path.is_file():
+            parser.error("owned files must be existing regular files inside work-dir")
+        owned.append({"path": str(path), "before_sha256": digest(path.read_bytes())})
+    out = args.output_dir.absolute()
+    out.mkdir(parents=True, exist_ok=False)
+    os.chmod(out, 0o700)
+    (out / "prompt.txt").write_bytes(prompt_bytes)
+    argv = [str(binary), "--model", args.model,
+            "--output-format", "stream-json"]
+    agent_sha = None
+    if args.agent_file:
+        agent_bytes = args.agent_file.read_bytes()
+        (out / "agent.md").write_bytes(agent_bytes)
+        agent_sha = digest(agent_bytes)
+        argv += ["--agent-file", str(out / "agent.md")]
+    else:
+        argv += ["--session", args.session]
+    argv += ["--prompt", prompt]
+    env = os.environ.copy()
+    controls = {
+        "KIMI_CODE_NO_AUTO_UPDATE": "1",
+        "KIMI_DISABLE_TELEMETRY": "1",
+        "KIMI_CODE_INFINITE_RETRY": "0",
+        "KIMI_LOOP_MAX_STEPS_PER_TURN": str(args.max_steps),
+        "KIMI_LOOP_MAX_ATTEMPTS_PER_STEP": "2",
+        "KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT": "0",
+    }
+    env.update(controls)
+    env.pop("KIMI_CODE_EXPERIMENTAL_REMOTE_CONTROL", None)
+    version = subprocess.run([str(binary), "--version"], env=env,
+                             capture_output=True, text=True, timeout=15, check=True)
+    request = {
+        "schema": "codex-kimi-request-v1", "frozen_at": now(),
+        "argv": argv, "cwd": str(cwd), "model_alias": args.model,
+        "session_to_resume": args.session, "cli_version": version.stdout.strip(),
+        "binary_sha256": digest(binary.read_bytes()),
+        "runner_sha256": digest(Path(__file__).read_bytes()),
+        "prompt_sha256": digest(prompt_bytes), "agent_sha256": agent_sha,
+        "owned_files": owned, "timeout_seconds": args.timeout,
+        "grace_seconds": args.grace, "environment_controls": controls,
+    }
+    write_json(out / "request.json", request)
+    interrupted = []
+    previous = {}
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        previous[sig] = signal.signal(sig, lambda signum, frame: interrupted.append(signum))
+    proc = None
+    started = time.monotonic()
+    status = "launch_error"
+    events = []
+    remaining = []
+    error = None
+    try:
+        with (out / "stdout.jsonl").open("xb") as stdout, (out / "stderr.txt").open("xb") as stderr:
+            proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                                    stdout=stdout, stderr=stderr, start_new_session=True)
+            identity = {"wrapper_pid": os.getpid(), "pid": proc.pid,
+                        "pgid": proc.pid, "started_at": now()}
+            write_json(out / "process.json", identity)
+            print(json.dumps({"event": "started", **identity, "output_dir": str(out)}), flush=True)
+            while proc.poll() is None:
+                if interrupted:
+                    status = "interrupted"
+                    break
+                if time.monotonic() - started >= args.timeout:
+                    status = "timeout"
+                    break
+                time.sleep(0.1)
+            else:
+                status = "completed" if proc.returncode == 0 else "process_error"
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+        status = "runner_error"
+    finally:
+        if proc is not None:
+            remaining = stop_group(proc, events, args.grace)
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+    if remaining:
+        status = "cleanup_error"
+    for item in owned:
+        path = Path(item["path"])
+        item["after_sha256"] = digest(path.read_bytes()) if path.is_file() else None
+    result = {
+        "schema": "codex-kimi-result-v1", "finished_at": now(),
+        "status": status, "process_exit_code": proc.returncode if proc else None,
+        "elapsed_seconds": round(time.monotonic() - started, 3),
+        "received_signals": interrupted, "cleanup_signals": events,
+        "remaining_live_group_members": remaining, "owned_files": owned,
+        "error": error,
+    }
+    for name in ("stdout.jsonl", "stderr.txt"):
+        path = out / name
+        result[name + "_sha256"] = digest(path.read_bytes()) if path.exists() else None
+    write_json(out / "result.json", result)
+    print(json.dumps(result), flush=True)
+    if status == "completed":
+        return 0
+    if status == "timeout":
+        return 124
+    if status == "interrupted":
+        return 128 + interrupted[0]
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

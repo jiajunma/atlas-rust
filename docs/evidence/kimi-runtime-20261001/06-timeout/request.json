@@ -1,0 +1,33 @@
+{
+  "schema": "codex-kimi-request-v1",
+  "frozen_at": "2026-10-01T05:56:19.303498+00:00",
+  "argv": [
+    "/home/hoxide/.kimi-code/bin/kimi",
+    "--model",
+    "kimi-code/k3-256k",
+    "--output-format",
+    "stream-json",
+    "--agent-file",
+    "/home/hoxide/mycodes/atlas-rust/docs/evidence/kimi-runtime-20261001/06-timeout/agent.md",
+    "--prompt",
+    "This is an intentionally interruptible Codex-to-Kimi subprocess lifecycle check. You have no tools and own no files. Start writing a numbered list of 5000 short programming topic names, one per line. The coordinator will interrupt this request before completion. Do not create any background work or claim that the task finished early.\n"
+  ],
+  "cwd": "/tmp/codex-kimi-exit-klprhrwx",
+  "model_alias": "kimi-code/k3-256k",
+  "session_to_resume": null,
+  "cli_version": "2.1.1",
+  "binary_sha256": "66f47536e40b02bb1d577cdd324768f73d39b8b9472e0ca140e73d8e225cd7de",
+  "prompt_sha256": "ac658956724de6f708938861f82bc540083a984182b61978b5cf0cedc0ebe548",
+  "agent_sha256": "62f23c928d0882459b95c2cb35eca1608d8f5f3c1eefdaa3d38ad8054a6a373f",
+  "owned_files": [],
+  "timeout_seconds": 2.0,
+  "grace_seconds": 1.0,
+  "environment_controls": {
+    "KIMI_CODE_NO_AUTO_UPDATE": "1",
+    "KIMI_DISABLE_TELEMETRY": "1",
+    "KIMI_CODE_INFINITE_RETRY": "0",
+    "KIMI_LOOP_MAX_STEPS_PER_TURN": "12",
+    "KIMI_LOOP_MAX_ATTEMPTS_PER_STEP": "2",
+    "KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT": "0"
+  }
+}

@@ -1,0 +1,2 @@
+def split_labels(text: str) -> list[str]:
+    return [label for label in (part.strip() for part in text.split(",")) if label]

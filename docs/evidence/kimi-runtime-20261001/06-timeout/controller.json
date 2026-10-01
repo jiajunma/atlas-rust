@@ -1,0 +1,15 @@
+{
+  "case": "06-timeout",
+  "wrapper_exit_code": 124,
+  "injected_signal": null,
+  "result_status": "timeout",
+  "cleanup_signals": [
+    {
+      "signal": "SIGTERM",
+      "at": "2026-10-01T05:56:22.156367+00:00"
+    }
+  ],
+  "remaining_live_group_members": [],
+  "temporary_directory": "/tmp/codex-kimi-exit-klprhrwx",
+  "temporary_directory_removed": true
+}

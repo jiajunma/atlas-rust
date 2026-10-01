@@ -1,0 +1,160 @@
+{
+  "schema": "kimi-integration-review-v1",
+  "reviewed_at": "2026-10-01T06:03:48.092922+00:00",
+  "reviewer": "Codex coordinator; independent of Kimi task answers",
+  "local_exception": "User explicitly authorized local Kimi integration checks; no Atlas/program tests",
+  "result": "PASS_LOCAL_KIMI_INTEGRATION",
+  "invocations": [
+    {
+      "case": "01-connect",
+      "observed_status": "completed",
+      "expected_wrapper_exit": 0,
+      "tool_calls": [],
+      "result_sha256": "28eddd93ee196676616ba373776af2c051e68b98a9fa83515460dd0648368842",
+      "request_sha256": "993eda2d1c2806a106ae02cf34b37890e56e40ed7b34aff0597d0edcae5f4358"
+    },
+    {
+      "case": "02-edit",
+      "observed_status": "completed",
+      "expected_wrapper_exit": 0,
+      "tool_calls": [
+        "Read",
+        "Edit"
+      ],
+      "result_sha256": "f2b6d7b1aaf272f7c22b044ac145186cfd15397cb45e276ca4d71d8ff04f85de",
+      "request_sha256": "058860250aa3835366d7ce491a864e86713346a1ece1811ce27c91f96ea6c32a"
+    },
+    {
+      "case": "03-resume",
+      "observed_status": "completed",
+      "expected_wrapper_exit": 0,
+      "tool_calls": [
+        "Read",
+        "Edit"
+      ],
+      "result_sha256": "51f72ce1eb911eef3c08ab0a85de72a4e3197d75578bd096158884a62e2db810",
+      "request_sha256": "646e97af2689016ccda24433af113b9498fe218ed2fa510dc67edaa9e79c0530"
+    },
+    {
+      "case": "04-sigint",
+      "observed_status": "interrupted",
+      "expected_wrapper_exit": 130,
+      "tool_calls": [],
+      "result_sha256": "6a7640719ad910956219d47bd403f8e87920cb76827bd0e6db04a16bf7cabaf0",
+      "request_sha256": "2cad8c2794a3b23572697001648821f8686f8914407ead58e45b44a9e7bb4eb4"
+    },
+    {
+      "case": "05-sigterm",
+      "observed_status": "interrupted",
+      "expected_wrapper_exit": 143,
+      "tool_calls": [],
+      "result_sha256": "2e4e5051fa2ad41a7bc142e2c6899b30a7e62f0ccbcbe0bea043c1b36dabc5c4",
+      "request_sha256": "1b72c8ef93fd5575506070a65bb7a743143c89e8e3d877868b1c5215f70e106b"
+    },
+    {
+      "case": "06-timeout",
+      "observed_status": "timeout",
+      "expected_wrapper_exit": 124,
+      "tool_calls": [],
+      "result_sha256": "8cf084e51cf848ee48f3604857f0ab6978700b4eb04bdcfecff03551626cab37",
+      "request_sha256": "059339fa00c6814f5f49b57f7231f0fa2c86351b38cbdcae9e712848cdd8e425"
+    },
+    {
+      "case": "07-kill-fallback",
+      "observed_status": "timeout",
+      "expected_wrapper_exit": 124,
+      "tool_calls": [],
+      "result_sha256": "7e15c96647787cdd289568d215260e7970adb59997770a891cab60807a5a01c8",
+      "request_sha256": "3c2961f866c26fae3beb1493371324269eb269c4c5ee6960bead1f73cfa358fd"
+    },
+    {
+      "case": "08-inflight-sigint",
+      "observed_status": "interrupted",
+      "expected_wrapper_exit": 130,
+      "tool_calls": [
+        "Read"
+      ],
+      "result_sha256": "3a23640b9723da57e7a133ca8bcadd172d9c66a53c52d05b324d034c40e1f62f",
+      "request_sha256": "8d982d87230f1a21768431677f3ab17fbd40a620176ea42c2b42e03b910cc98e"
+    },
+    {
+      "case": "09-invalid-profile",
+      "observed_status": "process_error",
+      "expected_wrapper_exit": 1,
+      "tool_calls": [],
+      "result_sha256": "5a83030b3a87cd1fdbccbee7c1ec4e92caf9eb3697762e9b2a6dfb3560651076",
+      "request_sha256": "58ffbd14233d2823a40ef26bb41dc87e9024db127c0b7003f0d788e6763af98f"
+    },
+    {
+      "case": "10-final-normal",
+      "observed_status": "completed",
+      "expected_wrapper_exit": 0,
+      "tool_calls": [],
+      "result_sha256": "dd6dfc6ab98bf59af8c8788197329b3cf36db603f8f7dd025eb91e5c93ca49e8",
+      "request_sha256": "4b678aa51930408e8987e576be1de63486943d9138736eee223f78bed4fb2feb"
+    },
+    {
+      "case": "11-final-sigterm",
+      "observed_status": "interrupted",
+      "expected_wrapper_exit": 143,
+      "tool_calls": [],
+      "result_sha256": "98458518a7240b58b4d035ed2361ab33bae39014e1bc8a64fc608c84f96b25c7",
+      "request_sha256": "e744f019e8a89a1648dd9869ec9aac9ed2d8f18686bd69103e1269e51e9adb6e"
+    }
+  ],
+  "final_runner_sha256": "beda5202021bff7f78f39af64f658c0f7e7cd501155d4474647b05b78e04cc0e",
+  "initial_runner_sha256": "679dbdd4f18fe02410bdbfaec4c2aa7351a4c9c1e720d32c1bbeb0f88e12e631",
+  "program_source_review": "exact independently inspected two-line repair and requested docstring; generated program never executed",
+  "unrelated_file_unchanged": true,
+  "explicit_session_resume_verified": true,
+  "inflight_cancellation_verified": true,
+  "forced_kill_fixture": "SIGSTOP injected into owned Kimi group to force timeout SIGKILL path",
+  "remaining_live_groups": [],
+  "temporary_paths": [
+    {
+      "path": "/tmp/codex-kimi-connect-7j8qhgvc",
+      "state": "REMOVED"
+    },
+    {
+      "path": "/tmp/codex-kimi-edit-gi3ingyo",
+      "state": "REMOVED"
+    },
+    {
+      "path": "/tmp/codex-kimi-exit-42mq4jxf",
+      "state": "REMOVED"
+    },
+    {
+      "path": "/tmp/codex-kimi-exit-klprhrwx",
+      "state": "REMOVED"
+    },
+    {
+      "path": "/tmp/codex-kimi-exit-lu4gr37h",
+      "state": "REMOVED"
+    },
+    {
+      "path": "/tmp/codex-kimi-exit-ly157o0d",
+      "state": "REMOVED"
+    },
+    {
+      "path": "/tmp/codex-kimi-final-ornpmvgw",
+      "state": "REMOVED"
+    },
+    {
+      "path": "/tmp/codex-kimi-final-syw69cg2",
+      "state": "REMOVED"
+    },
+    {
+      "path": "/tmp/codex-kimi-inflight-w8q51gia",
+      "state": "REMOVED"
+    },
+    {
+      "path": "/tmp/codex-kimi-invalid-47uuwus2",
+      "state": "REMOVED"
+    }
+  ],
+  "limitations": [
+    "No Atlas or generated-program runtime verification",
+    "No security sandbox or path-containment claim",
+    "No detached-daemon or supervisor-SIGKILL cleanup guarantee"
+  ]
+}

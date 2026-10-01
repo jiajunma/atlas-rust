@@ -1,5 +1,37 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
+## Kimi runtime integration verified — 2026-10-01
+
+The user explicitly authorized local Kimi invocation/delivery/exit checks while
+keeping Atlas builds and program tests on HPC. Local Kimi2.1.1 with the existing
+account and `kimi-code/k3-256k` passed real response, bounded Read/Edit coding,
+exact-session continuation, early/in-flight interruption, timeout and forced
+process-group cleanup; an intentionally invalid profile correctly returned1.
+Eleven invocations have retained exact prompts, scopes, profiles, model/session
+records, raw streams, exit/cleanup evidence and independent byte inspection in
+[`slices/kimi_runtime_validation_2026-10-01.md`](slices/kimi_runtime_validation_2026-10-01.md).
+All had zero remaining live group members. No generated program was executed,
+no Kimi changes entered Atlas source and no mathematical acceptance is claimed.
+No suggestions were rejected in the synthetic edit; no Kimi output is an oracle.
+
+Use `tools/kimi_subagent.py` and `.agents/kimi/{probe,editor}.md`; root AGENTS.md
+now records the verified operation and exit contract. Stop the recorded wrapper
+PID with SIGINT/SIGTERM, not broad process-name matching or SIGKILL of the
+wrapper. Review partial files after interruption. JSONL includes trailing
+session metadata; resume by explicit session ID. Keep existing local credentials
+in place. Lessons: local login works, Read/Edit suffices for bounded edits,
+explicit resume retained context, and controlled group cleanup works. The
+historical storage failure was not reproduced or independently diagnosed.
+
+Task temporary paths, all REMOVED: `/tmp/codex-kimi-connect-7j8qhgvc`,
+`/tmp/codex-kimi-edit-gi3ingyo`, `/tmp/codex-kimi-exit-lu4gr37h`,
+`/tmp/codex-kimi-exit-42mq4jxf`, `/tmp/codex-kimi-exit-klprhrwx`,
+`/tmp/codex-kimi-exit-ly157o0d`, `/tmp/codex-kimi-inflight-w8q51gia`,
+`/tmp/codex-kimi-invalid-47uuwus2`, `/tmp/codex-kimi-final-ornpmvgw`, and
+`/tmp/codex-kimi-final-syw69cg2`. No worktree, transport or HPC job was created.
+Six synthetic diagnostic sessions remain in the normal local Kimi runtime
+store, indexed by the report; unrelated sessions/credentials were untouched.
+
 ## Kimi subagent research — 2026-10-01
 
 The current executable is Kimi Code **2.1.1**, superseding the historical

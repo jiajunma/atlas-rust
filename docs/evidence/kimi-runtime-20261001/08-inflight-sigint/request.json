@@ -1,0 +1,38 @@
+{
+  "schema": "codex-kimi-request-v1",
+  "frozen_at": "2026-10-01T05:57:32.028479+00:00",
+  "argv": [
+    "/home/hoxide/.kimi-code/bin/kimi",
+    "--model",
+    "kimi-code/k3-256k",
+    "--output-format",
+    "stream-json",
+    "--agent-file",
+    "/home/hoxide/mycodes/atlas-rust/docs/evidence/kimi-runtime-20261001/08-inflight-sigint/agent.md",
+    "--prompt",
+    "This is an intentionally interruptible Codex programming-assistant integration check. Your only accessible task file is input.txt in the working directory. First use Read to read the entire file. Do not edit it. After reading, draft a detailed 4000-line numbered implementation checklist for a generic text-label parser. Do not run any commands, programs, tests, builds, or other agents and do not touch any other file. The coordinator will interrupt you after your Read completes, so do not shorten the checklist or claim completion in advance.\n"
+  ],
+  "cwd": "/tmp/codex-kimi-inflight-w8q51gia",
+  "model_alias": "kimi-code/k3-256k",
+  "session_to_resume": null,
+  "cli_version": "2.1.1",
+  "binary_sha256": "66f47536e40b02bb1d577cdd324768f73d39b8b9472e0ca140e73d8e225cd7de",
+  "prompt_sha256": "845085b16be48a3ad35acef69f99785e72a46381c8fb0fb359015def11ce57e9",
+  "agent_sha256": "002c1df39a4fc3217d96863a12bb70900d6ad884a699d51764aab2ad9776f546",
+  "owned_files": [
+    {
+      "path": "/tmp/codex-kimi-inflight-w8q51gia/input.txt",
+      "before_sha256": "309d10c992c3da1f1c9dd2413d60f8f7e497bfd110fe508091fc61e720941a16"
+    }
+  ],
+  "timeout_seconds": 90.0,
+  "grace_seconds": 5,
+  "environment_controls": {
+    "KIMI_CODE_NO_AUTO_UPDATE": "1",
+    "KIMI_DISABLE_TELEMETRY": "1",
+    "KIMI_CODE_INFINITE_RETRY": "0",
+    "KIMI_LOOP_MAX_STEPS_PER_TURN": "12",
+    "KIMI_LOOP_MAX_ATTEMPTS_PER_STEP": "2",
+    "KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT": "0"
+  }
+}

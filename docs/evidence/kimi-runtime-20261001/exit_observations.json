@@ -1,0 +1,79 @@
+[
+  {
+    "case": "04-sigint",
+    "wrapper_exit_code": 130,
+    "injected_signal": {
+      "target": "wrapper",
+      "pid": 1374326,
+      "signal": "SIGINT"
+    },
+    "result_status": "interrupted",
+    "cleanup_signals": [
+      {
+        "signal": "SIGTERM",
+        "at": "2026-10-01T05:56:14.055266+00:00"
+      }
+    ],
+    "remaining_live_group_members": [],
+    "temporary_directory": "/tmp/codex-kimi-exit-lu4gr37h",
+    "temporary_directory_removed": true
+  },
+  {
+    "case": "05-sigterm",
+    "wrapper_exit_code": 143,
+    "injected_signal": {
+      "target": "wrapper",
+      "pid": 1374414,
+      "signal": "SIGTERM"
+    },
+    "result_status": "interrupted",
+    "cleanup_signals": [
+      {
+        "signal": "SIGTERM",
+        "at": "2026-10-01T05:56:17.760962+00:00"
+      }
+    ],
+    "remaining_live_group_members": [],
+    "temporary_directory": "/tmp/codex-kimi-exit-42mq4jxf",
+    "temporary_directory_removed": true
+  },
+  {
+    "case": "06-timeout",
+    "wrapper_exit_code": 124,
+    "injected_signal": null,
+    "result_status": "timeout",
+    "cleanup_signals": [
+      {
+        "signal": "SIGTERM",
+        "at": "2026-10-01T05:56:22.156367+00:00"
+      }
+    ],
+    "remaining_live_group_members": [],
+    "temporary_directory": "/tmp/codex-kimi-exit-klprhrwx",
+    "temporary_directory_removed": true
+  },
+  {
+    "case": "07-kill-fallback",
+    "wrapper_exit_code": 124,
+    "injected_signal": {
+      "target": "owned Kimi process group",
+      "pgid": 1374742,
+      "signal": "SIGSTOP",
+      "purpose": "force the timeout cleanup to exercise SIGKILL escalation"
+    },
+    "result_status": "timeout",
+    "cleanup_signals": [
+      {
+        "signal": "SIGTERM",
+        "at": "2026-10-01T05:56:27.562034+00:00"
+      },
+      {
+        "signal": "SIGKILL",
+        "at": "2026-10-01T05:56:28.733202+00:00"
+      }
+    ],
+    "remaining_live_group_members": [],
+    "temporary_directory": "/tmp/codex-kimi-exit-ly157o0d",
+    "temporary_directory_removed": true
+  }
+]

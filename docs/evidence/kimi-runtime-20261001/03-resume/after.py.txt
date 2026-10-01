@@ -1,0 +1,3 @@
+def split_labels(text: str) -> list[str]:
+    """Split comma-separated labels, dropping blank entries."""
+    return [label for label in (part.strip() for part in text.split(",")) if label]

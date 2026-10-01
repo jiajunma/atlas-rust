@@ -1,0 +1,20 @@
+{
+  "schema": "codex-kimi-result-v1",
+  "finished_at": "2026-10-01T05:55:01.655515+00:00",
+  "status": "completed",
+  "process_exit_code": 0,
+  "elapsed_seconds": 14.474,
+  "received_signals": [],
+  "cleanup_signals": [],
+  "remaining_live_group_members": [],
+  "owned_files": [
+    {
+      "path": "/tmp/codex-kimi-edit-gi3ingyo/labels.py",
+      "before_sha256": "3c3bd741ef4660f0017c76f789ecadfddb8cffd25ab5d435c81bb9ddeb0de4e3",
+      "after_sha256": "a02475a00d3af6f15d8331e5d798eceaa58cc87447a0de16956dd85520168bc1"
+    }
+  ],
+  "error": null,
+  "stdout.jsonl_sha256": "0833d18ee65dde7b3819c46c2670e8078d6a116535f6728ce1683166c56017b5",
+  "stderr.txt_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

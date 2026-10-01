@@ -1,0 +1,13 @@
+{
+  "edit_exit": 0,
+  "resume_exit": 0,
+  "session_id": "session_f9c7bd36-01b9-4d68-82a7-1f6701e68493",
+  "files_present": [
+    "labels.py",
+    "untouched.txt"
+  ],
+  "unrelated_file_unchanged": true,
+  "synthetic_program_executed": false,
+  "temporary_directory": "/tmp/codex-kimi-edit-gi3ingyo",
+  "temporary_directory_removed": true
+}
