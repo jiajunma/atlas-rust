@@ -1,0 +1,14 @@
+{
+  "scope": "synthetic proposal and ACP lifecycle only",
+  "owned_files": [],
+  "model": "kimi-code/k3-256k",
+  "driver_sha256": "d2a2f228feee1bd4f742d1e35e99608b8a00298534a4f8974038252fe84464c5",
+  "prompts": {
+    "bootstrap": "You are a coding subagent of Codex. Remember worker marker ACP_CODER_82B7. Do not use any tool yet. Reply exactly ACP_BOOT_READY.",
+    "task": "Work only from this supplied synthetic code; do not read or edit files or run commands/tests:\ndef split_labels(text: str) -> list[str]:\n    return text.split(',')\nPropose a replacement that strips whitespace and drops blank labels. Before writing code, use AskUserQuestion to ask the coordinator how duplicate labels should be handled. Offer exactly two choices labeled 'Preserve duplicates' and 'Remove duplicates'. Wait for its answer, then return the proposed function as text and explicitly state that it was not executed. Preserve order in either case.",
+    "followup": "Keep the chosen duplicate policy and add a one-line docstring to the proposed function. Return the worker marker remembered from the first message and the updated function. Do not use tools or execute the code.",
+    "cancel": "Use AskUserQuestion now to ask the coordinator to choose 'Option A' or 'Option B'. Wait for its response before doing anything else. This is an interruption exercise; do not read files or execute commands.",
+    "recover": "The preceding turn was cancelled by the coordinator. Do not use tools. Reply exactly ACP_RECOVERED_82B7.",
+    "reload": "Do not use tools. State the worker marker from the start of our conversation and the duplicate policy chosen by the coordinator."
+  }
+}

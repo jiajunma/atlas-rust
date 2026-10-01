@@ -1,0 +1,590 @@
+{
+  "schema": "sha256-file-manifest-v1",
+  "files": [
+    {
+      "path": "01-first/01-bootstrap/agent.md",
+      "bytes": 614,
+      "sha256": "2558fdfaae9891fe15afa3a9c649b6e7f70ce73eca9742e5489aa8bd29364f1e"
+    },
+    {
+      "path": "01-first/01-bootstrap/process.json",
+      "bytes": 118,
+      "sha256": "01a5b7c902fa50b546dc9a966352a66d8ffa8d8ed47e46f748fb22db6ef8fd1f"
+    },
+    {
+      "path": "01-first/01-bootstrap/prompt.txt",
+      "bytes": 129,
+      "sha256": "30cded99d4ae1deca0bb26530d78ef64d367b0f4f492a933b7413bdd3a0dca9b"
+    },
+    {
+      "path": "01-first/01-bootstrap/request.json",
+      "bytes": 1334,
+      "sha256": "805aa9a3f2c3357d6932457504503179d5526460d1e11dd221fcbfcf8af18e09"
+    },
+    {
+      "path": "01-first/01-bootstrap/result.json",
+      "bytes": 482,
+      "sha256": "482f8d2bdd10bb41644b80321a84a6a8a5b83a00f412db27680cee90a2f8371a"
+    },
+    {
+      "path": "01-first/01-bootstrap/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "01-first/01-bootstrap/stdout.jsonl",
+      "bytes": 365,
+      "sha256": "0ef58ed3e3862c86159d5b07289c2c838e5566a4790b43954b6595cf4422f8a3"
+    },
+    {
+      "path": "01-first/02-dialogue/events.jsonl",
+      "bytes": 19907,
+      "sha256": "00ea85314deb701a2dee3042eb897fcd09969ca8cd32531589b9cc754ef827d7"
+    },
+    {
+      "path": "01-first/02-dialogue/process.json",
+      "bytes": 118,
+      "sha256": "783811a9022fcbce069e9b404feeb743763f890be54a3b21eb0f4c195f9a587f"
+    },
+    {
+      "path": "01-first/02-dialogue/request.json",
+      "bytes": 895,
+      "sha256": "fc2c955e7b459bbf3bd01c1cb6c9f38873a0d2705470b87445f9652824226a07"
+    },
+    {
+      "path": "01-first/02-dialogue/result.json",
+      "bytes": 318,
+      "sha256": "18f7bfc0b40cbff4483985b8380984732beddcf68dece6cb3703e2500c2155c5"
+    },
+    {
+      "path": "01-first/02-dialogue/stderr.txt",
+      "bytes": 236,
+      "sha256": "90f2ec3a83df9f2ed545034e389960045c1a3986df529ae44e32f0b3e68ff380"
+    },
+    {
+      "path": "01-first/02-dialogue/wire.jsonl",
+      "bytes": 159197,
+      "sha256": "37a4b2b6338b6aa63dc8642f84548e7bbe4a1b4c3f0cb7672949b1374583ba2e"
+    },
+    {
+      "path": "01-first/02-dialogue-client.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "01-first/02-dialogue-controller.json",
+      "bytes": 31035,
+      "sha256": "1ba87e4915bfb3f19246b7522521072027fc2a7768cc5587716fbb86333dacac"
+    },
+    {
+      "path": "01-first/bootstrap-controller.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "01-first/bootstrap-controller.stdout.txt",
+      "bytes": 687,
+      "sha256": "4c535a20243dc96d954aaba50729ee8f2b07c065ef674e01be2143fef4ef45a7"
+    },
+    {
+      "path": "01-first/bootstrap-prompt.txt",
+      "bytes": 129,
+      "sha256": "30cded99d4ae1deca0bb26530d78ef64d367b0f4f492a933b7413bdd3a0dca9b"
+    },
+    {
+      "path": "01-first/capture.json",
+      "bytes": 118,
+      "sha256": "702a811ab01914051621835438028ac50f9b50502024e0fe836b2bf471ac4b5f"
+    },
+    {
+      "path": "01-first/kimi_acp_probe.py.txt",
+      "bytes": 8591,
+      "sha256": "d2a2f228feee1bd4f742d1e35e99608b8a00298534a4f8974038252fe84464c5"
+    },
+    {
+      "path": "01-first/kimi_acp_session.py.txt",
+      "bytes": 14931,
+      "sha256": "b7e9abf96843d6ef19bbbe597c6808589c0a99a4d2d42ea15bb7544c9e2194d2"
+    },
+    {
+      "path": "01-first/plan.json",
+      "bytes": 1666,
+      "sha256": "90f54b1e75d5c2c875fb949fc23c94e6de05f8df559473df86626e89bd12cd0d"
+    },
+    {
+      "path": "01-first/scratch.json",
+      "bytes": 170,
+      "sha256": "ed199f3d476eb36cd407e3e49b4cab412fa762db9fb72444cb6cdd4b69313ae6"
+    },
+    {
+      "path": "02-manual-context/01-bootstrap/agent.md",
+      "bytes": 614,
+      "sha256": "2558fdfaae9891fe15afa3a9c649b6e7f70ce73eca9742e5489aa8bd29364f1e"
+    },
+    {
+      "path": "02-manual-context/01-bootstrap/process.json",
+      "bytes": 118,
+      "sha256": "e6e8f2e3d87741691422e00c54d44c4a47f684747b5f5ba7a343f2f747ff4312"
+    },
+    {
+      "path": "02-manual-context/01-bootstrap/prompt.txt",
+      "bytes": 129,
+      "sha256": "30cded99d4ae1deca0bb26530d78ef64d367b0f4f492a933b7413bdd3a0dca9b"
+    },
+    {
+      "path": "02-manual-context/01-bootstrap/request.json",
+      "bytes": 1343,
+      "sha256": "963017e1c3130c662aed8a9c0f4b3ffd2eb53d1798795e6b1ed20caa646192b9"
+    },
+    {
+      "path": "02-manual-context/01-bootstrap/result.json",
+      "bytes": 482,
+      "sha256": "ca95591b5a73eeff9b01fb3881ca63fd4c88a1f84640744f9c54e19b05d6a319"
+    },
+    {
+      "path": "02-manual-context/01-bootstrap/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "02-manual-context/01-bootstrap/stdout.jsonl",
+      "bytes": 365,
+      "sha256": "103564e5c806d515ca321090030cbecaa13c1bd4f5effeebb18da4d09ecc7059"
+    },
+    {
+      "path": "02-manual-context/02-dialogue/events.jsonl",
+      "bytes": 42002,
+      "sha256": "aec3b2aac510a786d3c6cfd99d3385c73270d8dcbe82e350686b113bc25dea90"
+    },
+    {
+      "path": "02-manual-context/02-dialogue/process.json",
+      "bytes": 118,
+      "sha256": "94ade05d121460c2e1576b8afb7106b97ff2b7925de03370d5272f0911e66528"
+    },
+    {
+      "path": "02-manual-context/02-dialogue/request.json",
+      "bytes": 895,
+      "sha256": "027ecd0f1f313a051dfd0a9725391399c625fbbf0aa0b6e708c66333f0e86349"
+    },
+    {
+      "path": "02-manual-context/02-dialogue/result.json",
+      "bytes": 303,
+      "sha256": "84e53e8f88e7954f42f63d900bf1e4dfd029b296d3a9f6e1cbf887412f065034"
+    },
+    {
+      "path": "02-manual-context/02-dialogue/stderr.txt",
+      "bytes": 1228,
+      "sha256": "f1946911842b7a3ff592ce459798ad84617e95ef6a1eb21870e05b58fe4ceced"
+    },
+    {
+      "path": "02-manual-context/02-dialogue/wire.jsonl",
+      "bytes": 117175,
+      "sha256": "bf89b573e2c77272a3fd5280d8ff72966e7c7c09e63168c0f674de0dff135c19"
+    },
+    {
+      "path": "02-manual-context/02-dialogue-client.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "02-manual-context/02-dialogue-controller.json",
+      "bytes": 62292,
+      "sha256": "6614747d311907c134ea566c629485a7cbec2938f0bad3865c5ba6d4a526c675"
+    },
+    {
+      "path": "02-manual-context/03-reload/events.jsonl",
+      "bytes": 14440,
+      "sha256": "ff7e3401a246100369acf4e62fefbb15c8c807c423a509629b37954c02bbe528"
+    },
+    {
+      "path": "02-manual-context/03-reload/process.json",
+      "bytes": 118,
+      "sha256": "f742c19d99464f59ceab17cc8a00731bb4c519edf5159f1b49bfc7ba13f40f51"
+    },
+    {
+      "path": "02-manual-context/03-reload/request.json",
+      "bytes": 895,
+      "sha256": "eb7649b4282d7b77138c8b5e7ec5c203ffac7a882408845caf076e858486f350"
+    },
+    {
+      "path": "02-manual-context/03-reload/result.json",
+      "bytes": 302,
+      "sha256": "bc9a11e990df3ac116266a4cd8bd0d74a00801e1f94964ca1f1a30b87222dd37"
+    },
+    {
+      "path": "02-manual-context/03-reload/stderr.txt",
+      "bytes": 236,
+      "sha256": "a40f548cc709d1f4e194757014d1eafd7d378c4311205ab2aa61449e791c0c01"
+    },
+    {
+      "path": "02-manual-context/03-reload/wire.jsonl",
+      "bytes": 33816,
+      "sha256": "616d1327a7fd092b983656945843d5f032572fe842f8022aab7bbbb0a5f17512"
+    },
+    {
+      "path": "02-manual-context/03-reload-client.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "02-manual-context/03-reload-controller.json",
+      "bytes": 19859,
+      "sha256": "bcc0ef13e318e6f23617a65fd4b0e36b3add965b56e94c8819a886f6950f8585"
+    },
+    {
+      "path": "02-manual-context/04-deadline/events.jsonl",
+      "bytes": 13876,
+      "sha256": "1f6ace555baa4ca25a34bd8d8fb0f9b2dd306c096874220b82dc8f8459221ef8"
+    },
+    {
+      "path": "02-manual-context/04-deadline/process.json",
+      "bytes": 118,
+      "sha256": "0fbd61b10d6253d954f002b46afa1d22f1e3ec03352a99db9f7c543351f91d82"
+    },
+    {
+      "path": "02-manual-context/04-deadline/request.json",
+      "bytes": 893,
+      "sha256": "1ceb2c60dd67b91ba44272ec25aa9538cc7596d80b20dd3f2eacee4f378e064b"
+    },
+    {
+      "path": "02-manual-context/04-deadline/result.json",
+      "bytes": 303,
+      "sha256": "206df1c7502f2c7c69ad641ad167a609e3f8bbe9b952592cf7ccb5b0a998181e"
+    },
+    {
+      "path": "02-manual-context/04-deadline/stderr.txt",
+      "bytes": 236,
+      "sha256": "a40f548cc709d1f4e194757014d1eafd7d378c4311205ab2aa61449e791c0c01"
+    },
+    {
+      "path": "02-manual-context/04-deadline/wire.jsonl",
+      "bytes": 25837,
+      "sha256": "671f5d3ee9da60b8d228a1cbf4501c30b66dc124ccc66c95de955b45a317ff49"
+    },
+    {
+      "path": "02-manual-context/04-deadline-client.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "02-manual-context/04-deadline-controller.json",
+      "bytes": 18525,
+      "sha256": "5aec79295808fc7acb7b37a721d73273943f9d444f0f3b77e21c51870a78093a"
+    },
+    {
+      "path": "02-manual-context/05-signal/events.jsonl",
+      "bytes": 13876,
+      "sha256": "1f6ace555baa4ca25a34bd8d8fb0f9b2dd306c096874220b82dc8f8459221ef8"
+    },
+    {
+      "path": "02-manual-context/05-signal/process.json",
+      "bytes": 118,
+      "sha256": "95d8e20f70ba9f51f8eaf7b2294b307d6e303b25d29515c9ad3ac3f93738bc68"
+    },
+    {
+      "path": "02-manual-context/05-signal/request.json",
+      "bytes": 895,
+      "sha256": "fba006e8c6c698a015e52524012ef1e4476be02e47ddba27441ba30fdb951846"
+    },
+    {
+      "path": "02-manual-context/05-signal/result.json",
+      "bytes": 317,
+      "sha256": "4ff8e649c6365d75de1cf88cd7ff233e8d565de236dbd399a93b9eb5e9083e95"
+    },
+    {
+      "path": "02-manual-context/05-signal/stderr.txt",
+      "bytes": 236,
+      "sha256": "a40f548cc709d1f4e194757014d1eafd7d378c4311205ab2aa61449e791c0c01"
+    },
+    {
+      "path": "02-manual-context/05-signal/wire.jsonl",
+      "bytes": 25837,
+      "sha256": "76fae8524b3dc778e62bb78308583f13f3e09b35b6faf8ed6afbe000f12b3c79"
+    },
+    {
+      "path": "02-manual-context/05-signal-client.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "02-manual-context/05-signal-controller.json",
+      "bytes": 18547,
+      "sha256": "62a5dbd2cd5386a6df8943f9035d7b835aba326a6d1b7e7cd406c66c41c9da7c"
+    },
+    {
+      "path": "02-manual-context/bootstrap-controller.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "02-manual-context/bootstrap-controller.stdout.txt",
+      "bytes": 696,
+      "sha256": "11bcb4f3bb0bbb8422ed6340ab45b00d6c401509b2b260c00146d99a7e79464e"
+    },
+    {
+      "path": "02-manual-context/bootstrap-prompt.txt",
+      "bytes": 129,
+      "sha256": "30cded99d4ae1deca0bb26530d78ef64d367b0f4f492a933b7413bdd3a0dca9b"
+    },
+    {
+      "path": "02-manual-context/capture.json",
+      "bytes": 2280,
+      "sha256": "b2d75de253c7bef12ca0bd5b2a592e179aa2a3a151d0a3f7bfcd3cbdbe8036c9"
+    },
+    {
+      "path": "02-manual-context/kimi_acp_probe.py.txt",
+      "bytes": 8755,
+      "sha256": "7f98150e89b60f10b51c63133f67468415d3cc5596a6d44847bbc98c26d29e99"
+    },
+    {
+      "path": "02-manual-context/kimi_acp_session.py.txt",
+      "bytes": 15481,
+      "sha256": "1eb0d40cc3b6dce55f128bb75bb63cfd10d1550b17c937abeb26c439c9d295f8"
+    },
+    {
+      "path": "02-manual-context/plan.json",
+      "bytes": 1666,
+      "sha256": "fdfec9911ec20c212f0aedeed7f9e3ba86c2dfec15bd62d7536102452ae7a2f3"
+    },
+    {
+      "path": "02-manual-context/scratch.json",
+      "bytes": 170,
+      "sha256": "8f936532393d7eae1c5c196bb76e52b6305e6bd820dec0a5a99be3c825e2e1d2"
+    },
+    {
+      "path": "03-settled-cancel/01-bootstrap/agent.md",
+      "bytes": 614,
+      "sha256": "2558fdfaae9891fe15afa3a9c649b6e7f70ce73eca9742e5489aa8bd29364f1e"
+    },
+    {
+      "path": "03-settled-cancel/01-bootstrap/process.json",
+      "bytes": 118,
+      "sha256": "ea3fbfb1c6dc1f94cd0a51e01b6db161a72ad5dd17308c2c0cfb21044c453b33"
+    },
+    {
+      "path": "03-settled-cancel/01-bootstrap/prompt.txt",
+      "bytes": 129,
+      "sha256": "30cded99d4ae1deca0bb26530d78ef64d367b0f4f492a933b7413bdd3a0dca9b"
+    },
+    {
+      "path": "03-settled-cancel/01-bootstrap/request.json",
+      "bytes": 1343,
+      "sha256": "79980a4bfd18114fa6a7c98502613b0022441cd27a0b2ae5e44b884014322243"
+    },
+    {
+      "path": "03-settled-cancel/01-bootstrap/result.json",
+      "bytes": 482,
+      "sha256": "7422c2ae6213a2ca7d1612c5e7bfa9566cd7c8fe56cc788d40c2366de833638a"
+    },
+    {
+      "path": "03-settled-cancel/01-bootstrap/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "03-settled-cancel/01-bootstrap/stdout.jsonl",
+      "bytes": 365,
+      "sha256": "5fdb179434eed9d3bc3d456d9e3825b01a2877df663140eb2062b52c514b77d0"
+    },
+    {
+      "path": "03-settled-cancel/02-dialogue/events.jsonl",
+      "bytes": 44716,
+      "sha256": "34983c5a985439014ae6fe96e3b87cae582e5c863673eb9dcb5a8b120c7effd0"
+    },
+    {
+      "path": "03-settled-cancel/02-dialogue/process.json",
+      "bytes": 118,
+      "sha256": "064ae60ccec90ef00b37d02971491de36d1c7b5d602ea0287efbf29bea8a0e97"
+    },
+    {
+      "path": "03-settled-cancel/02-dialogue/request.json",
+      "bytes": 895,
+      "sha256": "d912f5e077b95fa70ca58bedc5cdf8bafca7e0f5c779ca5121f0ac5b85a952eb"
+    },
+    {
+      "path": "03-settled-cancel/02-dialogue/result.json",
+      "bytes": 303,
+      "sha256": "3bc32f64660d23b25d6471572efe7077370097287d3f50024b122daf0a3c0d72"
+    },
+    {
+      "path": "03-settled-cancel/02-dialogue/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "03-settled-cancel/02-dialogue/wire.jsonl",
+      "bytes": 135767,
+      "sha256": "2e08090e614912bf69b800bfda2aeed9692063e6c8af8a690360a15913cf0ec0"
+    },
+    {
+      "path": "03-settled-cancel/02-dialogue-client.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "03-settled-cancel/02-dialogue-controller.json",
+      "bytes": 66462,
+      "sha256": "2f4969cd9921493e214fa783cbb161f8252abbe6d1d23e5304ba05a56637b8e4"
+    },
+    {
+      "path": "03-settled-cancel/03-reload/events.jsonl",
+      "bytes": 15229,
+      "sha256": "8c62f5841917309ba605061d8ac8f624e2e38b4cf1e2dfebe5adabad0841be2c"
+    },
+    {
+      "path": "03-settled-cancel/03-reload/process.json",
+      "bytes": 118,
+      "sha256": "af93e072dbb1ddfb50f3d20ac6c43a1a7bdc5fc3671ca87420d1679d3a8358d6"
+    },
+    {
+      "path": "03-settled-cancel/03-reload/request.json",
+      "bytes": 895,
+      "sha256": "a4efbccca5d965014a1483256cd7de587c3fd1cb83ae7b6229ee1db02d7fb66c"
+    },
+    {
+      "path": "03-settled-cancel/03-reload/result.json",
+      "bytes": 301,
+      "sha256": "f2ba52c1db7ba0d479f52f8779588ee3de07e9bf91d5c3e38d5ac5330951fd9c"
+    },
+    {
+      "path": "03-settled-cancel/03-reload/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "03-settled-cancel/03-reload/wire.jsonl",
+      "bytes": 36109,
+      "sha256": "11aa84a8cebac36e343be2d7d0093aa061d92f2fe6e57018684ef6207d4cc457"
+    },
+    {
+      "path": "03-settled-cancel/03-reload-client.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "03-settled-cancel/03-reload-controller.json",
+      "bytes": 20878,
+      "sha256": "905534d67fc7b4e7aaf1718c49859392f0a55ac0caca539d437fa1dcc47a633e"
+    },
+    {
+      "path": "03-settled-cancel/04-deadline/events.jsonl",
+      "bytes": 14326,
+      "sha256": "8c01713d535fb14827c933b87a1a116797717d7c4b8079a23bebb04974efef22"
+    },
+    {
+      "path": "03-settled-cancel/04-deadline/process.json",
+      "bytes": 118,
+      "sha256": "e40977a9bdaebe490ac3bda5edbc86a513247516369042615f4931220a49d1ed"
+    },
+    {
+      "path": "03-settled-cancel/04-deadline/request.json",
+      "bytes": 893,
+      "sha256": "ff7b66318a3181c1bdb3480f75fcc5387ad10e0ddba0d4468627905c82521ea8"
+    },
+    {
+      "path": "03-settled-cancel/04-deadline/result.json",
+      "bytes": 303,
+      "sha256": "0231b6490a054f026e55468ece05c6f473da0cf626a45d2012eec643b98d3291"
+    },
+    {
+      "path": "03-settled-cancel/04-deadline/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "03-settled-cancel/04-deadline/wire.jsonl",
+      "bytes": 26366,
+      "sha256": "8d96cbab6ca3e17a3f4f6fc87a34710ead4ef78b141440e72512a62fb0949f7d"
+    },
+    {
+      "path": "03-settled-cancel/04-deadline-client.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "03-settled-cancel/04-deadline-controller.json",
+      "bytes": 18975,
+      "sha256": "d7025e96086153a26d2dfabe14bef29dc11c6f91bb275b732b87bddf351d6d75"
+    },
+    {
+      "path": "03-settled-cancel/05-signal/events.jsonl",
+      "bytes": 14326,
+      "sha256": "8c01713d535fb14827c933b87a1a116797717d7c4b8079a23bebb04974efef22"
+    },
+    {
+      "path": "03-settled-cancel/05-signal/process.json",
+      "bytes": 118,
+      "sha256": "95be9f3f72b74eb991b57046920ff12b2df29bfed4ed1d8636c1b95f24af01a7"
+    },
+    {
+      "path": "03-settled-cancel/05-signal/request.json",
+      "bytes": 895,
+      "sha256": "3cb4d935d560ec3ccb7dd165339877c72d4c965d451d733630a3c5b79879d21d"
+    },
+    {
+      "path": "03-settled-cancel/05-signal/result.json",
+      "bytes": 317,
+      "sha256": "1144412eb66c1539198c256e706caed6ab75513af2221fbbcbaab713f10dd2bc"
+    },
+    {
+      "path": "03-settled-cancel/05-signal/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "03-settled-cancel/05-signal/wire.jsonl",
+      "bytes": 26366,
+      "sha256": "6fd6564555e86af7f626c365d11bb52d12f303806db645441f1753174315f332"
+    },
+    {
+      "path": "03-settled-cancel/05-signal-client.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "03-settled-cancel/05-signal-controller.json",
+      "bytes": 18997,
+      "sha256": "c159a528aca9a407bb9386c7284a697594085889a1339e691a06506537ff373e"
+    },
+    {
+      "path": "03-settled-cancel/bootstrap-controller.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "03-settled-cancel/bootstrap-controller.stdout.txt",
+      "bytes": 696,
+      "sha256": "92ca330f4525d926cb814b494174a8622c6473b8ad85f8320fc4f1cc462f5a78"
+    },
+    {
+      "path": "03-settled-cancel/bootstrap-prompt.txt",
+      "bytes": 129,
+      "sha256": "30cded99d4ae1deca0bb26530d78ef64d367b0f4f492a933b7413bdd3a0dca9b"
+    },
+    {
+      "path": "03-settled-cancel/capture.json",
+      "bytes": 2279,
+      "sha256": "700cee786ff6f110dd93332b02fd2c09b772a081b6f86ff1f2ce4ca6dccaad2f"
+    },
+    {
+      "path": "03-settled-cancel/plan.json",
+      "bytes": 1666,
+      "sha256": "fdfec9911ec20c212f0aedeed7f9e3ba86c2dfec15bd62d7536102452ae7a2f3"
+    },
+    {
+      "path": "03-settled-cancel/scratch.json",
+      "bytes": 170,
+      "sha256": "592d647b4d26adcfad5c1499d61ae8e51d2963b5b881b27d250e52486eac7335"
+    },
+    {
+      "path": "review.json",
+      "bytes": 9963,
+      "sha256": "75a7524405b47caa384fb93f8676abb48f5a7c175d27f0663c43273e5edac9af"
+    },
+    {
+      "path": "session_inventory.json",
+      "bytes": 3643,
+      "sha256": "3771959cb68f80feaacf421ade91a8d64cf11df49cc50c2b66bb7866dfb2bc8a"
+    }
+  ]
+}

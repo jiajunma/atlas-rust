@@ -4,6 +4,11 @@ Status: **local Kimi integration verified**, including real programming file
 edits and session continuation. This is not mathematical acceptance or a test
 pass for the generated Python program, which was never executed.
 
+For an additional persistent, two-way question/answer route, see the later
+[ACP interaction validation](kimi_acp_interaction_2026-10-01.md). Its
+question-only profile proposes code as text; this report retains the separate
+CLI Read/Edit and process-lifecycle proof.
+
 The user explicitly requested actual Codex-to-Kimi programming delegation and
 asked that verified operation, precautions and exit mechanisms be recorded in
 AGENTS.md only after successful execution. The user explicitly authorized

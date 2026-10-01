@@ -1,0 +1,13 @@
+{
+  "status": "interrupted",
+  "session_id": "session_0094f3da-7f31-48ca-bff2-33ac11b0c41c",
+  "error": null,
+  "elapsed_seconds": 56.813,
+  "received_signals": [
+    15
+  ],
+  "cleanup_signals": [],
+  "remaining_live_group_members": [],
+  "process_exit_code": 0,
+  "finished_at": "2026-10-01T06:16:01.231170+00:00"
+}

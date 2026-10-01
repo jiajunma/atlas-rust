@@ -1,0 +1,38 @@
+[
+  {
+    "id": "session_0094f3da-7f31-48ca-bff2-33ac11b0c41c",
+    "title": "Work only from this supplied synthetic code; do not read or edit files or run commands/tests: def split_labels(text: str) -> list[str]: return text.split(',') Propose a replacement that strips whitesp",
+    "lastPrompt": "Work only from this supplied synthetic code; do not read or edit files or run commands/tests: def split_labels(text: str) -> list[str]: return text.split(',') Propose a replacement that strips whitespace and drops blank labels. Before writing code, use AskUserQuestion to ask the coordinator how duplicate labels should be handled. Offer exactly two choices labeled 'Preserve duplicates' and 'Remove duplicates'. Wait for its answer, then return the proposed function as text and explicitly state that it was not executed. Preserve order in either case.",
+    "workDir": "/tmp/codex-kimi-acp-v5iolxif",
+    "sessionDir": "/home/hoxide/.kimi-code/sessions/wd_codex-kimi-acp-v5iolxif_480d30e690fb/session_0094f3da-7f31-48ca-bff2-33ac11b0c41c",
+    "createdAt": 1790835298732,
+    "updatedAt": 1790835342394,
+    "archived": false,
+    "metadata": {},
+    "lastTurnReason": "completed"
+  },
+  {
+    "id": "session_f91c2372-6fc2-409d-9762-697d0fd1a490",
+    "title": "[Current coordinator transport state] Before this turn the ACP client successfully set session/set_mode to default (manual approvals). Historical auto-mode reminders from the bootstrap CLI prompt desc",
+    "lastPrompt": "[Current coordinator transport state] Before this turn the ACP client successfully set session/set_mode to default (manual approvals). Historical auto-mode reminders from the bootstrap CLI prompt describe that earlier turn, not the current mode. AskUserQuestion is permitted now; ask the coordinator when the task requires it. Keep the restricted question-only tool profile. Do not read/edit files or execute commands/tests. Treat the following as the current task. Do not use tools. State the worker marker from the start of our conversation and the duplicate policy chosen by the coordinator.",
+    "workDir": "/tmp/codex-kimi-acp-v0r5jtwl",
+    "sessionDir": "/home/hoxide/.kimi-code/sessions/wd_codex-kimi-acp-v0r5jtwl_d82e96670522/session_f91c2372-6fc2-409d-9762-697d0fd1a490",
+    "createdAt": 1790835396355,
+    "updatedAt": 1790835442349,
+    "archived": false,
+    "metadata": {},
+    "lastTurnReason": "completed"
+  },
+  {
+    "id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+    "title": "[Current coordinator transport state] Before this turn the ACP client successfully set session/set_mode to default (manual approvals). Historical auto-mode reminders from the bootstrap CLI prompt desc",
+    "lastPrompt": "[Current coordinator transport state] Before this turn the ACP client successfully set session/set_mode to default (manual approvals). Historical auto-mode reminders from the bootstrap CLI prompt describe that earlier turn, not the current mode. AskUserQuestion is permitted now; ask the coordinator when the task requires it. Keep the restricted question-only tool profile. Do not read/edit files or execute commands/tests. Treat the following as the current task. Do not use tools. State the worker marker from the start of our conversation and the duplicate policy chosen by the coordinator.",
+    "workDir": "/tmp/codex-kimi-acp-3mu4vpvi",
+    "sessionDir": "/home/hoxide/.kimi-code/sessions/wd_codex-kimi-acp-3mu4vpvi_4c0e4dc44cb1/session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+    "createdAt": 1790835748013,
+    "updatedAt": 1790835797579,
+    "archived": false,
+    "metadata": {},
+    "lastTurnReason": "completed"
+  }
+]

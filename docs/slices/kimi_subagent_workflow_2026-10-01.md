@@ -5,6 +5,11 @@ now records real local delegation, coding edits, resumption and exit checks.
 The research-only observations below remain historical; use root AGENTS.md
 for the subsequently verified operational recipe.
 
+The subsequent [ACP interaction capture](kimi_acp_interaction_2026-10-01.md)
+also verifies real questions/answers, streamed multi-turn work, cancellation,
+reconnection and bounded shutdown through a local ACP client. MCP wrapping
+remains a separate design, not a configured server.
+
 ## Decision and evidence boundary
 
 Use a bounded Kimi Code CLI subprocess as an external worker of the current

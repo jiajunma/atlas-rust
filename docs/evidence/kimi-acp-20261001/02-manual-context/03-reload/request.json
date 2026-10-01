@@ -1,0 +1,25 @@
+{
+  "frozen_at": "2026-10-01T06:17:13.181805+00:00",
+  "argv": [
+    "/home/hoxide/.kimi-code/bin/kimi",
+    "acp"
+  ],
+  "cwd": "/tmp/codex-kimi-acp-v0r5jtwl",
+  "session_id": "session_f91c2372-6fc2-409d-9762-697d0fd1a490",
+  "expected_model": "kimi-code/k3-256k",
+  "cli_version": "2.1.1",
+  "binary_sha256": "66f47536e40b02bb1d577cdd324768f73d39b8b9472e0ca140e73d8e225cd7de",
+  "client_sha256": "1eb0d40cc3b6dce55f128bb75bb63cfd10d1550b17c937abeb26c439c9d295f8",
+  "timeout_seconds": 180.0,
+  "environment_controls": {
+    "KIMI_CODE_NO_AUTO_UPDATE": "1",
+    "KIMI_DISABLE_TELEMETRY": "1",
+    "KIMI_CODE_INFINITE_RETRY": "0",
+    "KIMI_LOOP_MAX_STEPS_PER_TURN": "12",
+    "KIMI_LOOP_MAX_ATTEMPTS_PER_STEP": "2",
+    "KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT": "0",
+    "KIMI_DISABLE_CRON": "1"
+  },
+  "owned_files": [],
+  "scope": "question-only coding proposal; no file or command tools"
+}

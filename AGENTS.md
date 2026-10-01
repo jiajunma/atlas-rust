@@ -79,6 +79,49 @@ and handoff. This integration proof is not a mathematical or generated-program
 test pass. Apply project changes only after review and run their required HPC
 gates before committing/pushing them. No new worktree is authorized.
 
+## Verified bidirectional Kimi interaction — 2026-10-01
+
+For task discussion, clarification and follow-up, use the tested local ACP
+client `tools/kimi_acp_session.py`. Bootstrap a new session with the earlier
+CLI runner and `.agents/kimi/interactive.md`, then load that exact session ID
+with the same work directory/model and a fresh evidence directory. This
+profile allows **AskUserQuestion only**: Kimi proposes code as text; Codex
+reviews/applies it and owns required HPC verification. For the separately
+verified bounded Read/Edit route, keep using the CLI editor profile above.
+
+The ACP client accepts JSONL `prompt`, `answer`, `cancel`, `close` commands on
+stdin and emits `ready`, `update`, `question`, `turn_end`, `closed` events.
+Wait for readiness before a task and for `turn_end` before another prompt.
+Answer a real question by its `request_id` and required enum fields; never
+invent an answer or send a competing prompt while it is waiting. Codex can
+answer from known requirements; ask the user only for genuinely missing facts
+or authorization. No parent Codex context is inherited automatically.
+
+Actual checks verified question/answer, a code proposal, remembered follow-up,
+busy-turn rejection, cancellation while waiting, recovery in the same session,
+history reload in a new process, explicit close, EOF, deadline and SIGTERM.
+All twelve Kimi process groups were clean afterward. The first interaction
+attempt failed because of a historical `-p` auto-mode reminder; the final
+client successfully sets ACP `default` mode and states the current mode in
+each new prompt. Keep that correction. Do not assume global `--agent-file`
+flags apply to the `kimi acp` subcommand.
+
+`cancel` preserves the session: await `turn_end` with `cancelled`. The client
+also settles pending question RPCs with `action: cancel`; keep this cleanup,
+which eliminated the intermediate capture's shutdown warnings. `close`
+disposes the live session without deleting saved history. Stop the recorded
+client wrapper PID with SIGINT/SIGTERM for process-level cancellation; its
+deadline/cleanup remain bounded. Exit0 means the client closed, not that all
+turns succeeded. Inspect per-turn errors and the final process-group record.
+The profile/client are not an OS sandbox; arbitrary sessions, command/file
+tools and detached background jobs are outside this ACP proof.
+
+See [the interaction guide and evidence](docs/slices/kimi_acp_interaction_2026-10-01.md)
+for commands, state handling and limitations. ACP is not MCP: never register
+plain `kimi acp` as an MCP server. An MCP tool wrapper is a documented future
+option, not an installed capability. The verified route already works through
+Codex terminal tools and the existing local Kimi account.
+
 ## Hard rules
 
 1. **All testing and builds run on HPC compute nodes.** The user's latest

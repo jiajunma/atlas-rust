@@ -1,0 +1,82 @@
+{
+  "checks": {
+    "question_turn": {
+      "event": "turn_end",
+      "stopReason": "end_turn"
+    },
+    "followup_turn": {
+      "event": "turn_end",
+      "stopReason": "end_turn"
+    },
+    "busy_rejected": {
+      "event": "command_error",
+      "message": "turn active; answer or cancel, then await turn_end"
+    },
+    "cancelled_turn": {
+      "event": "turn_end",
+      "stopReason": "cancelled"
+    },
+    "recovered_turn": {
+      "event": "turn_end",
+      "stopReason": "end_turn"
+    },
+    "closed": {
+      "event": "closed",
+      "status": "closed",
+      "session_id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+      "error": null,
+      "elapsed_seconds": 30.375,
+      "received_signals": [],
+      "cleanup_signals": [],
+      "remaining_live_group_members": [],
+      "process_exit_code": 0,
+      "finished_at": "2026-10-01T06:23:07.567375+00:00"
+    },
+    "reload_turn": {
+      "event": "turn_end",
+      "stopReason": "end_turn"
+    },
+    "eof_close": {
+      "event": "closed",
+      "status": "closed",
+      "session_id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+      "error": null,
+      "elapsed_seconds": 8.35,
+      "received_signals": [],
+      "cleanup_signals": [],
+      "remaining_live_group_members": [],
+      "process_exit_code": 0,
+      "finished_at": "2026-10-01T06:23:17.733762+00:00"
+    },
+    "deadline": {
+      "event": "closed",
+      "status": "timeout",
+      "session_id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+      "error": null,
+      "elapsed_seconds": 3.223,
+      "received_signals": [],
+      "cleanup_signals": [],
+      "remaining_live_group_members": [],
+      "process_exit_code": 0,
+      "finished_at": "2026-10-01T06:23:22.816405+00:00"
+    },
+    "signal": {
+      "event": "closed",
+      "status": "interrupted",
+      "session_id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+      "error": null,
+      "elapsed_seconds": 1.856,
+      "received_signals": [
+        15
+      ],
+      "cleanup_signals": [],
+      "remaining_live_group_members": [],
+      "process_exit_code": 0,
+      "finished_at": "2026-10-01T06:23:26.504418+00:00"
+    },
+    "scratch_contents_after": []
+  },
+  "error": null,
+  "scratch_path": "/tmp/codex-kimi-acp-3mu4vpvi",
+  "scratch_removed": true
+}

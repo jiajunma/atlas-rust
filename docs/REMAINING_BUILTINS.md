@@ -1,5 +1,14 @@
 # Remaining builtin coverage (post-language-gate)
 
+Kimi ACP interaction2026-10-01: actual two-way local tasks, question/answer,
+remembered follow-up, cancellation/recovery, new-process session reload and
+close/EOF/deadline/SIGTERM are now verified. The first stale auto-mode failure
+and the corrected capture are both retained. See the
+[interaction guide](slices/kimi_acp_interaction_2026-10-01.md) and root AGENTS.md.
+The ACP profile proposes code as text with AskUserQuestion only; Codex owns
+review and application. No Atlas code/program test/math gate changed. MCP
+wrapping is an explicit future design, not a currently installed tool.
+
 Kimi runtime verification2026-10-01: actual local Codex-to-Kimi delegation,
 Read/Edit coding, exact-session continuation and bounded exit paths now have
 eleven recorded invocations under the user's explicit local-integration

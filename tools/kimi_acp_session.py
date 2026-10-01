@@ -1,0 +1,301 @@
+#!/usr/bin/env python3
+"""Bounded Linux ACP client for an explicitly reviewed existing Kimi session.
+
+stdin: JSONL commands prompt(text), answer(request_id, content), cancel, close.
+stdout: JSONL ready, update, question, turn_end, command_error, closed events.
+Only question forms are answered; tool approvals and unknown reverse RPCs are
+denied. This is not a filesystem sandbox. Bootstrap with the interactive profile.
+"""
+
+import argparse
+import json
+import os
+from pathlib import Path
+import selectors
+import shutil
+import signal
+import subprocess
+import sys
+import time
+
+from kimi_subagent import digest, members, now, stop_group, write_json
+
+MANUAL_CONTEXT = (
+    "[Current coordinator transport state] Before this turn the ACP client successfully "
+    "set session/set_mode to default (manual approvals). Historical auto-mode reminders "
+    "from the bootstrap CLI prompt describe that earlier turn, not the current mode. "
+    "AskUserQuestion is permitted now; ask the coordinator when the task requires it. "
+    "Keep the restricted question-only tool profile. Do not read/edit files or execute "
+    "commands/tests. Treat the following as the current task.\n\n"
+)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--session", required=True)
+    ap.add_argument("--work-dir", required=True, type=Path)
+    ap.add_argument("--output-dir", required=True, type=Path)
+    ap.add_argument("--model", required=True)
+    ap.add_argument("--kimi", default=shutil.which("kimi"))
+    ap.add_argument("--timeout", type=float, default=300)
+    args = ap.parse_args()
+    if sys.platform != "linux" or not args.kimi or not 0 < args.timeout <= 3600:
+        ap.error("requires Linux, local Kimi and timeout in (0,3600]")
+    cwd = args.work_dir.resolve(strict=True)
+    if not cwd.is_dir():
+        ap.error("work-dir must be a directory")
+    binary = Path(args.kimi).resolve(strict=True)
+    out = args.output_dir.absolute()
+    out.mkdir(parents=True, exist_ok=False)
+    out.chmod(0o700)
+    env = os.environ.copy()
+    controls = {
+        "KIMI_CODE_NO_AUTO_UPDATE": "1", "KIMI_DISABLE_TELEMETRY": "1",
+        "KIMI_CODE_INFINITE_RETRY": "0", "KIMI_LOOP_MAX_STEPS_PER_TURN": "12",
+        "KIMI_LOOP_MAX_ATTEMPTS_PER_STEP": "2",
+        "KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT": "0", "KIMI_DISABLE_CRON": "1",
+    }
+    env.update(controls)
+    env.pop("KIMI_CODE_EXPERIMENTAL_REMOTE_CONTROL", None)
+    version = subprocess.run([str(binary), "--version"], env=env,
+                             capture_output=True, text=True, timeout=15, check=True)
+    write_json(out / "request.json", {
+        "frozen_at": now(), "argv": [str(binary), "acp"], "cwd": str(cwd),
+        "session_id": args.session, "expected_model": args.model,
+        "cli_version": version.stdout.strip(), "binary_sha256": digest(binary.read_bytes()),
+        "client_sha256": digest(Path(__file__).read_bytes()),
+        "timeout_seconds": args.timeout, "environment_controls": controls,
+        "owned_files": [], "scope": "question-only coding proposal; no file or command tools",
+    })
+    interrupted = []
+    previous = {sig: signal.signal(sig, lambda signum, frame: interrupted.append(signum))
+                for sig in (signal.SIGINT, signal.SIGTERM)}
+    proc = None
+    cleanup = []
+    remaining = []
+    status = "client_error"
+    error = None
+    started = time.monotonic()
+    request_id = 0
+    pending = {}
+    questions = {}
+    ready = False
+    busy = False
+    closing = False
+    close_deadline = None
+    startup_deadline = started + 30
+
+    with (out / "wire.jsonl").open("x") as wire, (out / "events.jsonl").open("x") as events, \
+            (out / "stderr.txt").open("xb") as stderr:
+        def record(direction, message):
+            wire.write(json.dumps({"at": now(), "direction": direction, "message": message}) + "\n")
+            wire.flush()
+
+        def emit(event, **data):
+            line = json.dumps({"event": event, **data}, ensure_ascii=False)
+            events.write(line + "\n")
+            events.flush()
+            print(line, flush=True)
+
+        def send(message):
+            # Persist exact prompt/answer bytes before forwarding them to Kimi.
+            record("to_kimi", message)
+            proc.stdin.write((json.dumps(message) + "\n").encode())
+            proc.stdin.flush()
+
+        def rpc(method, params, kind):
+            nonlocal request_id
+            request_id += 1
+            pending[request_id] = kind
+            send({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params})
+
+        def cancel():
+            if busy:
+                send({"jsonrpc": "2.0", "method": "session/cancel",
+                      "params": {"sessionId": args.session}})
+            # Settle reverse RPCs too: cancelling the model turn alone leaves
+            # its question request pending on the ACP connection in CLI2.1.1.
+            for ident in list(questions):
+                send({"jsonrpc": "2.0", "id": ident, "result": {"action": "cancel"}})
+                del questions[ident]
+
+        def close():
+            nonlocal closing, close_deadline
+            if not closing:
+                closing = True
+                close_deadline = time.monotonic() + 5
+                cancel()
+                rpc("session/close", {"sessionId": args.session}, "close")
+
+        try:
+            proc = subprocess.Popen([str(binary), "acp"], cwd=cwd, env=env,
+                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                    stderr=stderr, start_new_session=True)
+            write_json(out / "process.json", {"wrapper_pid": os.getpid(),
+                       "pid": proc.pid, "pgid": proc.pid, "started_at": now()})
+            rpc("initialize", {"protocolVersion": 1,
+                "clientCapabilities": {"elicitation": {"form": {}}},
+                "clientInfo": {"name": "codex-kimi-local-client", "version": "1"}}, "init")
+            with selectors.DefaultSelector() as selector:
+                selector.register(proc.stdout, selectors.EVENT_READ, "kimi")
+                selector.register(sys.stdin, selectors.EVENT_READ, "controller")
+                buffers = {"kimi": b"", "controller": b""}
+                done = False
+                while not done:
+                    stamp = time.monotonic()
+                    if not closing and (interrupted or stamp - started >= args.timeout):
+                        status = "interrupted" if interrupted else "timeout"
+                        close()
+                    if not ready and not closing and stamp >= startup_deadline:
+                        raise TimeoutError("ACP initialization/load exceeded 30 seconds")
+                    if closing and stamp >= close_deadline:
+                        break
+                    for key, _ in selector.select(0.1):
+                        source = key.data
+                        chunk = os.read(key.fd, 65536)
+                        if not chunk:
+                            selector.unregister(key.fileobj)
+                            if source == "controller":
+                                status = "closed" if status == "client_error" else status
+                                close()
+                            else:
+                                if not closing:
+                                    raise RuntimeError("Kimi ACP stdout closed unexpectedly")
+                                done = True
+                            continue
+                        buffers[source] += chunk
+                        if len(buffers[source]) > 4 * 1024 * 1024:
+                            raise ValueError("JSONL buffer exceeded 4 MiB")
+                        while b"\n" in buffers[source]:
+                            raw, buffers[source] = buffers[source].split(b"\n", 1)
+                            if not raw.strip():
+                                continue
+                            message = json.loads(raw)
+                            record("from_" + source, message)
+                            if source == "controller":
+                                try:
+                                    command = message["command"]
+                                    if command == "close":
+                                        status = "closed"
+                                        close()
+                                    elif not ready or closing:
+                                        raise ValueError("session is not ready")
+                                    elif command == "cancel":
+                                        cancel()
+                                    elif command == "prompt":
+                                        if busy:
+                                            raise ValueError("turn active; answer or cancel, then await turn_end")
+                                        text = message["text"]
+                                        if not isinstance(text, str) or not text:
+                                            raise ValueError("text must be a nonempty string")
+                                        rpc("session/prompt", {"sessionId": args.session,
+                                            "prompt": [{"type": "text", "text": MANUAL_CONTEXT + text}]}, "prompt")
+                                        busy = True
+                                    elif command == "answer":
+                                        ident = message["request_id"]
+                                        question = questions[ident]
+                                        content = message["content"]
+                                        schema = question["requestedSchema"]
+                                        if set(content) != set(schema["required"]):
+                                            raise ValueError("answer must contain exactly the required fields")
+                                        for name, value in content.items():
+                                            prop = schema["properties"][name]
+                                            if prop.get("type") != "string" or value not in [
+                                                    x["const"] for x in prop.get("oneOf", [])]:
+                                                raise ValueError("this client supports listed single-choice answers only")
+                                        send({"jsonrpc": "2.0", "id": ident,
+                                              "result": {"action": "accept", "content": content}})
+                                        del questions[ident]
+                                    else:
+                                        raise ValueError("unknown command")
+                                except (ValueError, KeyError, TypeError) as exc:
+                                    emit("command_error", message=str(exc))
+                            elif "method" in message:
+                                method = message["method"]
+                                params = message.get("params", {})
+                                if method == "session/update":
+                                    update = params.get("update", {})
+                                    # Keep thought chunks in raw evidence, not the progress display.
+                                    if update.get("sessionUpdate") != "agent_thought_chunk":
+                                        emit("update", update=update)
+                                elif "id" in message:
+                                    ident = message["id"]
+                                    if method == "elicitation/create":
+                                        if busy and not closing:
+                                            questions[ident] = params
+                                            emit("question", request_id=ident, **params)
+                                        else:
+                                            send({"jsonrpc": "2.0", "id": ident,
+                                                  "result": {"action": "cancel"}})
+                                    elif method == "session/request_permission":
+                                        send({"jsonrpc": "2.0", "id": ident,
+                                              "result": {"outcome": {"outcome": "cancelled"}}})
+                                        emit("permission_denied", request_id=ident, request=params)
+                                    else:
+                                        send({"jsonrpc": "2.0", "id": ident, "error": {
+                                            "code": -32601, "message": "Client method not enabled"}})
+                            else:
+                                kind = pending.pop(message["id"])
+                                if "error" in message:
+                                    if kind == "prompt":
+                                        busy = False
+                                        questions.clear()
+                                        emit("turn_end", error=message["error"])
+                                        continue
+                                    raise RuntimeError(f"{kind}: {message['error']}")
+                                result = message.get("result", {})
+                                if kind == "init":
+                                    if result["protocolVersion"] != 1:
+                                        raise ValueError("unsupported negotiated ACP version")
+                                    rpc("session/load", {"sessionId": args.session,
+                                        "cwd": str(cwd), "mcpServers": []}, "load")
+                                elif kind == "load":
+                                    model = next(x["currentValue"] for x in result["configOptions"]
+                                                 if x["id"] == "model")
+                                    if model != args.model:
+                                        raise ValueError(f"session model {model!r} differs from expected model")
+                                    rpc("session/set_mode", {"sessionId": args.session,
+                                        "modeId": "default"}, "mode")
+                                elif kind == "mode":
+                                    ready = True
+                                    emit("ready", session_id=args.session, model=args.model)
+                                elif kind == "prompt":
+                                    busy = False
+                                    questions.clear()
+                                    emit("turn_end", **result)
+                                elif kind == "close":
+                                    done = True
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            status = "client_error"
+        finally:
+            if proc is not None:
+                try:
+                    cancel()
+                    proc.stdin.close()
+                    proc.wait(timeout=3)
+                except (BrokenPipeError, OSError, subprocess.TimeoutExpired):
+                    pass
+                remaining = stop_group(proc, cleanup, 3)
+                proc.stdout.close()
+            for sig, handler in previous.items():
+                signal.signal(sig, handler)
+    if remaining:
+        status = "cleanup_error"
+    result = {"status": status, "session_id": args.session, "error": error,
+              "elapsed_seconds": round(time.monotonic() - started, 3),
+              "received_signals": interrupted, "cleanup_signals": cleanup,
+              "remaining_live_group_members": remaining,
+              "process_exit_code": proc.returncode if proc else None,
+              "finished_at": now()}
+    write_json(out / "result.json", result)
+    try:
+        print(json.dumps({"event": "closed", **result}), flush=True)
+    except BrokenPipeError:
+        pass
+    return 0 if status == "closed" else 124 if status == "timeout" else (
+        128 + interrupted[0] if status == "interrupted" else 1)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

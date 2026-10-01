@@ -1,0 +1,124 @@
+{"event": "update", "update": {"sessionUpdate": "user_message_chunk", "content": {"type": "text", "text": "You are a coding subagent of Codex. Remember worker marker ACP_CODER_82B7. Do not use any tool yet. Reply exactly ACP_BOOT_READY."}}}
+{"event": "update", "update": {"sessionUpdate": "user_message_chunk", "content": {"type": "text", "text": "<system-reminder>\nToday's date is 2026-10-01. The current date is restated in a reminder whenever it changes; rely on the latest such reminder for the current date. DO NOT mention this to the user explicitly.\n</system-reminder>"}}}
+{"event": "update", "update": {"sessionUpdate": "user_message_chunk", "content": {"type": "text", "text": "<system-reminder>\nAuto permission mode is active. Tool approvals will be handled automatically while this mode remains enabled.\n  - Continue normally without pausing for approval prompts.\n  - Do NOT call AskUserQuestion while auto mode is active; decide and continue.\n  - ExitPlanMode is also approved automatically, without the user reviewing the plan. An auto-approved plan is NOT a signal from the user to start executing — follow the user's original instructions on whether to proceed.\n</system-reminder>"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "ACP_BOOT_READY"}}}
+{"event": "update", "update": {"sessionUpdate": "available_commands_update", "availableCommands": [{"name": "compact", "description": "Compact the conversation context", "input": {"hint": "<optional custom summarization instructions>"}}, {"name": "status", "description": "Show current session status"}, {"name": "usage", "description": "Show session token usage"}, {"name": "mcp", "description": "Show MCP server status"}, {"name": "tasks", "description": "List background tasks"}, {"name": "help", "description": "Show available ACP commands"}, {"name": "check-kimi-code-docs", "description": "Answer questions about the Kimi Code product using the official documentation — CLI usage, configuration, slash commands, features, membership and quota, API onboarding, third-party tool setup, and error codes. Use when the user asks how Kimi Code works, how to set something up, or what a Kimi Code error message means."}, {"name": "import-from-cc-codex", "description": "Import Claude Code and Codex instructions, skills, and MCP settings into Kimi Code."}, {"name": "mcp-config", "description": "Configure MCP servers and handle MCP OAuth login."}, {"name": "sub-skill", "description": "Discover and reorganize the skill inventory into hierarchical sub-skill bundles. Use when the user asks to review, group, or consolidate skills into a parent bundle."}, {"name": "sub-skill.consolidate", "description": "Apply an approved sub-skill grouping by moving user-specified skills into a parent bundle, with timestamped backups of every modified directory."}, {"name": "sub-skill.review", "description": "Analyze the available skill set and recommend candidate groups that could be consolidated into sub-skill bundles. Read-only — proposes a plan, does not move files."}, {"name": "update-config", "description": "Inspect or edit kimi-code's own config — `config.toml` (model, provider, permission, hooks) and `tui.toml` (theme, editor, notifications, auto-update). Use when the user asks what a setting does, wants to change one, or needs to fix a deprecated config key / environment variable warning."}, {"name": "write-goal", "description": "Help the user craft a well-specified `/goal` objective for goal mode — turn a rough intention into a completion contract with a clear finish line, proof, boundaries, and stop rule. Use when the user asks for help writing, refining, or improving a goal."}]}}
+{"event": "update", "update": {"sessionUpdate": "current_mode_update", "currentModeId": "default"}}
+{"event": "update", "update": {"sessionUpdate": "config_option_update", "configOptions": [{"type": "select", "id": "model", "name": "Model", "category": "model", "currentValue": "kimi-code/k3-256k", "options": [{"value": "kimi-code/kimi-for-coding", "name": "K2.8 Preview"}, {"value": "kimi-code/kimi-for-coding-highspeed", "name": "K2.7 Code Highspeed"}, {"value": "kimi-code/k3", "name": "K3"}, {"value": "kimi-code/k3-256k", "name": "K3-256k"}]}, {"type": "select", "id": "thinking", "name": "Thinking", "category": "thought_level", "currentValue": "max", "options": [{"value": "low", "name": "Thinking Low"}, {"value": "high", "name": "Thinking High"}, {"value": "max", "name": "Thinking Max"}]}, {"type": "select", "id": "mode", "name": "Mode", "category": "mode", "currentValue": "default", "options": [{"value": "default", "name": "Default", "description": "Manual approvals; tools execute normally."}, {"value": "plan", "name": "Plan", "description": "Read-only planning; no tool execution."}, {"value": "auto", "name": "Auto", "description": "Auto-approve safe operations."}, {"value": "yolo", "name": "YOLO", "description": "Auto-approve everything."}]}]}}
+{"event": "ready", "session_id": "session_0094f3da-7f31-48ca-bff2-33ac11b0c41c", "model": "kimi-code/k3-256k"}
+{"event": "update", "update": {"sessionUpdate": "session_info_update", "title": "Work only from this supplied synthetic code; do not read or edit files or run commands/tests: def split_labels(text: str) -> list[str]: return text.split(',') Propose a replacement that strips whitesp"}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "I can't use Ask"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "UserQuestion right"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " now — auto permission"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " mode is active,"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " which prohibits"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " that tool and"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " instructs me to"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " decide and continue."}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " So I'll"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " decide:"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " the stated"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " requirements only mention"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " stripping whitespace and dropping"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " blank labels, nothing"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " about ded"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "uplication, so"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " I'll"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " default to **"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "'"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Preserve duplicates'"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "** (the minimal"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " change matching"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " the spec"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "). I'm"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " including"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " the 'Remove duplicates"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "' variant below"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " so the coordinator can"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " swap it"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " in if"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " desired"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": ".\n\n**"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Proposed replacement"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " (du"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "plicates preserved"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": ", order preserved):"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "**\n\n```python\n"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "def split_labels(text"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": ": str) ->"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " list[str]:\n   "}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " return [label for"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " label"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " in (part.strip"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "() for part in"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " text.split(','))"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " if label]\n"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "```\n\nBehavior"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " notes:\n- `"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "part"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": ".strip()` removes"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " leading/trailing whitespace"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " from each label"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": ".\n- The `"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "if label` filter"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " drops labels"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " that are empty after"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " stripping ("}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "covers `"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "\","}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": ",\"`,"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " `\","}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " ,\""}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "`, and"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " empty input"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " `"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "\"\"`, which"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " yields `[]`).\n"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "- Order"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " and duplicates from"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " the original string"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " are preserved.\n\n**"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Alternative variant"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " ('"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Remove duplicates',"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " first"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "-"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "occurrence order preserved"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "):**\n\n```python"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "\ndef split_labels"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "(text: str)"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " -> list[str]:\n"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "    seen: set"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "[str] = set"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "()\n    labels:"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " list[str] ="}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " []\n    for part"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " in text.split(','"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "):\n        label"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " = part.strip()\n"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "        if label and"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " label not in seen"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": ":\n            seen.add"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "(label)\n            labels"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": ".append(label"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": ")\n    return labels"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "\n```\n\nThis"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " code was"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " **not executed**"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " —"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " I cannot"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " run"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " commands or"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " tests;"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " it is provided"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " as text only for"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " independent review. If"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " the coordinator wants"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " dedu"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "plication, use"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " the second variant;"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " otherwise the first fulfills"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": " the stated requirements"}}}
+{"event": "update", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "."}}}
+{"event": "turn_end", "stopReason": "end_turn"}
+{"event": "update", "update": {"sessionUpdate": "usage_update", "used": 2586, "size": 262144}}

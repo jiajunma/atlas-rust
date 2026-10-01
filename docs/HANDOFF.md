@@ -1,5 +1,49 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
+## Kimi bidirectional ACP interaction verified — 2026-10-01
+
+The follow-up requested a workable Codex–Kimi interaction channel. Implemented
+`tools/kimi_acp_session.py` and the question-only
+`.agents/kimi/interactive.md`; Codex can send tasks/answers/follow-ups, receive
+progress and questions, cancel a pending turn, reconnect and close through its
+terminal tools. Full usage, official sources and observed limits are in
+[`slices/kimi_acp_interaction_2026-10-01.md`](slices/kimi_acp_interaction_2026-10-01.md).
+`tools/kimi_acp_probe.py` drives the reproducible synthetic local integration
+capture; all exact requests, profiles, model/session IDs, streams and exits are
+retained in `docs/evidence/kimi-acp-20261001/`. CLI2.1.1 / `kimi-code/k3-256k`
+made fourteen model-bearing prompts across twelve processes and three sessions.
+
+First attempt: rejected the model's unilateral duplicate-policy choice and
+its stale claim that auto mode was still active. Corrected the client to state
+the actual successful ACP manual-mode switch on each new task. The corrected
+run proved a real AskUserQuestion reverse RPC, coordinator answer, source-text
+proposal, remembered follow-up, overlap rejection, cancellation and recovery,
+new-process history reload, close/EOF, deadline and SIGTERM. Final inspection
+also found pending-question and redundant-cancel warnings; the final client
+settles reverse RPCs with `action: cancel` and avoids cancelling an idle/closed
+session. The full third capture passed with empty stderr. All process groups
+were empty after cleanup. Independently inspected the proposed comprehension,
+explicit loop and docstring; rejected the final variant's Python3.8+ claim
+because the shown `list[str]` annotation needs3.9+ without postponed evaluation.
+No proposal was applied to Atlas. No generated program, build, fixture or HPC
+job was executed.
+
+Reusable lessons: `kimi acp` does not forward CLI profile flags; bootstrap and
+load a restricted explicit session. Historical `-p` auto reminders can affect
+later model behavior. A question is answered on its original RPC, not by
+starting another prompt. ACP cancel is a notification, close retains history,
+and replayed messages are not new model output. Settle question RPCs separately
+on cancellation and independently review version claims as well as code logic.
+ACP and MCP need an adapter
+between them; no MCP installation or global configuration change was made.
+
+Temporary paths `/tmp/codex-kimi-acp-v5iolxif` and
+`/tmp/codex-kimi-acp-v0r5jtwl` and `/tmp/codex-kimi-acp-3mu4vpvi` are REMOVED.
+No worktree or transport was created.
+Three synthetic sessions remain only in the normal local Kimi runtime store;
+credentials and unrelated sessions were untouched. Root AGENTS.md and the
+indexed status document now contain the tested interaction contract.
+
 ## Kimi runtime integration verified — 2026-10-01
 
 The user explicitly authorized local Kimi invocation/delivery/exit checks while

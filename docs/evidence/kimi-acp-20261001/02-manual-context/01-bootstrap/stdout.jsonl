@@ -1,0 +1,3 @@
+{"role":"meta","type":"system.version","version":"2.1.1"}
+{"role":"assistant","content":"ACP_BOOT_READY"}
+{"role":"meta","type":"session.resume_hint","session_id":"session_f91c2372-6fc2-409d-9762-697d0fd1a490","command":"kimi -r session_f91c2372-6fc2-409d-9762-697d0fd1a490","content":"To resume this session: kimi -r session_f91c2372-6fc2-409d-9762-697d0fd1a490"}

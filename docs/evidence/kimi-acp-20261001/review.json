@@ -1,0 +1,290 @@
+{
+  "schema": "codex-kimi-acp-review-v1",
+  "reviewed_at": "2026-10-01T06:25:58.092620+00:00",
+  "reviewer": "Codex coordinator; independent of Kimi proposals, no mathematical acceptance",
+  "scope": "authorized local integration and inspected synthetic source text only",
+  "process_count": 12,
+  "model_prompt_count": 14,
+  "processes": [
+    {
+      "path": "01-first/01-bootstrap",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "482f8d2bdd10bb41644b80321a84a6a8a5b83a00f412db27680cee90a2f8371a",
+      "status": "completed",
+      "process_exit_code": 0,
+      "elapsed_seconds": 4.979,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_0094f3da-7f31-48ca-bff2-33ac11b0c41c",
+      "model_prompt_ids": [
+        "CLI-bootstrap"
+      ]
+    },
+    {
+      "path": "01-first/02-dialogue",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "18f7bfc0b40cbff4483985b8380984732beddcf68dece6cb3703e2500c2155c5",
+      "status": "interrupted",
+      "process_exit_code": 0,
+      "elapsed_seconds": 56.813,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_0094f3da-7f31-48ca-bff2-33ac11b0c41c",
+      "model_prompt_ids": [
+        4
+      ],
+      "question_requests": [],
+      "stderr_bytes": 236,
+      "client_sha256": "b7e9abf96843d6ef19bbbe597c6808589c0a99a4d2d42ea15bb7544c9e2194d2"
+    },
+    {
+      "path": "02-manual-context/01-bootstrap",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "ca95591b5a73eeff9b01fb3881ca63fd4c88a1f84640744f9c54e19b05d6a319",
+      "status": "completed",
+      "process_exit_code": 0,
+      "elapsed_seconds": 5.968,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_f91c2372-6fc2-409d-9762-697d0fd1a490",
+      "model_prompt_ids": [
+        "CLI-bootstrap"
+      ]
+    },
+    {
+      "path": "02-manual-context/02-dialogue",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "84e53e8f88e7954f42f63d900bf1e4dfd029b296d3a9f6e1cbf887412f065034",
+      "status": "closed",
+      "process_exit_code": 0,
+      "elapsed_seconds": 29.025,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_f91c2372-6fc2-409d-9762-697d0fd1a490",
+      "model_prompt_ids": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "question_requests": [
+        {
+          "id": 0,
+          "responses": [
+            {
+              "action": "accept",
+              "content": {
+                "q0": "Preserve duplicates"
+              }
+            }
+          ]
+        },
+        {
+          "id": 1,
+          "responses": []
+        }
+      ],
+      "stderr_bytes": 1228,
+      "client_sha256": "1eb0d40cc3b6dce55f128bb75bb63cfd10d1550b17c937abeb26c439c9d295f8"
+    },
+    {
+      "path": "02-manual-context/03-reload",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "bc9a11e990df3ac116266a4cd8bd0d74a00801e1f94964ca1f1a30b87222dd37",
+      "status": "closed",
+      "process_exit_code": 0,
+      "elapsed_seconds": 8.741,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_f91c2372-6fc2-409d-9762-697d0fd1a490",
+      "model_prompt_ids": [
+        4
+      ],
+      "question_requests": [],
+      "stderr_bytes": 236,
+      "client_sha256": "1eb0d40cc3b6dce55f128bb75bb63cfd10d1550b17c937abeb26c439c9d295f8"
+    },
+    {
+      "path": "02-manual-context/04-deadline",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "206df1c7502f2c7c69ad641ad167a609e3f8bbe9b952592cf7ccb5b0a998181e",
+      "status": "timeout",
+      "process_exit_code": 0,
+      "elapsed_seconds": 3.248,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_f91c2372-6fc2-409d-9762-697d0fd1a490",
+      "model_prompt_ids": [],
+      "question_requests": [],
+      "stderr_bytes": 236,
+      "client_sha256": "1eb0d40cc3b6dce55f128bb75bb63cfd10d1550b17c937abeb26c439c9d295f8"
+    },
+    {
+      "path": "02-manual-context/05-signal",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "4ff8e649c6365d75de1cf88cd7ff233e8d565de236dbd399a93b9eb5e9083e95",
+      "status": "interrupted",
+      "process_exit_code": 0,
+      "elapsed_seconds": 1.946,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_f91c2372-6fc2-409d-9762-697d0fd1a490",
+      "model_prompt_ids": [],
+      "question_requests": [],
+      "stderr_bytes": 236,
+      "client_sha256": "1eb0d40cc3b6dce55f128bb75bb63cfd10d1550b17c937abeb26c439c9d295f8"
+    },
+    {
+      "path": "03-settled-cancel/01-bootstrap",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "7422c2ae6213a2ca7d1612c5e7bfa9566cd7c8fe56cc788d40c2366de833638a",
+      "status": "completed",
+      "process_exit_code": 0,
+      "elapsed_seconds": 8.576,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+      "model_prompt_ids": [
+        "CLI-bootstrap"
+      ]
+    },
+    {
+      "path": "03-settled-cancel/02-dialogue",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "3bc32f64660d23b25d6471572efe7077370097287d3f50024b122daf0a3c0d72",
+      "status": "closed",
+      "process_exit_code": 0,
+      "elapsed_seconds": 30.375,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+      "model_prompt_ids": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "question_requests": [
+        {
+          "id": 0,
+          "responses": [
+            {
+              "action": "accept",
+              "content": {
+                "q0": "Preserve duplicates"
+              }
+            }
+          ]
+        },
+        {
+          "id": 1,
+          "responses": [
+            {
+              "action": "cancel"
+            }
+          ]
+        }
+      ],
+      "stderr_bytes": 0,
+      "client_sha256": "2afe62107a1082d49d1d96ee8076fd6a16746c42a904d5045a42e4a032fb5298"
+    },
+    {
+      "path": "03-settled-cancel/03-reload",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "f2ba52c1db7ba0d479f52f8779588ee3de07e9bf91d5c3e38d5ac5330951fd9c",
+      "status": "closed",
+      "process_exit_code": 0,
+      "elapsed_seconds": 8.35,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+      "model_prompt_ids": [
+        4
+      ],
+      "question_requests": [],
+      "stderr_bytes": 0,
+      "client_sha256": "2afe62107a1082d49d1d96ee8076fd6a16746c42a904d5045a42e4a032fb5298"
+    },
+    {
+      "path": "03-settled-cancel/04-deadline",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "0231b6490a054f026e55468ece05c6f473da0cf626a45d2012eec643b98d3291",
+      "status": "timeout",
+      "process_exit_code": 0,
+      "elapsed_seconds": 3.223,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+      "model_prompt_ids": [],
+      "question_requests": [],
+      "stderr_bytes": 0,
+      "client_sha256": "2afe62107a1082d49d1d96ee8076fd6a16746c42a904d5045a42e4a032fb5298"
+    },
+    {
+      "path": "03-settled-cancel/05-signal",
+      "cli_version": "2.1.1",
+      "model": "kimi-code/k3-256k",
+      "result_sha256": "1144412eb66c1539198c256e706caed6ab75513af2221fbbcbaab713f10dd2bc",
+      "status": "interrupted",
+      "process_exit_code": 0,
+      "elapsed_seconds": 1.856,
+      "remaining_live_group_members_at_review": [],
+      "owned_files": [],
+      "session_id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+      "model_prompt_ids": [],
+      "question_requests": [],
+      "stderr_bytes": 0,
+      "client_sha256": "2afe62107a1082d49d1d96ee8076fd6a16746c42a904d5045a42e4a032fb5298"
+    }
+  ],
+  "temporary_paths": [
+    {
+      "path": "/tmp/codex-kimi-acp-v5iolxif",
+      "removed": true
+    },
+    {
+      "path": "/tmp/codex-kimi-acp-v0r5jtwl",
+      "removed": true
+    },
+    {
+      "path": "/tmp/codex-kimi-acp-3mu4vpvi",
+      "removed": true
+    }
+  ],
+  "source_hashes": {
+    "tools/kimi_acp_session.py": "2afe62107a1082d49d1d96ee8076fd6a16746c42a904d5045a42e4a032fb5298",
+    "tools/kimi_acp_probe.py": "7f98150e89b60f10b51c63133f67468415d3cc5596a6d44847bbc98c26d29e99",
+    ".agents/kimi/interactive.md": "2558fdfaae9891fe15afa3a9c649b6e7f70ce73eca9742e5489aa8bd29364f1e"
+  },
+  "accepted_observations": [
+    "actual question and coordinator reply preceded the code proposal",
+    "subsequent turn recalled marker and duplicate policy",
+    "source logic strips whitespace, removes blank labels and preserves order/duplicates",
+    "cancelled question turn recovered without session replacement",
+    "new ACP process recalled prior history",
+    "final capture settled question RPCs and had empty stderr",
+    "EOF, deadline and SIGTERM closed all owned process groups"
+  ],
+  "rejected_claims": [
+    "first attempt inferred policy and incorrectly followed a stale auto-mode reminder",
+    "final compact function was labelled Python3.8+ despite list[str] annotation without postponed evaluation"
+  ],
+  "limitations": [
+    "generated Python never executed; only source inspected",
+    "no Atlas source or HPC state changed",
+    "no MCP wrapper built or installed",
+    "profile and client are not OS sandboxes",
+    "no detached process/host crash/SIGKILL-of-wrapper containment claim"
+  ]
+}

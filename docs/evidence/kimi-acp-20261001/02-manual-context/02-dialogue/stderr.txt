@@ -1,0 +1,6 @@
+{"level":"warn","msg":"acp: cancel for unknown sessionId","sessionId":"session_f91c2372-6fc2-409d-9762-697d0fd1a490"}
+{"level":"warn","msg":"acp: cancel for unknown sessionId","sessionId":"session_f91c2372-6fc2-409d-9762-697d0fd1a490"}
+{"level":"warn","msg":"acp: elicitation/create failed; falling back to request_permission","sessionId":"session_f91c2372-6fc2-409d-9762-697d0fd1a490","toolCallId":"tool_vj26peuUicBb2xhLarmZS4fb","error":"ACP connection closed"}
+{"level":"warn","msg":"acp: requestPermission (question) failed; dismissing","sessionId":"session_f91c2372-6fc2-409d-9762-697d0fd1a490","toolCallId":"tool_vj26peuUicBb2xhLarmZS4fb","error":"ACP connection closed"}
+{"level":"warn","msg":"acp: interaction bridge dispatch failed","sessionId":"session_f91c2372-6fc2-409d-9762-697d0fd1a490","interactionId":"question_6f9e9414-9c82-4905-9bac-2f8579a7a212","kind":"question","error":"session not found: session_f91c2372-6fc2-409d-9762-697d0fd1a490"}
+{"level":"warn","msg":"acp: interaction bridge fallback respond failed","sessionId":"session_f91c2372-6fc2-409d-9762-697d0fd1a490","interactionId":"question_6f9e9414-9c82-4905-9bac-2f8579a7a212","error":"session not found: session_f91c2372-6fc2-409d-9762-697d0fd1a490"}

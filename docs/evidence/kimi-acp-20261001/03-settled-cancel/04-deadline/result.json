@@ -1,0 +1,11 @@
+{
+  "status": "timeout",
+  "session_id": "session_165e898d-763b-41b1-8b3a-5eb9a8c07d71",
+  "error": null,
+  "elapsed_seconds": 3.223,
+  "received_signals": [],
+  "cleanup_signals": [],
+  "remaining_live_group_members": [],
+  "process_exit_code": 0,
+  "finished_at": "2026-10-01T06:23:22.816405+00:00"
+}
