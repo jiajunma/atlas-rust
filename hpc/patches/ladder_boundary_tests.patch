@@ -1,0 +1,62 @@
+--- a/crates/atlas-real-group/src/root_system.rs
++++ b/crates/atlas-real-group/src/root_system.rs
+@@ -919,6 +919,38 @@
+         assert_eq!(roots.min_coroots_for(RootId(6)), None);
+     }
+ 
++    // Original Atlas3868832 accepts all eleven coordinate-boundary cases.
++    // In A1 the only roots are +/-alpha, so every difference is 0 or
++    // +/-2alpha, never a root. This remains true outside the i32 range.
++    fn ladder_coordinate_boundary_case(dual: bool) {
++        for m in [0, 1_073_741_823, 1_073_741_824, i32::MAX] {
++            let (root, coroot) = if dual { (vec![0, 2], vec![m, 1]) }
++                                 else { (vec![m, 1], vec![0, 2]) };
++            let datum = BasedRootDatum::from_simple_data(
++                2, vec![vec![2]], vec![Weight::new(root)], vec![Coweight::new(coroot)],
++            ).unwrap();
++            let result = RootSystem::enumerate(&datum, 2);
++            assert!(result.is_ok(), "ladder membership must not reject m={m}, dual={dual}: {result:?}");
++            let roots = result.unwrap();
++            assert_eq!(roots.roots().len(), 2);
++            for (alpha, _, _) in roots.entries() {
++                for table in [roots.min_roots_for(alpha), roots.min_coroots_for(alpha)] {
++                    assert_eq!(table.unwrap().iter().collect::<Vec<_>>(), vec![RootId(0), RootId(1)]);
++                }
++            }
++        }
++    }
++
++    #[test]
++    fn ladder_coordinate_boundary_roots() {
++        ladder_coordinate_boundary_case(false);
++    }
++
++    #[test]
++    fn ladder_coordinate_boundary_coroots() {
++        ladder_coordinate_boundary_case(true);
++    }
++
+     #[test]
+     fn a_pure_torus_has_empty_ladder_tables() {
+         let datum = BasedRootDatum::from_simple_data(3, vec![], vec![], vec![]).unwrap();
+--- a/crates/atlas-core/src/session.rs
++++ b/crates/atlas-core/src/session.rs
+@@ -734,6 +734,18 @@
+             .expect("complete original orientation capture")
+     }
+ 
++    #[test]
++    fn root_ladder_coordinate_boundary_original() {
++        // Unchanged original3868832 full stream:11 data,22 root/coroot
++        // ladders, both numbering choices, dual data and recovery.
++        let events = run_source(&SourceText::new(include_str!(
++            "../../../tests/math/generics/root_ladder_coordinate_boundary.atlas")));
++        assert!(!events.iter().any(|e| matches!(e, SessionEvent::Diagnostic(_))), "{events:?}");
++        assert_eq!(matrix_axes_stdout(&events), orientation_original_payload(include_bytes!(
++            "../../../tests/math/generics/root_ladder_coordinate_boundary.oracle.stdout"),
++            "root_ladder_coordinate_boundary"));
++    }
++
+     fn completion_snapshot_original(source: &str, original: &[u8], kind: &str) {
+         // Entire original3868572 stdout, unchanged including declarations,
+         // startup inventory, recovery and order. Only remove the capture frame.

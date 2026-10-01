@@ -1,0 +1,274 @@
+{
+  "atlas_commands": 0,
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "cargo_commands": 0,
+  "commands": [
+    {
+      "argv": [
+        "/public/software/anaconda/anaconda3-2022.5/bin/python3.9",
+        "-I",
+        "-S",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "hpc",
+        "-p",
+        "test_stage_ladder_boundary_index.py",
+        "-v"
+      ],
+      "exit_status": 0,
+      "expected_tests": 20,
+      "log_sha256": "61907dc5b4566ca1e4cd48c5c42e943e22ee8fb3d731adc7077e2d56a8e976da",
+      "maxrss_approximate": false,
+      "maxrss_kb": 21748,
+      "name": "test-stage-ladder-boundary-index",
+      "observed_tests": 20,
+      "seconds": 5.083731743041426,
+      "test_count_matches": true,
+      "time_sha256": "2555d2d3b7a555d93f43533bae574cc91f0418cadf01e638261b313711b26a7b",
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "/public/software/anaconda/anaconda3-2022.5/bin/python3.9",
+        "-I",
+        "-S",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "hpc",
+        "-p",
+        "test_math_acceptance_index.py",
+        "-v"
+      ],
+      "exit_status": 0,
+      "expected_tests": 34,
+      "log_sha256": "42608554c089b82955c477e58ae415bc6189197eb6bcf708207d4aba777dfaf1",
+      "maxrss_approximate": false,
+      "maxrss_kb": 23064,
+      "name": "test-math-acceptance-index",
+      "observed_tests": 34,
+      "seconds": 2.657834487967193,
+      "test_count_matches": true,
+      "time_sha256": "28cad16f8cf6079c1d3cc8a9af9c56767f69a58cbadd191863c92dbdb65c691c",
+      "timed_out": false
+    },
+    {
+      "argv": [
+        "/public/software/anaconda/anaconda3-2022.5/bin/python3.9",
+        "-I",
+        "-S",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "hpc",
+        "-p",
+        "test_stager_allowlist.py",
+        "-v"
+      ],
+      "exit_status": 0,
+      "expected_tests": 7,
+      "log_sha256": "3642d2cc9704a8780d67f61025fd84b26108e0c8f60c0f406bb858c290af632c",
+      "maxrss_approximate": false,
+      "maxrss_kb": 19540,
+      "name": "test-stager-allowlist",
+      "observed_tests": 7,
+      "seconds": 3.131067809066735,
+      "test_count_matches": true,
+      "time_sha256": "b95bef12bb54e0f3cc5224d392c53a9a829052465f80d70e02032e7063aad79f",
+      "timed_out": false
+    }
+  ],
+  "ephemeral_workspace_absent": true,
+  "exception_log_sha256": null,
+  "expected_test_counts": {
+    "test-math-acceptance-index": 34,
+    "test-stage-ladder-boundary-index": 20,
+    "test-stager-allowlist": 7
+  },
+  "failure": null,
+  "final_input_recheck_error": false,
+  "index": {
+    "claim_id": "a1_torus_root_coroot_ladder_coordinate_boundary",
+    "entries": 3,
+    "file": "tests/reference/hpc/math_acceptance_index_2026_10_01.json",
+    "head_sha256": "1628ee21c71a91376a02982c38404cee958cb6183c57f791a42c4a668a1efc12"
+  },
+  "job": "3879103",
+  "legacy_path_open_attempts": 0,
+  "limitations": [
+    "publication_and_durability_gate_only",
+    "legacy_path_audit_covers_driver_process_only",
+    "no_new_mathematics",
+    "no_rank_release",
+    "no_performance_or_parallel_claim"
+  ],
+  "node": "cu075",
+  "not_reached": [],
+  "observed_test_counts": {
+    "test-math-acceptance-index": 34,
+    "test-stage-ladder-boundary-index": 20,
+    "test-stager-allowlist": 7
+  },
+  "pin": {
+    "index": {
+      "claim_id": "a1_torus_root_coroot_ladder_coordinate_boundary",
+      "entries": 3,
+      "file": "tests/reference/hpc/math_acceptance_index_2026_10_01.json",
+      "head_sha256": "1628ee21c71a91376a02982c38404cee958cb6183c57f791a42c4a668a1efc12"
+    },
+    "inputs": {
+      "hpc/campaign_blob.py": "47e8dfb10a01513257905134dfaf6f91e73fc4337a2923d4bbd22c28a9220c52",
+      "hpc/campaign_source.py": "8190efa28e74589d03b220c183fa87bdabcb6ce76f7bb2cd7d0947defcc71dc9",
+      "hpc/campaign_workspace.py": "e63384bcdd4f4c19512f3c1e9490dad925d564373a1af376e2860078ddaed531",
+      "hpc/math_ladder_boundary_after.py": "b6f52b1042393705498767a687175f365c1fd0f491c3f630ca4cf53d2277d0a2",
+      "hpc/math_ladder_boundary_before.py": "21dc2207690a8cd0559854eb78725c5e0d901a7e5c1c750d4feb89d55e7b8f9e",
+      "hpc/math_ladder_boundary_index.py": "c1cab49dcedb679ee622a9a07e4c07d94069a55562e68d5e94580dc710277132",
+      "hpc/math_ladder_boundary_index.sbatch": "4949f83f99680b0dff06ae219dd99132c8e643740bc3845f4ad95b3a5bf53288",
+      "hpc/progressive_submit.py": "7f403f01a009312b0b82db89583d84e12f3d999d611b513b281d6fde782de7da",
+      "hpc/stage_ladder_boundary_after.py": "07558c08a25f0d00b49720392b6abe469b2286d38b29cbb63a611cf40930d90d",
+      "hpc/stage_ladder_boundary_before.py": "ff1f492adfa22f342bd0729f3df3885678de8f729a0f3d0775e5738c7ab47932",
+      "hpc/stage_ladder_boundary_index.py": "c95becd60f82d8894c11a853935109a7e7ba2c95eab16dc76833914b6a452763",
+      "hpc/stage_weyl_parent_seal.py": "f1c3567ab620269c3836bdc624b9573cc89d519944bfe00a7c24e859fe387fc4",
+      "hpc/test_math_acceptance_index.py": "05180735c849c6366ffbc0f9e20a3593808608db9408297b20949a9f86b5eb78",
+      "hpc/test_stage_ladder_boundary_index.py": "67a272679e1e48f8bcc8b92ab81cb355007eb45e0b60055835a362164c5a183b",
+      "hpc/test_stager_allowlist.py": "75fca99911bc21817e50eb870b61208c4209ac36b76f065c7dfc63acf6f3bcb5",
+      "tests/reference/hpc/math_acceptance_index_2026_10_01.json": "801e79c8679dfd4a50ff6736b439fe097c0e0d25e5db6387edc2dfd3316a720f",
+      "tests/reference/hpc/math_cycle_rank1_2026_09_30.json": "a83efb1bec546be8635d0f9a5aad895b5a5d0d1946ed2f02f04dee573872f077",
+      "tests/reference/hpc/math_cycle_rank1_review_2026_09_30.json": "5c366f5ca96729e2d23075320a18aad48b011dcf3d8ae4a8b758f5ba8673e63f",
+      "tests/reference/hpc/math_full_deform_after_2026_09_30.json": "beeb3e280738d528460e1935c00861c8540afe37e89c59f04773ffb2cd817226",
+      "tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15",
+      "tests/reference/hpc/math_ladder_boundary_after_v3_index_review_2026_10_01.json": "3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58",
+      "tests/reference/hpc/math_ladder_boundary_after_v3_report_2026_10_01.json": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c",
+      "tests/reference/hpc/math_ladder_boundary_before_v3_2026_10_01.json": "608e996acac10ea1bacca177468fcd83f3ec39c3e579899440e11aab674fc37f",
+      "tests/reference/hpc/math_weyl_context_capture_2026_09_30.json": "bdee12811fe6ce4160ffbc2a25df18d9a9338a7b29f22d5fcd19352cf970f832"
+    },
+    "lifecycle": {
+      "changed_input_reasons": [
+        "Publish the independently reviewed A1-plus-torus root/coroot ladder boundary claim as the third append-only acceptance-index entry.",
+        "Transition the frozen AFTER-v3 launcher policy to a separately bounded pure-Python index-verification launcher."
+      ],
+      "retention_class": "ACTIVE_GATE_COMPACT",
+      "retirement_condition": "FINAL independent inspection, focused commit and push, zero live or uncertain job ownership, verified campaign-CAS closure, and separate explicit exact-path deletion authorization.",
+      "stage": "ladder-boundary-index-v1"
+    },
+    "overrides_sha256": "009c2ee6b05abc5508f667a9566e15eaacbefc6154eb545e83d213cb2e5b3a06",
+    "predecessor": {
+      "before_evidence_sha256": "608e996acac10ea1bacca177468fcd83f3ec39c3e579899440e11aab674fc37f",
+      "campaign_ledger_sha256": "a1776412e7dd6633c329743b52c5cf4b1615dde8a7a2f0b4fddd002b5615a618",
+      "index_head_sha256": "1628ee21c71a91376a02982c38404cee958cb6183c57f791a42c4a668a1efc12",
+      "inspection_sha256": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15",
+      "job": "3875239",
+      "original_capture_sha256": "bdee12811fe6ce4160ffbc2a25df18d9a9338a7b29f22d5fcd19352cf970f832",
+      "pin_sha256": "7af79aa20b37d0fcee9a60d8e3c6b4dbec05417cf6817747520b6ebe3ec41f88",
+      "previous_index_head_sha256": "e44a8b6d8ed6d2a7781ca9f9e2ba4b2e57c06f118a5a288d7a61c0d77d022c6c",
+      "receipt_sha256": "ac1f6f52f99de9b86b7b7bbfe56e7478809f193f1938a0c07219bc6061ee2254",
+      "report_sha256": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c",
+      "review_sha256": "3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58",
+      "source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+      "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-after-v3"
+    },
+    "retired_stager_object": {
+      "bytes": 311925,
+      "role": "retired-stager-bundle",
+      "schema": "atlas-campaign-blob-v1",
+      "sha256": "550b1330ec8806d1343d50d6ceb8488f89eb03546f6bb37c538cb5cd460e9b09"
+    },
+    "schema": "atlas-ladder-boundary-index-pin-v1",
+    "scope": "Pure-Python durability verification of the independently reviewed bounded root-ladder acceptance-index entry; no new mathematics, rank release, benchmark, Cargo build or Atlas execution.",
+    "test_counts": {
+      "test-math-acceptance-index": 34,
+      "test-stage-ladder-boundary-index": 20,
+      "test-stager-allowlist": 7
+    }
+  },
+  "pin_sha256": "0b2d966d8208c36e2be28ef48920de9319fe64848a5e1c10ddbadacdf488fd3c",
+  "predecessor": {
+    "before_evidence_sha256": "608e996acac10ea1bacca177468fcd83f3ec39c3e579899440e11aab674fc37f",
+    "campaign_ledger_sha256": "a1776412e7dd6633c329743b52c5cf4b1615dde8a7a2f0b4fddd002b5615a618",
+    "index_head_sha256": "1628ee21c71a91376a02982c38404cee958cb6183c57f791a42c4a668a1efc12",
+    "inspection_sha256": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15",
+    "job": "3875239",
+    "original_capture_sha256": "bdee12811fe6ce4160ffbc2a25df18d9a9338a7b29f22d5fcd19352cf970f832",
+    "pin_sha256": "7af79aa20b37d0fcee9a60d8e3c6b4dbec05417cf6817747520b6ebe3ec41f88",
+    "previous_index_head_sha256": "e44a8b6d8ed6d2a7781ca9f9e2ba4b2e57c06f118a5a288d7a61c0d77d022c6c",
+    "receipt_sha256": "ac1f6f52f99de9b86b7b7bbfe56e7478809f193f1938a0c07219bc6061ee2254",
+    "report_sha256": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c",
+    "review_sha256": "3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58",
+    "source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+    "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-after-v3"
+  },
+  "retired_stager_bundle_rechecked": true,
+  "retired_stager_object": {
+    "bytes": 311925,
+    "role": "retired-stager-bundle",
+    "schema": "atlas-campaign-blob-v1",
+    "sha256": "550b1330ec8806d1343d50d6ceb8488f89eb03546f6bb37c538cb5cd460e9b09"
+  },
+  "schema": "atlas-ladder-boundary-index-v1",
+  "scope": "Pure-Python durability verification of the independently reviewed bounded root-ladder acceptance-index entry; no new mathematics, rank release, benchmark, Cargo build or Atlas execution.",
+  "source_integrity_rechecked": true,
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-index-v1",
+  "status": "LADDER_BOUNDARY_INDEX_GATES_PASS",
+  "submission_receipt": {
+    "atlas_commands": 0,
+    "cargo_commands": 0,
+    "index": {
+      "claim_id": "a1_torus_root_coroot_ladder_coordinate_boundary",
+      "entries": 3,
+      "file": "tests/reference/hpc/math_acceptance_index_2026_10_01.json",
+      "head_sha256": "1628ee21c71a91376a02982c38404cee958cb6183c57f791a42c4a668a1efc12"
+    },
+    "job": "3879103",
+    "lifecycle": {
+      "changed_input_reasons": [
+        "Publish the independently reviewed A1-plus-torus root/coroot ladder boundary claim as the third append-only acceptance-index entry.",
+        "Transition the frozen AFTER-v3 launcher policy to a separately bounded pure-Python index-verification launcher."
+      ],
+      "retention_class": "ACTIVE_GATE_COMPACT",
+      "retirement_condition": "FINAL independent inspection, focused commit and push, zero live or uncertain job ownership, verified campaign-CAS closure, and separate explicit exact-path deletion authorization.",
+      "stage": "ladder-boundary-index-v1"
+    },
+    "max_outstanding": 10,
+    "pin_sha256": "0b2d966d8208c36e2be28ef48920de9319fe64848a5e1c10ddbadacdf488fd3c",
+    "predecessor": {
+      "before_evidence_sha256": "608e996acac10ea1bacca177468fcd83f3ec39c3e579899440e11aab674fc37f",
+      "campaign_ledger_sha256": "a1776412e7dd6633c329743b52c5cf4b1615dde8a7a2f0b4fddd002b5615a618",
+      "index_head_sha256": "1628ee21c71a91376a02982c38404cee958cb6183c57f791a42c4a668a1efc12",
+      "inspection_sha256": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15",
+      "job": "3875239",
+      "original_capture_sha256": "bdee12811fe6ce4160ffbc2a25df18d9a9338a7b29f22d5fcd19352cf970f832",
+      "pin_sha256": "7af79aa20b37d0fcee9a60d8e3c6b4dbec05417cf6817747520b6ebe3ec41f88",
+      "previous_index_head_sha256": "e44a8b6d8ed6d2a7781ca9f9e2ba4b2e57c06f118a5a288d7a61c0d77d022c6c",
+      "receipt_sha256": "ac1f6f52f99de9b86b7b7bbfe56e7478809f193f1938a0c07219bc6061ee2254",
+      "report_sha256": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c",
+      "review_sha256": "3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58",
+      "source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+      "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-after-v3"
+    },
+    "queue_before": [],
+    "retired_stager_object": {
+      "bytes": 311925,
+      "role": "retired-stager-bundle",
+      "schema": "atlas-campaign-blob-v1",
+      "sha256": "550b1330ec8806d1343d50d6ceb8488f89eb03546f6bb37c538cb5cd460e9b09"
+    },
+    "schema": "atlas-ladder-boundary-index-submission-v1",
+    "scope": "Pure-Python durability verification of the independently reviewed bounded root-ladder acceptance-index entry; no new mathematics, rank release, benchmark, Cargo build or Atlas execution.",
+    "script": "hpc/math_ladder_boundary_index.sbatch",
+    "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-index-v1",
+    "status": "SUBMITTED_NOT_VERIFIED",
+    "storage_policy": "One existing-campaign child; only pin, immutable inputs, command logs/timing, report and checksum remain durable.",
+    "test_counts": {
+      "test-math-acceptance-index": 34,
+      "test-stage-ladder-boundary-index": 20,
+      "test-stager-allowlist": 7
+    }
+  }
+}

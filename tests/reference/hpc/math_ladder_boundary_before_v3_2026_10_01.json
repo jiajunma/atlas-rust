@@ -1,0 +1,109 @@
+{
+  "accounting": {
+    "elapsed": "00:05:36",
+    "end": "2026-10-01T12:56:53",
+    "exit_code": "0:0",
+    "job": "3873400",
+    "node": "cu006",
+    "start": "2026-10-01T12:51:17",
+    "state": "COMPLETED"
+  },
+  "before_regressions": {
+    "core": {
+      "exit_status": 101,
+      "failed": 1,
+      "filtered_out": 629,
+      "ignored": 0,
+      "name": "session::tests::root_ladder_coordinate_boundary_original",
+      "passed": 0
+    },
+    "domain": {
+      "exit_status": 101,
+      "failed": 2,
+      "filtered_out": 519,
+      "ignored": 0,
+      "names": [
+        "root_system::tests::ladder_coordinate_boundary_coroots",
+        "root_system::tests::ladder_coordinate_boundary_roots"
+      ],
+      "passed": 0
+    }
+  },
+  "checkers": {
+    "command_count": 6,
+    "counts": [
+      5,
+      10,
+      6,
+      5,
+      24,
+      15
+    ],
+    "passed": 65
+  },
+  "inspection": {
+    "all_command_log_and_time_hashes_match": true,
+    "all_twenty_inputs_match_pin_and_override_copies": true,
+    "ephemeral_workspace_absent": true,
+    "incoming_directory_empty": true,
+    "inputs_are_nonsymlink_single_link_0444_files": true,
+    "inspected_at": "2026-10-01T05:09:52Z",
+    "legacy_path_open_attempts": 0,
+    "parent_seal_and_source_objects_rehashed": true,
+    "production_unchanged": true,
+    "report_checksum_matches": true,
+    "source_integrity_rechecked": true,
+    "source_manifest_after_tests_only_patch": 1561,
+    "source_manifest_parent_count": 1558,
+    "source_manifest_note": "report.source_file_count names the sealed parent count; report.source_files contains that parent with two cfg(test) edits and three new fixtures, for 1561 final entries.",
+    "source_test_changes": 2,
+    "source_test_fixture_additions": 3
+  },
+  "inventories": {
+    "core": 630,
+    "domain": 521
+  },
+  "limitations": [
+    "This accepts only the exact tests-first BEFORE evidence: Rust still fails the three regressions.",
+    "It is not a mathematical repair, performance, memory, parallel-scaling or higher-rank acceptance.",
+    "The production repair must be tested in a separately pinned AFTER stage while preserving the original-backed complete stream and all retained gates."
+  ],
+  "parent_seal_object": {
+    "bytes": 12488095,
+    "role": "weyl-parent-seal",
+    "schema": "atlas-campaign-blob-v1",
+    "sha256": "db67234c0d67dbd6a6f0327386dd113b6093d25a46569710c33dfc8bc482cdcb"
+  },
+  "parent_source_object": {
+    "files": 1558,
+    "role": "rust-source",
+    "sha256": "5133bb32da7e5a92775d5f56ea2035680c363b40f085a8af95eaeebfdbc4536b"
+  },
+  "report": {
+    "command_count": 12,
+    "ephemeral_workspace_verified": true,
+    "integrity_rechecked": true,
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-before-v3/results/3873400/report.json",
+    "schema": "atlas-ladder-boundary-before-v2",
+    "sha256": "51cc7a14a0dbb8188a4ea47705338e5689212bf1f707819bab8c4e5681e4052b",
+    "status": "LADDER_BOUNDARY_THREE_FAILURES_CONFIRMED"
+  },
+  "schema": "atlas-ladder-boundary-before-inspection-v1",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-before-v3",
+  "status": "LADDER_BOUNDARY_BEFORE_ACCEPTED",
+  "submission": {
+    "intent_sha256": "985491fa2ecc744f5ec0dfb8c08c71a49a975b4d2155bc006e2f591de63f9505",
+    "ledger_sha256": "319981ee29a86e900ca6c9536ff8a3dbab5744d2866db1150228e07baf50160e",
+    "overrides_manifest_sha256": "310a2b1793f7cc2f35ffcfcb54f0aab8cc779291a391fa582dc2d85b5dc7fe7e",
+    "pin_sha256": "ca3e22561fe493b4fe1ea32751bf772e55b62e268e631091e2ee87c0f7c6c60a",
+    "queue_before": [],
+    "receipt_sha256": "4fc0b646056a02f45b265ae53b8cdd8be8a0efaa63e14b583898434ea3d75ebd"
+  },
+  "supporting_artifacts": {
+    "core_before_log_sha256": "aff79353d9ab7747cadd92ad0493a4e73085cc13e8b8109d610cc0b6217c8d34",
+    "domain_before_log_sha256": "f97760d4a1294edc85537473f637ea5bcc4b3adb1cb622cf39d6f9501f60ab8b",
+    "ladder_checker_log_sha256": "80a85809f15388169bd2b56dd8ce4a20ee69804b9eb5ee193ef9368dda4e808a",
+    "report_checksum_file_sha256": "a536698f8e5953767ada33d703b3d3bb4d7492433a75d9588bb4cdc04ed25b84",
+    "slurm_stdout_sha256": "50be271041ab7783f32af894462cf01cce3bb2d7f93e9a5378283f6920306b95"
+  }
+}

@@ -1,0 +1,14 @@
+{ Bare builtins only: compact A1 has no real reducibility contribution. }
+prints("FULL_DEFORM_CONTROL_BEGIN")
+for prefer in [false,true] do
+ let rd=simply_connected(Lie_type("A1"),prefer)
+ then G=real_form(inner_class(rd,[[1]]),0) in
+ for lr in [[0],[2]] do
+  let p=param(KGB(G,0),lr,[0]/1) in
+  prints("FULL_DEFORM_ROW|",prefer,"|",p,"|FINAL|",is_final(p));
+  prints("FULL_DEFORM_COLD|",full_deform(p));
+  prints("FULL_DEFORM_KL|",KL_sum_at_s(p));
+  prints("FULL_DEFORM_WARM|",full_deform(p))
+ od
+od
+prints("FULL_DEFORM_RECOVERY|",677)

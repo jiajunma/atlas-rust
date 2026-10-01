@@ -1,0 +1,97 @@
+{
+  "accounting": {
+    "alloc_cpus": 1,
+    "elapsed": "00:00:17",
+    "exit_code": "0:0",
+    "job": "3879103",
+    "node": "cu075",
+    "req_mem": "2G",
+    "state": "COMPLETED"
+  },
+  "artifacts": {
+    "campaign_ledger_sha256": "b336fb831de28f72e9138284d2c6f07ecfb178f617ebe4bec78e1c82ffb8eaa7",
+    "override_manifest": {
+      "file": "tests/reference/hpc/math_ladder_boundary_index_v1_overrides_2026_10_01.json",
+      "sha256": "009c2ee6b05abc5508f667a9566e15eaacbefc6154eb545e83d213cb2e5b3a06"
+    },
+    "pin_sha256": "0b2d966d8208c36e2be28ef48920de9319fe64848a5e1c10ddbadacdf488fd3c",
+    "report": {
+      "file": "tests/reference/hpc/math_ladder_boundary_index_v1_report_2026_10_01.json",
+      "remote_path": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-index-v1/results/3879103/report.json",
+      "sha256": "43cc79e1630b5ec21a24c5aa1a7c411eafffaa9a4c6911333c8752b0dc63cf9d"
+    },
+    "slurm_stdout_sha256": "096d9df1da7223df3bb2a8cb5c84efea7582d0d4f4fa94082b1c0ea8596e88fc",
+    "submission_intent_sha256": "882cb2cf2ad4431e4137d6cf6a4fb1d8a022bf98becbec9bf0ba61700016639c",
+    "submission_receipt_sha256": "8a68007be0c54e1dd69dd3d599b0ceebefe4659dd1ae29d986d4fcc288821072"
+  },
+  "checks": {
+    "atlas_commands": 0,
+    "campaign_ledger_records": 7,
+    "cargo_commands": 0,
+    "commands": [
+      {
+        "exit_status": 0,
+        "expected_tests": 20,
+        "log_sha256": "61907dc5b4566ca1e4cd48c5c42e943e22ee8fb3d731adc7077e2d56a8e976da",
+        "maxrss_kb": 21748,
+        "name": "test-stage-ladder-boundary-index",
+        "observed_tests": 20,
+        "seconds": 5.083731743041426,
+        "time_sha256": "2555d2d3b7a555d93f43533bae574cc91f0418cadf01e638261b313711b26a7b"
+      },
+      {
+        "exit_status": 0,
+        "expected_tests": 34,
+        "log_sha256": "42608554c089b82955c477e58ae415bc6189197eb6bcf708207d4aba777dfaf1",
+        "maxrss_kb": 23064,
+        "name": "test-math-acceptance-index",
+        "observed_tests": 34,
+        "seconds": 2.657834487967193,
+        "time_sha256": "28cad16f8cf6079c1d3cc8a9af9c56767f69a58cbadd191863c92dbdb65c691c"
+      },
+      {
+        "exit_status": 0,
+        "expected_tests": 7,
+        "log_sha256": "3642d2cc9704a8780d67f61025fd84b26108e0c8f60c0f406bb858c290af632c",
+        "maxrss_kb": 19540,
+        "name": "test-stager-allowlist",
+        "observed_tests": 7,
+        "seconds": 3.131067809066735,
+        "time_sha256": "b95bef12bb54e0f3cc5224d392c53a9a829052465f80d70e02032e7063aad79f"
+      }
+    ],
+    "ephemeral_workspace_absent": true,
+    "exact_installed_directories": [
+      "tests/reference",
+      "tests/reference/hpc"
+    ],
+    "exact_installed_files": 24,
+    "legacy_path_open_attempts": 0,
+    "not_reached": [],
+    "queue_after": [],
+    "retired_stager_object": {
+      "bytes": 311925,
+      "mode": "0444",
+      "nlink": 1,
+      "role": "retired-stager-bundle",
+      "sha256": "550b1330ec8806d1343d50d6ceb8488f89eb03546f6bb37c538cb5cd460e9b09",
+      "verified_after_checks": true,
+      "verified_before_submission": true,
+      "verified_on_compute_start": true
+    },
+    "source_integrity_rechecked": true,
+    "top_level_atlas_rust_directories_after": 318,
+    "top_level_atlas_rust_directories_before": 318
+  },
+  "inspected_at_utc": "2026-10-01T10:48:31Z",
+  "limitations": [
+    "publication_and_durability_gate_only",
+    "legacy_path_audit_covers_driver_process_only",
+    "no_new_mathematics",
+    "no_rank_release",
+    "no_performance_or_parallel_claim"
+  ],
+  "schema": "atlas-ladder-boundary-index-inspection-v1",
+  "scope": "Independent inspection of the append-only bounded root-ladder acceptance-index publication gate.",
+  "status": "LADDER_BOUNDARY_INDEX_ACCEPTED"
+}

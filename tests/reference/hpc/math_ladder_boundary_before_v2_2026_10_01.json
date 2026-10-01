@@ -1,0 +1,69 @@
+{
+  "accounting": {
+    "elapsed": "00:00:11",
+    "exit_code": "1:0",
+    "end": "2026-10-01T12:38:01",
+    "job": "3872594",
+    "node": "cu009",
+    "start": "2026-10-01T12:37:50",
+    "state": "FAILED"
+  },
+  "failure": {
+    "before_regressions_executed": false,
+    "cargo_or_rust_commands_executed": false,
+    "checker_expected": 65,
+    "checker_passed": 63,
+    "failed_suite": "test_math_ladder_boundary_before.py",
+    "failures": [
+      {
+        "kind": "checker_portability_failure",
+        "test": "test_globals_bound_and_legacy_gate_imports_absent",
+        "cause": "The decorated context-manager wrapper was inspected against the stager module namespace instead of the function's own __globals__, so Python's contextlib _GeneratorContextManager was falsely reported as unresolved."
+      },
+      {
+        "kind": "synthetic_fixture_failure",
+        "test": "test_dirfd_publication_cannot_follow_replaced_parent_and_cleans_nlink_two",
+        "cause": "The synthetic one-file STAGE_INPUT_NAMES fixture did not bind SBATCH to that file, so the final pinned-script check indexed a key deliberately absent from the mock input set."
+      }
+    ],
+    "inventories_built": false,
+    "legacy_path_open_attempts": 0,
+    "mathematical_result": "NOT_REACHED"
+  },
+  "inspection": {
+    "inspected_at": "2026-10-01T04:41:36Z",
+    "scope": "Read-only accounting, report, checker logs, stage member and checksum inspection; no result payload was copied locally."
+  },
+  "limitations": [
+    "This is an infrastructure checker failure, not one of the three expected Rust BEFORE regression failures.",
+    "It supplies no mathematical, correctness, performance, memory, parallel-scaling or rank acceptance.",
+    "The immutable v2 stage and its result must be retained; changed checker bytes require a separately pinned successor stage in the same campaign."
+  ],
+  "parent_seal_object": {
+    "bytes": 12488095,
+    "role": "weyl-parent-seal",
+    "schema": "atlas-campaign-blob-v1",
+    "sha256": "db67234c0d67dbd6a6f0327386dd113b6093d25a46569710c33dfc8bc482cdcb"
+  },
+  "report": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-before-v2/results/3872594/report.json",
+    "sha256": "4ee3b6cd0d09c2f152a9b5f7fa8a216db0197fd291077d9800add3755fb14e2c",
+    "status": "HARNESS_FAILURE"
+  },
+  "schema": "atlas-ladder-boundary-before-inspection-v1",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-before-v2",
+  "status": "HARNESS_FAILURE",
+  "submission": {
+    "intent_sha256": "7ad0ce837daacbf359dd99f8e4270464fa16c2b1270158e0bae0466db4b2fd4a",
+    "ledger_sha256": "109a4a63759f367a6b39497e03c098b92535e125ee061c19e004766b7eafc507",
+    "overrides_manifest_sha256": "1bbfd0027de76a812b2ee7378b16bbcb85c88614b92d0451b0ff739a443e0d82",
+    "pin_sha256": "62be23da13326b28bd2f5fe0f7cd8ae2f6fa4533b21d1164e12c017f92077138",
+    "queue_before": [],
+    "receipt_sha256": "8842edbd215940ba420f5585ab1cc43e6cca89aa8e963a16a5e8a957d1d1b388"
+  },
+  "supporting_artifacts": {
+    "checker_log_sha256": "0801f9c1ab6365caf5dc39c63ad668337440c038ae15085e390b12fe8818bccd",
+    "report_checksum_file_sha256": "fcbec1f2635687e11a18d24bc3e9bfc43bb075ae46edeeb6201a30c02daa9202",
+    "slurm_stdout_sha256": "4482f0aa07fbb5b40971199fde8c7a621c7295fb26b4496b5effac503fd3cd23"
+  }
+}

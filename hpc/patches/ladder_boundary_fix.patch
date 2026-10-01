@@ -1,0 +1,49 @@
+--- a/crates/atlas-real-group/src/root_system.rs
++++ b/crates/atlas-real-group/src/root_system.rs
+@@ -420,23 +420,37 @@
+         let mut root_bottoms = RootSet::with_capacity(count)?;
+         let mut coroot_bottoms = RootSet::with_capacity(count)?;
+         for beta in 0..count {
+-            subtract_coordinates(
++            let root_difference_is_stored = match subtract_coordinates(
+                 roots[beta].as_slice(),
+                 roots[alpha].as_slice(),
+                 &mut difference,
+-            )?;
+-            if roots
+-                .binary_search_by(|candidate| candidate.as_slice().cmp(difference.as_slice()))
+-                .is_err()
+-            {
++            ) {
++                Ok(()) => roots
++                    .binary_search_by(|candidate| {
++                        candidate.as_slice().cmp(difference.as_slice())
++                    })
++                    .is_ok(),
++                // Every stored coordinate is i32. If the exact difference is
++                // outside that range, it cannot equal a stored root; overflow
++                // therefore answers this membership query rather than making
++                // construction fail. Allocation and all other errors remain
++                // observable.
++                Err(StructureError::ArithmeticOverflow) => false,
++                Err(error) => return Err(error),
++            };
++            if !root_difference_is_stored {
+                 root_bottoms.insert(RootId(beta));
+             }
+-            subtract_coordinates(
++            let coroot_difference_is_stored = match subtract_coordinates(
+                 coroots[beta].as_slice(),
+                 coroots[alpha].as_slice(),
+                 &mut difference,
+-            )?;
+-            if !coroot_ids.contains_key(difference.as_slice()) {
++            ) {
++                Ok(()) => coroot_ids.contains_key(difference.as_slice()),
++                Err(StructureError::ArithmeticOverflow) => false,
++                Err(error) => return Err(error),
++            };
++            if !coroot_difference_is_stored {
+                 coroot_bottoms.insert(RootId(beta));
+             }
+         }

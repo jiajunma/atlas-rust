@@ -1,0 +1,14 @@
+<groups.at
+<hodgeParamPol.at
+set G=SL_R(2)
+set mu=LKT(trivial(G))
+set KP=Hodge_K_type_pol(mu)
+prints("MATH_BEGIN hodge_rank1_control")
+prints("HODGE_PADDING_FORM|",G,"|",mu,"|",KP)
+prints("HODGE_PADDING_DEGREES|",degree([1]),"|",degree([1,0]),"|",degree([1,0,0]))
+prints("HODGE_PADDING_CONTROL|",rearrange([1]*KP))
+assert([1]*KP=KP,"multiplication by one changed Hodge coefficients")
+prints("HODGE_PADDING_CONTROL_AFTER|",rearrange([1]*KP))
+prints("HODGE_PADDING_RECOVERY|",649)
+prints("MATH_END hodge_rank1_control")
+quit

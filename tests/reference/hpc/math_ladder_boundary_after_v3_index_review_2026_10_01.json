@@ -1,0 +1,101 @@
+{
+  "schema": "atlas-root-ladder-acceptance-review-v1",
+  "status": "ROOT_LADDER_COORDINATE_BOUNDARY_REVIEWED",
+  "job": "3875239",
+  "mathematics_rerun": false,
+  "operation": "root_ladder",
+  "claim_id": "a1_torus_root_coroot_ladder_coordinate_boundary",
+  "execution_report": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_report_2026_10_01.json",
+    "sha256": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c"
+  },
+  "independent_inspection": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json",
+    "sha256": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15"
+  },
+  "before_evidence": {
+    "file": "tests/reference/hpc/math_ladder_boundary_before_v3_2026_10_01.json",
+    "sha256": "608e996acac10ea1bacca177468fcd83f3ec39c3e579899440e11aab674fc37f"
+  },
+  "original_capture": {
+    "file": "tests/reference/hpc/math_weyl_context_capture_2026_09_30.json",
+    "sha256": "bdee12811fe6ce4160ffbc2a25df18d9a9338a7b29f22d5fcd19352cf970f832"
+  },
+  "source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+  "commands": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "atlas-real-group",
+        "--lib",
+        "ladder_coordinate_boundary_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_status": 0,
+      "log_sha256": "468053004ef459d0f835f2f497414157cc58b2929772a2ea85d418ba92efa04b",
+      "maxrss_approximate": false,
+      "maxrss_kb": 28572,
+      "name": "domain-focused",
+      "seconds": 0.5140418137889355,
+      "time_sha256": "b428a90cbaabb95bf0242cddfad98cf673409f814c75d915b0f67ffa74e2aae1"
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--offline",
+        "--locked",
+        "-p",
+        "atlas-core",
+        "--lib",
+        "root_ladder_coordinate_boundary_original",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_status": 0,
+      "log_sha256": "6deec9795bd1fc89bcb63466d0f296f8e366594b4e46d72b62c7413696802b4d",
+      "maxrss_approximate": false,
+      "maxrss_kb": 28568,
+      "name": "core-focused",
+      "seconds": 0.724079956067726,
+      "time_sha256": "77568a20758c3faf45ab81b8f4c9d6f47aa5960ef30ac8c477ca28144ba64a9d"
+    }
+  ],
+  "math": {
+    "original_case_id": "generic_root_ladder_coordinate_boundary",
+    "original_datums": 11,
+    "original_rows": 22,
+    "original_complete_frame": true,
+    "original_stdout_sha256": "3a7fdade43c46cf4f3048b52cf81f282db060012951ee559296f017f7d3eab80",
+    "before_failed_regressions": 3,
+    "after_domain_regressions_passed": 2,
+    "after_core_regressions_passed": 1,
+    "after_domain_full_passed": 521,
+    "after_core_full_passed": 630
+  },
+  "assertions": [
+    "captured_original_accepts_11_cases_22_rows",
+    "coroot_ladder_coordinate_boundary_kernel_passes",
+    "full_atlas_core_lib_suite_passes_630",
+    "full_atlas_real_group_lib_suite_passes_521",
+    "root_ladder_coordinate_boundary_kernel_passes",
+    "rust_complete_stream_matches_captured_original",
+    "tests_first_three_regressions_failed_before_fix"
+  ],
+  "limitations": [
+    "a1_plus_central_torus_coordinate_boundary_fixture_only",
+    "after_job_did_not_rerun_the_original_oracle",
+    "not_generic_root_system_correctness",
+    "not_higher_rank",
+    "not_klv_unitarity_hodge_associated_cycle_or_av_ann",
+    "not_performance_or_parallel_acceptance",
+    "rust_full_suites_are_regression_guards_not_oracle_proofs"
+  ]
+}

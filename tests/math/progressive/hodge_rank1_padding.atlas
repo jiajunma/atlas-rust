@@ -1,0 +1,23 @@
+{ Source-backed discovery, not an accepted mathematical golden.
+  polynomial.at degree strips trailing zeros; hodgeParamPol.at multiplication
+  allocates by degree but loops over every stored coefficient, including zeros.
+  Keep the rejected calls and immediate traces. Do not patch oracle scripts. }
+<groups.at
+<hodgeParamPol.at
+set G=SL_R(2)
+set mu=LKT(trivial(G))
+set KP=Hodge_K_type_pol(mu)
+prints("MATH_BEGIN hodge_rank1_padding")
+prints("HODGE_PADDING_FORM|",G,"|",mu,"|",KP)
+prints("HODGE_PADDING_POLYS|",[1],"|",[1,0],"|",[1,0,0])
+prints("HODGE_PADDING_DEGREES|",degree([1]),"|",degree([1,0]),"|",degree([1,0,0]))
+prints("HODGE_PADDING_CONTROL|",rearrange([1]*KP))
+prints("HODGE_PADDING_ONE_ZERO|",rearrange([1,0]*KP))
+prints("HODGE_PADDING_ONE_TRACE|",back_trace)
+prints("HODGE_PADDING_RECOVERY|",641)
+prints("HODGE_PADDING_TWO_ZEROS|",rearrange([1,0,0]*KP))
+prints("HODGE_PADDING_TWO_TRACE|",back_trace)
+prints("HODGE_PADDING_RECOVERY|",643)
+prints("HODGE_PADDING_CONTROL_AFTER|",rearrange([1]*KP))
+prints("MATH_END hodge_rank1_padding")
+quit

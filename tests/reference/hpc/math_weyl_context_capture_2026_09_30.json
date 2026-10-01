@@ -1,0 +1,1058 @@
+{
+  "baseline": {
+    "path": "/public/home/majj/atlas-overload-command-after-20260930.kzNyGVyu/results/3868782/target/release/atlas-cli",
+    "sha256": "7aa4350d3f4dac4b250608b1fa67fe111fb5442029e32db69906b5dbe8893cf6"
+  },
+  "captures": [
+    {
+      "case": {
+        "file": "weyl_context_history.atlas",
+        "fixture_sha256": "abbe9a88e474407a7aedbea33a661ded98404d6cd6889692d87bec27ec11f864",
+        "id": "generic_weyl_context_history",
+        "intent": "accept",
+        "source_sha256": "225381360965b99a470f3dd3c69b409ec60fb9dc159aa727121599652676f3ea"
+      },
+      "comparison": {
+        "categories": {
+          "oracle": "REJECTED_PROGRAM",
+          "rust": "REJECTED_NAME"
+        },
+        "complete_frames": {
+          "oracle": false,
+          "rust": false
+        },
+        "details": {
+          "oracle": {
+            "labels": [
+              "START",
+              "RECOVERY"
+            ]
+          },
+          "rust": {
+            "labels": [
+              "START",
+              "RECOVERY"
+            ]
+          }
+        },
+        "full_stderr_equal": false,
+        "full_stdout_equal": true,
+        "original_matches_provisional_intent": false,
+        "positive_full_stream_match": false,
+        "status": "ORIGINAL_PROVISIONAL_INTENT_NOT_CONFIRMED"
+      },
+      "observations": {
+        "oracle": {
+          "affinity_cpu_ids": [
+            52,
+            62
+          ],
+          "artifacts": {
+            "metrics": {
+              "bytes": 868,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_history/oracle.metrics",
+              "sha256": "d21df1876a32632f4cfa23cfcbfd7c95ccc6765d0837880e47898b6ab8ecd0c2"
+            },
+            "stderr": {
+              "bytes": 1198,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_history/oracle.stderr",
+              "sha256": "774aa2100166e1974bfd866fa5c3c51dae2a4c713ebf98bef0f5d5cb41aa2c20"
+            },
+            "stdout": {
+              "bytes": 334,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_history/oracle.stdout",
+              "sha256": "5b76bd338acb88bd8e9b0fe304605bdaf93c53d608a2e88724dedb741de8e186"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_history/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-merged-math-20260929.mwbojUD8/results/3847662/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3996,
+          "rayon_num_threads_requested": 1,
+          "resource_limit_gib": 6,
+          "seconds": 0.029190949979238212,
+          "system_cpu_seconds": 0.0,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45,
+          "user_cpu_seconds": 0.0
+        },
+        "rust": {
+          "affinity_cpu_ids": [
+            52,
+            62
+          ],
+          "artifacts": {
+            "metrics": {
+              "bytes": 885,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_history/rust.metrics",
+              "sha256": "56d47869459c789666cca253cfd55b978bb60d53e4169667dd4484e2f3b0118a"
+            },
+            "stderr": {
+              "bytes": 1684,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_history/rust.stderr",
+              "sha256": "5ec296663ca1b679e5a609e7a921d2bb58212042418aee58eb65156fda4d3dd8"
+            },
+            "stdout": {
+              "bytes": 334,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_history/rust.stdout",
+              "sha256": "5b76bd338acb88bd8e9b0fe304605bdaf93c53d608a2e88724dedb741de8e186"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_history/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-overload-command-after-20260930.kzNyGVyu/results/3868782/target/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6468,
+          "rayon_num_threads_requested": 1,
+          "resource_limit_gib": 6,
+          "seconds": 0.02912639093119651,
+          "system_cpu_seconds": 0.0,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45,
+          "user_cpu_seconds": 0.0
+        }
+      },
+      "order": [
+        "oracle",
+        "rust"
+      ]
+    },
+    {
+      "case": {
+        "file": "weyl_context_rejected.atlas",
+        "fixture_sha256": "9a4a2b567933cfcb58e2ccbd328aeb2630a0e62ee86791de8c5a1529881ed4cf",
+        "id": "generic_weyl_context_rejected",
+        "intent": "reject",
+        "source_sha256": "8c9c34bb83f322281373a40decaff0da601f6e9b3558837084ec0674207c6374"
+      },
+      "comparison": {
+        "categories": {
+          "oracle": "REJECTED_PROGRAM+RUNTIME",
+          "rust": "REJECTED_NAME+RUNTIME"
+        },
+        "complete_frames": {
+          "oracle": false,
+          "rust": false
+        },
+        "details": {
+          "oracle": {
+            "labels": [
+              "AFTER_ROOT",
+              "RECOVERY"
+            ]
+          },
+          "rust": {
+            "labels": [
+              "AFTER_ROOT",
+              "RECOVERY"
+            ]
+          }
+        },
+        "full_stderr_equal": false,
+        "full_stdout_equal": true,
+        "original_matches_provisional_intent": true,
+        "positive_full_stream_match": false,
+        "status": "ORIGINAL_HISTORY_INCOMPLETE"
+      },
+      "observations": {
+        "oracle": {
+          "affinity_cpu_ids": [
+            52,
+            62
+          ],
+          "artifacts": {
+            "metrics": {
+              "bytes": 868,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_rejected/oracle.metrics",
+              "sha256": "d79feb72b09915948816a9e129e40ee10583f7417727c00eba4d8a2031350142"
+            },
+            "stderr": {
+              "bytes": 893,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_rejected/oracle.stderr",
+              "sha256": "094d3341136f16f7f006dc9676a22b21df4a8f30e948ae0ebd08a46a1b354d70"
+            },
+            "stdout": {
+              "bytes": 206,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_rejected/oracle.stdout",
+              "sha256": "396fc5dfd7fa9d0aecd8d800baeebbff92ab265dfb41bb9edff2227baa529847"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_rejected/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-merged-math-20260929.mwbojUD8/results/3847662/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 4088,
+          "rayon_num_threads_requested": 1,
+          "resource_limit_gib": 6,
+          "seconds": 0.012679378036409616,
+          "system_cpu_seconds": 0.0,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45,
+          "user_cpu_seconds": 0.0
+        },
+        "rust": {
+          "affinity_cpu_ids": [
+            52,
+            62
+          ],
+          "artifacts": {
+            "metrics": {
+              "bytes": 885,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_rejected/rust.metrics",
+              "sha256": "2b82e87b80287975066fca74600f8924cd14191d76816eb452fadbd0886e2bfe"
+            },
+            "stderr": {
+              "bytes": 1163,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_rejected/rust.stderr",
+              "sha256": "570c7c81050ba1b412e933cea8b33b29434582ac40a3afca32bd1ec8ad7980a3"
+            },
+            "stdout": {
+              "bytes": 206,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_rejected/rust.stdout",
+              "sha256": "396fc5dfd7fa9d0aecd8d800baeebbff92ab265dfb41bb9edff2227baa529847"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_weyl_context_rejected/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-overload-command-after-20260930.kzNyGVyu/results/3868782/target/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6328,
+          "rayon_num_threads_requested": 1,
+          "resource_limit_gib": 6,
+          "seconds": 0.02967223501764238,
+          "system_cpu_seconds": 0.0,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45,
+          "user_cpu_seconds": 0.0
+        }
+      },
+      "order": [
+        "rust",
+        "oracle"
+      ]
+    },
+    {
+      "case": {
+        "file": "root_ladder_coordinate_boundary.atlas",
+        "fixture_sha256": "dc88d6606ae855b618dcf12589ecde82edcbe482873a94bcff1001163691ec65",
+        "id": "generic_root_ladder_coordinate_boundary",
+        "intent": "accept",
+        "source_sha256": "dde2e5c1f84d255ef66e01c83deef114f70a22dc22224e87cb186359077df95f"
+      },
+      "comparison": {
+        "categories": {
+          "oracle": "ACCEPTED",
+          "rust": "REJECTED_RUNTIME"
+        },
+        "complete_frames": {
+          "oracle": true,
+          "rust": false
+        },
+        "details": {
+          "oracle": {
+            "datums": 11,
+            "labels": [
+              "small-root-true",
+              "below-root-true",
+              "above-root-true",
+              "below-root-false",
+              "above-root-false",
+              "below-coroot-true",
+              "above-coroot-true",
+              "below-coroot-false",
+              "above-coroot-false",
+              "max-root",
+              "max-coroot"
+            ],
+            "recovery": 1,
+            "rows": 22
+          },
+          "rust": {
+            "datums": 11,
+            "labels": [
+              "small-root-true",
+              "below-root-true",
+              "above-root-true",
+              "below-root-false",
+              "above-root-false",
+              "below-coroot-true",
+              "above-coroot-true",
+              "below-coroot-false",
+              "above-coroot-false",
+              "max-root",
+              "max-coroot"
+            ],
+            "recovery": 1,
+            "rows": 10
+          }
+        },
+        "full_stderr_equal": false,
+        "full_stdout_equal": false,
+        "original_matches_provisional_intent": true,
+        "positive_full_stream_match": false,
+        "status": "RUST_POSITIVE_DIFFERENCE"
+      },
+      "observations": {
+        "oracle": {
+          "affinity_cpu_ids": [
+            52,
+            62
+          ],
+          "artifacts": {
+            "metrics": {
+              "bytes": 829,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_root_ladder_coordinate_boundary/oracle.metrics",
+              "sha256": "5da939e7cc574c67660839fed03eb2913dc8272b2474e1b2db97b41ed4319870"
+            },
+            "stderr": {
+              "bytes": 0,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_root_ladder_coordinate_boundary/oracle.stderr",
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "stdout": {
+              "bytes": 2304,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_root_ladder_coordinate_boundary/oracle.stdout",
+              "sha256": "3a7fdade43c46cf4f3048b52cf81f282db060012951ee559296f017f7d3eab80"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_root_ladder_coordinate_boundary/oracle.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-merged-math-20260929.mwbojUD8/results/3847662/oracle-source/atlas"
+          ],
+          "engine": "oracle",
+          "exit_status": 0,
+          "maxrss_approximate": false,
+          "maxrss_kb": 3836,
+          "rayon_num_threads_requested": 1,
+          "resource_limit_gib": 6,
+          "seconds": 0.035719177103601396,
+          "system_cpu_seconds": 0.0,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45,
+          "user_cpu_seconds": 0.0
+        },
+        "rust": {
+          "affinity_cpu_ids": [
+            52,
+            62
+          ],
+          "artifacts": {
+            "metrics": {
+              "bytes": 885,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_root_ladder_coordinate_boundary/rust.metrics",
+              "sha256": "656ab2acc174c23d8e882dc0c609498e4f72bcc16a7d42697d560672fdd7335b"
+            },
+            "stderr": {
+              "bytes": 1038,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_root_ladder_coordinate_boundary/rust.stderr",
+              "sha256": "819d2264c925c1849bc86aaf5a88b84fee99c47dea9ed03b2499a9619185c7d3"
+            },
+            "stdout": {
+              "bytes": 1488,
+              "path": "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_root_ladder_coordinate_boundary/rust.stdout",
+              "sha256": "86d2a6e7b6d346c42ed42484a2141836982fc55d30d63925adfd7e88a40e0664"
+            }
+          },
+          "command": [
+            "/usr/bin/time",
+            "-v",
+            "-o",
+            "/public/home/majj/atlas-weyl-context-capture-20260930.4p1Lbsj3/results/3868832/generic_root_ladder_coordinate_boundary/rust.metrics",
+            "timeout",
+            "--kill-after=5s",
+            "45",
+            "/public/home/majj/atlas-overload-command-after-20260930.kzNyGVyu/results/3868782/target/release/atlas-cli"
+          ],
+          "engine": "rust",
+          "exit_status": 1,
+          "maxrss_approximate": false,
+          "maxrss_kb": 6588,
+          "rayon_num_threads_requested": 1,
+          "resource_limit_gib": 6,
+          "seconds": 0.050275349989533424,
+          "system_cpu_seconds": 0.0,
+          "termination_uncertain": false,
+          "timed_out": false,
+          "timeout_seconds": 45,
+          "user_cpu_seconds": 0.0
+        }
+      },
+      "order": [
+        "oracle",
+        "rust"
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "/public/software/anaconda/anaconda3-2022.5/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "hpc",
+        "-p",
+        "test_math_loading_followup.py",
+        "-v"
+      ],
+      "exit_status": 0,
+      "log_sha256": "7a5b7facf333adc92a5607a75090cd7d8062db736dd26e9a5e9b9400b17835a0",
+      "maxrss_approximate": false,
+      "maxrss_kb": 22732,
+      "name": "test_math_loading_followup",
+      "seconds": 1.5374575500609353,
+      "time_sha256": "0f56fe67d2556e1562f06fb24f4b060d2c502e64ffb2d26f55fcee26c7a12458"
+    },
+    {
+      "argv": [
+        "/public/software/anaconda/anaconda3-2022.5/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "hpc",
+        "-p",
+        "test_math_overload_command_verified.py",
+        "-v"
+      ],
+      "exit_status": 0,
+      "log_sha256": "8b0fe4a0dd0d5e63a48125e8e6149604639ff3e4d457282792d90bc13be17e0e",
+      "maxrss_approximate": false,
+      "maxrss_kb": 17412,
+      "name": "test_math_overload_command_verified",
+      "seconds": 1.4155983509263024,
+      "time_sha256": "fc6bdfb642f8029c3a0d65f9a0d872f3eac61dcc0cce40a4bf7f62157fa02b89"
+    },
+    {
+      "argv": [
+        "/public/software/anaconda/anaconda3-2022.5/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "hpc",
+        "-p",
+        "test_math_weyl_context_capture.py",
+        "-v"
+      ],
+      "exit_status": 0,
+      "log_sha256": "c7ea29769124fd1a7c2ddf8c8f9d7e79e52d5faa9520a826ef3521b9ffa78e3e",
+      "maxrss_approximate": false,
+      "maxrss_kb": 17276,
+      "name": "test_math_weyl_context_capture",
+      "seconds": 0.9817871189443395,
+      "time_sha256": "980a9d046d2475a96f744f0be52164167dc03e7239c4ed3e9441986e32cd6767"
+    }
+  ],
+  "integrity_rechecked": true,
+  "job": "3868832",
+  "node": "cu315",
+  "oracle": {
+    "path": "/public/home/majj/atlas-merged-math-20260929.mwbojUD8/results/3847662/oracle-source/atlas",
+    "sha256": "d4f0f3dc3a82102529aa2ec562db0601e99b368dee25d5539ca52dae2fd37a5a"
+  },
+  "pin": {
+    "before": {
+      "path": "/public/home/majj/atlas-cartan-before-20260930.EHIPbmct/results/3852364/report.json",
+      "sha256": "d3432a120b1f0d058bf2a164f29e058a758464330ac1467d7c8dbd6a86e36596"
+    },
+    "block_smoke": {
+      "path": "/public/home/majj/atlas-rank6-blocks-20260929.ociO8VP2/results/3850366/report.json",
+      "sha256": "56465af884d443f9139f4293a2d3e94b9c21db3bab602835753ddd50d166ae42"
+    },
+    "build": "/public/home/majj/atlas-merged-math-20260929.mwbojUD8/results/3847662/build.json",
+    "build_sha256": "e1cd61a05e0d76c4bddd2938841aaa719b9a89ab941bca32a00b063a7d97a423",
+    "candidate": {
+      "path": "/public/home/majj/atlas-rank-capacity-union-20260929.5Fd0DALz/results/3850248/report.json",
+      "sha256": "386924a81faa1114de1b06dec0c8f194b6825cf0005ff08dca638de756814dc0"
+    },
+    "candidate_source_sha256": "30b24caea8e9fac0f8d3584c5352c49b33b64875c050323e153d34fb13f06411",
+    "capture": {
+      "path": "/public/home/majj/atlas-cycle-rank1-20260930.Y2kzRRx7/results/3855999/report.json",
+      "sha256": "a83efb1bec546be8635d0f9a5aad895b5a5d0d1946ed2f02f04dee573872f077"
+    },
+    "cartan_class_capture_pin_sha256": "a1e991fd81aae3d674f09e715efe24fd0e6879aeb8c7c7e436e731c3f2ab6e6f",
+    "cartan_class_capture_reference": {
+      "path": "/public/home/majj/atlas-cartan-class-capture-20260930.k51a7mP5/results/3868167/report.json",
+      "sha256": "b8f60647a42644f3580e97ab755faa69d613b688b45c0645333fc3212a3bafb5"
+    },
+    "cartan_partition_after_reference": {
+      "path": "/public/home/majj/atlas-cartan-partition-after-20260930.vL6gPF4k/results/3868252/report.json",
+      "sha256": "2702e8aef6b2671a58171027226ef2f57c65221aaaad5b793f6c1d5d003c66ff"
+    },
+    "cartan_reference": {
+      "path": "/public/home/majj/atlas-cartan-permutation-20260930.vFw1MpbN/results/3852252/report.json",
+      "sha256": "141b801067294d2306bccb8068483d77d535a2fbb628dfef74664684d3243ce3"
+    },
+    "checker_only": false,
+    "completion_after_reference": {
+      "path": "/public/home/majj/atlas-completion-after-20260930.ci1UtZtO/results/3868661/report.json",
+      "sha256": "14a45971fc681d919ed757858844c418d56adaed623a6e251a786cd39aee7e3e"
+    },
+    "completion_before_reference": {
+      "path": "/public/home/majj/atlas-completion-before-20260930.6WMD97z2/results/3868646/report.json",
+      "sha256": "631f71eadb5ea4a8ce371604c87e34ea656435af735a731e5806f604fa8fc810"
+    },
+    "completion_capture_reference": {
+      "path": "/public/home/majj/atlas-completion-capture-20260930.BKVqvaZu/results/3868572/report.json",
+      "sha256": "2bd59d1d559462e0185e7e0b5b77bef99007f121c9eaf56456f220f7e7269553"
+    },
+    "completion_source_hashes": {
+      "crates/atlas-core/src/frames.rs": "8c4f4c5672b9dbb72fbd459d2c8321f07c06f4ccd529087234ab7077e5674150",
+      "crates/atlas-core/src/frames/completions.rs": "5891eff8d3f1069dc3c316e21954e5389fab64b53a0a631d8428166a3e163bdc",
+      "crates/atlas-core/src/session.rs": "d2d008e4f7296131fa728d360070af579152348fae51d10b1d3439a91369648d",
+      "crates/atlas-core/src/session_frame.rs": "19889fec6d92ddbc93fa44e9f9bbbae8ff0825442a63b539b7cd50b498ee3327",
+      "crates/atlas-core/src/typed.rs": "4b422d9e828529feef427dca01b4ae5efb912dbf1b20e20f0ea1f321a0b9b7a2",
+      "crates/atlas-core/src/typed/completion_tests.rs": "76321095e5305bbe6fc8e5ab43335b8d72eb305f5da99b773bed608d5eb71e1e"
+    },
+    "cycle_review": {
+      "path": "/public/home/majj/atlas-cycle-rank1-review-20260930.Zcp9H6GH/results/3856006/report.json",
+      "sha256": "5c366f5ca96729e2d23075320a18aad48b011dcf3d8ae4a8b758f5ba8673e63f"
+    },
+    "deformation_after": {
+      "path": "/public/home/majj/atlas-full-deform-after-20260930.SBSbHIxR/results/3855872/report.json",
+      "sha256": "beeb3e280738d528460e1935c00861c8540afe37e89c59f04773ffb2cd817226"
+    },
+    "forms_capture": {
+      "path": "/public/home/majj/atlas-unitarity-forms-rank1-20260930.eLRD6alw/results/3856011/report.json",
+      "sha256": "0c1147bfbccf50a05674b25e6c3dfe4a14d079ea7418d1bff33a07f2f53fe390"
+    },
+    "foundation": {
+      "path": "/public/home/majj/atlas-progressive-rank1-20260930.ZiCsO9pE/results/3855559/report.json",
+      "sha256": "b31c94ddb73077f721396c968739b86d375fa11a694a89f0926237019916ddf1"
+    },
+    "inputs": {
+      "hpc/cartan_rank1_contract.py": "b2301e3812f44d6768fa7ddb81c4af1250554f4afe1e6dc3feb10828191498c2",
+      "hpc/completion_after_contract.py": "deb90e308a1b30aaa99d92f679543b15b4d8bdecb3b4cb4a7035c4dd0f11e44b",
+      "hpc/completion_capture_contract.py": "702bbf46f78572ed8fc764288ac19fbeeb0aed59e284c4a703be90032469ca7d",
+      "hpc/loading_ab_protocol.py": "053cb2d9312033da80355f90e2a0c08bff093d3b7842f02469db876a516d2d29",
+      "hpc/loading_cost_protocol.py": "ed9eb1e406a80607a037c6237552499e9e79b0e2c97cd2eef40114f11a934821",
+      "hpc/math_baseline_build.py": "931ec63f850d2a3769de1d5fb7836fc8eba7097e6d302ea30c2a6e47417c2ed7",
+      "hpc/math_baseline_build.sbatch": "e0c951b11d08322529bbe18b7d87cd8e64fa898073090adc831a88d3a0d18a7d",
+      "hpc/math_benchmark.py": "53cb3e994b606a1ac8b0dd75ca0bd0c1601885663c04873bd638d9ca7a0d5b97",
+      "hpc/math_benchmark.sbatch": "aae6078c327a0b10d1f8d922128f82e04cbaa7f3c23d00c252ed092ecf7e9107",
+      "hpc/math_benchmark_review.py": "f62a1489044e35baabd465053b68420370bffde6d0c6b2a6bd58cf9adf74722e",
+      "hpc/math_benchmark_review.sbatch": "ab88e9851b81d445b26a253f54319919834e0a87df210a2afcb389abed23cbb3",
+      "hpc/math_cartan_before.py": "09db0188d5cf845812494de442dde26b6073b07017936b3bfa5d8e33cb2e4ee1",
+      "hpc/math_cartan_before.sbatch": "0329a41922ca15b365197061d0b52fc4e206d37b1a3336492430375a9b0ac011",
+      "hpc/math_cartan_class_capture.py": "64e1797ee341f4314970d3b0a404d96c613368b81a95f2e09dd5393cca7830b0",
+      "hpc/math_cartan_class_capture.sbatch": "8655022286282195cdda8bf6071c6e37ca8e410c8a520571ba73c47b8168db6f",
+      "hpc/math_cartan_partition_after.py": "0f5ba1131c9812231b66bf0911da629b1c356ab79184dd71ed2f254ceac2a465",
+      "hpc/math_cartan_partition_after.sbatch": "e6a55f60eb40b05070a0a57ec3def73bad72468a0350e7f70d1794be234c5a9f",
+      "hpc/math_cartan_partition_before.py": "7933bbffacfd1a001360f94470e37bf99e69075ddaf0d055750352ccde8142eb",
+      "hpc/math_cartan_partition_before.sbatch": "8dfad1dc05782cb6fe9f28c76070b42a23941aab7a0fe1bb7adf3f9952e8fc51",
+      "hpc/math_cartan_permutation.py": "69745a438f2c4877b35c23773b732b84d8d01ab254d0b3bfd807c48af02e569d",
+      "hpc/math_cartan_permutation.sbatch": "3528f532a107959f828a9d4299b2da96b1a297e3993971b502094a9d20d29863",
+      "hpc/math_cayley_repair_build.py": "d837c222e8ab9d146c111efedfc636fa01471f98d3cbfca7c63477aca86a4a1e",
+      "hpc/math_cayley_repair_build.sbatch": "71319facf2def0c914c3fd86a101f12c010a52016b873b74580b56fd106e6a29",
+      "hpc/math_completion_after.py": "f360a70bb1039c76ea66bec8d2ccccb7d1f6a79c1c1ad520fe7a9d11f1a05c9f",
+      "hpc/math_completion_after.sbatch": "94b4ba2ffd54fc28cfb5d0fcd25ac7dddb9e7443db2de7a0e1347e01b41c0115",
+      "hpc/math_completion_before.py": "c6b1ecf6dc3aae9348716a9cebc57d5374b3e4cc1d19627714c05ddc8c24b841",
+      "hpc/math_completion_before.sbatch": "9c0778ce1dafaa4cbdbea40b781af550f94fa853d4edf9f0bc3e397ef895ed14",
+      "hpc/math_completion_capture.py": "d284314e05c8dcde68b0c7563bbca27dd6b254c28da90b6a27a6e0f1f6e68727",
+      "hpc/math_completion_capture.sbatch": "a30875412819e3df33d092cfc40ebe4569d7e599a22fb26ea5c3b8bd99fda6cf",
+      "hpc/math_completion_verified.py": "8720ce0523ba2ea64625d0154235cc01815f11f37438ba2943fe0c9fada58623",
+      "hpc/math_cycle_check.py": "d02f8412972249d18f5bdd98f15df85633c4d676063063041b08186190c61131",
+      "hpc/math_cycle_rank1.py": "0a40d37b14d74e1a492ecc3ba5b96a34b43fc207af4329931eba917c0246c68e",
+      "hpc/math_cycle_rank1.sbatch": "c38bef182d167de7393ae2525fe6f3bffed292cbf0c4bc3cd651f0327033157c",
+      "hpc/math_cycle_rank1_review.py": "a4e3fc620699bf8f86c8ce9361de697f095f989912289d4b835124b81831f27f",
+      "hpc/math_cycle_rank1_review.sbatch": "3ef7b0542c50dc14e9050cde7b5da2508fa0246296cb45c6ceb212d37301a8cf",
+      "hpc/math_endgame_repair_build.py": "7caa01a1aa2b944dcae9e1bb2674078270b989f10ff1fbbf116e017562bbd84e",
+      "hpc/math_endgame_repair_build.sbatch": "833577f1f64d20f3ee220791545f8fcb4b54a00587d7ed5f380103ec73eeec37",
+      "hpc/math_form_order_repair_build.py": "4ab0733c55ded03c8431a80d2cd2bc8646d1091c1b04a1a8d612c52909ca7014",
+      "hpc/math_form_order_repair_build.sbatch": "e7bab818e8742b6393fba0c9684a486a5e8254bdf831a067205af2aa9cc57c6c",
+      "hpc/math_full_deform_after.py": "6d9eb412f3c0510a38d5ac1c9185b7ac9512d7ec65c72bc176a377eb905d7414",
+      "hpc/math_full_deform_after.sbatch": "74339aff01d2c7359b02e390032dffc4ff8527497dc330b7c17ea25e14178c04",
+      "hpc/math_full_deform_before.py": "875a34e275b2564243c31cef41564b5714aa2deb232ae5691d21108552e4cd77",
+      "hpc/math_full_deform_before.sbatch": "cbf419b001782db3af0f0413ca7ebe8c788999d8fc92a36a2aea9403820f5d4e",
+      "hpc/math_generic_probe.py": "c518388b291ec0e5ef6dd0313163f2e2dafd8aad0682648eb928055a715cad9b",
+      "hpc/math_hodge_rank1.py": "8a06955d19769d0d43a115af689eeb3d9f91d93d9b296befc83538d4b0b83811",
+      "hpc/math_hodge_rank1.sbatch": "9fd1111e27686d5b772902d9f237e73ddadc1550663ad3ba2810ac81bbeb4c2a",
+      "hpc/math_kl_boundary_probe.py": "48c4c3641e6bd4ecc88b6c5c0fafa6a774f4b7d143743339f83e5120925da999",
+      "hpc/math_kl_boundary_probe.sbatch": "388394dc21d2b7ad1f1fd9227d092bb0a4b02ad0dcb477f3906cca9fc9b6d1ea",
+      "hpc/math_kl_history_diagnose.py": "dc8386c393856a731ba6bc6316ff1d3718c0337e876d0f0369c708dba3ec6b99",
+      "hpc/math_kl_history_diagnose.sbatch": "7e139ba43b299966d9afa373de834b8f876363b6ae6e260bdb24c35c9197027f",
+      "hpc/math_kl_repair_build.py": "d0831993e6ca1887d436507c0d12160c24debca592687002d2e42e30eba12578",
+      "hpc/math_kl_repair_build.sbatch": "fe2030e7c3ff7941a52693f4f577221b3aeb4d3606320e0fe9aed52d265a6243",
+      "hpc/math_loading_cost_probe.py": "e4a1563d8d16e2df8ef38e9534d1851dd1b21730eeb3d1da6d0d83094e5f621f",
+      "hpc/math_loading_followup.py": "308f93a7651eb10728789f167ee08b3b10399cb719f275de52629e7aa285f258",
+      "hpc/math_loading_followup.sbatch": "67e65c4c44aec1ae30c23949e0ccd56e093464502a4c5ffcd1f64a1f13afe321",
+      "hpc/math_loading_rank1.py": "cdeea2ae5006258eed3b0774f2e1b2cc300078aa198201930fc3b13f2d445390",
+      "hpc/math_loading_rank1.sbatch": "3740da51574658a4d3c04722fae77777693822c564ce4ed09f324cacc4bba670",
+      "hpc/math_overload_after.py": "491bcd13340c793c720f767aec3b0e2eab151b72fd452925c0c709f0d275ea7d",
+      "hpc/math_overload_after.sbatch": "ea815426d04de7b3c1c59ef4227ad70d6ccecee5df31a38be73594cfe3e59027",
+      "hpc/math_overload_before.py": "5f3e4a468274ceb09555e2dca605b103c7cd83a6de5f7d9131e2370ff253b401",
+      "hpc/math_overload_before.sbatch": "2692b301f0edbbfc2806211bb3192266daaa9652cc6bda4f5a2740c70acd29ac",
+      "hpc/math_overload_command_after.py": "ccf74bd434024798a8c8df736e8edd4b337124ffe223ff31cea1c799fc5f03cf",
+      "hpc/math_overload_command_after.sbatch": "3b572fb8a0e8330324cf49d1b1d28734d3149867aee3729fd25700fa83972b8e",
+      "hpc/math_overload_command_before.py": "089e16ff2a4a322864825c528d7fd2cee635aa38ebb65ef9deae87d741681c1d",
+      "hpc/math_overload_command_before.sbatch": "9fc95bed478106939d8a51797a0dd1e63fb5da0dcc3fdd155d7c7740d18bb72e",
+      "hpc/math_overload_command_capture.py": "dd6762ae2857a22161b871d6052288941065c7852bcdae35abcb7238413c416b",
+      "hpc/math_overload_command_capture.sbatch": "892058c6bd18eb582d26bc39875bf2e68aac899ac511f5d6cd8f5ac6fc385861",
+      "hpc/math_overload_command_profile.py": "7981d9e9375992d1dfdc02a0a2aa7cc9e1f9f194195c38e9a4b5f04b0cd6b61d",
+      "hpc/math_overload_command_profile.sbatch": "603ee4a05dc9213ee6278cf80843e9b78d86735e81deb8c11ba0ec7460da6c41",
+      "hpc/math_overload_command_verified.py": "3dfa42b078b67e022a2995bbb3e8b901dc0dd160eb6257a87739655c9eb40246",
+      "hpc/math_overload_presence_after.py": "f368e8e4f430af4cc0c08fbdee561a5de1dc585918bd330569ba7bc94a711ea4",
+      "hpc/math_overload_presence_after.sbatch": "a2c310b82c9ca4c63fdff5642e121ae12f371170f45270d3c51b3a8b63256442",
+      "hpc/math_overload_presence_before.py": "bbdbe0dd580fbbc1497e815c4d28ad9f9da26192983e27315985134a20c50cc7",
+      "hpc/math_overload_presence_before.sbatch": "9be2c3bc57b4157888132df0542b124fadb479cceae5adaefec5bab8ee5967f4",
+      "hpc/math_overload_profile.py": "7d4ac92971a0c3b1dfc28c1245c9d0616390c3c1f38fb3ce061cf560282ccdb2",
+      "hpc/math_overload_profile.sbatch": "cfe55c6a965e893fca525218a66ba627e742f1eac507353adc91e66f2231e23f",
+      "hpc/math_overload_view_after.py": "5c6671a86df9560f016324d7ed470ad460cc6a0c32a818933381882c0844370a",
+      "hpc/math_overload_view_after.sbatch": "db883c41d28cad18934dd9cb004a5c871268a853b7696ce31476a4776bd485f9",
+      "hpc/math_overload_view_before.py": "5182d44be5f06aa9c66b4ab8eae69d77c84b2fce1ce604072e285a4901f3fbcd",
+      "hpc/math_overload_view_before.sbatch": "2d5341ce103f97dd2936491467b1b44c11c287a935f4e5b38a259ad05371880b",
+      "hpc/math_overload_view_profile.py": "13ffa45fc4650c3ab5db6df300f6f9232ae3cfe900afc941f00fc7dbabeedb58",
+      "hpc/math_overload_view_profile.sbatch": "9471e33c67c38c6e79d7444e775c7d11bdf866b6d562ba42064c44fed25d1004",
+      "hpc/math_post_view_cost_probe.py": "f288ca65cf238db71f02927dab5e81a53d4ee5f7b75cc2affad2810e865ae09b",
+      "hpc/math_post_view_cost_probe.sbatch": "e6ee064d2bcc0ad2b5910046d4f30b45f271a55d70ad469ad43f05feb55ce5cd",
+      "hpc/math_progressive_rank1.py": "a4d1b2d120815996734c3ce6db60bdf4aec343d8624c46544e42cda545e73254",
+      "hpc/math_progressive_rank1.sbatch": "fcf726c577ab59d3393a62ed87740210a200abd555621f113823b5b53c6b000d",
+      "hpc/math_rank6.py": "edf92a06e7a48e79851cd5b5bda6a41b4b4482c826a7f8905bcdbbf0c368224a",
+      "hpc/math_rank6.sbatch": "ea4f37fdddfcae375e54b15f74f88dd89fc2d692f906139c4e1e025216cc9e0b",
+      "hpc/math_rank6_block_grid.py": "e5c1dd07c4dc902bf2c7e616236fd5e43e66ef049718908998f6540cd7fd633a",
+      "hpc/math_rank6_block_grid.sbatch": "d0654a3b68c0a6c4d5a6cb0bc3b1c4a3c03128b4dc5857a6f89aed6fbb7dace1",
+      "hpc/math_rank6_blocks.py": "fac3d6b7898e9f0729c269c69125d57d4f7be101cf89b42eefaabd4657957a15",
+      "hpc/math_rank6_blocks.sbatch": "19ff9ee2abf61efe79030582fa12961d34d13894f7bbd70800968600f07b0e8c",
+      "hpc/math_rank6_forms.py": "603e19d5ca5406e008725c176a50fe4137d02493d8f92b5179ad299b3fb1a9b0",
+      "hpc/math_rank6_forms.sbatch": "f1c4313f67192e8687c0de8cd831371658896b6e5db93f23d9e1c5c138420617",
+      "hpc/math_rank6_graphs.py": "bac465bbef28de21764465931e32e0a8e60eaafabf905923e19ac7e5766a0a8a",
+      "hpc/math_rank6_graphs.sbatch": "b4a007d8d46df1384622ae9b996047e9162022addee4f4556681293cc64c8a27",
+      "hpc/math_suite.py": "b6ad5e37232dc7149eb6c7ef2462e1f07ad762afa63dfb91095c86250f424ba2",
+      "hpc/math_suite.sbatch": "b1db5151e9763860cb7eddaa1f2b7d4e76843c0f0357903a012981eaeb3242a2",
+      "hpc/math_suite_preflight.sbatch": "7b06df3152c140baa299c7766098e97c5607e624a914fee4915bfe71eebd9da1",
+      "hpc/math_suite_review.py": "6b101f7aa62f1abcfda70b382efd0928a648f4f032e4870f87bfeb5e32084ad8",
+      "hpc/math_suite_review.sbatch": "70562532f078b8ae1eb7112a008d3587c8a8c7096cfcd3e1879155f40ed9e28f",
+      "hpc/math_type_equivalence.py": "b9d7a958faf3596073a710b3edaaf72b55faf49dafa8491ce1d2366b7802b3e9",
+      "hpc/math_type_equivalence.sbatch": "1f06ba37cd017d303e6a42b1d3ac148c3560f5e766eb26d80fbd043c95103828",
+      "hpc/math_unitarity_forms_rank1.py": "e7c18dcb2ddb7fe7010ee677840dfdb0cf3cd953d1847e64637df895a174eb9e",
+      "hpc/math_unitarity_forms_rank1.sbatch": "ca835dec5a58b9630fdbe6983d1d3c1c9267035ef69099f21c83050d5934e7dc",
+      "hpc/math_unitarity_rank1.py": "5f689e5d5e91f5c8d123a752cf3ad63a989e27ec04200ad5835f3127edeb84dc",
+      "hpc/math_unitarity_rank1.sbatch": "cc08b3760fdfcdab5d6bf3adde8b8e00013269f28d10d0eb70cd19e1b3934037",
+      "hpc/math_weyl_context_capture.py": "e230e0ed668f6c704ef112625144f2ba57020fae73886a70cbf514425bc86c80",
+      "hpc/math_weyl_context_capture.sbatch": "12837860f9d5b06c64105f5753d9fc4d8533931e5f65eec047362cabbfbdf207",
+      "hpc/overload_command_contract.py": "46737747877d1827ab3c31261a62f8ad80291975da84b6783d12e5c2df6f41a3",
+      "hpc/overload_view_contract.py": "e1cf65f9213bb53edf16c2aba2d92f26e728a6b1ea417556fc0963286c15e10c",
+      "hpc/patches/cartan_partition_rank1_tests.patch": "94bf9210de6038fa5eb279380267347bfc58bf1c8360b2950217254075892a34",
+      "hpc/patches/cartan_partition_runtime.patch": "80796a122a004496b9e7d8ab072af5c63b04232c0f45ec7a5c4111d9aee51157",
+      "hpc/patches/cartan_type_permutation.patch": "ba8c593691b03781e12835fdeefb4301c5948b5423d1aa10e48fae9f54da83d1",
+      "hpc/patches/completion_lazy_runtime.patch": "cc397f429d1294ec59aa1ca04ae8de8f84bb114acb55f55746eee62046b5b4cd",
+      "hpc/patches/completion_snapshot_tests.patch": "b39a74197fe1805c39173a957b5f991d53f4ecf3866be93f3c81cbb2f55f5763",
+      "hpc/patches/full_deform_rank1_regressions.patch": "a09dd65a188dfe1111d6fa346c2b267e4539093efd19f6d9d9d3150787652949",
+      "hpc/patches/full_deform_recursion.patch": "e199258456afbc6b2852ff83ffca7e8c206508eed4cccea199c341df9565aefb",
+      "hpc/patches/overload_command_cache_runtime.patch": "d9d43755cbf8b5ab85f60a90d3973480fb4af9789e35e5413159379d91aa3807",
+      "hpc/patches/overload_command_reuse_tests.patch": "67d5fb38dc5adaffb5933abceb7634197f6c4affe0b205e41ebd9dcb3452ae54",
+      "hpc/patches/overload_presence_runtime.patch": "b248916bc049f245bba5c1579f65c6a7b63ab577010951ec4b9be52c6f41b50e",
+      "hpc/patches/overload_presence_tests.patch": "9c223a7e61ff87cde0491cc49f6d6c4a7a0f4c1dc9101bc2a17c0e0bbf33237d",
+      "hpc/patches/overload_proximity_comment.patch": "7e3176e4cc13da7e90aa5d47062749a15158b64debfa905d84a1b1ba153253a9",
+      "hpc/patches/overload_proximity_runtime.patch": "3f0c64855d572b54eb2bd4d9ae92aed746ac6f69ed48d73387ecfaf52e6fdfc0",
+      "hpc/patches/overload_recursive_coercion_test.patch": "049905e9ea2711808e6ff9a4c7e32ebc1f822afb0043c6f0f34f6e7e7c5f8036",
+      "hpc/patches/overload_recursive_session_test.patch": "90140d241f8ce93c62076a1384ed98ab8869e2b63dd1196372da0fee1c5a707f",
+      "hpc/patches/overload_view_reuse_runtime.patch": "55ce3afb2765ea83973a62fc3514f2748c276dc502292ae4d589a7f57ff3d63d",
+      "hpc/patches/overload_view_reuse_tests.patch": "925c59fd191b76aee7f2cc1426de357136f227ee2b051ba61a9e8bd426295b6b",
+      "hpc/patches/overload_void_coercion_test.patch": "eb610e6919254994377e6f150ee39b2cfac8d7205c837624f3de8a6a9c792984",
+      "hpc/patches/overload_void_session_test.patch": "89ff4dabdff9ad8248630c6dc4e957efad9a7203ee3399bafef1473749173dc0",
+      "hpc/patches/post_view_cost_probe.patch": "e09e5fb0328f141460fadb587e520c4f90cc67e37cf9880200e3eab5193e06ea",
+      "hpc/patches/type_equivalence_runtime.patch": "18a24eb98e40a0c0a538209d84667a75d43b7eccb88cb6d2d29015e37e8c5d2b",
+      "hpc/patches/type_equivalence_tests.patch": "b1198de29902aaab513e24d67cb1faf73728c643fb36ccc28cbf959d2e94e929",
+      "hpc/post_view_cost_protocol.py": "59f8280d51038e2c200d8ed410366b28e875c7c0093832dd1ede32d7e845b024",
+      "hpc/progressive_submit.py": "6ff157e930133dcc37e43070fc529cc89229c7d05b0fb9edd55c6c5bb55dc3f6",
+      "hpc/stage_cartan_before.py": "5824d8953fcaea38ec9bda74769e5d79716be5c042ef0a056d0275d1ddf1347b",
+      "hpc/stage_cartan_class_capture.py": "b22e14f1229ef8c37e3fab0197317b13299a602d4b70c831e316f73ca6e79719",
+      "hpc/stage_cartan_partition_after.py": "52f7539772a5a8f50640a961c1022435217ff785e781dfc130081a671c017295",
+      "hpc/stage_cartan_partition_before.py": "1461238b1ac2e474cc1652c7bd7063ada9ca9a11d36e74ef49b90880529a139b",
+      "hpc/stage_cartan_permutation.py": "aa9ff43feb6107de62781f075d78adf8cd82431dbd7867ef1514794656fba6be",
+      "hpc/stage_completion_after.py": "5f8bda339740020de72930bf3f3747bafbfe29ea5e6805d5e92067b2e83a361c",
+      "hpc/stage_completion_before.py": "5132566fe9e57fff233b3a4fbe6525ee4450cec04b9387be27840e5e7fe84d50",
+      "hpc/stage_completion_capture.py": "49f74c29b23cc57bc034bfb7f33b253e24e58dddb2e3828d5b63dfc175e3054b",
+      "hpc/stage_cycle_rank1.py": "ba141089975215746619adf9c64559aad5df6c7e28094eea6555173d08a73729",
+      "hpc/stage_cycle_rank1_review.py": "f4e3047a18376fbbd3a5896e352a85ad237b9db957cc10f931cf302d7fb44a50",
+      "hpc/stage_full_deform_after.py": "a1b89a87ab100effc1ae82183f84790161aa58269996fbfeb4676e75682cb213",
+      "hpc/stage_full_deform_before.py": "22ea39b077c74d583a9799d80479bed15bcd1c2c0dffae754017504c4de67abc",
+      "hpc/stage_hodge_rank1.py": "78a1032b196559610f423c53f84ccfa2db0a8f738800cc22dad9205fee378ef9",
+      "hpc/stage_loading_followup.py": "a55029093f53c8eb54e97769baad655ee2643ad8fd3b59dd3b57cf3ec4e1a7ef",
+      "hpc/stage_loading_rank1.py": "70b1bfcf096b2462dc04ad3d4ae94e5561413101db97ac1ad2dd42f7890e3da8",
+      "hpc/stage_merged_math.py": "77f14b9de6d7746a07ffb0a8f794c0670b668e8574c7eda699c9f00a44c67a31",
+      "hpc/stage_overload_after.py": "7f63cd95e7ab7bc9f47cb5757d1bff4c624d3b45c9bbcdea64c191c9c07a936f",
+      "hpc/stage_overload_before.py": "30f6e866cc2cfd24af17d1c1a7f644e6907aa42af2cb7028f86b262eb6222040",
+      "hpc/stage_overload_command_after.py": "b1c2fa858b91cd4bac69933ed3faeb6299c69edf834af33f87dd14abc6fc8712",
+      "hpc/stage_overload_command_before.py": "3ba4aad07131a23f2713e71ed550646dfce773165f8fcf1f4f9ea30974fff369",
+      "hpc/stage_overload_command_capture.py": "b1a940c9d084ec5c7a4624e112683ee35ebbc671a09fbbcaf9a4b2a7e59e7467",
+      "hpc/stage_overload_command_profile.py": "703d19991cdceb5d8a5bfbf5884a64f1c4bcb8fbaf3cbe3459973281562e3ad8",
+      "hpc/stage_overload_presence_after.py": "e9966cdcdddbcdec510e3d05a7ed780fd3b76eed7ecc30ba595f1d1618e9674e",
+      "hpc/stage_overload_presence_before.py": "adbfb92b0e6b868f894b5f5aa73461b988496579e37d2676532fe2bcf48d291b",
+      "hpc/stage_overload_profile.py": "346066561ca306aac08f6b2d9508d21c74a5d8506ab71a9a7be3e4023f84dcba",
+      "hpc/stage_overload_view_after.py": "4cb6f1e4c0dc91b0d85b8d15137522cebd23d8d5cd1851eafaf46c8e20e19007",
+      "hpc/stage_overload_view_before.py": "06a4fbe8b9419e37fa700e8dd58710bc073a0dd50f34919efc55efd99339474e",
+      "hpc/stage_overload_view_profile.py": "cd51fb0311bcc922f67759e5180d0f3fdfd2f5c9d76f27016ecdef7a52dccb93",
+      "hpc/stage_post_view_cost_probe.py": "58efc65e01a3b339d3ee91c79d6e36462105495b1a74b90cc0298b1baea5b642",
+      "hpc/stage_progressive_rank1.py": "b19395292febf6ecabf5047d81da7330cf49806a9f74e1416594b5205f7c36eb",
+      "hpc/stage_rank6_block_grid.py": "38b6b2bad5ed05bb1db4e522b4782e97d3a5cc702c9fa54f21af9f63a8a976c7",
+      "hpc/stage_rank6_blocks.py": "70cf28aa36463e58e2cb1b2e57aa64b3c003131fd595fb9e349d826a2409b675",
+      "hpc/stage_rank6_forms.py": "a5e0cb0311a53f6078bf410147f0e58c0461c6672f6ee8fc4f96423fae67955a",
+      "hpc/stage_rank6_graphs.py": "4bc7c8c852093d2d4a1483bbad5f376637725f6768268c7577738ff7be1b220a",
+      "hpc/stage_rank6_inventory.py": "35e4b0f8201ad103ab24e879c8781b2e18e6b704b737d7d790253dc38250e3ec",
+      "hpc/stage_real_form_survey.py": "08c7758b0650951d63d9f7a15478a5a31ee3563b9f77192fb871b7b7ec79b60c",
+      "hpc/stage_type_equivalence.py": "27febd50d9d8f99d83be0c9bc5d4cf4407754c5c818bea77e4b792a9b50d2437",
+      "hpc/stage_unitarity_forms_rank1.py": "d21e2371cadc393998fcd621e174080893f003ef4a8f36eb3dee1ff3e21dfa06",
+      "hpc/stage_unitarity_rank1.py": "ad2da3f3190bf6fdb2fa451cb946cbcf24a063c704dd04bd53fffab58e22dc4a",
+      "hpc/stage_weyl_context_capture.py": "9aabe0ddedd1f6c841d183a6bc5645c49a6d056ca4a129c11aed68e8beffacd5",
+      "hpc/test_cartan_rank1_contract.py": "5dc408fbf8330fd4e3ab5f34acb0f4dc7bbaab3cc8f2a03c101f18e12b0f1599",
+      "hpc/test_completion_capture.py": "6c98098aede65340a116facb0ac67ad4f3790d0d73632d38cb2b70f2ba440b85",
+      "hpc/test_loading_ab_protocol.py": "113ebdca5b96073e5bec788886761036b2a620a35795bfcfc11e0f1776c376ff",
+      "hpc/test_math_benchmark.py": "90d74365693e7f333568643711dfda92fb5c179ba20f5a9d95a2cd4251b7a096",
+      "hpc/test_math_cartan_class_capture.py": "4163753c75cca6ebbab62a806b62b82fac7c845d4412c23ed731fb6a303f5a7c",
+      "hpc/test_math_cartan_partition_after.py": "c009148d970ce7fcd9583d5a3e4829c02c01d07ab04498fe3e1bc393fd5d0743",
+      "hpc/test_math_cartan_partition_before.py": "02c801d26a007e28f017c4f8588430dd58b3e8364bf6b561b1b627fbb1963d0e",
+      "hpc/test_math_completion_after.py": "cba4b08cfd0a9d3433216a0301cdecedf3f4395758656682d71af8fb83351565",
+      "hpc/test_math_completion_before.py": "e109b0a5a284d0c397c02517226c14e8062bb706d5faef304e48c9457e5b4ccc",
+      "hpc/test_math_completion_verified.py": "5e6fa9fe8092b032da542c6c067563c360045a0e18dfb413f08b6321caac7e6f",
+      "hpc/test_math_cycle_check.py": "22dc5294b2150e1b2195d80a870da4c54c5171e12567cc7046f5c4505f43ca7a",
+      "hpc/test_math_cycle_rank1.py": "29411efa5dd6377f43482352417932a82f77cfa653c3a68b908ba51172343f89",
+      "hpc/test_math_full_deform_after.py": "143d8449467d3485c6bc40239626950a9c52ebed3795ba1acb5055745dc96797",
+      "hpc/test_math_history_diagnose.py": "a033055b15559042adca7029efabd197e758ac733e43a42a0bb75e33f22b6a44",
+      "hpc/test_math_hodge_rank1.py": "7423d4df193830a8bb7168340a8f8911614456223713753ebfb38ee7b9748956",
+      "hpc/test_math_kl_repair.py": "56c5bf3a84cabc88c7b386f28e582a2bfadeb07c5d02b864f52ef4dc650fa5a1",
+      "hpc/test_math_loading_followup.py": "3e5f2745810426a633d31f43677bee12cfda7a7e651097b16d6f06707735a2a3",
+      "hpc/test_math_loading_rank1.py": "23bd9db2a2c94b52925c665fa164ea88c9fdc82dd0eedbb2e6d54dc8ec7bcbc0",
+      "hpc/test_math_overload_after.py": "0979ac08c3a75934bbb875e2c29552cb07a00d43bb6d28fb83c6ec99ad1e7346",
+      "hpc/test_math_overload_before.py": "fe2ca678a0d2ff16a2da2b4910e3454834991d5d6afdd5b3a24769b8fff5abfe",
+      "hpc/test_math_overload_command_after.py": "9ffac94bf7bd6c08baff5677739f9234052fb56a51ff6164e86800896fc04a6a",
+      "hpc/test_math_overload_command_before.py": "e94527c98e31a53f8d1740c12294282b15dadfe4858d847849554e788b8a35ed",
+      "hpc/test_math_overload_command_verified.py": "4c7dbb54782789b0202776e474e432481a9b5c47c5e7dd8dd2c24f6e15ef5d4a",
+      "hpc/test_math_overload_presence_after.py": "3bf5a87a4b336e157fd51dd702c1a28affb084b146539043865f4c14368bf774",
+      "hpc/test_math_overload_presence_before.py": "5a4cfa3dc0268063abfb95654a58941ee08c76ac8ffe35724a68513ebe586de6",
+      "hpc/test_math_overload_profile.py": "af4e54c876badd7484a72f646f1c40ac64bee18d7a96d69fafb8d962295fb5ac",
+      "hpc/test_math_overload_view_after.py": "0fbae0de58a5dfd2aa2c2f51c59edcabf81860550cf975ea1d93dd969058540a",
+      "hpc/test_math_overload_view_before.py": "24ab20549992b184cd207b9aed000156c8b90681e6f2661dc00a61f09921a408",
+      "hpc/test_math_overload_view_profile.py": "c74abd487439dd3938358688e12deb77f93703d51be141586647cf773f5401e5",
+      "hpc/test_math_rank6.py": "8d0f11c352093b5ad738e6e5431b0be05c72182154bd075c2fde208f153fc3dd",
+      "hpc/test_math_rank6_block_grid.py": "9a71539d336c99f142f69d0e8b7f388c7e7378ea6d3bef54df8ddb8ff1123a4c",
+      "hpc/test_math_rank6_blocks.py": "e7a12a68240be711fe9efb850e900a34aeb28ca075d45704e7c6d96aca9f5f0f",
+      "hpc/test_math_rank6_forms.py": "7846abfb1ef3860944cf3323610d0503d667b4e6f964a71c726f1d0c7d384739",
+      "hpc/test_math_rank6_graphs.py": "cd262149aa21d04d635b39fb67bd39aab4537db64bbbdb675689c58137d967b1",
+      "hpc/test_math_suite.py": "e74b6bd80e19135678f626b9172d99467d76a094e610fc9116e58d008c678319",
+      "hpc/test_math_suite_review.py": "998f49dc63b0f9469c56969f247f704b4bfe7cf63016df2ce2bcd88283a44c3d",
+      "hpc/test_math_unitarity_forms_rank1.py": "125f1a617fbbc54ff07c184e9ef1d749abe60f17bd1df137f3b1fbbfe1efde16",
+      "hpc/test_math_unitarity_rank1.py": "39a1004e51de3d8bdf7b779f079933c4de26e2001cedeac1510df7448e408130",
+      "hpc/test_math_weyl_context_capture.py": "3aca943f05f9602f6f62c14a1aeab2f6636cbd1ac7655f6c0d38d171f8ce2ad1",
+      "hpc/test_overload_command_contract.py": "ea0d99dd52ba35dead2a1ff31fa53db0ce4cab990c58dfe38d40946df8113b90",
+      "hpc/test_overload_view_contract.py": "5000acaec2fe873972c4a8d7837a4dca28140b20327ad6392ca137246d84ce35",
+      "hpc/test_post_view_cost_protocol.py": "073dd2d1bf0ec759aeb1c2e9862075b2f715315d6e059992a8163fbd1d6139db",
+      "hpc/test_progressive_rank1.py": "da82c8e47be88ff505b3c2952079e2f52ce84ec399144937769ce78ee77ac219",
+      "hpc/weyl_context_contract.py": "27eae90bd5b20223d5264e688c9ba44067c84f80614ae20904c5a1c4cca4b6d3",
+      "tests/math/README.md": "f25c7ed9dd745c998dd0a1a34118ca02e7b9fc28a19659f1df46d2ae54366cd8",
+      "tests/math/baseline.json": "e2674c8fd29b166d82cd5061ba273c500652f15a0fc8bd8baa8b9bb4d3c77863",
+      "tests/math/benchmarks.json": "44529e64dec6cdc6066094002af3202bd5cee0bd5cd4fc229d669483af0ec323",
+      "tests/math/catalog.json": "3aa63ca8cfaeda76509582674a0670f6433e851b23c139c2710837dbd07142d7",
+      "tests/math/generics/cartan_type_canonical.atlas": "a625fdbb316fc23f4934d0f96da8e975d3f16208d806e419020be013363c2e8f",
+      "tests/math/generics/cartan_type_canonical.oracle.stdout": "409853ee0cba8bf93506e2930292809c691c7cbc9357a7c96b82931356b5792b",
+      "tests/math/generics/cartan_type_rejected.atlas": "fa30cda1a8cee73e70138858aee0ff52202a68f3bbb21f533f2ec48987a0524b",
+      "tests/math/generics/cartan_type_relabelled.atlas": "cf008fcdff1b4b2066135ff54fc3779c30013e470273036189ecef218e132fe7",
+      "tests/math/generics/cartan_type_relabelled.oracle.stdout": "933c5ecaa1ec4d3e8e1534413d89f7efe8216963079f0da7760c53302a72dfbc",
+      "tests/math/generics/completion_incremental_catalog.json": "d6a324ed27e7733d9a80ff185272217c63e4c375104fcbf3e1f13d0f17f6f8bc",
+      "tests/math/generics/completion_incremental_history.atlas": "58116a8025d2d0df4953b11b774351d8dea90405b94d9a25e2c503879c720191",
+      "tests/math/generics/completion_incremental_history.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests/math/generics/completion_incremental_history.oracle.stdout": "c08096476879b4cdd40f0986edc2fcdfd95da41d912427ee606910fabafe6edf",
+      "tests/math/generics/completion_incremental_rejected.atlas": "503643b30ae55c6cb73895588c7c593d9ef128391bcfc8b441c03f747f4d56a2",
+      "tests/math/generics/completion_incremental_rejected.oracle.stderr": "cc769d62ebe38a00ff90fd8bd38b4a8610f9e287ef29a50d8ba0b53340b40aa7",
+      "tests/math/generics/completion_incremental_rejected.oracle.stdout": "0a67a0e8a53522c63ef399e2e5754a8c97440ff66271dddc420617afdf7c6b2d",
+      "tests/math/generics/completion_incremental_types.atlas": "b23fab8ca76d2c70f64a6d78ebf7f0fdb1789b32906d49d06737045b09f02078",
+      "tests/math/generics/completion_incremental_types.oracle.stderr": "fb962f37c883241e86286de7bd1ac6e0e958825274c84b24f406e2f1a0ece124",
+      "tests/math/generics/completion_incremental_types.oracle.stdout": "277779aad3b21cec53fa980ce9821441c9abe8581c9a1de7a3cffd86eb277b90",
+      "tests/math/generics/completion_incremental_types_valid.atlas": "e3daa9e4605eefc59626c6d4e2bf986cc938274688c47dde453ae4ca06765d99",
+      "tests/math/generics/completion_incremental_valid_catalog.json": "82e4e08cc0b3610e855e4d1293b5b222825be603c1398cf1ae39f324353ce6de",
+      "tests/math/generics/completion_incremental_visibility.atlas": "0b42d9a9691be2ebbbdb4cd28079f2e4c700defb671270d9d82a50b954cda952",
+      "tests/math/generics/completion_incremental_visibility.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests/math/generics/completion_incremental_visibility.oracle.stdout": "3be749caf53a7f586d266720a1d9792f6fb007dd13f48e8593dbaf89dc57dbb5",
+      "tests/math/generics/concrete_overload.atlas": "7b459a4ae989b8d6964698ae5e2272aa01ca98a6e0614b56d5e0099a33d6505a",
+      "tests/math/generics/constructor_structural_uses_spaced.atlas": "1ca12ee7f3b74101c879abd7c09892a496d562fafa2abf23950c5402c3d677cd",
+      "tests/math/generics/generic_recursive_group_boundaries.atlas": "c00285ac22041de18b582439d192b3f9a407246674651c85a632ce75db5f3e47",
+      "tests/math/generics/named_overload_alias_replacement.atlas": "35b8e2a316af50d23ab42a97339713a6356e0838a14f64e5f4f784d2ed616726",
+      "tests/math/generics/named_redefinition_retains_old.atlas": "cf37d3cbbc8457fb5d2ae84ac25935231066e978401942bfe77bfd7f41bd0ade",
+      "tests/math/generics/operator_cast_rejected.atlas": "8d372d851c8375c6bfa822b7c26014f0ea252c4464e3a8e3a8e02af3c209a56e",
+      "tests/math/generics/operator_cast_scope_rejected.atlas": "d62def7694a81e0aa3aab6d73543d68877835108148e9b0f8c0f6a95eabc0c20",
+      "tests/math/generics/operator_cast_values.atlas": "9efd2921b97435aaf3b7dad4451f70a2d37452f749278e28e4ebf41af8752adb",
+      "tests/math/generics/overload_command_catalog.json": "bd2b5543d6bf28a30da2a5bff93525b479541e1183777b0a1bc9e84dcad2a9e3",
+      "tests/math/generics/overload_command_history.atlas": "336b906e2e0a3d6fca717c860ec59db7f71f6f28c9821e0920197b58509e3930",
+      "tests/math/generics/overload_command_history.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests/math/generics/overload_command_history.oracle.stdout": "80897d6bb4d679d868203fed64f933f831a936b49ebe729b0d8878e8da5ccf93",
+      "tests/math/generics/overload_command_rejected.atlas": "b5dc73108836bdfd78e304895a291f1716f0b4ecdc5ccb7d6d83358e9579066e",
+      "tests/math/generics/overload_command_rejected.oracle.stderr": "523fb4fc87dac2e2f79757c20d1c613c510fab7d00861069c66f03ed34cd0cd7",
+      "tests/math/generics/overload_command_rejected.oracle.stdout": "0bd635403c79d8c82e1eacee7ec32182e0df092f5e84b57013834a1a7ed4afd5",
+      "tests/math/generics/overload_presence_history.atlas": "28694edbd0aba2232112faa53ef42e64c582e8be49622b591091d95e83a8ef55",
+      "tests/math/generics/overload_presence_history.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "tests/math/generics/overload_presence_history.oracle.stdout": "410c21f68da6a9d2f832749f38f2749d53749ef77430201d63257b37b3fc6137",
+      "tests/math/generics/overload_presence_rejected.atlas": "f712763b75b62f894982f4a1011a6c5c837964b57ab16a9d6139825c57d58ab7",
+      "tests/math/generics/overload_presence_rejected.oracle.stderr": "85caf759a7e45987ccb66d2c85947b7c6b855cd7e834c829acf1bb10f138b83f",
+      "tests/math/generics/overload_presence_rejected.oracle.stdout": "9600a1df6f69d7e8c28756971f981b3fa9cf820553d9d99309839a7b825943c2",
+      "tests/math/generics/overload_recursive_row_identity.atlas": "a74eaf0e38df63b1ffb3f7eb1b211af362686f54c88f12afa67181da3200c0ec",
+      "tests/math/generics/overload_recursive_row_identity.oracle.stdout": "4825c1d7293dfb8749d6b3e89a7fd8dd3ed6a8ebf94175563d9f833418740847",
+      "tests/math/generics/overload_view_reuse_history.atlas": "afe6db59bb0b3f0284f05ef1582c32023821075000d5097036e4e3da99618dfc",
+      "tests/math/generics/overload_view_reuse_rejected.atlas": "aa49c8b2af1b097115ee53202cb470159e96b66537172c544f42d2c3b66f6367",
+      "tests/math/generics/overload_view_reuse_row_null_rejected.atlas": "8070021c262d9183cbfb481eeec03c5df2ed207938577adb32115ada2f5fe2d5",
+      "tests/math/generics/overload_void_redefinition.atlas": "ace496aa14e18d13f267e645c38f9a0149d42e2ba858be33f5f1eb0df8af9536",
+      "tests/math/generics/overload_void_redefinition.oracle.stdout": "049cddde2d6b5f2cdc1540228665f1c47994edee7ddcb1ec9da42ec0c0528d34",
+      "tests/math/generics/real_form_unitarity_sl2r_final.atlas": "c3824f4796542dcac12dc9705f36e19c4b4a24c8626e5b4808424cb032f185fb",
+      "tests/math/generics/recursive_group_atomic_rejected.atlas": "3966121ec6a1fb9f3669ac551245a707fca63bf2b5fdb5c97c61f917c161083b",
+      "tests/math/generics/recursive_group_member_conflict.atlas": "47d51f83556926aa2811f1e6a7bacec2972fe9ddfd39ab99d7d847c7d63a10d2",
+      "tests/math/generics/root_ladder_coordinate_boundary.atlas": "dc88d6606ae855b618dcf12589ecde82edcbe482873a94bcff1001163691ec65",
+      "tests/math/generics/row_user_overload.atlas": "57515bfecbea33d5aa52f08b4ee52a64b9e7068f153748ff00b656c0f366366c",
+      "tests/math/generics/unused_constructor_parameter_spaced.atlas": "eeea8b042d33641236a2d4ed658838b295501d2b8c078697a99376b8750df07f",
+      "tests/math/generics/weyl_context_catalog.json": "9b09b80216a1c1a075552d0b28d286704a4a5ca35d04836dbed154136e9db204",
+      "tests/math/generics/weyl_context_history.atlas": "abbe9a88e474407a7aedbea33a661ded98404d6cd6889692d87bec27ec11f864",
+      "tests/math/generics/weyl_context_rejected.atlas": "9a4a2b567933cfcb58e2ccbd328aeb2630a0e62ee86791de8c5a1529881ed4cf",
+      "tests/math/progressive/av_ann_rank1_finite_cycle.atlas": "603202e5c8bfab598135e842fd6d558c9d3019ce1750ff2217cd75f328217449",
+      "tests/math/progressive/av_ann_rank1_finite_cycle.expect.json": "980a21eada2346de6d1269c98ee71e16ef991bf30e881304716479e8e868aa9d",
+      "tests/math/progressive/cartan_classes_rank1.atlas": "448dc5ab645d7c942932852158945645c13a1eb342c0dee9f9a562c0041f8cab",
+      "tests/math/progressive/cartan_classes_rank1_rejected.atlas": "429549e76d9d234ed920320277e2f55684b99d7699ef0312d7d55013a12c3e49",
+      "tests/math/progressive/cartan_rank1.atlas": "e65f314c64590e2ad415c535c5ff39cdd3dc41637fb970a584ac381e31f9ac4d",
+      "tests/math/progressive/full_deform_rank1_control.atlas": "aef56030b0f0390ac8969ff3948eec664fc6b3540f51c2654ad06fd387342cbd",
+      "tests/math/progressive/full_deform_rank1_control.oracle.stdout": "4dde89c3b28c2272eed17276726cc97d0d682ba76199aa37c084f363c720c34f",
+      "tests/math/progressive/full_deform_rank1_split.atlas": "3e2790696e56aa599347b70eedc23084655b19047293d2fda4ca04513b495311",
+      "tests/math/progressive/full_deform_rank1_split.oracle.stdout": "94c569d22a799a18a4c34eff8027da9802f0ae7732b3a18396a504193ce319e8",
+      "tests/math/progressive/hodge_rank1_control.atlas": "f491db5cee14575c3f091f6d261fa894ae70ed4337ffabee7643fa7f01da3383",
+      "tests/math/progressive/hodge_rank1_padding.atlas": "c71ac17e771668876de3cb9829d22dc2279bb6b452279ef5e3d30262e05784d3",
+      "tests/math/progressive/hodge_rank1_specialization.atlas": "e377ddb99a26a29d473453327c5c4ade2bc87b2e2a91dc364ee66b1771b300ef",
+      "tests/math/progressive/hodge_rank1_trace.atlas": "a9f1b5d5ff0bfba187e9d81b2323eb5d9dfe82b048f0baf332a326f3f8cbc5b7",
+      "tests/math/progressive/load_av_ann_rank1.atlas": "7d5dbfae1c8a30f1edbafea21f9572798a7a7158754d2708c2c63f7129215dc4",
+      "tests/math/progressive/load_unitarity_rank1.atlas": "368807ba9a0b9a7db56ee5e12b16e646132ebe14b36e917e94fbcf36e7b521b0",
+      "tests/math/progressive/loading_rank1.expect.json": "13f2a5fab9a5a7a698e9a20b843b2ec1793b626428461cbd22f3bbbf5b6d01de",
+      "tests/math/progressive/type_equivalence_language.json": "15027f682bb78b5b743940c29655419082acce91b630037d10e10864f95959bb",
+      "tests/math/progressive/unitarity_forms_rank1.json": "d3f45a7232c11c60344dcf5f92d361b47d8bf4a6cd7e1b2f370b3f11a5afff40",
+      "tests/math/progressive/unitarity_rank1_parameters.atlas": "cfee91a0397c8314b6064c247800df37c85dc01957444594808bc917ba8e08b0",
+      "tests/math/progressive/unitarity_rank1_parameters.expect.json": "c96971266e646af371561e19f21e56102498a3d5a7b294fb17bf85f35026012a",
+      "tests/math/rank6/block_inventory.atlas": "3f6ffad215f14b52c4430cf7c7e88bedea9efbd35db2bc9a7670ed3fe9fdbe51",
+      "tests/math/rank6/blocks_catalog.json": "44c88b95241f25ee00e8e423a76419acf4be46ec3bf5eb1ee09c58b4eb0ba10b",
+      "tests/math/rank6/cartan-regressions.patch": "d64f547f20b639991f2f1c035ff5b0d88a0ff6b1a3f94430a48d0e50c21bea4e",
+      "tests/math/rank6/cartan_permutations.atlas": "ff2f65cc33ed0002670f18658ef19113b5cda04eca30364c3fe4412ebe1588b8",
+      "tests/math/rank6/catalog.json": "ed445f94074c406f2d6e9d56ed9e1a6da8efc848c11696e87944b5736cb1f277",
+      "tests/math/rank6/forms_catalog.json": "5e956f5d1b1461c257ddd1b7c8aa827094044645e9a846d52f074d1b8177a81d",
+      "tests/math/rank6/inventory.atlas": "26633a2a7fedfacc3db0727490dfdd3d789a1c90386c48708df508202578bc74",
+      "tests/math/rank6/kgb.atlas": "047960be01d3d01cef8e6ec17182f8ac976f1c9ecf62e462b48f51a09556ae9f",
+      "tests/math/rank6/klv_block.atlas": "5f727434bc003596ecda30fc7604950790b57cb98f2fcc9e5391e773bfee36bf",
+      "tests/math/rank6/klv_rejected.atlas": "fa43a47ec060b8093ab5692e2f4cff1c1212e48729519f7c01f47fe7a2af18f1",
+      "tests/math/templates/annihilator_variety.atlas": "de1ae088b74034eb6387b35860fb5e2d9291b3ff0a7fa7fd08edfe607f4a2926",
+      "tests/math/templates/basic_load.atlas": "448862a14277a7fc9cbd83464d2aa7c1ce85b9e21cf2a7c458bcfaffe46502c0",
+      "tests/math/templates/cartan_subsystems.atlas": "8171734882e7a35ce512c6ace22b3498858b8aa82c66a696f0802a02082ae6df",
+      "tests/math/templates/core_klv.atlas": "70b406a943df816d96a97c39676fe74f57603f8ec9e5de4bd1c01c586987c1d9",
+      "tests/math/templates/cycle_foundation.atlas": "3e5b846ee2767cd58e6833432896a8250053ee2a20fb08765a4ecf4edb892270",
+      "tests/math/templates/cycle_product_ranks.atlas": "a33737449af1c4121e0262a8cc10ee8027e0a563ce4e7f31de6239085b807ddd",
+      "tests/math/templates/fpp.atlas": "3eb846445e62b336f70f0a1d28ad1cd3b112024ee89a3e959aa8f9439b758c5e",
+      "tests/math/templates/fpp_d4_wall.atlas": "79c2a4bd17c0ed344cff692dc50c6a7eb952da9373169f9f918d36baa0d61f34",
+      "tests/math/templates/fpp_rank_rejected.atlas": "5a476cec81e25e47e102d92686180bee871396adde1db379a95ff634965bbdb3",
+      "tests/math/templates/generic_identity.atlas": "054712c54376390ae6776cf8f4759e2a66a256ae5d7792b84d0448dde181d91f",
+      "tests/math/templates/generic_pair.atlas": "3529533063872373e623b22f0c3f8aff4dd22a23c56ae6a1b50c2b7606e203f9",
+      "tests/math/templates/hodge.atlas": "56217ff1974be61455a92b0cc3a4caa3e389ce69169c16134ff165990346dc0e",
+      "tests/math/templates/hodge_nontrivial.atlas": "9259c8d8f6449f828a030abed14cec84374862e6610c60b5641cafa920b320b1",
+      "tests/math/templates/hodge_trace.atlas": "a9ffc0d18ad55fed0ae79f935d625de2c56974b6e9381fa76228ed299f6abf95",
+      "tests/math/templates/kgb.atlas": "0ff3bc044f157cad18920c2f62d2d7f0633783b1632b91f7a0614dda66e7e26d",
+      "tests/math/templates/klv.atlas": "f30e03ba1fff856569377a1c94be6eca516454ae61934cb53d3353f18b30cb21",
+      "tests/math/templates/partial_kl_containment.atlas": "e51d4719a411c866d74c73a65f2610dff84061c8dc0365bd3f0b685b0a082879",
+      "tests/math/templates/partial_kl_history.atlas": "afa4ed7e3d657b2c56d28d1f208072d01cf635138494aef99c20bf854785bb5b",
+      "tests/math/templates/partial_kl_nonstandard_rejected.atlas": "f35ea9aaf7391f808f035ba4cdbe34ea8ccbfeed9a726d3361c69430a12f4242",
+      "tests/math/templates/partial_kl_regression.atlas": "b25a8c9548347106398c9aac98858d19ee31e9c8b3f22ec20f7b399e85723af9",
+      "tests/math/templates/real_form_annihilator.atlas": "9e1f461d3b529cac2909456026a64574995ba318dfc89298487cabf9b06dc498",
+      "tests/math/templates/real_form_cycle.atlas": "ece68835d65b91dcaa4acff4b8e4b3ad2838244174bf6c33406446d0a6f6b697",
+      "tests/math/templates/real_form_fpp.atlas": "5195ceaf7bb432584ee792f938bb604827bd14e62dc1ca9070b3f82fe6972bae",
+      "tests/math/templates/real_form_hodge.atlas": "4ce514515a526224f9afc2277fdcd97889bc060c47eece4222cdfaf6956a5d39",
+      "tests/math/templates/real_form_kgb.atlas": "b5eb8540b99a6a97f2d81f0a92501a5ab207a6da8781dea53dcb4dde30bfa216",
+      "tests/math/templates/real_form_klv.atlas": "49718fb7a96d1267af5aed497deca81cce91efa3229abdbefdd893bb463d2170",
+      "tests/math/templates/real_form_metadata.atlas": "205638c2df919e8c56a0757336f5ee014829523db5cc7692ee8a5dce92f79313",
+      "tests/math/templates/real_form_unitarity.atlas": "e2c97bee20792f323a3a302e589da4c05c27d0438280f9a8afdc82426e2181c0",
+      "tests/math/templates/real_forms_inventory.atlas": "69a2251fee672ee275f2c0146f30856fde240d50924662f37aa95bd68cea767b",
+      "tests/math/templates/root_data.atlas": "0083b63e7b8ff1baf9c2243ce0e1f43dc2c5ea91d011ae7a640c61d822854e84",
+      "tests/math/templates/unitarity.atlas": "e23cea8f4c60a45e53b2aba0648f7d12af4c838bcf78d38989b3c3d4f09bdb68"
+    },
+    "inventory": {
+      "path": "/public/home/majj/atlas-rank6-inventory-20260929.oBwg4QCY/results/3849376/report.json",
+      "sha256": "893c2e5ecf075221e5c8d1135f4eedcb02e5010602a0b3713264ea38272ba125"
+    },
+    "loading_probe_reference": {
+      "path": "/public/home/majj/atlas-loading-cost-probe-20260930.OHvh0QW6/results/3868228/report.json",
+      "sha256": "50c7fb3045b4b96ba6e2bc590ad8fe6d0177e7b97817e132299523b26def64f6"
+    },
+    "loading_reference": {
+      "path": "/public/home/majj/atlas-loading-rank1-20260930.GqhbeN6Q/results/3856033/report.json",
+      "sha256": "0b84a41851fd5fb08202bc071cf23ce75ba57f28d2ddc385e73ea865d61a93b1"
+    },
+    "operation": "rank1_full_deform_before",
+    "overload_after_pin_sha256": "d0de137da82017f2266ccd7ab69074c3bbb5830d490fada5b93c1240d87515a0",
+    "overload_after_reference": {
+      "path": "/public/home/majj/atlas-overload-after-20260930.jTo2AfSy/results/3858574/report.json",
+      "sha256": "ac29df12a4d7286fe7cde4bd49d182edee9551fc088196c40053b5e6b5d13783"
+    },
+    "overload_before_reference": {
+      "path": "/public/home/majj/atlas-overload-before-20260930.YyVCvrMg/results/3856744/report.json",
+      "sha256": "33e8ffff875f0905892b0a8ee0cbd061ffa77118c3ae753c96fb7fc5a2b21e55"
+    },
+    "overload_command_after_reference": {
+      "path": "/public/home/majj/atlas-overload-command-after-20260930.kzNyGVyu/results/3868782/report.json",
+      "sha256": "fbc615d23c5d111aeea83ece1fecb6c67f7b37d6c0435c6af21e062a86d787fc"
+    },
+    "overload_command_before_reference": {
+      "path": "/public/home/majj/atlas-overload-command-before-20260930.E1WDSwZy/results/3868749/report.json",
+      "sha256": "3fd3aba357287b79fbb8c1ac88afbfab8e7fcdc1ee6c7377bbf99d243e780833"
+    },
+    "overload_command_capture_reference": {
+      "path": "/public/home/majj/atlas-overload-command-capture-20260930.nz47e1mI/results/3868735/report.json",
+      "sha256": "9d2b560dff1b6611d4d2bc3c06292d585bb4119556ced40a6269360d2ea13d49"
+    },
+    "overload_command_profile_reference": {
+      "path": "/public/home/majj/atlas-overload-command-profile-20260930.ZUDoR41Y/results/3868803/report.json",
+      "sha256": "1d2baaddbfcb2bf09801a995ed9a6702646dd3cf9a8f396b1ddfd6d22c693915"
+    },
+    "overload_command_runtime_hashes": {
+      "crates/atlas-core/src/typed.rs": "7085d231921e6da78afd177da3affa1086f8204034ddc44e4c40f05b34c3467b",
+      "crates/atlas-core/src/typed/command_cache_tests.rs": "5ddcf1b478faf1a53bc07b430c341316416fac5e8ad3a293118ceea041623b52",
+      "crates/atlas-core/src/types.rs": "532644893746fe30ade37613f53ffc1a65b0967ed725345b5348f66c22250531",
+      "crates/atlas-core/src/types/revision_tests.rs": "20d47c96a332accf06e9e768506cb92b0666e591db1b2133401dcc0d9d672a6b"
+    },
+    "overload_command_source_hashes": {
+      "crates/atlas-core/src/session.rs": "92e9e4f18245bf5db27b96fb0721ab36c8db6e3b5a7823090ad6bfa50155aa03",
+      "crates/atlas-core/src/typed.rs": "2c60b1a489eb1790281268845b633da0ffa65d54af2649f79d1b9d338a8cacd3"
+    },
+    "pairs": {
+      "path": "/public/home/majj/atlas-rank6-block-grid-20260930.b2axzJak/results/3851489/pairs.json",
+      "sha256": "a7f7c92b1afa8fbdc78298fd32f205472814cd49467602162c8a43d37bfb7c0e"
+    },
+    "partition_before_reference": {
+      "path": "/public/home/majj/atlas-cartan-partition-before-20260930.O6fhVGS1/results/3868242/report.json",
+      "sha256": "e57c69a60f0e12f35d4dbcf9867ef0e7a9727395a8bd124100c5130ed816a57a"
+    },
+    "post_view_cost_reference": {
+      "path": "/public/home/majj/atlas-post-view-cost-probe-20260930.87kvHVtK/results/3868525/report.json",
+      "sha256": "0855b34bbeda9a1dce1f1ac408f1287fc8e0e075285e24c2aa5f85e12e4cf54c"
+    },
+    "post_view_profile_reference": {
+      "path": "/public/home/majj/atlas-overload-view-profile-20260930.cKAa5VP7/results/3868496/report.json",
+      "sha256": "24ab240db0b061e641a58d1fd502805c4d8eb0b261aa42feaa5e1d3203b67b62"
+    },
+    "presence_after_pin_sha256": "f411a031c56847d44e3e78ecc9c8ea72624fda3119208097a1dd0fea4bcdbf46",
+    "presence_after_reference": {
+      "path": "/public/home/majj/atlas-presence-after-20260930.87MXIyFj/results/3866086/report.json",
+      "sha256": "95d23a47706b76e6548462c4835bf23f093e327a9b461bd789e8b5dbbd5095d2"
+    },
+    "presence_before_reference": {
+      "path": "/public/home/majj/atlas-presence-before-20260930.rFLDlK8B/results/3864029/report.json",
+      "sha256": "9540131c43c901e7281914070ea3ef1a0006257b0fb73848846b0d44aaef4a46"
+    },
+    "presence_profile_reference": {
+      "path": "/public/home/majj/atlas-overload-profile-20260930.aH4uDHA0/results/3861850/report.json",
+      "sha256": "7a2235c674eb882447fa4da65e5f6774b4171000fb7697e944877c47a4cf9f85"
+    },
+    "previous_failed_gate": {
+      "path": "/public/home/majj/atlas-type-equivalence-20260930.84qj5jbF/results/3856122/report.json",
+      "sha256": "e267b48a9ec9ba04168a4ab9dd34ad9aa0681ee77b48c18cf489702aa2ef54d7"
+    },
+    "prior_discovery": {
+      "path": "/public/home/majj/atlas-hodge-rank1-20260930.mmWkq7ae/results/3855719/report.json",
+      "sha256": "f1eabfbb068e49c34a499ae2c465cdc0aef28479f2a434e664ea60782a031f20"
+    },
+    "profile_reference": {
+      "path": "/public/home/majj/atlas-loading-followup-20260930.i1cxrpAU/results/3856293/report.json",
+      "sha256": "f4c27c536339a3de4ed0b47ab1ece8ec12618d8c76e508fa82182952b38e6454"
+    },
+    "rank": 1,
+    "registry": {
+      "path": "/public/home/majj/atlas-rank6-forms-20260929.33P9yowF/results/3850019/forms.json",
+      "sha256": "19a49413383eca33d257a3889ba41bdbc58cd1aefe9d0d9f994b351380d2f3fe"
+    },
+    "regression_source_sha256": "358630c0446a803474089053fc584ee4e5b292a8d4f64052e7f5149af0a2ec64",
+    "regressions_before": {
+      "path": "/public/home/majj/atlas-full-deform-before-20260930.7OGMW49w/results/3855838/report.json",
+      "sha256": "d3288de2606076c5808eb06ba09c8ed1c7ac48c782efe251f1c36dadda568c17"
+    },
+    "retained_control": {
+      "path": "/public/home/majj/atlas-rank-capacity-union-20260929.5Fd0DALz/tests/math/templates/real_form_annihilator.atlas",
+      "sha256": "9e1f461d3b529cac2909456026a64574995ba318dfc89298487cabf9b06dc498"
+    },
+    "runtime_source_hashes": {
+      "crates/atlas-real-group/src/cartan_class.rs": "5ba8d82d57bdbd2ab97ecf4448c49c2bfc604647a1c05b90cee131fc703976ef",
+      "crates/atlas-real-group/src/cartan_classification.rs": "babb802e248b74c1a794920e86f208744314697837c2c81645f3c7ebc2bb4067",
+      "crates/atlas-real-group/src/dual.rs": "640b889b227670208d0e61a51efb3b87bab673e6d1f61aedd3db1053550cb0ba",
+      "crates/atlas-real-group/src/real_weyl.rs": "1a2890a0c8b6a7fc1a2ba25307011fb571097cb8b640608f6955bd1b253cf1f6"
+    },
+    "test_source_hashes": {
+      "crates/atlas-core/src/coercions.rs": "b147208cfa48cf79ecc6768120202148296adf313de5998b709ecb25e5f4579c",
+      "crates/atlas-core/src/typed.rs": "cda308aeda58f6707fa99ecad26554104f3cbaecf15c98bc1afdbdc0f2abf1c5"
+    },
+    "tests_source_sha256": "27d312ddd9bfbea82a1abc147569563d2074a5dacc91ca67f352a10cf9c819ef",
+    "type_equivalence_pin_sha256": "3b3dc8de0b7c361b97c31a822657eed3db2371eec025ba90d01cb25f30d20e96",
+    "type_equivalence_reference": {
+      "path": "/public/home/majj/atlas-type-equivalence-20260930.VBs8Hh3A/results/3856241/report.json",
+      "sha256": "4b234d258c6df5909f9f26a0b7a2e53d4ead9a18ec06ce9dd1a993e10128f877"
+    },
+    "unitarity_capture": {
+      "path": "/public/home/majj/atlas-unitarity-rank1-20260930.Qh9dNMvS/results/3855929/report.json",
+      "sha256": "364387fb4bacedb0353fdf6e3a98157d0bdda6b860d8bc79a5a5425d82663d96"
+    },
+    "view_after_reference": {
+      "path": "/public/home/majj/atlas-overload-view-after-20260930.tYeSNj3C/results/3868418/report.json",
+      "sha256": "e625838494340f48acc1dad3ed2b452aacc778d7b333bc47808bab3ed0304cb0"
+    },
+    "view_before_reference": {
+      "path": "/public/home/majj/atlas-overload-view-before-20260930.bXdYQHLR/results/3868329/report.json",
+      "sha256": "4a9ad6f9114096325f9c057457e6b21ffcaa2c2863d1fae57718a254b7a7291b"
+    },
+    "view_runtime_source_hash": "abf07725e80c7da9fef009d91152b32752c8c5f95e10cc03b95e127f1698140c"
+  },
+  "production_unchanged": true,
+  "schema": "atlas-weyl-context-capture-v1",
+  "scope": "Provisional whole Weyl ownership/error histories and coordinate boundaries. Unchanged FINAL cache binary; no Weyl implementation, speedup or general mathematical acceptance.",
+  "source_files_rehashed": {
+    "candidate_rust": 1521,
+    "oracle": 606,
+    "rust": 1499
+  },
+  "status": "WEYL_CONTEXT_DISCOVERY_CAPTURED"
+}

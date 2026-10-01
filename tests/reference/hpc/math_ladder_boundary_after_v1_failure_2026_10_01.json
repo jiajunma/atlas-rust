@@ -1,0 +1,194 @@
+{
+  "accounting": {
+    "allocated_cpus": 2,
+    "elapsed": "00:01:20",
+    "end": "2026-10-01T14:35:42",
+    "exit_code": "1:0",
+    "job": "3873497",
+    "node": "cu006",
+    "requested_memory": "8G",
+    "start": "2026-10-01T14:34:22",
+    "state": "FAILED"
+  },
+  "artifacts": {
+    "campaign_ledger_sha256": "d78c75c4d53a1336cb48d0a5bbcfa2c52d81391e466026b8cccc4d7832f5f23d",
+    "intent_sha256": "8a620953dc51f2f5410adf685b86ec807ccb486c43e77db3f46dd728f7a8fc29",
+    "overrides_manifest_sha256": "2b4733b6151314ffa9ac4d67d694a65414a450f89a70617c97855e18f75de9be",
+    "parent_seal": {
+      "bytes": 12488095,
+      "role": "weyl-parent-seal",
+      "schema": "atlas-campaign-blob-v1",
+      "sha256": "db67234c0d67dbd6a6f0327386dd113b6093d25a46569710c33dfc8bc482cdcb"
+    },
+    "parent_source": {
+      "bytes": 37672960,
+      "files": 1558,
+      "role": "rust-source",
+      "schema": "atlas-campaign-source-tar-v1",
+      "sha256": "5133bb32da7e5a92775d5f56ea2035680c363b40f085a8af95eaeebfdbc4536b",
+      "source_bytes": 36438334,
+      "source_manifest_sha256": "b027eee2efe72d0f8a20848f99cd6368c29e3884ce9be16a2e7b5c63577dd0da"
+    },
+    "pin_sha256": "200055d52c0d9559a2edf4b7e556296d0c8bd0df129030e4e855e4e4426df289",
+    "receipt_sha256": "cf7ce26c8f765e30a908ae9732f32d88e5bf95df1db8ef55de6f4d9188efb56e",
+    "report": {
+      "command_count": 10,
+      "file_sha256": "fec90eb2f4cf0a4dff4820c4527c5263c151f8dff4aabf272007618646149e15",
+      "path": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-after-v1/results/3873497/report.json",
+      "schema": "atlas-ladder-boundary-after-v1",
+      "sidecar_bytes": 65,
+      "sidecar_file_sha256": "272c9b840c50d9934bfd9e8311bd5a87a2431ee6a985e598147346430d8f41c8",
+      "sidecar_semantics": "The sidecar is the lowercase SHA-256 of the exact report.json bytes followed by one LF; sidecar_file_sha256 hashes that 65-byte sidecar itself.",
+      "sidecar_value": "fec90eb2f4cf0a4dff4820c4527c5263c151f8dff4aabf272007618646149e15",
+      "status": "HARNESS_FAILURE"
+    },
+    "slurm_stdout": {
+      "bytes": 111,
+      "sha256": "f1360e9bfc63cfaf797d3dd3ab4c85aa504b1a82201a0646576b26b92f2f6aa7"
+    }
+  },
+  "commands": {
+    "cargo_build_or_test_reached": false,
+    "checker_tests_passed": 88,
+    "executed": [
+      {
+        "exit_status": 0,
+        "log_sha256": "25bdcc3b3d4df20a7cc25350ad90524fee53edbe375517c53daeff1fb41eb0c9",
+        "name": "test_campaign_workspace",
+        "time_sha256": "6613a0dcb22a9c0b4cfb36285aa41d694a687842f76d80f0a5dac7139bc56cdf"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "10229f2659c7c3d51711ebc64f145ae40673a8c0dea9db2ec0a7ed1bf8fc8369",
+        "name": "test_campaign_source",
+        "time_sha256": "3d8cdbc1d9b08108fcd700c37679e2b91afc683bef138429addb4966e456e0e4"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "623e89f88fdfe7f50831ca9a1049c4afe51e67738e97def9d3df45c8d7744487",
+        "name": "test_campaign_blob",
+        "time_sha256": "bb86f9e6bb6689cd254ee77db5f85604d3281241bf387a5074809c1fe365c067"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "ec95705d85fb84cbd319f8c39af5a93fda11cf9d2c8d8039e1eb79a8fa31db70",
+        "name": "test_local_worktree_guard",
+        "time_sha256": "5c8d77e2c5356a6407915f501d58851abd202995982010ec2ea076d0c673bc1e"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "af393c1fdd2a178e46246368d5a9957e648b69ef6cfe114c1ae7981f07d0358d",
+        "name": "test_stager_allowlist",
+        "time_sha256": "1803a19c8ebad75b39cd7058246939423cdd8565ac445ae2b028ccdfc052ae6b"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "d50a3aac34097ee99a81080f895af802144c2ec14d9a38d5e78a883c874f068e",
+        "name": "test_math_acceptance_index",
+        "time_sha256": "59ac7b0f8010f51292a0941c9cb750d3fc07a571d932b06b5907779c00746d5"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "cae5138372e4a555460fb196c7144174a760002b879f7d2c5abeeed5704f9451",
+        "name": "test_math_ladder_boundary_after",
+        "time_sha256": "bfbfd4ffd4131926fddfce7304ce01c08918dc7ec56ba9a9e7cd2158b494ae5e"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "f64c55ed9f210d80a9b248206104a47175faf5ec94a093e4ad132549209089fc",
+        "name": "rustc",
+        "time_sha256": "4f665481abc92db4ea7791d66a83c4568f5614a5ee1931d2f6ac8f6d59bd3265"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "fdb3f2fc57229bfd22c53064c26587a57a856e5ef3f9f5cd5e30d5af2c818a1d",
+        "name": "cargo",
+        "time_sha256": "7d7669aa96f16c0ea3eee2bda64ddd065d48bd0356102eb103767010a88b0373"
+      },
+      {
+        "exit_status": 1,
+        "log_sha256": "0a773a2e7ec7cb4bcd8acb687ab7ba314141d21068582469022b78ebea9b31ae",
+        "maxrss_kb": 12028,
+        "name": "full-stager-inventory",
+        "seconds": 0.6878221391234547,
+        "time_sha256": "ccc1084be9dead9928deba234244748fee43351742f8e946f08364e1cee04e98"
+      }
+    ],
+    "successful_prefix_count": 9,
+    "fresh_oracle_execution_reached": false,
+    "patch_execution_reached": false,
+    "not_reached": [
+      "domain-inventory",
+      "domain-focused",
+      "domain-all",
+      "core-inventory",
+      "core-focused",
+      "core-all"
+    ]
+  },
+  "failure": {
+    "actual_reconstructed_stagers": 3,
+    "exception": "ValueError: full stager filename inventory changed",
+    "expected_frozen_stagers": 70,
+    "extra_stagers": 0,
+    "kind": "FULL_STAGER_FILENAME_INVENTORY_MISMATCH",
+    "missing_filename_list_encoding": "Sorted UTF-8 basenames, one per line, with a final LF.",
+    "missing_filename_list_sha256": "2e41d2173a61560b471d99fa5ac0d7f3ef2e4e68ea160ed874508c3bba4b0484",
+    "missing_historical_stagers": 67,
+    "overlay_stagers": [
+      "stage_ladder_boundary_after.py",
+      "stage_ladder_boundary_before.py",
+      "stage_weyl_parent_seal.py"
+    ],
+    "parent_closure_unique_stager_basenames": 46,
+    "parent_harness_unique_stagers": 40,
+    "parent_source_stagers": 0,
+    "root_cause": "The v1 compute driver assumed that the accepted Rust source archive contained the 67 retired stage_*.py launchers. It contained none; the three-file overlay could not reconstruct the frozen 70-file inventory."
+  },
+  "inspection": {
+    "campaign_cas_objects_rehashed": true,
+    "ephemeral_workspace_absent": true,
+    "incoming_empty": true,
+    "inspected_at": "2026-10-01T06:52:55Z",
+    "installed_input_files": 27,
+    "installed_inputs_match_pin": true,
+    "installed_inputs_mode": "0444",
+    "installed_inputs_nlink": 1,
+    "pending_publication_files": 0,
+    "report_command_artifacts": 20,
+    "report_command_artifacts_rehashed": true,
+    "report_files": 2,
+    "report_files_mode": "0444",
+    "report_files_nlink": 1
+  },
+  "gate_reachability": {
+    "checker_preflight": "PASS",
+    "final_integrity": "NOT_REACHED",
+    "full_stager_inventory": "FAIL",
+    "parent_source_materialization": "PASS",
+    "production_patch": "NOT_REACHED",
+    "test_patch": "NOT_REACHED",
+    "toolchain_metadata": "PASS"
+  },
+  "limitations": [
+    "This is a harness provenance failure, not a Rust mathematical-result failure.",
+    "No root-ladder repair, mathematical correctness, performance, rank, or parallel-scaling claim is accepted.",
+    "This failed attempt creates no mathematical acceptance or acceptance-index row and cannot serve as an independent mathematical acceptance review; its failure evidence may still be independently inspected.",
+    "A changed-input successor must bind the exact 67 retired stager bytes independently of the accepted Rust source archive."
+  ],
+  "math": {
+    "after_regressions": "NOT_REACHED",
+    "full_suites": "NOT_REACHED",
+    "inventories": "NOT_REACHED"
+  },
+  "predecessor": {
+    "evidence_path": "tests/reference/hpc/math_ladder_boundary_before_v3_2026_10_01.json",
+    "evidence_sha256": "608e996acac10ea1bacca177468fcd83f3ec39c3e579899440e11aab674fc37f",
+    "job": "3873400",
+    "report_sha256": "51cc7a14a0dbb8188a4ea47705338e5689212bf1f707819bab8c4e5681e4052b",
+    "status": "LADDER_BOUNDARY_BEFORE_ACCEPTED"
+  },
+  "schema": "atlas-ladder-boundary-after-inspection-v1",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-after-v1",
+  "status": "HARNESS_FAILURE"
+}

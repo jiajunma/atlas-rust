@@ -1,0 +1,192 @@
+{
+  "schema": "atlas-math-acceptance-index-v1",
+  "entries": [
+    {
+      "sequence": 1,
+      "entry_id": "0001-finite-rank1-av-ann-anchor",
+      "previous_entry_sha256": null,
+      "entry_sha256": "f63e9ba784ef200664444d91a046b289017aba45cd05878310d77813fe9bf534",
+      "supersedes": [],
+      "operation": "av_ann",
+      "claim_id": "sl2_finite_module_av_ann_zero_orbit",
+      "acceptance": "accepted",
+      "status": "math_pass",
+      "source": {
+        "kind": "canonical_source_files_v1",
+        "sha256": "6f68911664cf4f0e15b2834e94bbb0d58ce4c030d90cabf9b22578bc0663c83b",
+        "evidence": {
+          "file": "tests/reference/hpc/math_full_deform_after_2026_09_30.json",
+          "sha256": "beeb3e280738d528460e1935c00861c8540afe37e89c59f04773ffb2cd817226",
+          "json_pointer": "/source_files"
+        }
+      },
+      "report": {
+        "file": "tests/reference/hpc/math_cycle_rank1_2026_09_30.json",
+        "sha256": "a83efb1bec546be8635d0f9a5aad895b5a5d0d1946ed2f02f04dee573872f077"
+      },
+      "review_evidence": {
+        "file": "tests/reference/hpc/math_cycle_rank1_review_2026_09_30.json",
+        "sha256": "5c366f5ca96729e2d23075320a18aad48b011dcf3d8ae4a8b758f5ba8673e63f"
+      },
+      "scope": {
+        "collection_pointer": "/results",
+        "where": [
+          {
+            "pointer": "/case/id",
+            "values": [
+              "av_ann_rank1_finite_cycle"
+            ]
+          },
+          {
+            "pointer": "/status",
+            "values": [
+              "FINITE_ANCHOR_MATCH"
+            ]
+          }
+        ],
+        "id_pointer": "/case/id",
+        "count": 1,
+        "ordered_ids_sha256": "22e93eb8ce15429ce6322cc1b93cdc20cbfd169d0b10fbca60eedf2165c45bbf"
+      },
+      "assertions": [
+        "annihilator_orbit_dimension_zero",
+        "complete_tail_equal",
+        "finite_module_dimensions_1_2_3_5",
+        "gk_dimension_zero"
+      ],
+      "limitations": [
+        "finite_dimensional_rank1_only",
+        "not_generic_annihilator_variety",
+        "not_higher_rank",
+        "startup_prefix_not_equal"
+      ]
+    },
+    {
+      "sequence": 2,
+      "entry_id": "0002-finite-rank1-point-cycle-anchor",
+      "previous_entry_sha256": "f63e9ba784ef200664444d91a046b289017aba45cd05878310d77813fe9bf534",
+      "entry_sha256": "e44a8b6d8ed6d2a7781ca9f9e2ba4b2e57c06f118a5a288d7a61c0d77d022c6c",
+      "supersedes": [],
+      "operation": "associated_cycle",
+      "claim_id": "sl2_finite_module_point_cycle_multiplicity",
+      "acceptance": "accepted",
+      "status": "math_pass",
+      "source": {
+        "kind": "canonical_source_files_v1",
+        "sha256": "6f68911664cf4f0e15b2834e94bbb0d58ce4c030d90cabf9b22578bc0663c83b",
+        "evidence": {
+          "file": "tests/reference/hpc/math_full_deform_after_2026_09_30.json",
+          "sha256": "beeb3e280738d528460e1935c00861c8540afe37e89c59f04773ffb2cd817226",
+          "json_pointer": "/source_files"
+        }
+      },
+      "report": {
+        "file": "tests/reference/hpc/math_cycle_rank1_2026_09_30.json",
+        "sha256": "a83efb1bec546be8635d0f9a5aad895b5a5d0d1946ed2f02f04dee573872f077"
+      },
+      "review_evidence": {
+        "file": "tests/reference/hpc/math_cycle_rank1_review_2026_09_30.json",
+        "sha256": "5c366f5ca96729e2d23075320a18aad48b011dcf3d8ae4a8b758f5ba8673e63f"
+      },
+      "scope": {
+        "collection_pointer": "/results",
+        "where": [
+          {
+            "pointer": "/case/id",
+            "values": [
+              "av_ann_rank1_finite_cycle"
+            ]
+          },
+          {
+            "pointer": "/status",
+            "values": [
+              "FINITE_ANCHOR_MATCH"
+            ]
+          }
+        ],
+        "id_pointer": "/case/id",
+        "count": 1,
+        "ordered_ids_sha256": "22e93eb8ce15429ce6322cc1b93cdc20cbfd169d0b10fbca60eedf2165c45bbf"
+      },
+      "assertions": [
+        "complete_tail_equal",
+        "derived_point_orbit_support",
+        "finite_module_dimension_derivation",
+        "point_cycle_multiplicities_1_2_3_5"
+      ],
+      "limitations": [
+        "derived_not_interpreter_cycle_output",
+        "finite_dimensional_point_orbit_only",
+        "not_generic_associated_cycle",
+        "not_higher_rank"
+      ]
+    },
+    {
+      "sequence": 3,
+      "entry_id": "0003-a1-torus-root-coroot-ladder-boundary",
+      "previous_entry_sha256": "e44a8b6d8ed6d2a7781ca9f9e2ba4b2e57c06f118a5a288d7a61c0d77d022c6c",
+      "entry_sha256": "1628ee21c71a91376a02982c38404cee958cb6183c57f791a42c4a668a1efc12",
+      "supersedes": [],
+      "operation": "root_ladder",
+      "claim_id": "a1_torus_root_coroot_ladder_coordinate_boundary",
+      "acceptance": "accepted",
+      "status": "math_pass",
+      "source": {
+        "kind": "canonical_source_files_v1",
+        "sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+        "evidence": {
+          "file": "tests/reference/hpc/math_ladder_boundary_after_v3_report_2026_10_01.json",
+          "sha256": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c",
+          "json_pointer": "/source_files"
+        }
+      },
+      "report": {
+        "file": "tests/reference/hpc/math_ladder_boundary_after_v3_report_2026_10_01.json",
+        "sha256": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c"
+      },
+      "review_evidence": {
+        "file": "tests/reference/hpc/math_ladder_boundary_after_v3_index_review_2026_10_01.json",
+        "sha256": "3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58"
+      },
+      "scope": {
+        "collection_pointer": "/commands",
+        "where": [
+          {
+            "pointer": "/name",
+            "values": [
+              "core-focused",
+              "domain-focused"
+            ]
+          },
+          {
+            "pointer": "/exit_status",
+            "values": [
+              0
+            ]
+          }
+        ],
+        "id_pointer": "/name",
+        "count": 2,
+        "ordered_ids_sha256": "38cb6b3bd9f184c50ab4698e7e514ea2fee89ace05a60363c2e431dd24246c16"
+      },
+      "assertions": [
+        "captured_original_accepts_11_cases_22_rows",
+        "coroot_ladder_coordinate_boundary_kernel_passes",
+        "full_atlas_core_lib_suite_passes_630",
+        "full_atlas_real_group_lib_suite_passes_521",
+        "root_ladder_coordinate_boundary_kernel_passes",
+        "rust_complete_stream_matches_captured_original",
+        "tests_first_three_regressions_failed_before_fix"
+      ],
+      "limitations": [
+        "a1_plus_central_torus_coordinate_boundary_fixture_only",
+        "after_job_did_not_rerun_the_original_oracle",
+        "not_generic_root_system_correctness",
+        "not_higher_rank",
+        "not_klv_unitarity_hodge_associated_cycle_or_av_ann",
+        "not_performance_or_parallel_acceptance",
+        "rust_full_suites_are_regression_guards_not_oracle_proofs"
+      ]
+    }
+  ]
+}

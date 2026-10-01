@@ -1,0 +1,155 @@
+{
+  "schema": "atlas-local-worktree-registry-v1",
+  "max_active_task_worktrees": 1,
+  "worktrees": [
+    {
+      "path": "/home/hoxide/mycodes/atlas-rust",
+      "branch": "refs/heads/codex/math-benchmark-suite",
+      "status": "PRIMARY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-coroot-coordinate-repair",
+      "head": "a2af0e79061ffe5a627ddf62b7e284ffd5b8cb7e",
+      "branch": "refs/heads/codex/coroot-coordinate-repair",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-cycle-foundation-repair",
+      "head": "5e567112bec8658b83d52794af4aa5f643737f7b",
+      "branch": "refs/heads/codex/cycle-foundation-repair",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-deform-bucket-audit",
+      "head": "2216d5ca515b410ef235c39040cc36c8ea1056cd",
+      "branch": "refs/heads/codex/deform-bucket-audit",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-deform-groups-parallel",
+      "head": "e49c0a2aea41bf58a7d2a5fa2c08b0ad2628d3fb",
+      "branch": "refs/heads/codex/deform-groups-parallel",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-deform-primitive-groups",
+      "head": "35f927abae1fcabc4aa78e871f1fcce6bc82cde5",
+      "branch": "refs/heads/codex/deform-primitive-groups",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-deform-target-audit",
+      "head": "7443757405cdd2218ff9c1afec46775dff4f3f64",
+      "branch": "refs/heads/codex/deform-target-audit",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-dispatch-s1-wt",
+      "head": "d2bc0e1426e0d65544233d9a0f3f1eb47651f43b",
+      "branch": "refs/heads/codex/dispatch-s1",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-dispatch-s2-wt",
+      "head": "bd9d61a698cd7eb1e555e02e2d8fe5a878d09f3e",
+      "branch": "refs/heads/codex/dispatch-s2",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-kl-exact-reserve",
+      "head": "e38b365eed9d2aea051a62cea6f4cbbe3750e0c4",
+      "branch": "refs/heads/codex/kl-exact-reserve",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-kl-prefix-storage",
+      "head": "ea9f7092f1c9176cec04b9a2d5b4f5bacb4bfe26",
+      "branch": "refs/heads/codex/kl-prefix-storage",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-kl-retained-memory",
+      "head": "8ce8e9f1e5806be0d7df88d92da06cf953aab33a",
+      "branch": "refs/heads/codex/kl-retained-memory",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-mu-fiber-audit",
+      "head": "208a9f2e20a1034824cacedb3e1d445d29727211",
+      "branch": "refs/heads/codex/mu-fiber-audit",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-mu-fiber-prototype",
+      "head": "b4714c3b3d3fee9b800d1f16f9700af867f83d19",
+      "branch": "refs/heads/codex/mu-fiber-prototype",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-pfor-wt",
+      "head": "a976445b7e9ab96fc422195189809611232c4834",
+      "branch": "refs/heads/agent-dispatch-s0",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-recursion-operands-audit",
+      "head": "f048d47f73238c032a1d833e546f07311d03a9e6",
+      "branch": "refs/heads/codex/recursion-operands-audit",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-recursion-operands-reuse",
+      "head": "a27b6f8d56fb84b84c8be67a62a81b9e86b50136",
+      "branch": "refs/heads/codex/recursion-operands-reuse",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-rust-avopt",
+      "head": "5a2c17bdc08529496eed3ce6bc50b80520e9ae9f",
+      "branch": "refs/heads/agent-evalmemo",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-rust-avopt-shardunit",
+      "head": "7625055c5ac3dbfa6c2f438cf75b9999509fa467",
+      "branch": "refs/heads/agent-shardunit",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-torus-shape-repair",
+      "head": "b7cd5646ff6bf46c22c9b084f001efb9bd5f52f7",
+      "branch": "refs/heads/codex/torus-shape-repair",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-trace-lines-wt",
+      "head": "5e8808009b51ee0c67309993988b398eaa4c8050",
+      "branch": "refs/heads/codex/trace-source-lines",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-unitary-d5-wt",
+      "head": "b4bb996253438444a25dc4e422841490f29d9b43",
+      "branch": "refs/heads/codex/pgo-avann-refresh",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-unitary-singular-cayley",
+      "head": "803f5a3f632dc0e4ec2657141d6e6fb7ed41d78e",
+      "branch": "refs/heads/codex/unitary-singular-cayley",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-wcell-cost-audit",
+      "head": "9a8a8d958e78e375a1e082d14929d1785205dfd8",
+      "branch": "refs/heads/codex/wcell-cost-audit",
+      "status": "LEGACY"
+    },
+    {
+      "path": "/home/hoxide/mycodes/atlas-weyl-value-compact",
+      "head": "766b862913da5133ee0d5800e0e766f529d7f6ce",
+      "branch": "refs/heads/codex/weyl-value-compact",
+      "status": "LEGACY"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{ Provisional original capture: zero-orbit support alone cannot test cycle
+  multiplicity. For finite-dimensional M, the constant good filtration gives
+  AC(M)=dim(M)[{0}]. This derived finite-module anchor is NOT a general
+  associated-cycle builtin or a multiplicity for U(g)/Ann(M). }
+<groups.at
+<finite_dimensional.at
+<associated_variety_annihilator.at
+set G=SL_R(2)
+prints("MATH_BEGIN av_ann_rank1_finite_cycle")
+prints("FC1_GROUP|",G,"|",root_datum(G))
+for m in [0,1,2,4] do
+ let p=finite_dimensional(G,[m]) in
+ prints("FC1_PARAM|",m,"|",p,"|",is_final(p),"|",is_finite_dimensional(p));
+ assert(is_final(p),"finite-dimensional anchor must be final");
+ assert(is_finite_dimensional(p),"finite-dimensional constructor contract");
+ let d=dimension(p), o=associated_variety_ann(p), oi=associated_variety_ann_ind(p) in
+ prints("FC1_DIMENSION|",m,"|",d,"|EXPECTED|",m+1);
+ assert(d=m+1,"SL2 Sym^m has dimension m+1");
+ prints("FC1_ANN_RESTRICTION|",m,"|",o,"|",o.H,"|",o.diagram,"|",o.dim_nilpotent);
+ prints("FC1_ANN_INDUCTION|",m,"|",oi,"|",oi.H,"|",oi.diagram,"|",oi.dim_nilpotent);
+ assert(o.root_datum=root_datum(G),"annihilator datum mismatch");
+ assert(oi.root_datum=o.root_datum,"annihilator routes disagree on datum");
+ assert(o.H=oi.H,"annihilator routes disagree on orbit");
+ assert(o.diagram=oi.diagram,"annihilator routes disagree on diagram");
+ assert(o.dim_nilpotent=0 and oi.dim_nilpotent=0,"finite module has zero annihilator variety");
+ prints("FC1_GK_DIM|",m,"|",GK_dim(p));
+ assert(GK_dim(p)=0,"finite module has GK dimension zero");
+ prints("FC1_AC_POINT_MULTIPLICITY_DERIVED|",m,"|",d);
+ prints("FC1_CHARACTER_FORMULA|",m,"|",character_formula(p));
+ prints("FC1_END_PARAM|",m)
+od
+prints("FC1_RECOVERY|",701)
+prints("MATH_END av_ann_rank1_finite_cycle")
+quit

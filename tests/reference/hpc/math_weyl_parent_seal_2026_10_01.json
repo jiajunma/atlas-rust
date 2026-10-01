@@ -1,0 +1,95 @@
+{
+  "accounting": {
+    "elapsed": "00:33:40",
+    "end": "2026-10-01T12:00:09",
+    "exit_code": "0:0",
+    "job": "3872554",
+    "node": "cu034",
+    "start": "2026-10-01T11:26:29",
+    "state": "COMPLETED"
+  },
+  "closure": {
+    "file_count": 33143,
+    "logical_bytes": 1349375639,
+    "manifest_sha256": "444f2f6c9f073b95f436072c2d29e77f012408e9c7813d554814035d4ad2c1bc",
+    "unique_bytes": 738846312,
+    "unique_object_count": 4355
+  },
+  "inspection": {
+    "campaign_stage_count": 1,
+    "campaign_submission_count": 1,
+    "checker_tests": 64,
+    "command_count": 12,
+    "ephemeral_workspace_absent": true,
+    "harness_manifest_files": 341,
+    "inspected_at": "2026-10-01T04:14:38Z",
+    "legacy_directory_absent": true,
+    "legacy_gate_logs_sha256_equal": true,
+    "payload_copies_match": true,
+    "payload_files": 14,
+    "report_artifact_hashes_match": true,
+    "report_has_error": false,
+    "report_has_cleanup_error": false,
+    "seal_and_source_cas_objects_rehashed": true,
+    "seal_top_level_fields": 24,
+    "sibling_stage_absent": true,
+    "source": "Independent read-only SSH inspection; large result payloads were not copied locally."
+  },
+  "inventories": {
+    "core_count": 629,
+    "core_sha256": "d14812d037526cea52bce0b2358ffbafe1edfad6a7fe2e3dd067dce913973e84",
+    "domain_count": 519,
+    "domain_sha256": "3812b0c29789dee7a44bfb5ad2c72749a630636ac5f648765a4a6a949ac541f2",
+    "source_file_count": 1558,
+    "source_manifest_sha256": "b027eee2efe72d0f8a20848f99cd6368c29e3884ce9be16a2e7b5c63577dd0da"
+  },
+  "limitations": [
+    "This accepts only the path-independent infrastructure migration and retained historical gate.",
+    "It is not a new mathematical, rank, performance, parallel-scaling, or root-ladder repair acceptance.",
+    "The retained root-ladder boundary remains an original-accepted Rust-positive difference."
+  ],
+  "report": {
+    "ephemeral_workspace_verified": true,
+    "integrity_rechecked": true,
+    "legacy_gate_runs": 2,
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-parent-seal-v1/results/3872554/report.json",
+    "schema": "atlas-weyl-parent-seal-migration-v1",
+    "sha256": "939482542c123a6a2a2c22f8dbe1e052af20dee3af4010da780fe958dc41bf79",
+    "status": "WEYL_CONTEXT_PARENT_SEALED",
+    "trace_sets_equal": true
+  },
+  "schema": "atlas-weyl-parent-seal-inspection-v1",
+  "seal": {
+    "archival_closure_verified": true,
+    "bytes": 12488095,
+    "capture_statuses": [
+      "ORIGINAL_PROVISIONAL_INTENT_NOT_CONFIRMED",
+      "ORIGINAL_HISTORY_INCOMPLETE",
+      "RUST_POSITIVE_DIFFERENCE"
+    ],
+    "legacy_gate_runs": 2,
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-parent-seal-v1/results/3872554/seal.json",
+    "role": "weyl-parent-seal",
+    "schema": "atlas-weyl-context-parent-seal-v1",
+    "sha256": "db67234c0d67dbd6a6f0327386dd113b6093d25a46569710c33dfc8bc482cdcb",
+    "status": "WEYL_CONTEXT_PARENT_SEALED",
+    "trace_sets_equal": true
+  },
+  "source_object": {
+    "bytes": 37672960,
+    "files": 1558,
+    "role": "rust-source",
+    "sha256": "5133bb32da7e5a92775d5f56ea2035680c363b40f085a8af95eaeebfdbc4536b",
+    "source_bytes": 36438334
+  },
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-parent-seal-v1",
+  "status": "WEYL_CONTEXT_PARENT_SEAL_ACCEPTED",
+  "submission": {
+    "intent_sha256": "0c2a6b6b13404a7a4583c4f1f2c35c32d1ba07924a44b1cb12f4b05be83c5147",
+    "ledger_sha256": "97690b3555a0bc70050240a2499e7781b33b4f8e1c968356f861f24e10e1c706",
+    "overrides_manifest_sha256": "0aac6e735c0ae7c7e0da4773c46e0d8f116b92b68a73797b05e886ea342a2620",
+    "pin_sha256": "b52e91d827f39b7d290ab0447f82e251e979e46fdd440b61371fd5599973cf96",
+    "queue_before": [],
+    "receipt_sha256": "6ced68fcf857ab4df3a5d12eb1f603e1a4257c18b4e23de11108dbb8bd7d6742"
+  }
+}

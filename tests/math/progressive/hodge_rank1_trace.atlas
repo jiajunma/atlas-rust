@@ -1,0 +1,24 @@
+{ New diagnostic companion, not a replacement for the retained bounds4/12
+  full fixture. Each bound runs in a fresh process, preserving later probes
+  when one branch call fails. Original scripts are unchanged. }
+<groups.at
+<hodge_test.at
+hodge_test_verbose:=false
+set G=SL_R(2)
+set p=trivial(G)
+prints("MATH_BEGIN @ID@")
+prints("HODGE_TRACE_PARAMETER|",p,"|BOUND|",@BOUND@)
+prints("HODGE_TRACE_GRADING_STD|",rearrange(hodge_grading_std(p)))
+prints("HODGE_TRACE_GRADING_IRR|",rearrange(hodge_grading_irreducible(p)))
+prints("HODGE_TRACE_BRANCH_STD|",rearrange(hodge_branch_std(p,@BOUND@)))
+prints("HODGE_TRACE_STD_BACK_TRACE|",back_trace)
+prints("HODGE_TRACE_RECOVERY|",653)
+prints("HODGE_TRACE_BRANCH_IRR|",rearrange(hodge_branch_irr(p,@BOUND@)))
+prints("HODGE_TRACE_IRR_BACK_TRACE|",back_trace)
+prints("HODGE_TRACE_RECOVERY|",659)
+set (checks,passed)=hodge_test(p,@BOUND@)
+prints("HODGE_TRACE_SPECIALIZATION_BACK_TRACE|",back_trace)
+prints("HODGE_TRACE_SPECIALIZATIONS|",checks,"|",passed)
+prints("HODGE_TRACE_RECOVERY|",661)
+prints("MATH_END @ID@")
+quit

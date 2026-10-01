@@ -1,0 +1,22 @@
+{
+  "hpc/campaign_blob.py": "47e8dfb10a01513257905134dfaf6f91e73fc4337a2923d4bbd22c28a9220c52",
+  "hpc/campaign_source.py": "8190efa28e74589d03b220c183fa87bdabcb6ce76f7bb2cd7d0947defcc71dc9",
+  "hpc/campaign_workspace.py": "e63384bcdd4f4c19512f3c1e9490dad925d564373a1af376e2860078ddaed531",
+  "hpc/math_ladder_boundary_before.py": "8ae78bc90b4004d85bda6d88dcd0aca87cfbdc312328f4b3e81aa390b073cb73",
+  "hpc/math_ladder_boundary_before.sbatch": "05f71204a620709f26ee5cfe130dff3c8945a81bb6973bd136028ca73fee7ae2",
+  "hpc/patches/ladder_boundary_tests.patch": "69676d60b16591851570f58bc62ddc3bfe3a80b0ec6dad64a8eff36a9f777ca9",
+  "hpc/progressive_submit.py": "7f403f01a009312b0b82db89583d84e12f3d999d611b513b281d6fde782de7da",
+  "hpc/stage_ladder_boundary_before.py": "15762fb2a1d87a779e4c7a4695f619c9ed79dbb7c22074ab313882748df5ddc3",
+  "hpc/stage_weyl_parent_seal.py": "f1c3567ab620269c3836bdc624b9573cc89d519944bfe00a7c24e859fe387fc4",
+  "hpc/test_campaign_blob.py": "5e4f1af47a659bc784705d58431ad3fd8b511bf8a69379c17040039f6dd40f3d",
+  "hpc/test_campaign_source.py": "1efd985974ab5a30e9adc2c564a29f9948ceb7c2899e6f45f9962bd38f0f78e2",
+  "hpc/test_campaign_workspace.py": "989c056bc45736f746f6951dd72de1e330c8a401afa21f1e54b9de2c564aff46",
+  "hpc/test_math_acceptance_index.py": "bcb6cede98b38646aee2c4a6e83304fa3731bd78dd7c5dc2c5070523bf37851f",
+  "hpc/test_math_ladder_boundary_before.py": "215196fe14a4c31f101934e137a34e9b864e47e3d5ff5dad0c5421a2dda378df",
+  "hpc/test_stager_allowlist.py": "ef5bad428e142f0171e9b8fe99717dde2f99966bb2951fe08117b74ac57564a6",
+  "hpc/weyl_parent_seal.py": "fb9fd81b21e8bb99e673d4c5d7472b44d4805974394845e6d86f3c41355ecfb4",
+  "tests/reference/hpc/math_acceptance_index_2026_10_01.json": "7bf44311a98e5164cbbbb1eb02144c308b1839d54676f1c40b698095c71592b2",
+  "tests/reference/hpc/math_cycle_rank1_2026_09_30.json": "a83efb1bec546be8635d0f9a5aad895b5a5d0d1946ed2f02f04dee573872f077",
+  "tests/reference/hpc/math_cycle_rank1_review_2026_09_30.json": "5c366f5ca96729e2d23075320a18aad48b011dcf3d8ae4a8b758f5ba8673e63f",
+  "tests/reference/hpc/math_full_deform_after_2026_09_30.json": "beeb3e280738d528460e1935c00861c8540afe37e89c59f04773ffb2cd817226"
+}

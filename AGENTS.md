@@ -154,6 +154,162 @@ Codex terminal tools and the existing local Kimi account.
    that it fails before the fix and passes after it. If the fix is deferred,
    keep the case explicitly tracked as failing; do not remove or weaken it.
 
+8. **At most 10 HPC jobs; increase rank only after smaller cases pass.** The
+   user's 2026-09-30 directive supersedes earlier bulk-array, quota-sized
+   shard and speculative dependency-chain submission practices. Submit no
+   more than 10 jobs per batch, and keep this Atlas project's total outstanding
+   jobs (pending/running/configuring/completing, including reviews/builds)
+   at or below 10. Ten is a ceiling, not a target: prefer one focused job
+   for the current smallest unverified mathematical gate. Count every array
+   task as a job: `--array=0-99%2` is 100
+   submitted jobs, NOT 2. Reconcile existing and uncertain submissions before
+   sending more; a failed status query does not create free slots. Never
+   prequeue later-rank batches behind dependencies. Start with small groups,
+   inspect complete original-backed results, repair failures and verify the
+   same regressions, then increase rank one step at a time. If a smaller-rank
+   case fails, stop escalation until its regression passes against the oracle.
+   A build/checker pass or inventory-only match does not qualify a higher mathematical
+   operation for escalation. Keep the comprehensive catalog as a backlog,
+   not a license to submit all cases. Do not cancel unrelated user jobs.
+   New single-job launchers use `hpc/progressive_submit.py`: expanded queue
+   count, shared submission lock, durable fail-closed intent, no arrays or
+   dependencies. Its submission boundary rejects every legacy top-level stage;
+   old stagers are read-only historical evidence, not executable launchers.
+   Parent-seal job3872554 is FINAL and independently inspected. Its launcher is
+   now closed. Ladder v2 job3872594 failed only its checker preflight and is
+   immutable; corrected BEFORE v3 job3873400 is FINAL and accepted in its
+   tests-first scope. Both ladder BEFORE/AFTER launchers are now disabled;
+   AFTER v3 job3875239 is FINAL and accepted. The sole enabled launcher is the
+   idempotent acceptance-index publication stager
+   `stage_ladder_boundary_index.py`, bound to FINAL job3879103 and its exact
+   existing stage. Reinvocation may only validate or recover that same durable
+   receipt; it must not submit a duplicate or create a sibling.
+   Every old direct
+   `sbatch` and pre-campaign `submit_one` entry point must fail before parsing,
+   copying, creating directories, writing pins or contacting SLURM.
+   This does not retrofit historical bulk launchers. Every operation needs its
+   own smaller-rank acceptance before escalation.
+   Preserve explicit scheduler rejections separately from uncertain replies:
+   Hodge R1's1CPU/8GiB request was rejected (4GiB allowed), then fresh queue
+   and accounting checks proved no job existed. Its exact intent/error were
+   archived before a fresh2CPU/8GiB stage was accepted. Never release an
+   uncertain intent merely because a query timed out or the queue is empty.
+9. **One bounded campaign tree; generated build trees are disposable.** Do
+   not create a new top-level `/public/home/majj/atlas-*` directory for every
+   probe, before/after gate, retry or profile. New work belongs below one dated
+   `/public/home/majj/atlas-rust-campaign-YYYYMMDD/stages/<stage>` tree and all
+   stages share its submission ledger. `YYYYMMDD` is the campaign creation
+   date, not a daily rotation rule: reuse the same active campaign across
+   midnight and retries instead of creating another top-level directory.
+   The current validator pins the exact active root
+   `atlas-rust-campaign-20260930`; opening a later campaign requires an
+   explicit reviewed lifecycle transition after this campaign is sealed.
+   A reconnect, retry or resubmission with the same input pin and manifest
+   reuses the exact same logical stage path. An uncertain network or scheduler
+   reply never creates a `-retry`, `-r2` or fresh stage. A new stage is allowed
+   only when input bytes actually change, after recording its predecessor,
+   changed digest/reason, retention class and retirement condition.
+   Expanded source trees, Cargo `target`
+   trees and profile build trees live in the exact job's node-local or
+   auto-cleaned temporary workspace; they are never durable evidence. Retain
+   the pin/report and checksum, fixtures, original/candidate raw streams,
+   diagnostics, timing/RSS, exact patch, source manifest and only binaries or
+   source archives explicitly required by a downstream gate. A downstream
+   gate must be reconstructible from those durable inputs; do not make it
+   depend on a historical extracted source tree or Cargo cache merely because
+   an absolute path is convenient. Historical harnesses that still contain
+   retired launchers may be durable only as opaque content-addressed archives;
+   expand them solely inside an auto-cleaned compute workspace. Read-only mode
+   is not an execution boundary because `python old_stager.py` remains
+   runnable. Never remove historical directories in
+   bulk: first inventory live jobs, unresolved submission intents, report
+   references, uncommitted worktrees and unique commits. See
+   `docs/slices/hpc_artifact_retention_2026-09-30.md`.
+   Local `/tmp` is not an evidence store. Temporary clones, extracted source,
+   transport packages and capture/result bundles must use context-managed
+   directories and be removed before handoff. The only exception is one
+   explicitly registered active handoff transport whose exact path, owner,
+   file manifest, hashes and retirement event are recorded in `docs/HANDOFF.md`.
+   Do not accumulate suffix-named revisions, or retain both a reconstructible
+   Git checkout/extracted tree and its archive merely for convenience. Treat
+   the existing `/tmp/atlas*` inventory as frozen legacy backlog, not as
+   permission to create another path; every handoff lists each temporary path
+   created during the task as removed or registered.
+   Local Git worktrees follow the same lifecycle rule. Parallel agents default
+   to the shared primary worktree with non-overlapping file ownership; they do
+   not create worktrees as concurrency slots. No new local worktree is
+   authorized under the current registry schema: every ACTIVE row is rejected,
+   regardless of the LEGACY count, and the old `precreate` command is hard
+   disabled before it reads registry, Git or filesystem state. A later
+   transition must first
+   implement and HPC-verify a durable receipt-bound creator, then obtain
+   explicit user authorization for at most one ACTIVE task-scoped worktree
+   repository-wide when checkout isolation is demonstrably required and no
+   existing checkout can be reused. Record its exact path, branch, starting
+   commit, owner, purpose and retirement condition before creation. A retry or
+   follow-up reuses that worktree and never gets a new directory. The owning
+   task is not complete until tracked, untracked and ignored state, commit
+   reachability and active-use status are handed off.
+   Passing those checks only makes the exact directory retirement-eligible;
+   remove it only after explicit user authorization for that path. Worktree
+   removal never authorizes branch or commit deletion. The machine-readable
+   source of truth is `docs/worktree_registry.json`; prose is not a registry.
+   The 24 audited LEGACY `(path, HEAD, branch)` identities are frozen exactly in
+   `hpc/local_worktree_guard.py`. Until a separate receipt-bound retirement
+   schema is implemented and HPC-verified, the registry may neither retire,
+   add nor replace a LEGACY identity. Adding a matching registry row after a
+   raw worktree creation, or deleting a row together with its directory, is not
+   authorization and must fail.
+   Before editing or delegation and again before handoff, run the read-only
+   local Git preflight `python3 hpc/local_worktree_guard.py check`. Any extra,
+   missing, detached, locked, prunable or drifted worktree is a stop condition;
+   never auto-prune, repair or remove it. Normal checks sample registry, Git and
+   the fixed `/home/hoxide/mycodes/atlas*` sibling namespace twice, require real
+   no-follow directories with the expected `.git` type, and reject changes
+   between samples. This remains detection rather than an atomic creation lock.
+   `precreate` is disabled and produces no usable result. PRIMARY pins path and
+   branch but deliberately not HEAD,
+   because committing the registry advances that HEAD; LEGACY and ACTIVE rows
+   pin exact HEADs. This is a cooperative fail-closed authorization and
+   detection boundary, not an operating-system interception of raw
+   `git worktree add`. Running raw worktree-creation commands is forbidden; an
+   unregistered path still present in the managed namespace is detected at the
+   next mandatory check, and all work
+   stops without automatic cleanup.
+10. **Mathematical acceptance is an append-only, independently reviewed
+    decision.** The machine-readable ledger starts at
+    `tests/reference/hpc/math_acceptance_index_2026_10_01.json`. Keep evidence
+    maturity (`accepted` versus `review_pending`) separate from result class
+    (`math_pass`, `inventory_only`, failures, rejections and timeouts). Only
+    the latest unsuperseded state of a stable `claim_id` may release the next
+    rank or operation gate, and only when it is `accepted + math_pass`. The
+    broad `operation` groups independent scopes; it is never a supersession
+    lineage. Same-operation claims may coexist, while `supersedes` may point
+    only within one `claim_id` and must include that claim's latest entry. An
+    entry of either maturity requires a registered `(claim_id, status)`
+    contract and capture validator, so a pending row cannot relabel arbitrary
+    evidence. `accepted` may describe a reviewed non-pass outcome, but it
+    additionally requires a claim-specific independent-review validator. An
+    execution report cannot review itself: acceptance requires a distinct
+    machine-readable review that binds the exact source evidence, report hash,
+    operation, selected case IDs, assertions and limitations. A FINAL status,
+    exit zero, checker count, hash-only reference, compiled inventory or prose
+    review is insufficient. Never edit, delete or reorder published ledger
+    entries; append a hash-chained superseding entry. Every published suffix
+    also appends its exact `(length, head)` to the checker's frozen prefix
+    checkpoints without removing an older checkpoint; default validation must
+    reject an uncheckpointed tail, which is a draft rather than a published
+    decision. A bounded finite anchor
+    never becomes generic associated-cycle, AV-ann, KLV, unitarity or Hodge
+    acceptance by inference.
+11. **A completed subtask ends in evidence, report, handoff, commit and push.**
+    Do not call a subtask complete while its required HPC verification is
+    missing or failing. After independent inspection, write a durable report
+    or evidence record, update `docs/HANDOFF.md` and the relevant indexed
+    status/design document, make a focused conventional commit, and push that
+    exact branch to its configured remote. Never stage unrelated user changes,
+    never push unverified code as transport, and record a failed push as an
+    open handoff blocker rather than silently treating the task as delivered.
 ## Repository map
 
 - `crates/atlas-core`: lexer, parser, AST, values, evaluator, domain traits,

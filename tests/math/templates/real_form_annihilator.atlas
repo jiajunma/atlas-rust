@@ -1,0 +1,18 @@
+<groups.at
+<nilpotent_orbits.at
+<associated_variety_annihilator.at
+set G=@FORM@
+set rd=root_datum(G)
+set p=trivial(G)
+prints("MATH_BEGIN @ID@")
+prints("GROUP",G,"FORM_NAME",form_name(G))
+set zero=associated_variety_ann(p)
+assert(zero.dim_nilpotent=0,"trivial module must have zero dimensional annihilator variety")
+for q in [p,p*0,p*(1/2),p*3] do
+ let o=associated_variety_ann(q) in
+ assert(o.root_datum=rd,"annihilator variety root datum mismatch");
+ prints("PARAMETER",q,"gamma",infinitesimal_character(q));
+ prints("ORBIT",o,"H",o.H,"diagram",o.diagram,"dimension",o.dim_nilpotent);
+ prints("ORBIT_ROOTS",o.root_datum.simple_roots,"ORBIT_COROOTS",o.root_datum.simple_coroots)
+od
+prints("MATH_END @ID@")

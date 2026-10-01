@@ -94,6 +94,55 @@ Kimi-derived coding lesson or acceptance is claimed. The prior storage failure
 remains undiagnosed; `KIMI_CODE_HOME` moves credentials/configuration as well as
 logs. No temporary paths, transports or worktrees were created by this research.
 
+## Bounded Atlas directory lifecycle — 2026-10-01
+
+The directory explosion was an orchestration error, not an Atlas requirement:
+agents and probes treated isolation as permission to create permanent sibling
+worktrees or top-level HPC stages, retries acquired suffix directories, and
+expanded source/Cargo targets were retained without an owner or retirement
+condition. The audit found one local PRIMARY plus 24 linked LEGACY worktrees,
+141 `/tmp/atlas*` entries and 318 HPC top-level `atlas-rust*` directories. No
+cleanup was performed: eight secondary worktrees are dirty, one otherwise
+Git-clean worktree retains ignored evidence, and even the 15 strict clean
+candidates need reachability/use checks plus explicit path-by-path user
+authorization before removal.
+
+The source of truth is now `docs/worktree_registry.json`: one PRIMARY, 24
+frozen LEGACY identities and zero ACTIVE entries. The read-only
+`hpc/local_worktree_guard.py check` is mandatory before edits/delegation and
+handoff; it rejects missing, extra, moved, detached or identity-drifted entries
+and does not prune or repair them. New agents share the primary checkout with
+non-overlapping file ownership. No new worktree is authorized by the current
+schema, and adding a registry row after creation cannot launder one.
+
+New remote work stays below the single fixed campaign root
+`/public/home/majj/atlas-rust-campaign-20260930/stages/<stage>`. A retry reuses
+the exact logical stage; a changed input records a predecessor and new digest
+inside that root. Builds, expanded sources and Cargo targets are job-temporary.
+Durable evidence is limited to pins/manifests, reports, raw compared streams,
+diagnostics, timing/RSS and reconstructing patches. Only one reviewed launcher
+may be enabled at a time, and the project-wide outstanding-job ceiling remains
+10 with one focused job the default. The detailed retention contract is in
+`docs/slices/hpc_artifact_retention_2026-09-30.md`.
+
+The parent source/CAS seal was accepted in job 3872554; its report and CAS
+object identities are frozen by
+`tests/reference/hpc/math_weyl_parent_seal_2026_10_01.json`. The guard and
+directory-lifecycle checks then passed on a compute node as part of accepted
+ladder AFTER v3 job 3875239; the complete bounded evidence is in
+`tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json` and its
+companion report file. Acceptance-index publication job 3879103 subsequently
+passed its checker and topology gate without increasing the 318 top-level HPC
+directory count; its report is recorded in
+`tests/reference/hpc/math_ladder_boundary_index_v1_2026_10_01.json`. These runs
+validate the bounded infrastructure and ladder scope only; they do not release
+a higher rank or claim a new Weyl-cache speedup.
+
+The focused governance commit must be pushed before this correction is durable
+in a fresh checkout. Until an exact remote receipt is recorded, push delivery
+is an open handoff item, not a completed subtask. Historical directories remain
+frozen backlog and are not reusable stage names or implicit deletion targets.
+
 ## Current mathematical-validation frontier — 2026-09-28
 
 LATEST VERIFIED BUILD/UNIT CHECKPOINT: loop-constness repair3837799 at

@@ -1,0 +1,36 @@
+{ Regression-first:3855673 full trace shows original b,d=true but Rust false.
+  Isolate elementary v=1/v=s identities before the shared branching failure.
+  Keep both sides and all coefficients; no branch cutoff or sorting. }
+<groups.at
+<hodge_test.at
+hodge_test_verbose:=false
+set G=SL_R(2)
+set p=trivial(G)
+prints("MATH_BEGIN hodge_rank1_specialization")
+prints("HODGE_SPECIALIZATION_PARAMETER|",p)
+set cold_checks=[test_elementary_hodge_grading_std_at_1(p),test_elementary_hodge_grading_std_at_s(p),test_elementary_hodge_grading_irr_at_1(p),test_elementary_hodge_grading_irr_at_s(p)]
+prints("HODGE_SPECIALIZATION_COLD_CHECKS|",cold_checks)
+set Hstd=hodge_grading_std(p)
+set Hirr=hodge_grading_irreducible(p)
+prints("HODGE_SPECIALIZATION_STD_GRADING|",rearrange(Hstd))
+prints("HODGE_SPECIALIZATION_IRR_GRADING|",rearrange(Hirr))
+prints("HODGE_SPECIALIZATION_STD_AT_1|",Hstd.v_to_1,"|",K_type_pol(Hstd.v_to_1),"|",K_type_pol(p))
+prints("HODGE_SPECIALIZATION_STD_AT_S|",Hstd.v_to_s,"|",K_type_pol(Hstd.v_to_s),"|",c_form_std(p))
+prints("HODGE_SPECIALIZATION_IRR_AT_1|",Hirr.v_to_1,"|",K_type_pol(Hirr.v_to_1),"|",K_type_pol(character_formula(p)))
+prints("HODGE_SPECIALIZATION_IRR_AT_S|",Hirr.v_to_s,"|",K_type_pol(Hirr.v_to_s),"|",c_form_irreducible(p))
+set a=test_elementary_hodge_grading_std_at_1(p)
+set b=test_elementary_hodge_grading_std_at_s(p)
+set c=test_elementary_hodge_grading_irr_at_1(p)
+set d=test_elementary_hodge_grading_irr_at_s(p)
+prints("HODGE_SPECIALIZATION_CHECKS|",[a,b,c,d])
+assert(cold_checks[0],"Hodge cold standard v=1 identity")
+assert(cold_checks[1],"Hodge cold standard v=s identity")
+assert(cold_checks[2],"Hodge cold irreducible v=1 identity")
+assert(cold_checks[3],"Hodge cold irreducible v=s identity")
+assert(a,"Hodge standard v=1 identity")
+assert(b,"Hodge standard v=s identity")
+assert(c,"Hodge irreducible v=1 identity")
+assert(d,"Hodge irreducible v=s identity")
+prints("HODGE_SPECIALIZATION_RECOVERY|",673)
+prints("MATH_END hodge_rank1_specialization")
+quit

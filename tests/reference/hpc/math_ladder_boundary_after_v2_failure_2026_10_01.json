@@ -1,0 +1,183 @@
+{
+  "accounting": {
+    "allocated_cpus": 2,
+    "elapsed": "00:04:55",
+    "end": "2026-10-01T15:46:47",
+    "exit_code": "1:0",
+    "job": "3874203",
+    "node": "cu105",
+    "requested_memory": "8G",
+    "start": "2026-10-01T15:41:52",
+    "state": "FAILED"
+  },
+  "artifacts": {
+    "campaign_ledger_sha256": "44624c765f57222be339cfaa62bbdaff82f6208a93e78d3fdc7c60e7aba1835d",
+    "intent_sha256": "bf13ee5fa7f96b9846a2d000018a2951b1ef7dd6ae208e977fd2b3eb4e62c6a9",
+    "overrides_manifest_sha256": "b3e4fa16cdb9e86aba36d4bdd5723401a32b0c07ef21cdce29165dd938daa699",
+    "pin_sha256": "3f0f3c8b79e7ab7688ec329e242d18a82ac1b113eb33fa3788cfe1ca3e31455d",
+    "receipt_sha256": "6c1e342a1e59f67bdfaa611acebcb9913c581ff3a06e5c9b7b8488c3127d8672",
+    "report": {
+      "command_count": 13,
+      "file_sha256": "256247b2be5fd7358ccb56e87ff262c6c0e87ca782e822e2f3c96419c4b4a694",
+      "path": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-after-v2/results/3874203/report.json",
+      "schema": "atlas-ladder-boundary-after-v2",
+      "sidecar_bytes": 65,
+      "sidecar_file_sha256": "b129c9525c88b55b2f6f498367270ff9ec47d66d4047f62b8b97ee06ab1111f2",
+      "sidecar_value": "256247b2be5fd7358ccb56e87ff262c6c0e87ca782e822e2f3c96419c4b4a694",
+      "status": "HARNESS_FAILURE"
+    },
+    "retired_stager_bundle": {
+      "bytes": 311925,
+      "role": "retired-stager-bundle",
+      "schema": "atlas-campaign-blob-v1",
+      "sha256": "550b1330ec8806d1343d50d6ceb8488f89eb03546f6bb37c538cb5cd460e9b09"
+    }
+  },
+  "commands": {
+    "checker_tests_passed": 93,
+    "executed": [
+      {
+        "exit_status": 0,
+        "log_sha256": "1ab79c14875219332e73279f8b2de079fb75f8072039e5c1832084e82b7f3192",
+        "name": "test_campaign_workspace",
+        "time_sha256": "f5de151ad0b9f39dc5dcbd288068af8f559dd9f4c3ae03b12d0debdafca273f0"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "2f890124107a7cdff3cdc5b62621b0357102779ec7568d81d5f0a4dc98dec753",
+        "name": "test_campaign_source",
+        "time_sha256": "88f409db0f03c62478c0e01a306f70391bd8b030317a3644dc2e473317387ee6"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "93711feb258a2b5516bed3ad9567925e1eab35adceceb3610409150a0b7996d2",
+        "name": "test_campaign_blob",
+        "time_sha256": "1dafcdb4dc319d37fb7658ec3984fc5eb1907bf6662ae628a8199b0ab1b54fd2"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "9e6c501dc99aa8fc00bea569dca1878b0865d1e25499b85c5e3e7751f082cfc1",
+        "name": "test_local_worktree_guard",
+        "time_sha256": "59cbcf315e40b19566c86c7744fd05aab17819e060bb9bf7f29f54212fae19e5"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "62bc56f3993f84d601161617c90b6fa0a5894a955e55dfa354af9266f00b7556",
+        "name": "test_stager_allowlist",
+        "time_sha256": "85309201386a82d2f6d1e3ce292ba802dd80c530184f2b97b1ac60635b24146b"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "71b67cb02c033e98d23a2e960331c507ae267cbec1a2999524385f92825178cd",
+        "name": "test_math_acceptance_index",
+        "time_sha256": "dcdb42f29c6b5fbc9776664f8529c84eb0ac7ea718d795210f1f69ed969423b1"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "a6fb4f0eaaeda592122d2f029b14d45e8839430e7fd9ec515bac0795bbdcfb7d",
+        "name": "test_math_ladder_boundary_after",
+        "time_sha256": "48837cb0cfc33c741f72e5d18bb1fb8233ba52f2df5c9b5e09cffd1dcd0eaf8a"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "f64c55ed9f210d80a9b248206104a47175faf5ec94a093e4ad132549209089fc",
+        "name": "rustc",
+        "time_sha256": "55edac7a3a86a5a658a7787c45663e49273831f43067558ba860dd08b6bcd3a6"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "fdb3f2fc57229bfd22c53064c26587a57a856e5ef3f9f5cd5e30d5af2c818a1d",
+        "name": "cargo",
+        "time_sha256": "f3992299f0811f35e3f400f246c371b2f08fd6f8c0a924567eaef036fe95e07b"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "9a10a37703909ccb2bfa0b8c3f3827b5b7b2e16d917bb954ca2a03cd645bef29",
+        "name": "full-stager-inventory",
+        "time_sha256": "487f1088fcdd14decc90f5df71b72d4ca02077da43727f1a823fe8718dc31593"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "89fb280832ad7edc27335ac9d1b7cee070bdd8c25854a1a7f4286c009ba6c84f",
+        "name": "domain-inventory",
+        "time_sha256": "1ef4b92b102d9afca280a4d886f0dd4e2bac4b299f549b947525e65ba63732cc"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "e51ae6c7a2f77b485e045b465fb8434d4e78aa5de29509c5483348d59ef7e1f3",
+        "name": "domain-focused",
+        "time_sha256": "eef4a61f57082f47677f514dd949ce3d98fce03650b5bb0da6d0c9e37de4cbd1"
+      },
+      {
+        "exit_status": 0,
+        "log_sha256": "8023bb0a3c33dea0221ab539f928fd42ce2b82d23fd5178dad223f49b243ab08",
+        "name": "domain-all",
+        "time_sha256": "5078f73bcf6051fb83eae1ab322296f2c29ad5b867e8b90b216fdd5035e091e3"
+      }
+    ],
+    "not_reached": [
+      "core-inventory",
+      "core-focused",
+      "core-all",
+      "final-preflight",
+      "final-integrity"
+    ],
+    "successful_prefix_count": 13
+  },
+  "failure": {
+    "exception": "ValueError: exact passing ladder AFTER result required",
+    "kind": "EXPECTED_CAUGHT_PANIC_REJECTED_BY_LOG_PARSER",
+    "parser_rule": "passing_log rejected every occurrence of the substring 'panicked at', including output from a panic intentionally caught by a passing test.",
+    "root_cause": "The unfiltered atlas-real-group suite passed all 521 tests, but --nocapture exposed the expected panic hook output from rep_table::tests::poisoned_kl_cache_returns_a_stable_error. The strict post-command parser misclassified that successful caught-panic test as a harness failure.",
+    "trigger": {
+      "file": "crates/atlas-real-group/src/rep_table.rs",
+      "test": "rep_table::tests::poisoned_kl_cache_returns_a_stable_error"
+    }
+  },
+  "inspection": {
+    "command_artifacts": 26,
+    "command_artifacts_rehashed": true,
+    "ephemeral_workspace_absent": true,
+    "incoming_empty": true,
+    "installed_input_files": 28,
+    "installed_inputs_match_manifest": true,
+    "installed_inputs_mode": "0444",
+    "installed_inputs_nlink": 1,
+    "report_sidecar_rehashed": true,
+    "top_level_atlas_rust_directories": 318
+  },
+  "limitations": [
+    "This is a harness log-classification failure, not a Rust mathematical-result failure.",
+    "The 22 local-worktree guard tests passed on the compute node, but the overall AFTER gate was not accepted.",
+    "The domain inventory and both focused boundary regressions passed, and the full domain suite passed 521/521; the core inventory, core regression and core full suite did not run.",
+    "No root-ladder mathematical acceptance, performance result, parallel result, rank escalation or acceptance-index row follows from this failed job.",
+    "The immutable v2 stage must not be edited or resubmitted. A changed-input successor needs a regression that distinguishes an expected caught panic in a passing full suite from an uncaught failing panic."
+  ],
+  "math": {
+    "core": "NOT_REACHED",
+    "domain_focused": {
+      "failed": 0,
+      "filtered_out": 519,
+      "ignored": 0,
+      "passed": 2
+    },
+    "domain_full": {
+      "failed": 0,
+      "filtered_out": 0,
+      "ignored": 0,
+      "passed": 521
+    },
+    "domain_inventory": 521,
+    "final_status": "NOT_ACCEPTED"
+  },
+  "predecessor": {
+    "evidence_path": "tests/reference/hpc/math_ladder_boundary_after_v1_failure_2026_10_01.json",
+    "evidence_sha256": "b276865e1be26da0c2032dc8fc5953ec5181044efbdb949e6dd37f81fbcab4f0",
+    "job": "3873497",
+    "report_sha256": "fec90eb2f4cf0a4dff4820c4527c5263c151f8dff4aabf272007618646149e15",
+    "status": "HARNESS_FAILURE"
+  },
+  "schema": "atlas-ladder-boundary-after-inspection-v2",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/ladder-boundary-after-v2",
+  "status": "HARNESS_FAILURE"
+}
