@@ -1,0 +1,20 @@
+MATH_BEGIN weyl_context_core_prewarmed_dual
+Variable wcn_true: RootDatum
+Variable wcn_false: RootDatum
+Variable wcn_false_w: WeylElt
+Variable wcn_target: RootDatum
+Variable wcn_target_w: WeylElt
+Variable wcn_dual: RootDatum
+Variable wcn_saved: WeylElt
+Variable wcn_dual_w: WeylElt
+WCN_AFTER_OWNER_EQ|[0]|[ 1, 0 ]
+WCN_AFTER_OWNER_NEQ|[0]|[ 1, 0 ]
+WCN_AFTER_OWNER_MUL|[0]|[ 1, 0 ]
+WCN_AFTER_HIGH|[0]
+WCN_AFTER_NEGATIVE|[0]
+WCN_AFTER_DUAL_EQ|[0]|true
+WCN_AFTER_DUAL_NEQ|[0]|true
+WCN_AFTER_DUAL_MUL|[0]|[0]|true
+WCN_RECOVERY|733
+MATH_END weyl_context_core_prewarmed_dual
+Bye.

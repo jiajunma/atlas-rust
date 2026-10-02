@@ -1,0 +1,111 @@
+{
+  "schema": "atlas-weyl-context-core-capture-submission-evidence-v8",
+  "observed_at_utc": "2026-10-01T22:24:19.782972Z",
+  "classification": "DURABLE_SINGLE_SUBMISSION_RUNNING_UNREVIEWED",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v8",
+  "creator": {
+    "invocations": 1,
+    "returncode": 0,
+    "manifest_sha256": "0646a6c02c7579c94ca59de8515340642ace875a79462d8d31be332a43bd02d8",
+    "manifest_inputs": 40,
+    "manifest_input_bytes": 1531640,
+    "submission_status": "SUBMITTED_NOT_VERIFIED",
+    "job": "3884807",
+    "pin_sha256": "600ed2f6ea082ea62e945a4cc2805313ba8722ebdfec65548db68ebd2082e28c",
+    "stage_creation_sha256": "f00aacd1a5a735c8d153fd372876aa2d235fc8ba643042ea95e0983a7e11cd43",
+    "predecessor_job": "3884780",
+    "predecessor_ledger_records": 14,
+    "predecessor_ledger_sha256": "11c0b626ad22e56c68f1e7d7c0f4d7336574b1ca3afb1374d6d33de06ec55b5e",
+    "math_gate_released": false,
+    "cache_gate_released": false,
+    "acceptance_eligible": false
+  },
+  "queue": {
+    "command": "squeue -h -r -u majj -o %i|%T|%j|%P",
+    "returncode": 0,
+    "stderr": "",
+    "expanded_jobs": 1,
+    "raw_output": "3884807|RUNNING|atlas-weyl-core-capture-v8|cpu\n"
+  },
+  "accounting": {
+    "command": "sacct -n -P -j 3884807 --format=JobIDRaw,State,ExitCode,ElapsedRaw,Start,End,AllocCPUS,ReqMem,NodeList,MaxRSS",
+    "returncode": 0,
+    "stderr": "",
+    "raw_output": "3884807|RUNNING|0:0|20|2026-10-02T06:23:59|Unknown|2|8G|cu001|\n3884807.batch|RUNNING|0:0|20|2026-10-02T06:23:59|Unknown|2||cu001|\n3884807.extern|RUNNING|0:0|20|2026-10-02T06:23:59|Unknown|2||cu001|\n"
+  },
+  "ledger": {
+    "records": 15,
+    "bytes": 5997,
+    "mode": "0444",
+    "nlink": 1,
+    "sha256": "fe97c6043a160815a097e09e58da59ecf5c1ce6ea4dd9adc961c7a155ebe979b",
+    "tail": {
+      "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v8",
+      "script": "hpc/math_weyl_context_core_capture.sbatch",
+      "queue_before": [],
+      "status": "SUBMITTED",
+      "max_outstanding": 10,
+      "job": "3884807",
+      "pin_sha256": "600ed2f6ea082ea62e945a4cc2805313ba8722ebdfec65548db68ebd2082e28c",
+      "stage_creation_sha256": "f00aacd1a5a735c8d153fd372876aa2d235fc8ba643042ea95e0983a7e11cd43"
+    }
+  },
+  "stage_creation": {
+    "stage_device": 3431958692,
+    "stage_inode": 162130669655308072,
+    "stage_mode": "0755",
+    "receipt_bytes": 17014,
+    "receipt_sha256": "f00aacd1a5a735c8d153fd372876aa2d235fc8ba643042ea95e0983a7e11cd43",
+    "transaction_bytes": 327,
+    "transaction_sha256": "e9cf7e66e245aba4dcc566bada6333b3f1b89425620092b6e656365965e2ef77",
+    "prepared_sha256": "a6dc48041076fb7b1a75d6ff624472642ed7a7a388c7fec8224bf05c8ffb0016",
+    "sealed_sha256": "4ba9d36345769dbe56ba2f154972dc23494d3c160ee470862d02fec5c19a6a46",
+    "published_sha256": "4e0d511c9a6d648ac1e7059b230177361e71ca43d8858be2382b55681fcfcc73",
+    "incoming_entries": []
+  },
+  "submission_files": {
+    "pin_bytes": 11622,
+    "pin_sha256": "600ed2f6ea082ea62e945a4cc2805313ba8722ebdfec65548db68ebd2082e28c",
+    "intent_bytes": 428,
+    "intent_sha256": "53813783c18ab716b72baefff2f503752f5d09d1df27c0358ba77cdb5e7a86a7",
+    "receipt_bytes": 7083,
+    "receipt_sha256": "6238f1e16ecec7793f74490243bcf0339dcf43560fb8b16e012f0964ec28ccec",
+    "mode": "0444",
+    "nlink": 1
+  },
+  "transport": {
+    "local": "/tmp/atlas-wcc-v8-transport.0646a6c02c75.H7mQ2x",
+    "remote": "/public/home/majj/.wcc-v8-payload-20261002-0646a6c02c75",
+    "delta_files": 9,
+    "local_files_including_manifest": 10,
+    "local_bytes": 784371,
+    "remote_files_including_manifest": 41,
+    "remote_bytes": 1536543,
+    "transfer_invocations": 1,
+    "remote_creator_invocations": 1,
+    "retirement_condition_satisfied": true,
+    "local_removed": true,
+    "remote_removed": true,
+    "removed_after_nofollow_manifest_verification": true
+  },
+  "independent_review": {
+    "manifest_transport_and_frozen_bytes_reconciled": true,
+    "job_pin_creation_stage_and_ledger_reconciled": true,
+    "queue_and_accounting_snapshot_reconciled": true,
+    "cleanup_state_reconciled": true,
+    "status": "INDEPENDENT_READ_ONLY_SUBMISSION_AUDIT_COMPLETE"
+  },
+  "claims_not_granted": [
+    "job completion",
+    "checker pass",
+    "source reconstruction",
+    "Cargo build",
+    "original Atlas execution",
+    "Rust Atlas execution",
+    "Weyl-context mathematical correctness",
+    "cache correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

@@ -1,0 +1,30 @@
+MATH_BEGIN weyl_context_core_cold_dual
+Variable wc_rd: RootDatum
+Variable wc_saved: WeylElt
+WC_SAME|[0]|1|[ 1, 0 ]|[]
+Variable wc_alias: RootDatum
+Variable wc_alias_w: WeylElt
+WC_ALIAS|true|true|true|[]
+Variable wc_equal: RootDatum
+Variable wc_equal_w: WeylElt
+WC_EQUAL|true|true|true|[]
+Variable wc_dual: RootDatum
+Variable wc_dual_w: WeylElt
+WC_DUAL_COLD_OWNER|true
+WC_DUAL_COLD_EQ|true
+WC_DUAL_COLD_NEQ|false
+WC_DUAL_COLD_MUL|[]
+Variable wc_reverse_target: RootDatum
+Variable wc_reverse_target_w: WeylElt
+Variable wc_reverse_source: RootDatum
+Variable wc_reverse_source_w: WeylElt
+WC_DUAL_REVERSE_OWNER|true
+WC_DUAL_REVERSE_EQ|true
+WC_DUAL_REVERSE_NEQ|false
+WC_DUAL_REVERSE_MUL|[]|true
+Variable wc_rd: RootDatum (overriding previous instance, which had type RootDatum)
+Variable wc_rebound_w: WeylElt
+WC_REBOUND|false|[ 1, 0 ]|true|false|[0]|[ 1, 0 ]
+WC_RECOVERY|727
+MATH_END weyl_context_core_cold_dual
+Bye.

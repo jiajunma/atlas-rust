@@ -1,0 +1,95 @@
+{
+  "schema": "atlas-weyl-context-core-regression-v1",
+  "evidence_maturity": "original_captured_regression_pending_before",
+  "scope": "Byte-exact original-backed A1 Weyl-owner regressions for the cold canonical-dual sharing positive case and the independently prewarmed dual-owner rejection case. The two cases are inseparable: accepting every structurally equal datum would violate the negative case. These goldens release no mathematical, cache, rank or performance gate until a tests-first BEFORE and semantic AFTER run on HPC.",
+  "source_capture": {
+    "job": "3884807",
+    "report_bytes": 324940,
+    "report_sha256": "e644017f6c040691c91ee56fdaeac09a3e8d834ec9956939c2ba2530c80c5c73",
+    "inspection_file": "tests/reference/hpc/math_weyl_context_core_capture_v8_inspection_2026_10_02.json",
+    "inspection_bytes": 11902,
+    "inspection_sha256": "b2c7f4ece709df3506c3224a57abad896f3ecfcd6625fea97731619f629e1da3",
+    "oracle_commit": "7e1b958c7aa9456769cc9cf09ac1542814b4800a",
+    "oracle_binary_sha256": "d4f0f3dc3a82102529aa2ec562db0601e99b368dee25d5539ca52dae2fd37a5a",
+    "prediction_arrays_are_goldens": false,
+    "raw_oracle_streams_are_goldens": true
+  },
+  "cases": [
+    {
+      "id": "weyl_context_core_cold_dual",
+      "fixture": "weyl_context_core_cold_dual.atlas",
+      "fixture_bytes": 1815,
+      "fixture_sha256": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+      "capture_input_bytes": 1916,
+      "capture_input_sha256": "d94ae61b72215cda32b4ef040221dd81d0dd127866bc334c2ca7f43a23b820ba",
+      "oracle_exit_status": 0,
+      "oracle_stdout": {
+        "file": "weyl_context_core_cold_dual.oracle.stdout",
+        "bytes": 911,
+        "sha256": "7a614e47b75469c441e774cbe46769dcd769c5cc0a2a31cf1868ff9b59a780dc"
+      },
+      "oracle_stderr": {
+        "file": "weyl_context_core_cold_dual.oracle.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "regression_assertions": [
+        "Both warm-source/cold-target canonical-dual histories share one compatible Weyl owner.",
+        "Equality returns true and inequality returns false in both dual-construction directions (SC to adjoint and adjoint to SC).",
+        "Both products succeed and have identity word [].",
+        "The saved Weyl element retains its original root-datum owner after the source variable is rebound.",
+        "The complete stdout matches byte-for-byte and stderr is exactly zero bytes."
+      ],
+      "before_requirement": "The unchanged Rust implementation must fail the complete original-backed comparison while reaching WC_RECOVERY|727 exactly once."
+    },
+    {
+      "id": "weyl_context_core_prewarmed_dual",
+      "fixture": "weyl_context_core_prewarmed_dual.atlas",
+      "fixture_bytes": 1275,
+      "fixture_sha256": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+      "capture_input_bytes": 1386,
+      "capture_input_sha256": "3f3bb95cf514aee419678543e135e405285b1d6db10d63eb590e27a94880ee4f",
+      "oracle_exit_status": 1,
+      "oracle_stdout": {
+        "file": "weyl_context_core_prewarmed_dual.oracle.stdout",
+        "bytes": 572,
+        "sha256": "5074aab3290d4ae404bb7abb0b24ccc99036f616abec518c6479e59ec2db021f"
+      },
+      "oracle_stderr": {
+        "file": "weyl_context_core_prewarmed_dual.oracle.stderr",
+        "bytes": 501,
+        "sha256": "ef4404d85f7252a611f9f4e4a5205fe6bbac2c66f48b7378a30a8053f986e157"
+      },
+      "ordered_oracle_diagnostics": [
+        "Runtime:Weyl group mismatch",
+        "Runtime:Weyl group mismatch",
+        "Runtime:Weyl group mismatch",
+        "Runtime:Illegal Weyl word entry 1 (should be <1)",
+        "Runtime:Negative integer where unsigned is required",
+        "Runtime:Weyl group mismatch",
+        "Runtime:Weyl group mismatch",
+        "Runtime:Weyl group mismatch"
+      ],
+      "regression_assertions": [
+        "An independently prewarmed structurally equal owner remains incompatible.",
+        "Binary equality, inequality and multiplication each reject with Weyl group mismatch before producing an operation value.",
+        "Invalid high and negative words preserve their distinct ordered diagnostics.",
+        "Every rejection recovers and the complete stdout and stderr match byte-for-byte."
+      ],
+      "before_requirement": "The unchanged Rust implementation must fail the complete original-backed comparison while reaching WCN_RECOVERY|733 exactly once."
+    }
+  ],
+  "required_gate_sequence": [
+    "HPC tests-first BEFORE: the frozen original must reproduce all four golden streams and unchanged Rust must fail exactly the two named regressions while the retained control passes.",
+    "Smallest owning semantic repair: do not combine cache or performance changes.",
+    "HPC semantic AFTER: the same two regressions and retained control must pass against the unchanged original goldens.",
+    "Only after semantic AFTER may same-rank profiling or broader G2/B2/C2 coverage proceed."
+  ],
+  "claims_not_granted": [
+    "Weyl-context mathematical acceptance",
+    "cache correctness",
+    "rank escalation",
+    "performance improvement",
+    "memory improvement"
+  ]
+}

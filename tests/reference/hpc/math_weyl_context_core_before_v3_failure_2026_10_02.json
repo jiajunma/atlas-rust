@@ -1,0 +1,351 @@
+{
+  "schema": "atlas-weyl-context-core-before-failure-v3",
+  "observed_at_utc": "2026-10-02T00:27:55Z",
+  "classification": "HARNESS_STAGER_ALLOWLIST_HISTORICAL_DRIVER_LITERAL_MISMATCH_BEFORE_SOURCE_BUILD_OR_ATLAS_EXECUTION",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v3",
+  "submission": {
+    "job": "3884903",
+    "state": "FAILED",
+    "exit_code": "1:0",
+    "elapsed_seconds": 56,
+    "start": "2026-10-02T08:23:09",
+    "end": "2026-10-02T08:24:05",
+    "node": "cu001",
+    "allocated_cpus": 2,
+    "requested_memory": "8G",
+    "batch_maxrss_kb": 108156,
+    "queue_after_reconciliation": [],
+    "ledger_records_after": 18,
+    "ledger_bytes_after": 7341,
+    "ledger_sha256_after": "fec706e87cd1a28c0700b55698a86b8c69553875b89d15274789065cf740e6b9",
+    "predecessor_ledger_records": 17,
+    "predecessor_ledger_sha256": "e7a4ba5736bdbb40b97eb4cc2961c6c5756c1d1cd2aae339b6f99095e7987567",
+    "override_manifest_bytes": 6540,
+    "override_manifest_sha256": "50687cdbc4b193d10accf3fe6d84705737ce8b54c635223a2126e4f480db5258",
+    "override_manifest_inputs": 52,
+    "override_manifest_input_bytes": 1761598,
+    "changed_inputs_from_predecessor": 8,
+    "installed_and_override_copies_reconciled": 104,
+    "pin_sha256": "a56d700e8b9aff4fea37ae6fc8f8281b9a3447befa20ce5ec4b6290a50857eb7",
+    "stage_creation_sha256": "72884ef76fca402fee932098abefe4a8d9ce0e9593b6229c0cb514399aeee214",
+    "stage_creation_contract_sha256": "5128c3758cc517f2c65353d51b52af9576057fd0a6d6a7cd0d476be49298f0c9",
+    "stage_creation_transaction_sha256": "e6c02b947cbbce421b55f46a9a8632a22b5e2d947de8feb89d8284e6b90c3dec",
+    "submission_intent_sha256": "4623a603961033a33450271f153c47a3a5c54a957b3317fb7ff0995d83cba4f5",
+    "submission_receipt_sha256": "e710a68d861ad74dc035f77cb578f70ed5ba9176a3d1a387b67c90844d031516",
+    "submission_receipt_status": "SUBMITTED_NOT_VERIFIED"
+  },
+  "stage_creation": {
+    "prepared_sha256": "9f83056ae8c8306b02e12f8fc1c25a234d63b664e4019d1d0cb8bf826b153d72",
+    "prepared_bytes": 19742,
+    "sealed_sha256": "94c907686adfb63384141d6953c0d3f20df7ce4d6562629ad28d037dd20e49fb",
+    "sealed_bytes": 589,
+    "published_sha256": "1ab6c3d02d4cc97c9a039985ffbd7d657c8ba6bd65a57b2b8fae959bdbd78566",
+    "published_bytes": 677,
+    "target_device": 3431958692,
+    "target_inode": 162130669655310921,
+    "target_mode": "0755",
+    "publication_residuals_after": []
+  },
+  "report": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v3/results/3884903/report.json",
+    "bytes": 52866,
+    "sha256": "7918ed04b11d2719b59916b6fe59d146bc6c622e43eac39c5c4f1643d6d571a1",
+    "report_sha256_file_bytes": 65,
+    "report_sha256_file_sha256": "08780ca688567992fb423ab9e0d0e99f96c384515bc9f6b29f057664997ac34d",
+    "status": "WEYL_CONTEXT_BEFORE_HARNESS_FAILURE",
+    "evidence_maturity": "tests_first_before",
+    "complete": false,
+    "acceptance_eligible": false,
+    "math_gate_released": false,
+    "cache_gate_released": false,
+    "performance_gate_released": false,
+    "rank_gate_released": false,
+    "source_integrity_rechecked": false,
+    "integrity_rechecked": false,
+    "ephemeral_workspace_removed": true,
+    "commands_recorded": 5,
+    "failed_command_recorded": true,
+    "source_files_recorded": 0,
+    "binaries_recorded": 0,
+    "atlas_invocations": 0,
+    "captures_recorded": 0,
+    "regression_classification_recorded": false,
+    "cleanup_error_present": false,
+    "legacy_path_open_attempts": []
+  },
+  "test_totals": {
+    "tests": 119,
+    "passed": 117,
+    "failures": 0,
+    "errors": 2,
+    "ignored": 0
+  },
+  "passed_test_gates": [
+    {
+      "name": "test-campaign-stage-creation",
+      "tests": 32,
+      "seconds": 29.95,
+      "user_seconds": 4.7,
+      "system_seconds": 7.42,
+      "maxrss_kb": 25876,
+      "exit_status": 0,
+      "timed_out": false,
+      "termination_uncertain": false,
+      "stderr_bytes": 3882,
+      "stderr_sha256": "b9cdcdec6c69c56c30c20e041fb119c8fdf7abd225c50de2823f3e55920aa849",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "time_bytes": 860,
+      "time_sha256": "f2ecfa0a1c32e1b3ec7cb84dd0f64c04532f70d1e13541b0292478282078a53f"
+    },
+    {
+      "name": "test-progressive-submit",
+      "tests": 17,
+      "seconds": 0.4,
+      "user_seconds": 0.13,
+      "system_seconds": 0.08,
+      "maxrss_kb": 24704,
+      "exit_status": 0,
+      "timed_out": false,
+      "termination_uncertain": false,
+      "stderr_bytes": 1704,
+      "stderr_sha256": "c200ab98f961faf8e9c5c225d93d88af0e7f8bbd2ce6095ce5cbff4bda1c7eb1",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "time_bytes": 846,
+      "time_sha256": "8b02846353fb18326bae6af3968141be77946bb8db6bb2340337b2d3d87c5f38"
+    },
+    {
+      "name": "test-weyl-context-core-contract",
+      "tests": 18,
+      "seconds": 0.15,
+      "user_seconds": 0.09,
+      "system_seconds": 0.03,
+      "maxrss_kb": 19672,
+      "exit_status": 0,
+      "timed_out": false,
+      "termination_uncertain": false,
+      "stderr_bytes": 2300,
+      "stderr_sha256": "81423aa640f48c53c21c111f015084220da520f528d72a974af62e1df64201e5",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "time_bytes": 851,
+      "time_sha256": "7912e01a179769240f1699306082389ffc3edb2897399ba0fb12e3a2775763b1"
+    },
+    {
+      "name": "test-weyl-context-core-regression-contract",
+      "tests": 17,
+      "seconds": 0.18,
+      "user_seconds": 0.12,
+      "system_seconds": 0.03,
+      "maxrss_kb": 19792,
+      "exit_status": 0,
+      "timed_out": false,
+      "termination_uncertain": false,
+      "stderr_bytes": 2306,
+      "stderr_sha256": "1f5c30ff72387cb0f03c6d12ecd523882acf6e828e65989545fde991627652e0",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "time_bytes": 853,
+      "time_sha256": "3b4700061115730181c008dd690270fb3b9de5d56ec902702abd0f8102da2725"
+    },
+    {
+      "name": "test-math-weyl-context-core-capture",
+      "tests": 28,
+      "seconds": 15.83,
+      "user_seconds": 3.98,
+      "system_seconds": 2.99,
+      "maxrss_kb": 45692,
+      "exit_status": 0,
+      "timed_out": false,
+      "termination_uncertain": false,
+      "stderr_bytes": 3842,
+      "stderr_sha256": "f835de2011a0e7ad99c3b8a9e3fca0cdae4964b6fe6f4b4dbe011b8998f51b0a",
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "time_bytes": 865,
+      "time_sha256": "09db87586b10a121b0e10e915d81be4a53dc52fa495b196b1513e0e3cba6da5e"
+    }
+  ],
+  "failed_gate": {
+    "name": "test-stager-allowlist",
+    "tests": 7,
+    "passed": 5,
+    "failures": 0,
+    "errors": 2,
+    "seconds": 5.78,
+    "user_seconds": 5.68,
+    "system_seconds": 0.06,
+    "maxrss_kb": 34476,
+    "exit_status": 1,
+    "timed_out": false,
+    "termination_uncertain": false,
+    "cleanup_attempted": false,
+    "cleanup_uncertain": false,
+    "group_alive_after_communicate": false,
+    "group_alive_after_cleanup": false,
+    "stderr_bytes": 2618,
+    "stderr_sha256": "a5e4519e716935d2bd04f07c49f1e664bb4667cc530cd230b7d10ab8e22a8c92",
+    "stdout_bytes": 0,
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "time_bytes": 880,
+    "time_sha256": "a7ac26af264a33d5032ee15d69aa628abe134c585d8ce0b68a0192854157046a",
+    "failed_checks": [
+      "exit_status"
+    ],
+    "error_records": [
+      {
+        "test": "test_current_filename_and_role_snapshot",
+        "path": "hpc/test_stager_allowlist.py",
+        "test_line": 1810,
+        "driver_loop_line": 1603,
+        "rejection_line": 1541,
+        "exception": "ValueError: launcher has a non-allowlisted module-level action"
+      },
+      {
+        "test": "test_module_actions_and_canonical_entries_are_bounded",
+        "path": "hpc/test_stager_allowlist.py",
+        "test_line": 1852,
+        "rejection_line": 1541,
+        "exception": "ValueError: launcher has a non-allowlisted module-level action"
+      }
+    ]
+  },
+  "root_cause": {
+    "rejected_launcher": "hpc/math_ladder_boundary_before.py",
+    "rejected_node": "top-level campaign guard",
+    "rejected_node_lines": [
+      55,
+      56
+    ],
+    "historical_driver_actual_message": "ladder BEFORE v2 campaign policy changed",
+    "allowlist_path": "hpc/test_stager_allowlist.py",
+    "allowlist_expected_message_line": 658,
+    "allowlist_incorrect_expected_message": "ladder BEFORE v3 campaign policy changed",
+    "mechanism": "A broad BEFORE-v2 to BEFORE-v3 identifier migration changed the allowlist's expected literal for the immutable historical ladder driver. The historical driver correctly retained its v2 message, so exact_campaign_guard returned false and bounded_module rejected that top-level If node.",
+    "active_v3_stager_non_pure_module_assignments": [],
+    "active_v3_driver_non_pure_module_assignments": [],
+    "not_a_rust_mathematical_failure": true
+  },
+  "not_reached": [
+    "rustc-version",
+    "cargo-version",
+    "source-reconstruction",
+    "release-build",
+    "atlas-core-test-inventory",
+    "weyl-context-regressions",
+    "root-ladder-control"
+  ],
+  "final_stage_tree": {
+    "schema": "atlas-stage-tree-inventory-v1",
+    "root_included": false,
+    "entry_order": "relative path ascending",
+    "canonical_json": "indent=2, sort_keys=true, trailing LF",
+    "inventory_bytes": 37210,
+    "sha256": "7d9603b2c4081c8ec620fe3530d292f43b8fe6782916749af19391280c44a60e",
+    "files": 141,
+    "directories": 18,
+    "bytes": 3676351,
+    "stable_double_scan_and_independent_rescan_match": true
+  },
+  "result_artifacts": {
+    "report": {
+      "path": "results/3884903/report.json",
+      "bytes": 52866,
+      "sha256": "7918ed04b11d2719b59916b6fe59d146bc6c622e43eac39c5c4f1643d6d571a1"
+    },
+    "report_sha256": {
+      "path": "results/3884903/report.sha256",
+      "bytes": 65,
+      "sha256": "08780ca688567992fb423ab9e0d0e99f96c384515bc9f6b29f057664997ac34d"
+    },
+    "failed_stderr": {
+      "path": "results/3884903/test-stager-allowlist.stderr",
+      "bytes": 2618,
+      "sha256": "a5e4519e716935d2bd04f07c49f1e664bb4667cc530cd230b7d10ab8e22a8c92"
+    },
+    "failed_stdout": {
+      "path": "results/3884903/test-stager-allowlist.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "failed_time": {
+      "path": "results/3884903/test-stager-allowlist.time",
+      "bytes": 880,
+      "sha256": "a7ac26af264a33d5032ee15d69aa628abe134c585d8ce0b68a0192854157046a"
+    }
+  },
+  "top_level_log": {
+    "path": "weyl-context-core-before-v3-3884903.out",
+    "bytes": 134,
+    "mode": "0644",
+    "sha256": "899378373894315259c371585513fb5d175908d5eb32dac6c5f41fa7a844c386"
+  },
+  "mathematical_regression_required": false,
+  "mathematical_regression_reason": "The failure occurred in the static launcher allowlist before source reconstruction, compilation, original Atlas, Rust Atlas, or either focused Weyl-context regression test could execute.",
+  "remediation_contract": {
+    "tests_first": true,
+    "exact_harness_fixes": [
+      "Restore exact_campaign_guard's HISTORICAL_DRIVER expected literal to ladder BEFORE v2 campaign policy changed; do not edit the immutable historical driver.",
+      "Make bounded_module's generic module-action rejection identify the launcher filename and source line without weakening any allowlist predicate.",
+      "Add a mutation regression that rejects changing the historical driver's exact v2 campaign-guard literal while retaining the existing seven-method checker inventory."
+    ],
+    "expected_test_counts_after": {
+      "test-campaign-stage-creation": 32,
+      "test-progressive-submit": 17,
+      "test-weyl-context-core-contract": 18,
+      "test-weyl-context-core-regression-contract": 17,
+      "test-math-weyl-context-core-capture": 28,
+      "test-stager-allowlist": 7,
+      "total": 119
+    },
+    "production_rust_change_allowed": false,
+    "regression_patch_or_fixture_change_allowed": false,
+    "source_manifest_change_allowed": false,
+    "historical_driver_change_allowed": false,
+    "allowlist_weakening_allowed": false,
+    "changed_input_successor_required": true,
+    "successor_stage": "weyl-context-core-before-v4",
+    "immutable_failed_stage": "weyl-context-core-before-v3",
+    "no_same_stage_resubmission": true,
+    "no_suffix_retry": true,
+    "no_rank_escalation": true
+  },
+  "transport": {
+    "manifest_sha256": "50687cdbc4b193d10accf3fe6d84705737ce8b54c635223a2126e4f480db5258",
+    "inputs": 52,
+    "files_including_manifest": 53,
+    "changed_inputs_from_predecessor": 8,
+    "compressed_payload_bytes": 159530,
+    "remote_path": "/public/home/majj/.weyl-core-before-v3-payload",
+    "remote_removed": true,
+    "local_temporary_path_created": false
+  },
+  "independent_review": {
+    "read_only_submission_snapshot_at_utc": "2026-10-02T00:25:22Z",
+    "read_only_failure_artifact_audit_at_utc": "2026-10-02T00:27:55Z",
+    "remote_snapshot_facts_sha256": "7158d01e9dcb3ff94fac20f854d107b57bf4fcdca3442391afdff38735d4197d",
+    "report_raw_stream_and_tree_hashes_reconciled": true,
+    "durable_receipt_creation_events_and_ledger_tail_reconciled": true,
+    "all_104_stage_input_copies_reconciled": true,
+    "current_queue_empty": true,
+    "transport_absent": true,
+    "status": "INDEPENDENT_READ_ONLY_AUDIT_COMPLETE"
+  },
+  "kimi": {
+    "invocations": 0
+  },
+  "claims_not_granted": [
+    "stager allowlist checker pass",
+    "source reconstruction",
+    "Cargo build",
+    "original Atlas rerun",
+    "Rust Atlas execution",
+    "tests-first Weyl-context BEFORE reproduction",
+    "Weyl-context mathematical correctness",
+    "cache correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

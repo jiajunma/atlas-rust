@@ -1,0 +1,23 @@
+{
+  "schema": "atlas-weyl-context-core-discovery-v1",
+  "evidence_maturity": "source_predicted_not_captured",
+  "scope": "Fresh-process core-only rank-one discovery of Weyl owner compatibility, cold-dual sharing, prewarmed-dual separation, invalid-word ordering and recovery. Intent describes the original oracle only; no Rust compatibility, mathematical acceptance or cache acceptance is claimed.",
+  "cases": [
+    {
+      "id": "weyl_context_core_cold_dual",
+      "file": "weyl_context_core_cold_dual.atlas",
+      "fixture_sha256": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+      "intent": "accept",
+      "timeout_seconds": 45,
+      "scope": "Same owner, alias, independently interned equal datum, both warm-source/cold-target dual directions, rebound owner and saved-value lifetime."
+    },
+    {
+      "id": "weyl_context_core_prewarmed_dual",
+      "file": "weyl_context_core_prewarmed_dual.atlas",
+      "fixture_sha256": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+      "intent": "reject",
+      "timeout_seconds": 45,
+      "scope": "Cold source with independently prewarmed canonical dual, plus a preference-distinct owner, incompatible equality/product, invalid words and recovery after every rejection."
+    }
+  ]
+}

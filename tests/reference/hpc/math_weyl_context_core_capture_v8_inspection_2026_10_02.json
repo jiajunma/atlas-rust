@@ -1,0 +1,327 @@
+{
+  "schema": "atlas-weyl-context-core-capture-independent-inspection-v1",
+  "observed_at_utc": "2026-10-01T22:36:28.252357292Z",
+  "classification": "CAPTURE_COMPLETE_RUST_SEMANTIC_MISMATCH_CONFIRMED_REGRESSION_REQUIRED",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v8",
+  "job": {
+    "id": "3884807",
+    "state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed_seconds": 345,
+    "start": "2026-10-02T06:23:59",
+    "end": "2026-10-02T06:29:44",
+    "node": "cu001",
+    "allocated_cpus": 2,
+    "requested_memory": "8G",
+    "batch_maxrss_kb": 1126772,
+    "outstanding_jobs_after_inspection": 0
+  },
+  "submission_evidence": {
+    "file": "tests/reference/hpc/math_weyl_context_core_capture_v8_submission_2026_10_02.json",
+    "bytes": 4593,
+    "sha256": "2ef561f986277f2645f8929b0b95acf30eb1f03accdd3361e89803220dca79fa",
+    "creator_invocations": 1,
+    "job": "3884807",
+    "ledger_records": 15,
+    "ledger_sha256": "fe97c6043a160815a097e09e58da59ecf5c1ce6ea4dd9adc961c7a155ebe979b"
+  },
+  "report": {
+    "path": "results/3884807/report.json",
+    "bytes": 324940,
+    "sha256": "e644017f6c040691c91ee56fdaeac09a3e8d834ec9956939c2ba2530c80c5c73",
+    "seal_path": "results/3884807/report.sha256",
+    "seal_bytes": 65,
+    "seal_sha256": "dd51b4341d5c24eaaf9c2e3a343339ead32ad587bf4c986b584ead80661fb5ee",
+    "schema": "atlas-weyl-context-core-capture-v8",
+    "status": "WEYL_CONTEXT_CORE_CAPTURE_RECORDED_UNREVIEWED",
+    "evidence_maturity": "capture_only_unreviewed",
+    "complete": true,
+    "integrity_rechecked": true,
+    "source_integrity_rechecked": true,
+    "ephemeral_workspace_removed": true,
+    "acceptance_eligible": false,
+    "math_gate_released": false,
+    "cache_gate_released": false,
+    "top_level_keys": 26,
+    "command_records": 9,
+    "invocation_records": 4,
+    "capture_records": 2
+  },
+  "checker_and_build_commands": [
+    {
+      "name": "test-campaign-stage-creation",
+      "tests": 32,
+      "exit_status": 0,
+      "seconds": 26.5,
+      "user_cpu_seconds": 4.26,
+      "system_cpu_seconds": 6.46,
+      "maxrss_kb": 27328
+    },
+    {
+      "name": "test-progressive-submit",
+      "tests": 17,
+      "exit_status": 0,
+      "seconds": 0.44,
+      "user_cpu_seconds": 0.14,
+      "system_cpu_seconds": 0.09,
+      "maxrss_kb": 24836
+    },
+    {
+      "name": "test-weyl-context-core-contract",
+      "tests": 18,
+      "exit_status": 0,
+      "seconds": 0.16,
+      "user_cpu_seconds": 0.1,
+      "system_cpu_seconds": 0.02,
+      "maxrss_kb": 19672
+    },
+    {
+      "name": "test-math-weyl-context-core-capture",
+      "tests": 28,
+      "exit_status": 0,
+      "seconds": 9.66,
+      "user_cpu_seconds": 2.31,
+      "system_cpu_seconds": 1.75,
+      "maxrss_kb": 41296
+    },
+    {
+      "name": "test-stager-allowlist",
+      "tests": 7,
+      "exit_status": 0,
+      "seconds": 6.78,
+      "user_cpu_seconds": 6.69,
+      "system_cpu_seconds": 0.05,
+      "maxrss_kb": 30352
+    },
+    {
+      "name": "rustc-version",
+      "exit_status": 0,
+      "seconds": 0.4,
+      "maxrss_kb": 31892
+    },
+    {
+      "name": "cargo-version",
+      "exit_status": 0,
+      "seconds": 0.09,
+      "maxrss_kb": 9576
+    },
+    {
+      "name": "source-reconstruction",
+      "exit_status": 0,
+      "seconds": 0.51,
+      "maxrss_kb": 19056,
+      "maxrss_approximate": true
+    },
+    {
+      "name": "release-build",
+      "exit_status": 0,
+      "seconds": 281.53,
+      "user_cpu_seconds": 383.09,
+      "system_cpu_seconds": 8.97,
+      "maxrss_kb": 1099088
+    }
+  ],
+  "artifacts": {
+    "stage_tree": {
+      "files": 134,
+      "directories": 18,
+      "file_bytes": 3471903,
+      "canonical_inventory_bytes": 35084,
+      "sha256": "da98c876de3edc46d12eb21ac605839b1d8ae7a63f1b2e887af24bd35504ee63",
+      "stable_double_scan": true
+    },
+    "result_files": 46,
+    "unexpected_result_files": [],
+    "symlinks": [],
+    "multiply_linked_regular_files": [],
+    "durable_source_target_workspace_or_build_directories": [],
+    "incoming_entries": [],
+    "top_level_log": {
+      "bytes": 145,
+      "sha256": "f6256a7e101918dd145765b8489c71656e0a1795ab6fa2d2b82c3c37f021e8aa"
+    }
+  },
+  "binaries_and_execution": {
+    "oracle": {
+      "commit": "7e1b958c7aa9456769cc9cf09ac1542814b4800a",
+      "bytes": 3964320,
+      "sha256": "d4f0f3dc3a82102529aa2ec562db0601e99b368dee25d5539ca52dae2fd37a5a"
+    },
+    "rust": {
+      "bytes": 12994280,
+      "sha256": "63f17a7736c82c45894c61ffc2d161da5501fbdcfd7f00b24576c2109363fbe5"
+    },
+    "source_files": 1561,
+    "source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+    "invocation_order": [
+      "weyl_context_core_cold_dual:oracle",
+      "weyl_context_core_cold_dual:rust",
+      "weyl_context_core_prewarmed_dual:rust",
+      "weyl_context_core_prewarmed_dual:oracle"
+    ],
+    "fresh_processes": true,
+    "unique_pid_equals_process_group_id": true,
+    "timed_out": false,
+    "termination_uncertain": false,
+    "thread_settings": {
+      "RAYON_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1"
+    }
+  },
+  "captures": [
+    {
+      "case_id": "weyl_context_core_cold_dual",
+      "capture_status": "BOTH_SOURCE_PREDICTIONS_DIFFERED",
+      "fresh_process_complete": true,
+      "resource_complete": true,
+      "metrics_complete": true,
+      "stream_complete": true,
+      "input": {
+        "bytes": 1916,
+        "sha256": "d94ae61b72215cda32b4ef040221dd81d0dd127866bc334c2ca7f43a23b820ba"
+      },
+      "oracle": {
+        "exit_status": 0,
+        "stdout_bytes": 911,
+        "stdout_sha256": "7a614e47b75469c441e774cbe46769dcd769c5cc0a2a31cf1868ff9b59a780dc",
+        "stderr_bytes": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "seconds": 0.01,
+        "maxrss_kb": 3868,
+        "key_markers": [
+          "WC_DUAL_COLD_EQ|true",
+          "WC_DUAL_COLD_NEQ|false",
+          "WC_DUAL_COLD_MUL|[]",
+          "WC_DUAL_REVERSE_EQ|true",
+          "WC_DUAL_REVERSE_NEQ|false",
+          "WC_DUAL_REVERSE_MUL|[]|true"
+        ]
+      },
+      "rust": {
+        "exit_status": 1,
+        "stdout_bytes": 863,
+        "stdout_sha256": "66563fafa4e69d183c2924038e68c59140c154add5ae08da2ecc0c965cf77c2b",
+        "stderr_bytes": 450,
+        "stderr_sha256": "4b7917cdd31f5c65aef2f0e97b01ce2b938ae68b1128479ddb59701c9261b423",
+        "seconds": 0.0,
+        "maxrss_kb": 6432,
+        "key_markers": [
+          "WC_DUAL_COLD_EQ|false",
+          "WC_DUAL_COLD_NEQ|true",
+          "WC_DUAL_REVERSE_EQ|false",
+          "WC_DUAL_REVERSE_NEQ|true"
+        ],
+        "diagnostic_causes": [
+          "weyl_group_mismatch",
+          "weyl_group_mismatch"
+        ],
+        "missing_success_markers": [
+          "WC_DUAL_COLD_MUL|[]",
+          "WC_DUAL_REVERSE_MUL|[]|true"
+        ]
+      },
+      "semantic_finding": "Within each of the two cold canonical-dual histories (SC to adjoint and adjoint to SC), the original treats the source and its dual as compatible Weyl owners: equality is true, inequality is false and source-times-dual multiplication succeeds. Rust reports unequal owners and rejects both products as Weyl-group mismatches. Reversing the operands of the same pair remains untested."
+    },
+    {
+      "case_id": "weyl_context_core_prewarmed_dual",
+      "capture_status": "BOTH_SOURCE_PREDICTIONS_DIFFERED",
+      "fresh_process_complete": true,
+      "resource_complete": true,
+      "metrics_complete": true,
+      "stream_complete": true,
+      "input": {
+        "bytes": 1386,
+        "sha256": "3f3bb95cf514aee419678543e135e405285b1d6db10d63eb590e27a94880ee4f"
+      },
+      "oracle": {
+        "exit_status": 1,
+        "stdout_bytes": 572,
+        "stdout_sha256": "5074aab3290d4ae404bb7abb0b24ccc99036f616abec518c6479e59ec2db021f",
+        "stderr_bytes": 501,
+        "stderr_sha256": "ef4404d85f7252a611f9f4e4a5205fe6bbac2c66f48b7378a30a8053f986e157",
+        "seconds": 0.0,
+        "maxrss_kb": 4064,
+        "diagnostic_causes": [
+          "weyl_group_mismatch",
+          "weyl_group_mismatch",
+          "weyl_group_mismatch",
+          "illegal_weyl_word_entry",
+          "negative_integer_where_unsigned_required",
+          "weyl_group_mismatch",
+          "weyl_group_mismatch",
+          "weyl_group_mismatch"
+        ],
+        "absent_value_markers": [
+          "WCN_OWNER_EQ",
+          "WCN_OWNER_NEQ",
+          "WCN_DUAL_PREWARM_EQ",
+          "WCN_DUAL_PREWARM_NEQ"
+        ]
+      },
+      "rust": {
+        "exit_status": 1,
+        "stdout_bytes": 662,
+        "stdout_sha256": "5ee0c28d9ea93d190cf871b2e94748721569833e3f9032ce6512c819ec77e9c8",
+        "stderr_bytes": 449,
+        "stderr_sha256": "1dca42a19b398632233a27b85ac57ed77169305f2c0fc0666bf1ff6680a17767",
+        "seconds": 0.0,
+        "maxrss_kb": 6412,
+        "diagnostic_causes": [
+          "weyl_group_mismatch",
+          "illegal_weyl_word_entry",
+          "negative_integer_where_unsigned_required",
+          "weyl_group_mismatch"
+        ],
+        "unexpected_value_markers": [
+          "WCN_OWNER_EQ|false",
+          "WCN_OWNER_NEQ|true",
+          "WCN_DUAL_PREWARM_EQ|false",
+          "WCN_DUAL_PREWARM_NEQ|true"
+        ]
+      },
+      "semantic_finding": "For incompatible prewarmed Weyl owners, the original rejects equality, inequality and multiplication before producing values. Rust incorrectly turns equality and inequality into false/true values while only multiplication rejects."
+    }
+  ],
+  "prediction_interpretation": {
+    "source_prediction_shapes_matched": false,
+    "reason": "The frozen source predictions omitted original list-display spaces and did not reproduce every exact diagnostic shape. Those predictions were discovery guesses, not accepted goldens.",
+    "raw_capture_usable": true,
+    "raw_capture_basis": "Both engines completed in fresh process groups, all four full streams and metrics are sealed in the report, and the independent inspection compared the original and Rust raw artifacts directly."
+  },
+  "regression_requirement": {
+    "required_before_fix": true,
+    "oracle_goldens": [
+      "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout",
+      "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr",
+      "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout",
+      "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr"
+    ],
+    "before_gate": "A successor tests-first HPC stage must prove the frozen original executable matches the byte-exact goldens and the unchanged Rust executable fails them for the observed semantic reasons before any production repair is applied.",
+    "after_gate": "Only after the BEFORE evidence is retained may the smallest owning implementation be changed; the same original-backed regression must then pass on HPC before performance work or rank escalation resumes."
+  },
+  "performance_interpretation": {
+    "valid_speed_ratio": false,
+    "reason": "The 345-second job was dominated by a 281.53-second release build. Each mathematical invocation took 0.00-0.01 seconds, ran once, and was not a repeated alternating A/B benchmark.",
+    "rust_vs_original_speedup_claimed": false,
+    "memory_improvement_claimed": false
+  },
+  "transport": {
+    "local_path": "/tmp/atlas-wcc-v8-transport.0646a6c02c75.H7mQ2x",
+    "remote_path": "/public/home/majj/.wcc-v8-payload-20261002-0646a6c02c75",
+    "local_absent": true,
+    "remote_absent": true,
+    "active_handoff_transport": false
+  },
+  "claims_not_granted": [
+    "Weyl-context mathematical acceptance",
+    "cache correctness",
+    "rank escalation",
+    "associated-cycle acceptance",
+    "AV-ann acceptance",
+    "KLV acceptance",
+    "performance improvement",
+    "memory improvement"
+  ]
+}

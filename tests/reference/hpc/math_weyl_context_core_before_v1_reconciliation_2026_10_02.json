@@ -1,0 +1,42 @@
+{
+  "schema": "atlas-weyl-context-core-before-reconciliation-v1",
+  "observed_at_utc": "2026-10-01T23:25:52Z",
+  "review": "independent read-only by weyl_before_stage_plan",
+  "facts_sha256": "67dfaded404582ee89e2fd5472b026069dc4ca721aa996f0d4cf2c94de194f93",
+  "expanded_squeue": {
+    "rc": 0,
+    "lines": []
+  },
+  "predecessor": {
+    "job": "3884807",
+    "state": "COMPLETED",
+    "exit_code": "0:0",
+    "seconds": 345,
+    "node": "cu001",
+    "batch_maxrss": "1126772K"
+  },
+  "candidate_name_accounting": {
+    "since": "2026-10-01",
+    "rc": 0,
+    "lines": []
+  },
+  "ledger": {
+    "records": 15,
+    "bytes": 5997,
+    "sha256": "fe97c6043a160815a097e09e58da59ecf5c1ce6ea4dd9adc961c7a155ebe979b"
+  },
+  "v8_tree": {
+    "device": 3431958692,
+    "inode": 162130669655308060,
+    "files": 134,
+    "directories": 18,
+    "bytes": 3471903,
+    "sha256": "da98c876de3edc46d12eb21ac605839b1d8ae7a63f1b2e887af24bd35504ee63"
+  },
+  "candidate_stage_present": false,
+  "candidate_events_present": false,
+  "candidate_incoming_present": false,
+  "campaign_incoming_present": false,
+  "transport_present": false,
+  "failed_read_only_attempt": "Unresolved alias ikkemhpc failed DNS locally; no remote command ran. Direct known host succeeded."
+}

@@ -1,0 +1,186 @@
+{
+  "schema": "atlas-weyl-context-core-precreation-reconciliation-v7",
+  "observed_at_utc": "2026-10-01T19:59:53.479445Z",
+  "host": "majj@10.26.14.64",
+  "scope": "Fresh queue, ledger, accounting, immutable v4 predecessor tree and v5 target reconciliation after the v4 Python 3.9 test-module compile failure and before any v5 transport or creator invocation.",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "preceding_connection_timeout": {
+    "observed_at_utc": "2026-10-01T19:56:18Z",
+    "result": "SSH_CONNECT_TIMEOUT_BEFORE_AUTHENTICATION",
+    "remote_output_bytes": 0,
+    "remote_mutation": false,
+    "submission_authority_granted": false,
+    "resolution": "Discarded as an uncertain read-only observation; the complete reconciliation below was repeated after connectivity returned."
+  },
+  "queue": {
+    "command": "squeue -h -r -u majj -o %i|%T|%j|%P",
+    "returncode": 0,
+    "stderr": "",
+    "expanded_jobs": 0,
+    "raw_output": ""
+  },
+  "ledger": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+    "sha256": "00b7bc1cb917bfa15d729620f807cff92d2988c375a237d13fe5fdce9320a8ab",
+    "bytes": 4201,
+    "mode": "0444",
+    "nlink": 1,
+    "records": 11,
+    "statuses": [
+      "SUBMITTED"
+    ],
+    "jobs": [
+      "3872554",
+      "3872594",
+      "3873400",
+      "3873497",
+      "3874203",
+      "3875239",
+      "3879103",
+      "3884124",
+      "3884371",
+      "3884456",
+      "3884494"
+    ],
+    "tail": {
+      "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v4",
+      "script": "hpc/math_weyl_context_core_capture.sbatch",
+      "queue_before": [],
+      "status": "SUBMITTED",
+      "max_outstanding": 10,
+      "job": "3884494",
+      "pin_sha256": "ac12cbda1e1c5dcb75502c20730b8d4e645850d78fe3cee18a09cf454010cabe",
+      "stage_creation_sha256": "cc0d9cedaa385b4366014c5f3f7d799c9367f4c8eca2f62b6182738949325dc4"
+    }
+  },
+  "accounting": [
+    {
+      "job": "3884494",
+      "state": "FAILED",
+      "exit_code": "1:0",
+      "elapsed": "00:00:24",
+      "start": "2026-10-02T03:29:10",
+      "end": "2026-10-02T03:29:34",
+      "allocated_cpus": 2,
+      "requested_memory": "8G",
+      "node": "cu001",
+      "batch_maxrss_kb": 0
+    }
+  ],
+  "predecessor": {
+    "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v4",
+    "stage_device": 3431958692,
+    "stage_inode": 162130669655301397,
+    "stage_mode": "0755",
+    "failure_class": "HARNESS_TEST_MODULE_COMPILE_FAILURE_BEFORE_BUILD_OR_MATHEMATICAL_EXECUTION",
+    "atlas_invocations": 0,
+    "captures_recorded": 0,
+    "pin_sha256": "ac12cbda1e1c5dcb75502c20730b8d4e645850d78fe3cee18a09cf454010cabe",
+    "stage_creation_sha256": "cc0d9cedaa385b4366014c5f3f7d799c9367f4c8eca2f62b6182738949325dc4",
+    "stage_creation_contract_sha256": "17a46812009028b764b320f99e2a57119b246f874512536ebac15a5cd92608f4",
+    "stage_creation_transaction_sha256": "2534c9f88fa8c1d25672d4d565387dfa18bbac48d2ca50319d9c41aa9ac9f57c",
+    "submission_intent_sha256": "be21a7e4781b622d8ea9393a555f2253d7ed07fc66f65163b878367e43e4f9e0",
+    "submission_receipt_sha256": "110c415e5b19aa135ba372935cac573ed05b1a0ca88d8a62af0de2180f9c6d6b",
+    "report_sha256": "3878e1f5cd80781c53f2e3027e7043f8c13f53440318d83c0e1251d15dededc2",
+    "failure_evidence": {
+      "file": "tests/reference/hpc/math_weyl_context_core_capture_v4_failure_2026_10_02.json",
+      "sha256": "051f5292f51dc2ed413a277932fb79556295732a58634c7cdff7cd27fe807517"
+    },
+    "tree_inventory": {
+      "schema": "atlas-stage-tree-inventory-v1",
+      "root_included": false,
+      "entry_order": "relative path ascending",
+      "directory_fields": [
+        "path",
+        "kind",
+        "mode"
+      ],
+      "file_fields": [
+        "path",
+        "kind",
+        "mode",
+        "nlink",
+        "bytes",
+        "sha256"
+      ],
+      "canonical_json": "indent=2, sort_keys=true, trailing LF",
+      "sha256": "7868842059b3bef7b6d53196f76a48c89105bd2a7d00a27b82fe5446b04f8d5b",
+      "files": 95,
+      "directories": 18,
+      "bytes": 2791040,
+      "two_independent_scans_match": true
+    },
+    "campaign_stage_creation_files": 13,
+    "campaign_stage_creation_files_all_bound": true
+  },
+  "v5_stage_state": {
+    "target": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v5",
+    "target_present": false,
+    "creation_events": [],
+    "publication_residuals": [],
+    "matching_transport_directories": []
+  },
+  "candidate": {
+    "progressive_submit_sha256": "60bb3fa46ce740fe5c9e8ba0a89290ede78917c367472c908607d3c6e81d85bd",
+    "campaign_creation_test_sha256": "a28b18563ad4afbcc9fbf5a0583e4cced49eeed543cf31d87b2de75c8d4b5a68",
+    "stager_sha256": "7bfedc23dc2f42e0a8059adbca39aa898e8bc6f10d1f12cee18181acd6b97e54",
+    "driver_sha256": "569671ca60d14478db25d2c8ff6ac108623eaf9daa2f90554e5a5417e118d834",
+    "driver_test_sha256": "a3490a3d7e7bfad1b9e198cdf785222d51605d2f471e0e321461e616738cb9eb",
+    "allowlist_test_sha256": "553760b7cfb5004b826f7704c4fd111e142d486006c2a460b335469d17d98f09",
+    "sbatch_sha256": "507d738f95eea0d234b273ed12a3b0eb4673a4c3eaa1585188cfb432f95c7127",
+    "v4_submission_evidence_sha256": "f27c1766c75865126e707209865718c6e1abeaddc8d564b5f636e6e0175dce02",
+    "v4_failure_evidence_sha256": "051f5292f51dc2ed413a277932fb79556295732a58634c7cdff7cd27fe807517",
+    "test_methods": {
+      "campaign_stage_creation": 32,
+      "progressive_submit": 17,
+      "weyl_context_core_contract": 18,
+      "math_weyl_context_core_capture": 27,
+      "stager_allowlist": 7,
+      "total": 101
+    },
+    "python_3_9_grammar_ast_parse": true,
+    "execution_ast_nodes_bound": 15,
+    "execution_ast_hashes_match": true,
+    "v3_campaign_bindings_repeated_exactly": 10,
+    "v4_campaign_bindings_added_exactly": 3,
+    "full_candidate_read_only_static_audits": 1,
+    "targeted_allowlist_read_only_static_audits": 1,
+    "coordinator_static_hash_closure_checks": true,
+    "static_blockers_remaining": 0,
+    "this_reconciliation_is_not_a_stage_input": true
+  },
+  "kimi_delegation": {
+    "cli_version": "2.1.1",
+    "model": "kimi-code/k3-256k",
+    "session": "session_86f6fd83-5814-4362-a875-8f67b49bfe4c",
+    "profile": ".agents/kimi/editor.md",
+    "scope": "Mechanical ExitStack refactor in hpc/test_math_weyl_context_core_capture.py only; no tests, shell, HPC, mathematical decisions, commits or other edits.",
+    "prompt_sha256": "e5c8f5c6749885af6a881907fdaf17a598e3319bc19c411c388c47cac349c220",
+    "result_sha256": "1c61097fa6acb6246d68b3e1fa1c28404579ffda431d3d0b7b551b3e6484371c",
+    "review_sha256": "a62ebcc2d47568e22480205b105eeee84353e63e4c7a1bbfabf1548ef20e137b",
+    "exit_code": 0,
+    "remaining_live_group_members": [],
+    "independent_exact_diff_review": true,
+    "rejected_suggestions": [],
+    "lesson": "ExitStack preserves ordered patch entry and reverse exit while avoiding CPython's static block limit; compare delegated edits against the exact submitted predecessor bytes before HPC verification."
+  },
+  "decision": "V4_HARNESS_FAILURE_IS_FINAL_AND_EXACTLY_BOUND; V5_IS_THE_SINGLE_TESTS_FIRST_CHANGED_INPUT_SUCCESSOR; ONE TRANSPORT_AND_ONE CREATOR INVOCATION MAY PROCEED, BUT THE CREATOR MUST REVALIDATE QUEUE, LEDGER, V4 IDENTITY, FULL TREE, TARGET ABSENCE AND ALL CREATION STATE UNDER ITS LOCKS",
+  "mutations": {
+    "remote_files_created": 0,
+    "remote_directories_created": 0,
+    "transport_directories_created": 0,
+    "jobs_submitted": 0,
+    "jobs_cancelled": 0
+  },
+  "claims_not_granted": [
+    "v5 creator verification",
+    "v5 job submission",
+    "checker execution",
+    "source reconstruction",
+    "Cargo build",
+    "Weyl-context mathematical correctness",
+    "cache correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

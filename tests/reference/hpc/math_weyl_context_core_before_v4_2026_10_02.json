@@ -1,0 +1,115 @@
+{
+  "schema": "atlas-weyl-context-core-before-inspection-v4",
+  "observed_at_utc": "2026-10-02T14:33:00Z",
+  "classification": "INDEPENDENT_INSPECTION_PASS_TESTS_FIRST_BEFORE_RETAINED",
+  "job": {
+    "id": "3886748",
+    "state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed_seconds": 450,
+    "node": "cu081",
+    "allocated_cpus": 2,
+    "requested_memory": "8G",
+    "batch_maxrss_kb": 1310532,
+    "partition": "cpu"
+  },
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v4",
+  "report": {
+    "path": "results/3886748/report.json",
+    "sha256": "3d0c7c91f672e6bf41830296864a621ee11bbd260735e37c0441d6c499953bce",
+    "report_sha256_file_sha256": "4516e044f5edcbfafd0f8bd4fd33ab5c591cd5a3504f6524cb749d65eef0b8f3",
+    "report_sha256_file_content_matches_report": true,
+    "status": "WEYL_CONTEXT_BEFORE_EXPECTED_FAILURES_OBSERVED",
+    "complete": true,
+    "acceptance_eligible": false,
+    "evidence_maturity": "tests_first_before"
+  },
+  "checker_suites": {
+    "test-campaign-stage-creation": {"tests": 32, "result": "OK", "exit_status": 0},
+    "test-progressive-submit": {"tests": 17, "result": "OK", "exit_status": 0},
+    "test-weyl-context-core-contract": {"tests": 18, "result": "OK", "exit_status": 0},
+    "test-weyl-context-core-regression-contract": {"tests": 17, "result": "OK", "exit_status": 0},
+    "test-math-weyl-context-core-capture": {"tests": 28, "result": "OK", "exit_status": 0},
+    "test-stager-allowlist": {"tests": 7, "result": "OK", "exit_status": 0},
+    "total": 119,
+    "all_ok": true
+  },
+  "commands": {
+    "toolchain_probes_exit_zero": true,
+    "source_reconstruction_exit_zero": true,
+    "release_build": {"exit_status": 0, "seconds": 279.93, "maxrss_kb": 1106800},
+    "atlas_core_test_inventory": {"exit_status": 0, "seconds": 84.9, "tests_listed": 632, "expected": 632},
+    "weyl_context_regressions": {
+      "exit_status": 101,
+      "argv_filter": "weyl_context_core_",
+      "passed": 0,
+      "failed": 2,
+      "ignored": 0,
+      "filtered_out": 630,
+      "failed_tests": [
+        "session::tests::weyl_context_core_cold_dual_original",
+        "session::tests::weyl_context_core_prewarmed_dual_original"
+      ],
+      "expected_exactly_these_two": true
+    },
+    "root_ladder_control": {"exit_status": 0, "test": "session::tests::root_ladder_coordinate_boundary_original"}
+  },
+  "captures": {
+    "fresh_processes": 4,
+    "oracle_binary_sha256": "d4f0f3dc3a82102529aa2ec562db0601e99b368dee25d5539ca52dae2fd37a5a",
+    "oracle_commit": "7e1b958c7aa9456769cc9cf09ac1542814b4800a",
+    "rust_binary_sha256": "1df8d80f2b7d42f8eb705a42ed9fced94f3c300d1f2f57573d03b0dbfd1ed128",
+    "cold_dual": {
+      "oracle": {"exit_status": 0, "stdout_sha256": "7a614e47b75469c441e774cbe46769dcd769c5cc0a2a31cf1868ff9b59a780dc", "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "matches_frozen_golden": true},
+      "rust": {"exit_status": 1, "stdout_sha256": "66563fafa4e69d183c2924038e68c59140c154add5ae08da2ecc0c965cf77c2b", "stderr_sha256": "4b7917cdd31f5c65aef2f0e97b01ce2b938ae68b1128479ddb59701c9261b423", "differs_from_golden": true}
+    },
+    "prewarmed_dual": {
+      "oracle": {"exit_status": 1, "stdout_sha256": "5074aab3290d4ae404bb7abb0b24ccc99036f616abec518c6479e59ec2db021f", "stderr_sha256": "ef4404d85f7252a611f9f4e4a5205fe6bbac2c66f48b7378a30a8053f986e157", "matches_frozen_golden": true},
+      "rust": {"exit_status": 1, "stdout_sha256": "5ee0c28d9ea93d190cf871b2e94748721569833e3f9032ce6512c819ec77e9c8", "stderr_sha256": "1dca42a19b398632233a27b85ac57ed77169305f2c0fc0666bf1ff6680a17767", "differs_from_golden": true}
+    },
+    "thread_settings": {"OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "RAYON_NUM_THREADS": "1"}
+  },
+  "report_classification": {
+    "expected_regressions_observed": true,
+    "original_goldens_matched": true,
+    "retained_control_passed": true,
+    "unexpected_regressions_passed": false,
+    "inventory_complete": true,
+    "metrics_complete": true,
+    "reason": "original goldens matched and exactly the two known Rust regressions failed"
+  },
+  "integrity": {
+    "source_integrity_rechecked": true,
+    "integrity_rechecked": true,
+    "ephemeral_workspace_removed": true,
+    "legacy_path_open_attempts": [],
+    "reconstructed_source_manifest_sha256": "55f807cadb712377cbf6c0c79250b1d5e739e9757290a24209a086f89632850f",
+    "production_change": false
+  },
+  "final_state": {
+    "queue_empty_after": true,
+    "ledger_records": 19,
+    "ledger_sha256": "5381b3b3a8ffcf8ae1566eb63640719ddec13955f681dbeca5361bbf9321cd5a",
+    "pin_sha256": "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
+    "stage_creation_sha256": "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7",
+    "transports_absent": true
+  },
+  "scope": {
+    "releases": "Only the smallest owning Weyl-owner semantic implementation change followed by the same original-backed AFTER gate; nothing else.",
+    "not_granted": [
+      "mathematical acceptance",
+      "AFTER pass",
+      "cache acceptance",
+      "performance or memory improvement",
+      "rank escalation",
+      "G2/B2/C2 or reverse-operand coverage",
+      "inner-class dual construction coverage",
+      "work-count or parallel acceptance"
+    ]
+  },
+  "limitations": [
+    "The Python audit hook covers only the driver process; it does not prove Cargo, Rust or original-Atlas children avoided retired top-level paths.",
+    "Capture resource metrics include one fixed bash exec wrapper and are not accepted performance metrics.",
+    "A1 cross-dual products are only s0*s0; language output cannot prove internal cache-cell topology."
+  ]
+}

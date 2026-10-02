@@ -37,7 +37,7 @@ SBATCH = "hpc/math_ladder_boundary_index.sbatch"
 # make a fixed point impossible.  The reviewed overrides.json SHA-256 supplied
 # on the command line is the external trust root.  This is the sole active
 # launcher; the parent, BEFORE and AFTER launchers are all fail-closed.
-SUBMISSION_ENABLED = True
+SUBMISSION_ENABLED = False
 
 # These are exact reviewed discovery counts, not merely expected exit codes.
 EXPECTED_TEST_COUNTS = {

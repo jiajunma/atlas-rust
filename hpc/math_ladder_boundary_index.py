@@ -55,7 +55,7 @@ from stage_ladder_boundary_index import (EXPECTED_TEST_COUNTS, PIN_NAME,
 if ACTIVE_CAMPAIGN != _ACTIVE_CAMPAIGN:
     raise RuntimeError("ladder boundary index campaign policy changed")
 
-SUBMISSION_ENABLED = True
+SUBMISSION_ENABLED = False
 COMMAND_TIMEOUT_SECONDS = 300
 COMMAND_KILL_AFTER_SECONDS = 15
 SBATCH = "hpc/math_ladder_boundary_index.sbatch"

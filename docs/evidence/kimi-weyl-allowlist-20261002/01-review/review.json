@@ -1,0 +1,45 @@
+{
+  "schema": "atlas-kimi-task-review-v1",
+  "reviewed_at_utc": "2026-10-02T00:49:07Z",
+  "reviewer": "Codex coordinator, inspecting the actual source and frozen Kimi response",
+  "cli_version": "2.1.1",
+  "model": "kimi-code/k3-256k",
+  "session": "session_f338a507-d213-4a17-8ad7-fd3297da9d2c",
+  "profile": ".agents/kimi/probe.md",
+  "prompt_scope": "Tool-free comparison of four supplied campaign-guard literals and review of the historical BEFORE-v2-to-v3 mutation assertion and rejection diagnostic; no mathematics, execution, filesystem access or edits.",
+  "owned_files": [],
+  "files_touched_by_kimi": [],
+  "runner_status": "completed",
+  "runner_exit_code": 0,
+  "elapsed_seconds": 109.531,
+  "remaining_live_group_members": [],
+  "artifacts": {
+    "prompt_sha256": "d8647f7e8006f167d669ea3005986835d0d1a71d08071c78e40fd5fabd9e5f62",
+    "agent_sha256": "62f23c928d0882459b95c2cb35eca1608d8f5f3c1eefdaa3d38ad8054a6a373f",
+    "request_sha256": "f573096e678b8cd6f75d83704c737a681b6f019b111ebfbaa5ff7ea115a6abc3",
+    "result_sha256": "2bb70336a5a963bc5bf4b3363eb96c0cb068e0a2303e8e246c07f42c90aa21b4",
+    "process_sha256": "071cb4008fe5d237e144b5e705dd784ffb3edbe75d1b1be99921d91298ee2152",
+    "stdout_sha256": "376dd58e9522a49ba6f55eb0003e80f949745529f0c739348a61e7fe8cf177c3",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "independent_review": {
+    "actual_source_hashes_match_frozen_prompt": true,
+    "four_campaign_guard_literals_match": true,
+    "historical_driver_unchanged": true,
+    "mutation_assertion_targets_observed_v2_to_v3_error": true,
+    "filename_line_node_diagnostic_matches_frozen_source": true,
+    "v4_expectation_mutation_observation": "Correct only for the targeted mutation assertion considered alone; the retained all-module positive loop rejects the unchanged historical v2 source against a wrong v4 expectation, so the complete test still detects the error.",
+    "adopted": [
+      "Corroboration of the four exact literal matches and the targeted historical-version regression assertion."
+    ],
+    "local_program_tests_run": false,
+    "hpc_verification": "pending; BEFORE-v4 launch guards remain disabled"
+  },
+  "rejected_suggestions": [
+    "No additional explicit historical-expectation assertion was added in response to the optional suggestion: the existing exact literal comparison, frozen historical source and positive full-module loop already detect a wrong expectation. The proposed redundancy is not a submission blocker."
+  ],
+  "lesson": "Keep the external review packet bounded and preserve each historical driver's own version rather than globally replacing version labels. Independently inspect the whole test, because an isolated mutation assertion's limited coverage does not imply a gap in the complete test.",
+  "acceptance_limit": "Static text review only; no test, build, source repair, mathematical, performance, stage or release acceptance. No Kimi-authored project code was applied.",
+  "temporary_paths_created": [],
+  "publication": "Uncommitted documentation of an actual invocation; the surrounding HPC subtask remains open."
+}

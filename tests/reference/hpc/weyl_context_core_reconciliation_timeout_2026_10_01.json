@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-weyl-context-core-reconciliation-attempt-v1",
+  "attempted_at_utc": "2026-10-01T14:42:36Z",
+  "host": "majj@10.26.14.64",
+  "operation": "Read-only scheduler reconciliation before fixed-stage creation or submission.",
+  "command": "ssh -o BatchMode=yes -o ConnectTimeout=12 majj@10.26.14.64 squeue -h -r -u majj -o %i|%T|%j",
+  "exit_status": 255,
+  "stderr": "ssh: connect to host 10.26.14.64 port 22: Connection timed out",
+  "remote_output_received": false,
+  "status": "CONNECTION_TIMEOUT_BEFORE_AUTHENTICATION",
+  "previous_successful_reconciliation_is_currently_stale": true,
+  "unknown_after_attempt": [
+    "scheduler queue",
+    "campaign ledger bytes and record count",
+    "target-stage presence",
+    "submission intent and receipt inventory",
+    "current accounting state"
+  ],
+  "mutations": {
+    "remote_directories_created": 0,
+    "remote_files_written": 0,
+    "jobs_submitted": 0,
+    "jobs_cancelled": 0
+  },
+  "required_next_action": "Repeat the complete four-way read-only reconciliation after connectivity returns; never infer a free slot or absent target from this timeout."
+}

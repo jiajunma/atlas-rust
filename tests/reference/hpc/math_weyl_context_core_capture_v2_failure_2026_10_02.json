@@ -1,0 +1,135 @@
+{
+  "schema": "atlas-weyl-context-core-capture-failure-v2",
+  "observed_at_utc": "2026-10-01T18:19:54Z",
+  "classification": "HARNESS_FAILURE_BEFORE_BUILD_OR_MATHEMATICAL_EXECUTION",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v2",
+  "submission": {
+    "job": "3884371",
+    "state": "FAILED",
+    "exit_code": "1:0",
+    "elapsed_seconds": 114,
+    "node": "cu006",
+    "allocated_cpus": 2,
+    "requested_memory": "8G",
+    "batch_maxrss_kb": 83356,
+    "queue_before": [],
+    "ledger_records_after": 9,
+    "ledger_sha256_after": "3f914057b51234d4be97774a6d2a6360d61eb2e77bea3004335f1e947632c938",
+    "pin_sha256": "44f3133abd56de4b749f2c97aa658e2d18cbecd1b694dfba70b4a16ff36b87dc",
+    "stage_creation_sha256": "fa3539d603b273ddf549fa05acd9e6ca3306a54143ce89362cfe69c1e869322e",
+    "stage_creation_contract_sha256": "f77e7e1425b3b3af5c75b40f021c17751a583c3a60d8b2b9258db0836d03acb1",
+    "submission_intent_sha256": "381c59368f858396e91d64f98040fec197a9c2a68bef5f0d57095462489dee36",
+    "submission_receipt_sha256": "9f325da651dacba89942dd96578f09eb28f725c9a0ab9428ccb0e7ff9d6cf617"
+  },
+  "stage_creation": {
+    "prepared_sha256": "ec440d939bd9bdc62fd917bdeca289c0dbd243456018ec030a2f72815b7045aa",
+    "sealed_sha256": "e3915036d7673e6cec998ed93549be4ed2e74e995eba1a17e96cc95adda77cb0",
+    "published_sha256": "036d741e1bff3288297ba4d7e987dcf47cf6936febd3be143e022009b6f32c1c",
+    "transaction_marker_sha256": "394cfd2b9aba3f733a937c8cd6feae32a49d84bd61f607fa474e482352af731c",
+    "target_device": 3431958692,
+    "target_inode": 162130669655298694,
+    "publication_residuals_after": []
+  },
+  "report": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v2/results/3884371/report.json",
+    "bytes": 32873,
+    "sha256": "8ce92ed8ef844472e84b0c369b9c68b2a94c2b1fa0ae0b2fdec5f4cfd8a5782a",
+    "status": "HARNESS_FAILURE",
+    "complete": false,
+    "acceptance_eligible": false,
+    "math_gate_released": false,
+    "cache_gate_released": false,
+    "ephemeral_workspace_removed": true,
+    "commands_recorded": 3,
+    "atlas_invocations": 0,
+    "captures_recorded": 0,
+    "legacy_path_open_attempts": []
+  },
+  "passed_gates": [
+    {
+      "name": "test-campaign-stage-creation",
+      "tests": 32,
+      "seconds": 53.95,
+      "maxrss_kb": 27456,
+      "stderr_sha256": "36f3db49e1b721b31aa9869452d0e8898e6fcdd2051dacc3f91998f5f06d0168"
+    },
+    {
+      "name": "test-progressive-submit",
+      "tests": 17,
+      "seconds": 1.92,
+      "maxrss_kb": 24564,
+      "stderr_sha256": "5bdd5f5fb48917e3cfa67f56836c4b3768aa892bd641e695e44f4a2191f387c2"
+    },
+    {
+      "name": "test-weyl-context-core-contract",
+      "tests": 18,
+      "seconds": 1.19,
+      "maxrss_kb": 19676,
+      "stderr_sha256": "9faace8f7eae2df8d428884fcbf85ae240ceaf8cc8640c7e6ceb94e5fee008cd"
+    }
+  ],
+  "failed_gate": {
+    "name": "test-math-weyl-context-core-capture",
+    "expected_tests": 27,
+    "observed_tests": 27,
+    "passed": 24,
+    "failures": 2,
+    "errors": 1,
+    "seconds": 47.72,
+    "stderr_sha256": "60e910f4eece138732e13cc3a5847da588193c2baacdcf33631b994999baf83b",
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "time_sha256": "733f23cb232ac7e55d3be38e9dbd397ed625927739eb5b917014009b385fc6a8",
+    "errors_by_cause": {
+      "controlled_environment_values_were_mistaken_for_inherited_values": [
+        "test_command_environment_uses_only_ephemeral_target_and_scrubs_inheritance"
+      ],
+      "build_order_assertion_searched_main_for_top_level_cargo_literal": [
+        "test_driver_materializes_source_and_target_only_in_ephemeral_workspace"
+      ],
+      "stager_order_assertion_did_not_skip_function_docstring": [
+        "test_stager_submission_is_prerequisite_bound_single_job_and_fail_closed"
+      ]
+    },
+    "diagnosis": [
+      "The environment test correctly asserted the controlled CARGO_HOME, RUSTUP_HOME, CARGO_TARGET_DIR and TMPDIR values, then incorrectly required those same keys to be absent merely because hostile inherited values used the same names.",
+      "The build-order test searched driver.main for the literal --release even though the exact Cargo argv is intentionally frozen in the top-level COMMANDS table and main dispatches it by the release-build key.",
+      "The stager-order test assumed run_enabled's first AST statement was the launcher assignment and did not account for its docstring Expr node."
+    ]
+  },
+  "not_reached": [
+    "test-stager-allowlist",
+    "toolchain identity",
+    "source reconstruction",
+    "Cargo release build",
+    "original Atlas execution",
+    "Rust Atlas execution",
+    "mathematical comparison",
+    "performance comparison"
+  ],
+  "mathematical_regression_required": false,
+  "mathematical_regression_reason": "No original or Rust Atlas process ran and no mathematical result was produced; the three failures are test-harness assertions.",
+  "remediation_contract": {
+    "tests_first": true,
+    "environment_assertion": "Require inherited keys outside the exact controlled environment to be absent; separately retain exact assertions for all rederived Cargo, Rustup, target and temporary paths.",
+    "build_order_assertion": "Order the workspace and source materialization before the release-build dispatch key; retain the separate exact top-level Cargo argv assertion.",
+    "docstring_assertion": "Skip an optional leading function docstring before checking the first executable stager statement.",
+    "changed_input_successor_required": true,
+    "immutable_failed_stage": "weyl-context-core-capture-v2",
+    "no_same_stage_resubmission": true,
+    "no_rank_escalation": true
+  },
+  "transport_cleanup": {
+    "local_removed": "/tmp/atlas-wcc-v2-payload-20261002.NnMbaU",
+    "remote_removed": "/public/home/majj/.wcc-v2-payload-20261002.aCFzyC"
+  },
+  "claims_not_granted": [
+    "complete checker acceptance",
+    "source reconstruction",
+    "Cargo build",
+    "Weyl-context mathematical correctness",
+    "cache correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

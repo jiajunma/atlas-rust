@@ -1,0 +1,111 @@
+{
+  "schema": "atlas-weyl-context-core-capture-failure-v1",
+  "observed_at_utc": "2026-10-01T17:15:20Z",
+  "classification": "HARNESS_FAILURE_BEFORE_BUILD_OR_MATHEMATICAL_EXECUTION",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v1",
+  "submission": {
+    "job": "3884124",
+    "state": "FAILED",
+    "exit_code": "1:0",
+    "elapsed_seconds": 26,
+    "node": "cu081",
+    "allocated_cpus": 2,
+    "requested_memory": "8G",
+    "queue_before": [],
+    "ledger_records_after": 8,
+    "ledger_sha256_after": "d59633a873f334faad00e9b030a3a8cc0fdb73e4e6561c019d05451e4873ff52",
+    "pin_sha256": "642f3af98698e3f6bc897b00b732753840a324d6906dc9f49fe68a6072b640c4",
+    "stage_creation_sha256": "7aa595f1acdff10a0ce8318eced5d0e8c4658fe7b130c6fec5ae8bd9f64ce3e6",
+    "stage_creation_contract_sha256": "317da0ff5d36d020085cfdd3ce8dc1e3a0058b2f23d5d96ad109fb9fed11f8ec",
+    "submission_intent_sha256": "8c7b5022cccdeb492db2c83c2f98755500135e4e8b563b3a9b38168a06294b50",
+    "submission_receipt_sha256": "1a67d465e41e2048344be29fd0af4b46a919b6ed4e779c87e0c6fa400d1b7b64"
+  },
+  "stage_creation": {
+    "prepared_sha256": "ee64d9b336908df79b85af16fd6fe6191a31500d73f6986af04b9e8d25e799d7",
+    "sealed_sha256": "b4d71b66239c87c6925ad0de034a51764fe400ecbbd5e4194dbf3cf4b87fbaa3",
+    "published_sha256": "eeb045fed8a0cab82ff710700f4558e482aa3d169390a08ebd185329192c40b0",
+    "transaction_marker_sha256": "e0e70a81a2155641a5dc7695c9d27beb171545f7c253adfc02791a85a8e49dba",
+    "target_inode": 162130669655296334,
+    "target_device": 3431958692,
+    "prior_renameat2_residual_consumed": true,
+    "prior_failure_archive": {
+      "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-stage-creation-failure-1588813e1562c7011397876de836db22ac18a8e249da32ef3c5c3ed4e86e28d5.json",
+      "sha256": "1588813e1562c7011397876de836db22ac18a8e249da32ef3c5c3ed4e86e28d5",
+      "inode": 162130669638647515,
+      "links": 1,
+      "mode": "0444"
+    },
+    "publication_residuals_after": []
+  },
+  "report": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v1/results/3884124/report.json",
+    "bytes": 29375,
+    "sha256": "52a647ca524621e117e7848a43f2ab370569de73e5c20a7a9b9fafc0390ee2f7",
+    "status": "HARNESS_FAILURE",
+    "complete": false,
+    "acceptance_eligible": false,
+    "math_gate_released": false,
+    "cache_gate_released": false,
+    "ephemeral_workspace_removed": true,
+    "commands_recorded": 0,
+    "atlas_invocations": 0,
+    "captures_recorded": 0,
+    "legacy_path_open_attempts": []
+  },
+  "failed_gate": {
+    "name": "test-campaign-stage-creation",
+    "expected_tests": 29,
+    "observed_tests": 29,
+    "passed": 25,
+    "errors": 4,
+    "elapsed_seconds": 18.96,
+    "maxrss_kb": 25132,
+    "stderr_sha256": "429f6850507231f37a7c95b50b208ff10b4804c9be8b2280d3c11b3dedced9be",
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "time_sha256": "b8fd7e4469410ca9e83d49e62ead2c705d162784be131efc8690bdcb470f50ea",
+    "errors_by_cause": {
+      "controlled_environment_has_no_USER": [
+        "test_intent_racer_is_preserved_and_never_reaches_sbatch",
+        "test_lock_name_swap_after_squeue_never_reaches_sbatch",
+        "test_uncertain_submission_retains_creation_sha_everywhere"
+      ],
+      "final_validation_left_synthetic_campaign_context": [
+        "test_real_published_stage_reaches_sbatch_after_durable_intent"
+      ]
+    },
+    "diagnosis": [
+      "submit_one selected the squeue account through os.environ['USER']; the deliberately controlled checker environment does not carry USER.",
+      "The real-publication test performed its final validate_stage_creation call after leaving patch_home, so the exact-active-campaign guard correctly rejected its temporary campaign."
+    ]
+  },
+  "not_reached": [
+    "the remaining four Python checker files",
+    "source reconstruction",
+    "Cargo release build",
+    "original Atlas execution",
+    "Rust Atlas execution",
+    "mathematical comparison",
+    "performance comparison"
+  ],
+  "remediation_contract": {
+    "tests_first": true,
+    "scheduler_identity": "Resolve the scheduler account from the effective UID account database, not an optional or forgeable USER environment variable.",
+    "synthetic_campaign": "Keep the final receipt validation inside the same patched campaign context.",
+    "changed_input_successor_required": true,
+    "immutable_failed_stage": "weyl-context-core-capture-v1",
+    "no_same_stage_resubmission": true,
+    "no_rank_escalation": true
+  },
+  "transport_cleanup": {
+    "local_removed": "/tmp/wcc-payload-20261002.JGxzbd",
+    "remote_removed": "/public/home/majj/.wcc-payload-20261002.zp5VoV"
+  },
+  "claims_not_granted": [
+    "creator checker acceptance",
+    "Weyl-context mathematical correctness",
+    "cache correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

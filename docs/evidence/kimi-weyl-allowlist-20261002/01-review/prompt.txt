@@ -1,0 +1,51 @@
+You are a bounded mechanical code-review subagent for Atlas Rust. The user authorized sending this repository excerpt to the existing local Kimi Code account, model kimi-code/k3-256k. No credentials or mathematical data are included.
+
+Read only the text in this prompt. Owned files: [] (none). Do not claim to inspect files, edit anything, run commands/tests/builds, contact HPC, create worktrees, submit jobs, commit/push, delegate, or decide mathematical correctness/acceptance. Your profile has no tools. Deliver a short Chinese review (at most 350 Chinese characters) containing verdict, any exact mismatch, and limitations. This is static text review, never a test pass.
+
+Task: check that the four expected campaign-guard strings below match the supplied actual driver strings. Then review whether the shown mutation assertion helps detect accidentally replacing the historical driver's v2 expectation while advancing only the current Weyl stage to v4. Do not infer that historical scripts should all acquire the new stage number. Flag concrete issues; distinguish optional suggestions. All predicates apart from the error detail remain unchanged.
+
+Snapshot: hpc/test_stager_allowlist.py SHA256 ce98a823fc17a7bdaa6e05412ebebcf97c323724a1fea3e47ff0acc0ce33c7a9.
+HISTORICAL_DRIVER = "math_ladder_boundary_before.py"
+AFTER_DRIVER = "math_ladder_boundary_after.py"
+INDEX_DRIVER = "math_ladder_boundary_index.py"
+WEYL_CAPTURE_DRIVER = "math_weyl_context_core_capture.py"
+
+Expected map inside exact_campaign_guard:
+expected_messages = {
+    HISTORICAL_DRIVER: "ladder BEFORE v2 campaign policy changed",
+    AFTER_DRIVER: "ladder AFTER v3 campaign policy changed",
+    INDEX_DRIVER: "ladder boundary index campaign policy changed",
+    WEYL_CAPTURE_DRIVER: "Weyl core capture campaign policy changed",
+}
+
+Actual guards (each is the same top-level if ACTIVE_CAMPAIGN != _ACTIVE_CAMPAIGN, raising RuntimeError with this literal):
+math_ladder_boundary_before.py:55-56: "ladder BEFORE v2 campaign policy changed"
+  file SHA256 21dc2207690a8cd0559854eb78725c5e0d901a7e5c1c750d4feb89d55e7b8f9e
+math_ladder_boundary_after.py:56-57: "ladder AFTER v3 campaign policy changed"
+  file SHA256 b6f52b1042393705498767a687175f365c1fd0f491c3f630ca4cf53d2277d0a2
+math_ladder_boundary_index.py:55-56: "ladder boundary index campaign policy changed"
+  file SHA256 29eb6392458aa0d856ca88a1fba6d5eefc4e265f2e5ec5a5ba1ba41bdcf11c31
+math_weyl_context_core_capture.py:139-140: "Weyl core capture campaign policy changed"
+  file SHA256 31f5aef26e14ca669ee9306efc70cc2c4f8f22fd19af11dab5e979a0296966d7
+
+Generic rejection at the end of the per-node loop in bounded_module:
+raise ValueError(
+    "launcher has a non-allowlisted module-level action: "
+    + filename + ":" + str(node.lineno) + " " + type(node).__name__)
+
+Addition to the existing test method (parsed means ast.parse plus retaining source text; bounded_module rejects a top-level campaign guard unless exact_campaign_guard recognizes it):
+historical = driver_sources()[HISTORICAL_DRIVER]
+frozen_message = "ladder BEFORE v2 campaign policy changed"
+self.assertEqual(historical.count(frozen_message), 1)
+changed = parsed(historical.replace(
+    frozen_message, "ladder BEFORE v3 campaign policy changed", 1))
+with self.assertRaisesRegex(
+        ValueError, r"math_ladder_boundary_before\.py:55 If$"):
+    bounded_module(changed, HISTORICAL_DRIVER)
+for name, source in {**sources(), **driver_sources()}.items():
+    tree = parsed(source)
+    bounded_module(tree, name)
+    entry = canonical_driver_entry if name in DRIVERS else canonical_entry_guard
+    self.assertEqual(sum(entry(node) for node in tree.body), 1, name)
+
+The historical driver is frozen and remains unchanged. The coordinator will independently review your answer and run the real checks on an HPC compute node. No mathematical or performance claim is requested.

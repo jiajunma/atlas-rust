@@ -1,0 +1,49 @@
+{
+  "schema": "atlas-weyl-context-core-before-reconciliation-v4",
+  "observed_at_utc": "2026-10-02T14:16:53Z",
+  "review": "independent read-only by goal-mode coordinator",
+  "expanded_squeue": {
+    "command": "squeue -h -r -u majj -o %i|%T|%j|%P",
+    "rc": 0,
+    "lines": []
+  },
+  "predecessor": {
+    "job": "3884903",
+    "state": "FAILED",
+    "exit_code": "1:0",
+    "seconds": 56,
+    "node": "cu001",
+    "batch_maxrss": "108156K",
+    "sacct_command": "sacct -n -P -j 3884903 --format=JobIDRaw,State,ExitCode,ElapsedRaw,Start,End,AllocCPUS,ReqMem,NodeList,MaxRSS"
+  },
+  "candidate_name_accounting": {
+    "since": "2026-10-01",
+    "rc": 0,
+    "lines": [],
+    "note": "sacct -u majj since 2026-10-01 contains no before-v4 job name"
+  },
+  "ledger": {
+    "records": 18,
+    "bytes": 7341,
+    "mode": "0444",
+    "nlink": 1,
+    "sha256": "fec706e87cd1a28c0700b55698a86b8c69553875b89d15274789065cf740e6b9",
+    "tail_job": "3884903",
+    "tail_stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v3"
+  },
+  "predecessor_tree": {
+    "device": 3431958692,
+    "inode": 162130669655310921,
+    "files": 141,
+    "directories": 18,
+    "bytes": 3676351,
+    "note": "file/directory/byte counts match the immutable before-v3 failure record; content walk was read-only"
+  },
+  "candidate_stage_present": false,
+  "candidate_events_present": false,
+  "candidate_incoming_present": false,
+  "campaign_incoming_present": false,
+  "transport_present": false,
+  "transport_path": "/public/home/majj/.weyl-core-before-v4-payload",
+  "connectivity": "direct ssh to majj@10.26.14.64 (login mu012) succeeded on the first attempt; no alias fallback was needed"
+}

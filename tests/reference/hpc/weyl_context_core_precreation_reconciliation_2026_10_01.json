@@ -1,0 +1,101 @@
+{
+  "schema": "atlas-weyl-context-core-precreation-reconciliation-v1",
+  "observed_at_utc": "2026-10-01T13:39:37Z",
+  "host": "majj@10.26.14.64",
+  "scope": "Read-only login-node reconciliation before any fixed-stage creation or SLURM submission.",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "target_stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v1",
+  "queue": {
+    "command": "squeue -h -r -u majj -o %i|%T|%j",
+    "raw_output": "",
+    "expanded_jobs": 0
+  },
+  "ledger": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+    "sha256": "b336fb831de28f72e9138284d2c6f07ecfb178f617ebe4bec78e1c82ffb8eaa7",
+    "records": 7,
+    "all_statuses": "SUBMITTED",
+    "job_ids": [
+      "3872554",
+      "3872594",
+      "3873400",
+      "3873497",
+      "3874203",
+      "3875239",
+      "3879103"
+    ]
+  },
+  "accounting": [
+    {
+      "job": "3872554",
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "name": "atlas-weyl-parent-seal"
+    },
+    {
+      "job": "3872594",
+      "state": "FAILED",
+      "exit_code": "1:0",
+      "name": "atlas-ladder-boundary-before-v2"
+    },
+    {
+      "job": "3873400",
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "name": "atlas-ladder-boundary-before-v3"
+    },
+    {
+      "job": "3873497",
+      "state": "FAILED",
+      "exit_code": "1:0",
+      "name": "atlas-ladder-boundary-after-v1"
+    },
+    {
+      "job": "3874203",
+      "state": "FAILED",
+      "exit_code": "1:0",
+      "name": "atlas-ladder-boundary-after-v2"
+    },
+    {
+      "job": "3875239",
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "name": "atlas-ladder-boundary-after-v3"
+    },
+    {
+      "job": "3879103",
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "name": "atlas-ladder-index-v1"
+    }
+  ],
+  "stage_inventory": {
+    "direct_children": [
+      "ladder-boundary-after-v1",
+      "ladder-boundary-after-v2",
+      "ladder-boundary-after-v3",
+      "ladder-boundary-before-v2",
+      "ladder-boundary-before-v3",
+      "ladder-boundary-index-v1",
+      "weyl-parent-seal-v1"
+    ],
+    "target_present": false,
+    "submission_intents": 7,
+    "submission_receipts": 7
+  },
+  "decision": "TARGET_ABSENT_AND_SCHEDULER_CLEAR_BUT_RECEIPT_BOUND_CREATOR_REQUIRED",
+  "claims_not_granted": [
+    "stage creation acceptance",
+    "job submission acceptance",
+    "mathematical correctness",
+    "Weyl cache implementation permission",
+    "performance improvement",
+    "rank escalation"
+  ],
+  "mutations": {
+    "remote_directories_created": 0,
+    "remote_files_written": 0,
+    "jobs_submitted": 0,
+    "jobs_cancelled": 0
+  }
+}

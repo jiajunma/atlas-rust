@@ -1,0 +1,163 @@
+{
+  "schema": "atlas-weyl-context-core-capture-failure-v3",
+  "observed_at_utc": "2026-10-01T19:03:27Z",
+  "classification": "HARNESS_OBSERVABILITY_FAILURE_AFTER_CHECKER_PASS_BEFORE_BUILD_OR_MATHEMATICAL_EXECUTION",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v3",
+  "submission": {
+    "job": "3884456",
+    "state": "FAILED",
+    "exit_code": "1:0",
+    "elapsed_seconds": 36,
+    "start": "2026-10-02T02:52:44",
+    "end": "2026-10-02T02:53:20",
+    "node": "cu081",
+    "allocated_cpus": 2,
+    "requested_memory": "8G",
+    "batch_maxrss_kb": 87016,
+    "queue_before": [],
+    "queue_after_reconciliation": [],
+    "ledger_records_after": 10,
+    "ledger_bytes_after": 3752,
+    "ledger_sha256_after": "23684daa03b9f8791625514cecd84432ecb99c202b022504d724724b68b36096",
+    "pin_sha256": "a4f4d9e924a201c29d25f73649b1eaa40843efddbb4b21ab78fa0d8bc0871c06",
+    "stage_creation_sha256": "742ff713a6f865c163f1846c62e0647892ec5d556e9cd1358cbdfad45c87958d",
+    "stage_creation_contract_sha256": "782da7645710f555ecd7c1a560f915929aebdb46981028d13dd97f153555ecbd",
+    "stage_creation_transaction_sha256": "5c3c4481098177e9b138c45e2cde109bc5b20a5695aa592a6b7bdd155982dab4",
+    "submission_intent_sha256": "973b0944273bb0741bec73408ae2c25bd2686a34bfab1424741bb5e9c892e932",
+    "submission_receipt_sha256": "2f547384f7ec2632cd604e0b68d9aa8c4673ab8f83010c319476078da7c940de"
+  },
+  "stage_creation": {
+    "prepared_sha256": "c34413614d3f59af73462f3cbb3038ef1423340474d5335f43473ac3d1cd1c04",
+    "sealed_sha256": "55139441a0c3f5a130913aa73aeab72f1ee44bdb76556d223eafeafc52dd3786",
+    "published_sha256": "df4b01435e66eacdf28c9fac1940e0239da863f29cee6c6bb4c05e2af12f4342",
+    "target_device": 3431958692,
+    "target_inode": 162130669655299664,
+    "target_mode": "0755",
+    "publication_residuals_after": []
+  },
+  "report": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v3/results/3884456/report.json",
+    "bytes": 30377,
+    "sha256": "64cb617a81dbea65cbc14c3d62e9988921a56a81408a561a86586ef4b61bf520",
+    "report_sha256_file_bytes": 65,
+    "report_sha256_file_sha256": "8c8cbe4ff69502d6d1609145650a464b9e979eadd3bcab31956589309bf599a8",
+    "status": "HARNESS_FAILURE",
+    "complete": false,
+    "acceptance_eligible": false,
+    "math_gate_released": false,
+    "cache_gate_released": false,
+    "ephemeral_workspace_removed": true,
+    "commands_recorded": 0,
+    "atlas_invocations": 0,
+    "captures_recorded": 0,
+    "legacy_path_open_attempts": [],
+    "cleanup_error": null
+  },
+  "passed_but_unrecorded_gate": {
+    "name": "test-campaign-stage-creation",
+    "tests": 32,
+    "test_seconds": 27.245,
+    "gnu_time": {
+      "seconds": 28.52,
+      "user_seconds": 3.38,
+      "system_seconds": 5.19,
+      "maxrss_kb": 29096,
+      "exit_status": 0,
+      "signal": null
+    },
+    "stderr_bytes": 3857,
+    "stderr_sha256": "adee98007af0a745b0acd8b897231cbdee66e937dff4c57a0a33fea7a837a03d",
+    "stdout_bytes": 0,
+    "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "time_bytes": 860,
+    "time_sha256": "624f8ea4714c371560f51da4dede4ec55afdd05e6cf05c4c6c433ec25acad4b2",
+    "catalog_bytes": 1283,
+    "catalog_sha256": "7fb77fecda841962cb98bdeddbdba58df46d673e076f87f2087cd234e2f1a717",
+    "why_unrecorded": "The driver called _execute_timed successfully enough to retain complete checker streams and GNU time output, but _command_record rejected the returned result before appending it to report.commands."
+  },
+  "failed_gate": {
+    "name": "driver-command-record",
+    "exception": "ValueError: command failed or lacks exact GNU time metrics: test-campaign-stage-creation",
+    "traceback_driver_line": 1323,
+    "combined_rejection_predicate": [
+      "nonzero process return code",
+      "timed_out",
+      "termination_uncertain",
+      "derived signal",
+      "missing or invalid exact GNU time metrics"
+    ],
+    "independent_diagnosis": {
+      "audits": 2,
+      "gnu_time_parse_failure_excluded": true,
+      "invalid_metric_failure_excluded": true,
+      "checker_failure_excluded": true,
+      "cleanup_left_live_group_excluded": true,
+      "most_likely_remaining_predicate": "termination_uncertain",
+      "mechanism": "After communicate returned, _execute_timed permanently set termination_uncertain as soon as the process group was observed alive once. The checker uses multiprocessing spawn, Event and Queue, so a short-lived Python resource_tracker or other same-group descendant can outlive the successful leader. The implementation retained the uncertain flag even when subsequent cleanup left no live group.",
+      "proof_limit": "The v3 report discarded the pre-rejection _execute_timed result, so it did not retain returncode, timed_out, termination_uncertain, derived signal, or before/after process-group state. The exact failing subpredicate therefore cannot be machine-proved from v3 artifacts alone."
+    }
+  },
+  "not_reached": [
+    "test-progressive-submit",
+    "test-weyl-context-core-contract",
+    "test-math-weyl-context-core-capture",
+    "test-stager-allowlist",
+    "toolchain identity",
+    "source reconstruction",
+    "Cargo release build",
+    "original Atlas execution",
+    "Rust Atlas execution",
+    "mathematical comparison",
+    "performance comparison"
+  ],
+  "final_stage_tree": {
+    "schema": "atlas-stage-tree-inventory-v1",
+    "root_included": false,
+    "entry_order": "relative path ascending",
+    "canonical_json": "indent=2, sort_keys=true, trailing LF",
+    "sha256": "e3d95aa3b64b10513ccd56a246b8980363d11fd399dceb28cb3859bbc6d25b19",
+    "files": 84,
+    "directories": 18,
+    "bytes": 2683734,
+    "double_scan_and_final_reread_match": true
+  },
+  "top_level_log": {
+    "path": "weyl-context-core-capture-v3-3884456.out",
+    "bytes": 115,
+    "mode": "0644",
+    "sha256": "471e0e9fbef6f6b5da35862160e1c6927a99d4dfd4d48a4d9d340d37912638b3"
+  },
+  "mathematical_regression_required": false,
+  "mathematical_regression_reason": "No original or Rust Atlas process ran and no mathematical result was produced; the failure is in harness process-group observation after a checker completed successfully.",
+  "remediation_contract": {
+    "tests_first": true,
+    "natural_exit_grace": "After a successful leader exit only, allow a short bounded no-signal grace for same-group descendants to disappear naturally.",
+    "timeout_policy": "Do not add the grace to timeout handling.",
+    "persistent_group_policy": "If the group remains after the grace, preserve termination_uncertain=true, run the existing TERM-to-KILL cleanup, and reject the command even when cleanup succeeds.",
+    "final_group_check": "Retain the final process-group liveness check and outer-finally cleanup.",
+    "diagnostics": "Persist the failed command result and exact failed_checks so later reports distinguish exit status, timeout, termination uncertainty, signal and GNU time parse or consistency failure.",
+    "changed_input_successor_required": true,
+    "immutable_failed_stage": "weyl-context-core-capture-v3",
+    "no_same_stage_resubmission": true,
+    "no_rank_escalation": true
+  },
+  "transport": {
+    "manifest_sha256": "47c07c13ff2a4d9d812977d948356ec89b1702211155436d574a4bb8275eb814",
+    "inputs": 35,
+    "manifest_file": "overrides.json",
+    "initial_transfer": "The first scp ended with a partial remote payload: independent verification found missing or zero-length content and group-writable directory modes. No creator invocation occurred from that payload.",
+    "repair": "The same registered transport path was repaired with rsync and reverified byte-for-byte against the frozen manifest before the sole creator invocation; no sibling or retry transport was created.",
+    "local_removed": "/tmp/atlas-wcc-v3-payload-20261002.Z1gYTW",
+    "remote_removed": "/public/home/majj/.wcc-v3-payload-20261002-47c07c13ff2a"
+  },
+  "claims_not_granted": [
+    "complete checker acceptance",
+    "source reconstruction",
+    "Cargo build",
+    "Weyl-context mathematical correctness",
+    "cache correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

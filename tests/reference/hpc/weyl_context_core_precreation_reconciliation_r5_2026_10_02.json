@@ -1,0 +1,153 @@
+{
+  "schema": "atlas-weyl-context-core-precreation-reconciliation-v5",
+  "observed_at_utc": "2026-10-01T18:38:45Z",
+  "host": "majj@10.26.14.64",
+  "scope": "Fresh read-only queue, ledger, accounting, v1 ancestry, v2 predecessor tree and v3 target reconciliation after the v2 harness-only failure and before v3 transport or creator invocation.",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "queue": {
+    "command": "squeue -h -r -u majj -o %i|%T|%j|%P",
+    "expanded_jobs": 0,
+    "raw_output": ""
+  },
+  "ledger": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+    "sha256": "3f914057b51234d4be97774a6d2a6360d61eb2e77bea3004335f1e947632c938",
+    "bytes": 3303,
+    "mode": "0444",
+    "nlink": 1,
+    "records": 9,
+    "statuses": [
+      "SUBMITTED"
+    ],
+    "jobs": [
+      "3872554",
+      "3872594",
+      "3873400",
+      "3873497",
+      "3874203",
+      "3875239",
+      "3879103",
+      "3884124",
+      "3884371"
+    ],
+    "tail": {
+      "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v2",
+      "script": "hpc/math_weyl_context_core_capture.sbatch",
+      "queue_before": [],
+      "status": "SUBMITTED",
+      "max_outstanding": 10,
+      "job": "3884371",
+      "pin_sha256": "44f3133abd56de4b749f2c97aa658e2d18cbecd1b694dfba70b4a16ff36b87dc",
+      "stage_creation_sha256": "fa3539d603b273ddf549fa05acd9e6ca3306a54143ce89362cfe69c1e869322e"
+    }
+  },
+  "accounting": [
+    {
+      "job": "3884371",
+      "state": "FAILED",
+      "exit_code": "1:0",
+      "elapsed": "00:01:54",
+      "start": "2026-10-02T02:15:02",
+      "end": "2026-10-02T02:16:56",
+      "allocated_cpus": 2,
+      "requested_memory": "8G",
+      "node": "cu006"
+    }
+  ],
+  "v1_ancestry": {
+    "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v1",
+    "stage_device": 3431958692,
+    "stage_inode": 162130669655296334,
+    "tree_sha256": "f85df75860e3da76871ba9d9972485ef3ea7f43cc2663b71b28d380c0be47940",
+    "tree_files": 80,
+    "tree_directories": 18,
+    "tree_bytes": 2505878,
+    "record_job": "3884124",
+    "descriptor_matches_v2_creation_receipt": true,
+    "live_identity_and_tree_rechecked": true
+  },
+  "predecessor": {
+    "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v2",
+    "stage_device": 3431958692,
+    "stage_inode": 162130669655298694,
+    "stage_mode": "0755",
+    "failure_class": "HARNESS_FAILURE_BEFORE_BUILD_OR_MATHEMATICAL_EXECUTION",
+    "atlas_invocations": 0,
+    "pin_sha256": "44f3133abd56de4b749f2c97aa658e2d18cbecd1b694dfba70b4a16ff36b87dc",
+    "stage_creation_sha256": "fa3539d603b273ddf549fa05acd9e6ca3306a54143ce89362cfe69c1e869322e",
+    "stage_creation_contract_sha256": "f77e7e1425b3b3af5c75b40f021c17751a583c3a60d8b2b9258db0836d03acb1",
+    "submission_intent_sha256": "381c59368f858396e91d64f98040fec197a9c2a68bef5f0d57095462489dee36",
+    "submission_receipt_sha256": "9f325da651dacba89942dd96578f09eb28f725c9a0ab9428ccb0e7ff9d6cf617",
+    "report_sha256": "8ce92ed8ef844472e84b0c369b9c68b2a94c2b1fa0ae0b2fdec5f4cfd8a5782a",
+    "failure_evidence": {
+      "file": "tests/reference/hpc/math_weyl_context_core_capture_v2_failure_2026_10_02.json",
+      "sha256": "5ec936c2cbae28778df9ab4a1d4076008e4fcc6a54b95a7e6b9f47b550820fab"
+    },
+    "tree_inventory": {
+      "schema": "atlas-stage-tree-inventory-v1",
+      "root_included": false,
+      "entry_order": "relative path ascending",
+      "directory_fields": [
+        "path",
+        "kind",
+        "mode"
+      ],
+      "file_fields": [
+        "path",
+        "kind",
+        "mode",
+        "nlink",
+        "bytes",
+        "sha256"
+      ],
+      "canonical_json": "indent=2, sort_keys=true, trailing LF",
+      "sha256": "43a8347b61d23d275eecb92eec1a0ca2ff3689e33117a7000b28c4eb3df1bd09",
+      "files": 91,
+      "directories": 18,
+      "bytes": 2635472,
+      "double_scan_and_final_reread_match": true
+    },
+    "campaign_stage_creation_files": 7,
+    "campaign_stage_creation_files_all_bound": true
+  },
+  "v3_stage_state": {
+    "target": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v3",
+    "target_present": false,
+    "creation_events": [],
+    "publication_residuals": []
+  },
+  "candidate": {
+    "progressive_submit_sha256": "4d3935e59ca96a599a869be36b7bd1f634b6a8d0305e97f42176ddd9751cefab",
+    "campaign_creation_test_sha256": "d7a423038fdfcbfabf8b46bfbd601782816340e0112b2b9b64844539c5843fc9",
+    "stager_sha256": "981df0262b80860107245ac6348c0e41a1494c0dafc1af6597e0fcd23d8374da",
+    "driver_sha256": "81266cbb5947ff1bd164a697a32f91774385cdd028d2196260b89562cf217a4e",
+    "driver_test_sha256": "6c90aa7c20dd0ddbea99f03593fd2cf9882ed9d2555bcfc7f0c9a926320c4c54",
+    "allowlist_test_sha256": "fc089caa7f3d6831341d011b432ebc38a7675b25313bc6075a61b5588fa1e5b4",
+    "sbatch_sha256": "d892783679c20d95da1df16897794273846dffd7d3d13636f3fc394557d9646d",
+    "v2_failure_evidence_sha256": "5ec936c2cbae28778df9ab4a1d4076008e4fcc6a54b95a7e6b9f47b550820fab",
+    "test_methods": {
+      "campaign_stage_creation": 32,
+      "progressive_submit": 17,
+      "weyl_context_core_contract": 18,
+      "math_weyl_context_core_capture": 27,
+      "stager_allowlist": 7,
+      "total": 101
+    },
+    "independent_static_audits": 2,
+    "static_blockers_remaining": 0
+  },
+  "decision": "V2_HARNESS_FAILURE_IS_FINAL_AND_EXACTLY_BOUND; V3_IS_THE_SINGLE_CHANGED-INPUT_SUCCESSOR; TRANSPORT MAY BEGIN BUT THE CREATOR MUST REVALIDATE QUEUE, LEDGER, BOTH PREDECESSOR IDENTITIES, V2 TREE, TARGET ABSENCE AND ALL CREATION STATE UNDER ITS LOCKS",
+  "mutations": {
+    "remote_directories_created": 0,
+    "remote_files_written": 0,
+    "jobs_submitted": 0,
+    "jobs_cancelled": 0
+  },
+  "claims_not_granted": [
+    "v3 creator verification",
+    "v3 job submission",
+    "mathematical correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

@@ -1,0 +1,129 @@
+{
+  "schema": "atlas-weyl-context-core-before-submission-evidence-v2",
+  "observed_at_utc": "2026-10-02T00:03:30Z",
+  "classification": "DURABLE_SINGLE_SUBMISSION_FINAL_HARNESS_FAILURE_BEFORE_SOURCE_BUILD_OR_ATLAS_EXECUTION",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v2",
+  "creator": {
+    "invocations": 1,
+    "returncode": 0,
+    "manifest_sha256": "0f66de83019ae828b258a06aa38afe312e166075bb5bc1a685c9752cc7b42542",
+    "manifest_bytes": 6390,
+    "manifest_inputs": 51,
+    "manifest_input_bytes": 1716695,
+    "changed_inputs_from_predecessor": 8,
+    "receipt_status": "SUBMITTED_NOT_VERIFIED",
+    "job": "3884880",
+    "pin_sha256": "bc98d9a033ab1fb0829456ef8a852b0db504a2eeffff6a6e6c377ddad045b750",
+    "stage_creation_sha256": "82b88fcc782c540055f11ef07e37244e73bec13fd1179c7d0b3c40747978dec9",
+    "predecessor_job": "3884862",
+    "predecessor_ledger_records": 16,
+    "predecessor_ledger_sha256": "2da7643c27debb664ade23a8d2d5e1ae881a6a45857f4ea5dfdea5311eddf4ad",
+    "math_gate_released": false,
+    "cache_gate_released": false,
+    "performance_gate_released": false,
+    "rank_gate_released": false,
+    "acceptance_eligible": false
+  },
+  "queue_after_reconciliation": {
+    "command": "squeue -h -r -u majj -o %i|%T|%j|%P",
+    "returncode": 0,
+    "stderr": "",
+    "expanded_jobs": 0,
+    "raw_output": ""
+  },
+  "accounting": {
+    "command": "sacct -n -P -j 3884880 --format=JobIDRaw,State,ExitCode,ElapsedRaw,Start,End,AllocCPUS,ReqMem,NodeList,MaxRSS",
+    "returncode": 0,
+    "stderr": "",
+    "raw_output": "3884880|FAILED|1:0|56|2026-10-02T07:52:31|2026-10-02T07:53:27|2|8G|cu001|\n3884880.batch|FAILED|1:0|56|2026-10-02T07:52:31|2026-10-02T07:53:27|2||cu001|86800K\n3884880.extern|COMPLETED|0:0|56|2026-10-02T07:52:31|2026-10-02T07:53:27|2||cu001|0\n"
+  },
+  "ledger": {
+    "records": 17,
+    "bytes": 6893,
+    "mode": "0444",
+    "nlink": 1,
+    "sha256": "e7a4ba5736bdbb40b97eb4cc2961c6c5756c1d1cd2aae339b6f99095e7987567",
+    "tail": {
+      "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v2",
+      "script": "hpc/math_weyl_context_core_capture.sbatch",
+      "queue_before": [],
+      "status": "SUBMITTED",
+      "max_outstanding": 10,
+      "job": "3884880",
+      "pin_sha256": "bc98d9a033ab1fb0829456ef8a852b0db504a2eeffff6a6e6c377ddad045b750",
+      "stage_creation_sha256": "82b88fcc782c540055f11ef07e37244e73bec13fd1179c7d0b3c40747978dec9"
+    }
+  },
+  "stage_creation": {
+    "stage_device": 3431958692,
+    "stage_inode": 162130669655310146,
+    "stage_mode": "0755",
+    "receipt_bytes": 19077,
+    "receipt_sha256": "82b88fcc782c540055f11ef07e37244e73bec13fd1179c7d0b3c40747978dec9",
+    "contract_sha256": "e2ca9ba1f4c7fe1a81c84783863f95a1f57a6b307271d060718a04a3d1a79afc",
+    "transaction_bytes": 327,
+    "transaction_sha256": "72d43d72fb28a13ba77be329dc9ac9d8240d8a1d594e8a8a01fc76e4cfdaa785",
+    "prepared_bytes": 18839,
+    "prepared_sha256": "0563d3d7147428b18a430b6d51729c7efb9a1f8d4502612bf6acced10b7b2b3f",
+    "sealed_bytes": 589,
+    "sealed_sha256": "1e0ed9bb398dd0f820c895225ae6a091206deba2004ab58db6accb79b0d7217e",
+    "published_bytes": 677,
+    "published_sha256": "7841d14640dce85af7e2f40620b76546894672ea3d64b1f47064d5ad9dae06c0",
+    "incoming_entries": []
+  },
+  "submission_files": {
+    "pin_bytes": 16650,
+    "pin_sha256": "bc98d9a033ab1fb0829456ef8a852b0db504a2eeffff6a6e6c377ddad045b750",
+    "intent_bytes": 427,
+    "intent_sha256": "ac30c59b893ec9c00c2e493eb1e7c98fe0d3596f7a4f4b21c5cc096ad5e70421",
+    "receipt_bytes": 10698,
+    "receipt_sha256": "a10bb7b0658cda3c7c9fd92853e8418c1be58d576c6feacf5498ad2edeb7925b",
+    "mode": "0444",
+    "nlink": 1
+  },
+  "final_observation": {
+    "state": "FAILED",
+    "exit_code": "1:0",
+    "elapsed_seconds": 56,
+    "report_status": "WEYL_CONTEXT_BEFORE_HARNESS_FAILURE",
+    "report_bytes": 52518,
+    "report_sha256": "d38a7ace107be965212a46a4edfd54b1327b5429f0893f3a347320cbc553f827",
+    "failed_gate": "test-stager-allowlist",
+    "source_reconstruction_reached": false,
+    "cargo_reached": false,
+    "atlas_reached": false
+  },
+  "transport": {
+    "local_temporary_path_created": false,
+    "local_paths_matching_task_pattern_after": [],
+    "remote": "/public/home/majj/.weyl-core-before-v2-payload",
+    "changed_files_transferred": 8,
+    "manifest_inputs": 51,
+    "remote_files_including_manifest_before_creation": 52,
+    "remote_bytes_including_manifest_before_creation": 1723085,
+    "remote_creator_invocations": 1,
+    "retirement_condition_satisfied": true,
+    "remote_removed": true
+  },
+  "independent_review": {
+    "manifest_and_all_102_installed_and_override_copies_reconciled": true,
+    "job_pin_creation_stage_and_ledger_reconciled": true,
+    "queue_and_accounting_final_snapshot_reconciled": true,
+    "report_failure_layer_reconciled": true,
+    "cleanup_state_reconciled": true,
+    "status": "INDEPENDENT_READ_ONLY_SUBMISSION_AND_FINAL_STATE_AUDIT_COMPLETE"
+  },
+  "claims_not_granted": [
+    "successful checker completion",
+    "source reconstruction",
+    "Cargo build",
+    "original Atlas execution",
+    "Rust Atlas execution",
+    "tests-first Weyl-context BEFORE reproduction",
+    "Weyl-context mathematical correctness",
+    "cache correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

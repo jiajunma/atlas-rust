@@ -1,0 +1,141 @@
+{
+  "schema": "atlas-weyl-context-core-precreation-reconciliation-v2",
+  "observation_started_at_utc": "2026-10-01T15:55:12Z",
+  "observation_completed_at_utc": "2026-10-01T16:02:30Z",
+  "host": "majj@10.26.14.64",
+  "scope": "Fresh read-only login-node reconciliation after connectivity returned and before any fixed-stage creation or SLURM submission.",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "target_stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v1",
+  "queue": {
+    "command": "squeue -h -r -u majj -o %i|%T|%j",
+    "raw_output": "",
+    "expanded_jobs": 0
+  },
+  "ledger": {
+    "commands": [
+      "sha256sum /public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+      "sed -n 1,260p /public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+      "jq -c .[] /public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json"
+    ],
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+    "sha256": "b336fb831de28f72e9138284d2c6f07ecfb178f617ebe4bec78e1c82ffb8eaa7",
+    "records": 7,
+    "all_statuses": "SUBMITTED",
+    "job_ids": [
+      "3872554",
+      "3872594",
+      "3873400",
+      "3873497",
+      "3874203",
+      "3875239",
+      "3879103"
+    ]
+  },
+  "accounting_command": "sacct -X -n -j 3872554,3872594,3873400,3873497,3874203,3875239,3879103 --format=JobIDRaw,State,ExitCode -P",
+  "accounting": [
+    {
+      "job": "3872554",
+      "state": "COMPLETED",
+      "exit_code": "0:0"
+    },
+    {
+      "job": "3872594",
+      "state": "FAILED",
+      "exit_code": "1:0"
+    },
+    {
+      "job": "3873400",
+      "state": "COMPLETED",
+      "exit_code": "0:0"
+    },
+    {
+      "job": "3873497",
+      "state": "FAILED",
+      "exit_code": "1:0"
+    },
+    {
+      "job": "3874203",
+      "state": "FAILED",
+      "exit_code": "1:0"
+    },
+    {
+      "job": "3875239",
+      "state": "COMPLETED",
+      "exit_code": "0:0"
+    },
+    {
+      "job": "3879103",
+      "state": "COMPLETED",
+      "exit_code": "0:0"
+    }
+  ],
+  "stage_inventory": {
+    "commands": [
+      "find /public/home/majj/atlas-rust-campaign-20260930/stages -mindepth 1 -maxdepth 1 -printf %y|%m|%f",
+      "find /public/home/majj/atlas-rust-campaign-20260930 -mindepth 1 -maxdepth 1 -name .atlas-publish-*.tmp",
+      "find /public/home/majj/atlas-rust-campaign-20260930/stages -mindepth 1 -maxdepth 1 -name .atlas-stage-creation-*"
+    ],
+    "all_direct_entries": [
+      "d|755|ladder-boundary-after-v1",
+      "d|755|ladder-boundary-after-v2",
+      "d|755|ladder-boundary-after-v3",
+      "d|700|ladder-boundary-before-v2",
+      "d|700|ladder-boundary-before-v3",
+      "d|755|ladder-boundary-index-v1",
+      "d|700|weyl-parent-seal-v1"
+    ],
+    "direct_children": [
+      "ladder-boundary-after-v1",
+      "ladder-boundary-after-v2",
+      "ladder-boundary-after-v3",
+      "ladder-boundary-before-v2",
+      "ladder-boundary-before-v3",
+      "ladder-boundary-index-v1",
+      "weyl-parent-seal-v1"
+    ],
+    "target_present": false,
+    "target_prefix_entries": [],
+    "campaign_stage_creation_events": [],
+    "hidden_stage_creation_transactions": [],
+    "publication_residuals": [],
+    "submission_intents": 7,
+    "submission_receipts": 7,
+    "intent_rows_match_ledger_as_an_unordered_set": true,
+    "all_intent_statuses": "SUBMITTED",
+    "intent_sha256_by_stage": {
+      "ladder-boundary-after-v1": "8a620953dc51f2f5410adf685b86ec807ccb486c43e77db3f46dd728f7a8fc29",
+      "ladder-boundary-after-v2": "bf13ee5fa7f96b9846a2d000018a2951b1ef7dd6ae208e977fd2b3eb4e62c6a9",
+      "ladder-boundary-after-v3": "feff9e66a0317719258db7e210325a109e263d1447790b71d4a444c33f79a0ab",
+      "ladder-boundary-before-v2": "7ad0ce837daacbf359dd99f8e4270464fa16c2b1270158e0bae0466db4b2fd4a",
+      "ladder-boundary-before-v3": "985491fa2ecc744f5ec0dfb8c08c71a49a975b4d2155bc006e2f591de63f9505",
+      "ladder-boundary-index-v1": "882cb2cf2ad4431e4137d6cf6a4fb1d8a022bf98becbec9bf0ba61700016639c",
+      "weyl-parent-seal-v1": "0c2a6b6b13404a7a4583c4f1f2c35c32d1ba07924a44b1cb12f4b05be83c5147"
+    },
+    "receipt_sha256_by_stage": {
+      "ladder-boundary-after-v1": "cf7ce26c8f765e30a908ae9732f32d88e5bf95df1db8ef55de6f4d9188efb56e",
+      "ladder-boundary-after-v2": "6c1e342a1e59f67bdfaa611acebcb9913c581ff3a06e5c9b7b8488c3127d8672",
+      "ladder-boundary-after-v3": "ac1f6f52f99de9b86b7b7bbfe56e7478809f193f1938a0c07219bc6061ee2254",
+      "ladder-boundary-before-v2": "8842edbd215940ba420f5585ab1cc43e6cca89aa8e963a16a5e8a957d1d1b388",
+      "ladder-boundary-before-v3": "4fc0b646056a02f45b265ae53b8cdd8be8a0efaa63e14b583898434ea3d75ebd",
+      "ladder-boundary-index-v1": "8a68007be0c54e1dd69dd3d599b0ceebefe4659dd1ae29d986d4fcc288821072",
+      "weyl-parent-seal-v1": "6ced68fcf857ab4df3a5d12eb1f603e1a4257c18b4e23de11108dbb8bd7d6742"
+    }
+  },
+  "decision": "FOUR_WAY_REMOTE_SNAPSHOT_MATCHES_FROZEN_PREDECESSOR_STAGER_MUST_REVALIDATE_IN_TRANSACTION",
+  "claims_not_granted": [
+    "creator HPC verification",
+    "payload, parent CAS, catalog or sole-launcher validation",
+    "stage creation acceptance",
+    "job submission acceptance",
+    "mathematical correctness",
+    "Weyl cache implementation permission",
+    "performance improvement",
+    "rank escalation"
+  ],
+  "mutations": {
+    "remote_directories_created": 0,
+    "remote_files_written": 0,
+    "jobs_submitted": 0,
+    "jobs_cancelled": 0
+  }
+}

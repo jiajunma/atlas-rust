@@ -1,0 +1,128 @@
+{
+  "schema": "atlas-weyl-context-core-before-submission-evidence-v4",
+  "observed_at_utc": "2026-10-02T14:22:30Z",
+  "classification": "DURABLE_SINGLE_SUBMISSION_RUNNING_NOT_VERIFIED",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v4",
+  "freeze_record": {
+    "file": "tests/reference/hpc/math_weyl_context_core_before_v4_freeze_2026_10_02.json",
+    "sha256": "e6e467318a757d33c478f85da5a8f832b2994a9b660c5d4e189c1d5c9a5b45d9"
+  },
+  "reconciliation_record": {
+    "file": "tests/reference/hpc/math_weyl_context_core_before_v4_reconciliation_2026_10_02.json",
+    "sha256": "640102e5ea5fd2ea6eb5741fb94fb7adc17848eb701692cd929a085d9b2b4190"
+  },
+  "creator": {
+    "invocations": 1,
+    "returncode": 0,
+    "stderr": "",
+    "command": "cd /public/home/majj/.weyl-core-before-v4-payload && PYTHONDONTWRITEBYTECODE=1 python3 -B overrides/hpc/stage_weyl_context_core_capture.py /public/home/majj/.weyl-core-before-v4-payload add7dfe0a9d4f0efa1b7d73333149c934d9f367812b47e30a94f5fbe5ff12ebd",
+    "login_python": "3.9.12",
+    "manifest_sha256": "add7dfe0a9d4f0efa1b7d73333149c934d9f367812b47e30a94f5fbe5ff12ebd",
+    "manifest_bytes": 6690,
+    "manifest_inputs": 53,
+    "manifest_input_bytes": 1805958,
+    "changed_inputs_from_predecessor": 8,
+    "receipt_status": "SUBMITTED_NOT_VERIFIED",
+    "job": "3886748",
+    "pin_sha256": "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
+    "stage_creation_sha256": "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7",
+    "predecessor_job": "3884903",
+    "predecessor_ledger_records": 18,
+    "predecessor_ledger_sha256": "fec706e87cd1a28c0700b55698a86b8c69553875b89d15274789065cf740e6b9",
+    "math_gate_released": false,
+    "cache_gate_released": false,
+    "performance_gate_released": false,
+    "rank_gate_released": false,
+    "acceptance_eligible": false
+  },
+  "observation_window": {
+    "started_at_utc": "2026-10-02T14:21:30Z",
+    "finished_at_utc": "2026-10-02T14:22:30Z",
+    "login_host": "mu012"
+  },
+  "queue_after_reconciliation": {
+    "command": "squeue -h -r -u majj -o %i|%T|%j|%P|%N",
+    "returncode": 0,
+    "stderr": "",
+    "expanded_jobs": 1,
+    "raw_output": "3886748|RUNNING|atlas-weyl-core-before-v4|cpu|cu081"
+  },
+  "ledger": {
+    "records": 19,
+    "bytes": 7789,
+    "sha256": "5381b3b3a8ffcf8ae1566eb63640719ddec13955f681dbeca5361bbf9321cd5a",
+    "tail": {
+      "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v4",
+      "script": "hpc/math_weyl_context_core_capture.sbatch",
+      "queue_before": [],
+      "status": "SUBMITTED",
+      "max_outstanding": 10,
+      "job": "3886748",
+      "pin_sha256": "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
+      "stage_creation_sha256": "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7"
+    }
+  },
+  "stage_creation": {
+    "contract_sha256": "2affae9a40b11f15ca97ad80e38ca95534ff6294ff43e0c7823ede57202d919a",
+    "transaction_sha256": "4ae83ab4446267af676897c4b1b1ec2ffcf1ead2db30bca431c0140960dff030",
+    "prepared_sha256": "eaa076df62b5e75d0755f8dec25fc6ce6cd3f0fdf0a19b0422a74b4eb946e7cb",
+    "sealed_sha256": "227bf9aa28737e1b9c7004d0cf3f8213748025e18f8950742543afb9d03ef150",
+    "published_sha256": "0dc3362461e91ce7329567f2c766047da4d9b1362d70fe8c6e62c703df22f657",
+    "incoming_entries": 0
+  },
+  "submission_files": {
+    "pin_bytes": 16999,
+    "pin_sha256": "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
+    "intent_bytes": 427,
+    "intent_sha256": "c94c6cc6b8a28f795bb3f8412c15edd7c2ca24b3611378a6771ce93bc9d10ab2",
+    "receipt_bytes": 10743,
+    "receipt_sha256": "f53f37662aa4607647b9055e15544fdd67e8bac9a328971a919afada93d18798",
+    "mode": "0444",
+    "nlink": 1,
+    "pin_schema": "atlas-weyl-context-core-before-pin-v4",
+    "receipt_schema": "atlas-weyl-context-core-before-submission-v4",
+    "receipt_status": "SUBMITTED_NOT_VERIFIED"
+  },
+  "input_copies": {
+    "manifest_inputs": 53,
+    "manifest_input_bytes": 1805958,
+    "remote_payload_verified_before_launch": true,
+    "installed_stager_bytes": 296069,
+    "installed_overrides_bytes": 6690,
+    "all_files_mode": "0444",
+    "all_files_nlink": 1
+  },
+  "job_observation": {
+    "state": "RUNNING",
+    "node": "cu081",
+    "partition": "cpu",
+    "report_status": "NOT_YET_WRITTEN"
+  },
+  "transport": {
+    "local_temporary_path_created": true,
+    "local_temporary_path": "/tmp/weyl-v4-payload-wzm6fr5h",
+    "local_temporary_path_removed": true,
+    "remote": "/public/home/majj/.weyl-core-before-v4-payload",
+    "files_transferred": 54,
+    "remote_verified_before_launch": true,
+    "remote_removed": true,
+    "remote_removal_topology_check": [
+      "overrides"
+    ],
+    "campaign_publication_residuals": []
+  },
+  "concurrent_modification_note": "During this session the three harness files (stager, driver, allowlist test) were modified at 2026-10-02T14:07Z by another local process, completing the documented final whole-file hash pin step: both SUBMISSION_ENABLED flags set True, stager FROZEN_LAUNCHER_HASHES driver pin updated to a8f78418, allowlist WEYL_CAPTURE_STAGER_SHA256/WEYL_CAPTURE_DRIVER_SHA256 updated to the current stager/driver bytes. This session independently re-verified the complete resulting state before launch: 53-input hash delta against the v3 freeze, AST parse and exact checker counts of every changed Python file, flag states, all cross-pins, the restored historical v2 campaign-guard literal and its mutation regression, and a pre-launch stability recheck of all 53 local hashes.",
+  "claims_not_granted": [
+    "successful checker completion",
+    "source reconstruction",
+    "Cargo build",
+    "original Atlas execution",
+    "Rust Atlas execution",
+    "tests-first Weyl-context BEFORE reproduction",
+    "Weyl-context mathematical correctness",
+    "cache correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

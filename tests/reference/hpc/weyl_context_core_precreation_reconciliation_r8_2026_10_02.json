@@ -1,0 +1,156 @@
+{
+  "schema": "atlas-weyl-context-core-precreation-reconciliation-v8",
+  "observed_at_utc": "2026-10-01T20:41:41.380677Z",
+  "host": "majj@10.26.14.64",
+  "scope": "Fresh read-only queue, accounting, 12-record ledger, immutable v5 predecessor tree and v6 target reconciliation after independent v5 failure review and before any v6 transport or creator invocation.",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "queue": {
+    "command": "squeue -h -r -u majj -o %i|%T|%j|%P",
+    "returncode": 0,
+    "stderr": "",
+    "expanded_jobs": 0,
+    "raw_output": ""
+  },
+  "accounting": {
+    "command": "sacct -n -P -j 3884727 --format=JobIDRaw,State,ExitCode,ElapsedRaw,Start,End,AllocCPUS,ReqMem,NodeList,MaxRSS",
+    "returncode": 0,
+    "stderr": "",
+    "raw_output": "3884727|FAILED|1:0|37|2026-10-02T04:09:51|2026-10-02T04:10:28|2|8G|cu001|\n3884727.batch|FAILED|1:0|37|2026-10-02T04:09:51|2026-10-02T04:10:28|2||cu001|78176K\n3884727.extern|COMPLETED|0:0|37|2026-10-02T04:09:51|2026-10-02T04:10:28|2||cu001|0\n"
+  },
+  "ledger": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+    "sha256": "e5c1ed292453da24720c180dd0702cc031bd125716bf0ce053049e32bcc0d4bc",
+    "bytes": 4650,
+    "mode": "0444",
+    "nlink": 1,
+    "records": 12,
+    "jobs": [
+      "3872554",
+      "3872594",
+      "3873400",
+      "3873497",
+      "3874203",
+      "3875239",
+      "3879103",
+      "3884124",
+      "3884371",
+      "3884456",
+      "3884494",
+      "3884727"
+    ],
+    "tail": {
+      "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v5",
+      "script": "hpc/math_weyl_context_core_capture.sbatch",
+      "queue_before": [],
+      "status": "SUBMITTED",
+      "max_outstanding": 10,
+      "job": "3884727",
+      "pin_sha256": "80d61ee985cbf6a920908d7b754e48654112baa7790611776f7a2cf715c47a13",
+      "stage_creation_sha256": "1e7d077e43d6d1cec6199e1e77e2842edf314742e4694c58c155179467a9a95f"
+    }
+  },
+  "predecessor": {
+    "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v5",
+    "stage_device": 3431958692,
+    "stage_inode": 162130669655303288,
+    "stage_mode": "0755",
+    "report_status": "HARNESS_FAILURE",
+    "atlas_invocations": 0,
+    "captures_recorded": 0,
+    "incoming_entries": [],
+    "pin_sha256": "80d61ee985cbf6a920908d7b754e48654112baa7790611776f7a2cf715c47a13",
+    "stage_creation_sha256": "1e7d077e43d6d1cec6199e1e77e2842edf314742e4694c58c155179467a9a95f",
+    "stage_creation_transaction_sha256": "1245860dd55f6f53a09f5b03dd9f0bf6e7752701676e38092c2a8f1294757d4c",
+    "submission_intent_sha256": "392747371545a3b78f51ee462eac4e41f392e4cad955b95acecd04d15a954ee4",
+    "submission_receipt_sha256": "5651a5490ccd58b9c257d26f0b79f432a01a4acaf97543f583a72e2d5d11ca4c",
+    "report_sha256": "b50d7aae9f04d30cc5d8ca7c9ccb85405c412bc8e8e251aa559eb1b1220d785a",
+    "report_sha256_file_sha256": "c21cc735a26ebb514015b683a6e1f24a420346fe4b815fc9477900bc50d25f60",
+    "top_level_log_sha256": "c4ddeabc94329245142e342cfa8ffbea621428e89fe8c5ad4984c8f97ff42441",
+    "failure_evidence": {
+      "file": "tests/reference/hpc/math_weyl_context_core_capture_v5_failure_2026_10_02.json",
+      "sha256": "5620228b361952f34a5cf5400cfa21fcd1c951131a0a470a4909b0993bfc3db9"
+    },
+    "tree_inventory": {
+      "schema": "atlas-stage-tree-inventory-v1",
+      "root_included": false,
+      "entry_order": "relative path ascending",
+      "canonical_json": "indent=2, sort_keys=true, trailing LF",
+      "inventory_bytes": 25636,
+      "sha256": "6ce9bc7b83a1dbba5f7a40fc22e47da3c7726bcc726ac4453d54ca76aa94d6ee",
+      "files": 97,
+      "directories": 18,
+      "bytes": 2876626,
+      "two_independent_scans_match": true
+    },
+    "campaign_stage_creation_events": {
+      "prepared_sha256": "e6307e1efe1b07ba720de39948ac994604a235a00413a5aa8032220f3d5a9843",
+      "sealed_sha256": "7e16e5bf2c8bdbc952ff9afec01860e12ab2f37dca6cf65910faa18214131452",
+      "published_sha256": "2227f14946639fd06df8f92bde178041be34e88b5feab9f4516ee8e8e00eda71",
+      "mode": "0444",
+      "nlink": 1
+    },
+    "historical_creation_event_files": 16,
+    "historical_creation_event_files_all_bound": true,
+    "campaign_lock": {
+      "bytes": 0,
+      "mode": "0600",
+      "nlink": 1,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "v6_stage_state": {
+    "target": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v6",
+    "target_present": false,
+    "creation_events": [],
+    "publication_residuals": [],
+    "matching_transport_directories": [],
+    "v5_transport_directories": []
+  },
+  "candidate": {
+    "progressive_submit_sha256": "61a58fc919c2fd86ace9ce4c5a19d5e6f84d31af695b0a5f69fd07c1c0b3b652",
+    "campaign_creation_test_sha256": "4e545517552aa1949a4ac2b0715c8edcaa5a94c5b25d811fa3a5b062c976f59a",
+    "stager_sha256": "00504c0fcc9257bbd2b70eba66b4809f6de6db7870f3313b1a987e5d2eca77f1",
+    "driver_sha256": "c8d466eef588159a1a211f5ba21d4be7c7d13283e85d765eb42ca6d2c93a9474",
+    "driver_test_sha256": "3e1cbe0471ab637319475a904f09a3cde4989b2e7fc19e0f03c20106533bd4d3",
+    "allowlist_test_sha256": "100c7ed705b565a054102ff37fd33f99739cf4f3a83448407f44aa2698d98305",
+    "sbatch_sha256": "1a3d4815fbb6866788830202fc67c2e7a9c9a789e9e00411b46833e4861931a8",
+    "v5_failure_evidence_sha256": "5620228b361952f34a5cf5400cfa21fcd1c951131a0a470a4909b0993bfc3db9",
+    "stage_inputs": 38,
+    "stage_input_bytes": 1435343,
+    "test_methods": {
+      "campaign_stage_creation": 32,
+      "progressive_submit": 17,
+      "weyl_context_core_contract": 18,
+      "math_weyl_context_core_capture": 27,
+      "stager_allowlist": 7,
+      "total": 101
+    },
+    "python_3_9_grammar_ast_parse": true,
+    "repaired_literal_bytes": 860,
+    "repaired_literal_sha256": "624f8ea4714c371560f51da4dede4ec55afdd05e6cf05c4c6c433ec25acad4b2",
+    "execution_ast_nodes_bound": 15,
+    "execution_ast_hashes_match": true,
+    "independent_static_audits": 2,
+    "static_blockers_remaining": 0,
+    "this_reconciliation_is_not_a_stage_input": true
+  },
+  "decision": "V5_HARNESS_FAILURE_IS_FINAL_INDEPENDENTLY_REVIEWED_AND_EXACTLY_BOUND; V6_IS_THE_SINGLE_TESTS_FIRST_CHANGED_INPUT_SUCCESSOR; ONE TRANSPORT_AND_ONE CREATOR_INVOCATION MAY PROCEED, BUT THE CREATOR MUST REVALIDATE QUEUE, LEDGER, V5 IDENTITY, FULL TREE, TARGET ABSENCE AND ALL CREATION STATE UNDER ITS LOCKS",
+  "mutations": {
+    "remote_files_created": 0,
+    "remote_directories_created": 0,
+    "transport_directories_created": 0,
+    "jobs_submitted": 0,
+    "jobs_cancelled": 0
+  },
+  "claims_not_granted": [
+    "v6 creator verification",
+    "v6 job submission",
+    "checker execution",
+    "source reconstruction",
+    "Cargo build",
+    "Weyl-context mathematical correctness",
+    "cache correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

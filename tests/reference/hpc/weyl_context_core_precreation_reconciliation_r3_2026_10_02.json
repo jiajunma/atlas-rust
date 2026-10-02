@@ -1,0 +1,73 @@
+{
+  "schema": "atlas-weyl-context-core-precreation-reconciliation-v3",
+  "observed_at_utc": "2026-10-01T17:04:12Z",
+  "host": "majj@10.26.14.64",
+  "scope": "Fresh read-only queue, ledger, accounting, target and exact prior-publication reconciliation after the portable creator review and before transport or creator invocation.",
+  "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+  "queue": {
+    "command": "squeue -h -r -u majj -o %i|%T|%j",
+    "expanded_jobs": 0,
+    "raw_output": ""
+  },
+  "ledger": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+    "sha256": "b336fb831de28f72e9138284d2c6f07ecfb178f617ebe4bec78e1c82ffb8eaa7",
+    "records": 7,
+    "statuses": [
+      "SUBMITTED"
+    ],
+    "jobs": [
+      "3872554",
+      "3872594",
+      "3873400",
+      "3873497",
+      "3874203",
+      "3875239",
+      "3879103"
+    ]
+  },
+  "accounting": [
+    {"job": "3872554", "state": "COMPLETED", "exit_code": "0:0"},
+    {"job": "3872594", "state": "FAILED", "exit_code": "1:0"},
+    {"job": "3873400", "state": "COMPLETED", "exit_code": "0:0"},
+    {"job": "3873497", "state": "FAILED", "exit_code": "1:0"},
+    {"job": "3874203", "state": "FAILED", "exit_code": "1:0"},
+    {"job": "3875239", "state": "COMPLETED", "exit_code": "0:0"},
+    {"job": "3879103", "state": "COMPLETED", "exit_code": "0:0"}
+  ],
+  "stage_state": {
+    "target": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-capture-v1",
+    "target_present": false,
+    "target_prefix_entries": [],
+    "creation_events": []
+  },
+  "prior_failure_state": {
+    "publication_residuals": [
+      {
+        "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-publish-bd83ec4e79a16385851f0105ba5482376d0af5d360160beed6b23315cc1b6c1e.tmp",
+        "mode": "0444",
+        "bytes": 5481,
+        "links": 1,
+        "device": 3431958692,
+        "inode": 162130669638647515,
+        "sha256": "1588813e1562c7011397876de836db22ac18a8e249da32ef3c5c3ed4e86e28d5"
+      }
+    ],
+    "expected_archive": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-stage-creation-failure-1588813e1562c7011397876de836db22ac18a8e249da32ef3c5c3ed4e86e28d5.json",
+    "archive_present": false
+  },
+  "decision": "EXACT_PREDECESSOR_AND_PRIOR_FAILURE_STATE_MATCH_PORTABLE_CREATOR_INPUT; TRANSPORT_MAY_BEGIN BUT CREATOR_MUST_REVALIDATE_UNDER_BOTH_LOCKS",
+  "mutations": {
+    "remote_directories_created": 0,
+    "remote_files_written": 0,
+    "jobs_submitted": 0,
+    "jobs_cancelled": 0
+  },
+  "claims_not_granted": [
+    "creator HPC verification",
+    "job submission",
+    "mathematical correctness",
+    "performance improvement",
+    "rank escalation"
+  ]
+}

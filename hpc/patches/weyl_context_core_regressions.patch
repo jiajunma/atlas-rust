@@ -1,0 +1,94 @@
+--- a/crates/atlas-core/src/session.rs
++++ b/crates/atlas-core/src/session.rs
+@@ -732,6 +732,91 @@
+         original.strip_prefix(begin.as_bytes())
+             .and_then(|body| body.strip_suffix(end.as_bytes()))
+             .expect("complete original orientation capture")
++    }
++
++    fn weyl_context_original_payload<'a>(original: &'a [u8], name: &str) -> &'a [u8] {
++        let begin = format!("MATH_BEGIN {name}\n");
++        let end = format!("MATH_END {name}\nBye.\n");
++        original.strip_prefix(begin.as_bytes())
++            .and_then(|body| body.strip_suffix(end.as_bytes()))
++            .expect("complete original Weyl-context capture")
++    }
++
++    fn weyl_context_oracle_diagnostics(original: &[u8]) -> Vec<(ErrorKind, String)> {
++        if original.is_empty() {
++            return Vec::new();
++        }
++        let body = original.strip_suffix(b"\n")
++            .expect("original Weyl-context stderr has a final newline");
++        let lines = std::str::from_utf8(body)
++            .expect("original Weyl-context stderr is UTF-8")
++            .split('\n')
++            .collect::<Vec<_>>();
++        assert_eq!(lines.len() % 3, 0, "complete three-line diagnostic blocks");
++        lines.chunks_exact(3).map(|block| {
++            assert_eq!(block[0], "Runtime error:");
++            assert_eq!(block[2], "Evaluation aborted.");
++            let message = block[1].strip_prefix("  ")
++                .expect("indented original runtime message");
++            (ErrorKind::Runtime, message.to_owned())
++        }).collect()
++    }
++
++    fn weyl_context_original_regression(
++        source: &str,
++        original_stdout: &[u8],
++        original_stderr: &[u8],
++        name: &str,
++        recovery: &str,
++    ) {
++        let events = run_source(&SourceText::new(source));
++        let output = matrix_axes_stdout(&events);
++        let recovery_count = std::str::from_utf8(&output)
++            .expect("Weyl-context output is UTF-8")
++            .matches(recovery)
++            .count();
++        assert_eq!(recovery_count, 1, "Weyl-context setup did not recover: {events:?}");
++        let diagnostics = events.iter().filter_map(|event| match event {
++            SessionEvent::Diagnostic(error) => {
++                Some((error.kind.clone(), error.message.clone()))
++            }
++            _ => None,
++        }).collect::<Vec<_>>();
++        let expected_output = weyl_context_original_payload(original_stdout, name).to_vec();
++        let expected_diagnostics = weyl_context_oracle_diagnostics(original_stderr);
++        eprintln!("WEYL_CONTEXT_CORE_READY {name} diagnostics={}", diagnostics.len());
++        assert_eq!(
++            (output, diagnostics),
++            (expected_output, expected_diagnostics),
++            "complete original Weyl-context stdout and ordered diagnostics",
++        );
++    }
++
++    #[test]
++    fn weyl_context_core_cold_dual_original() {
++        weyl_context_original_regression(
++            include_str!("../../../tests/math/generics/weyl_context_core_cold_dual.atlas"),
++            include_bytes!(
++                "../../../tests/math/generics/weyl_context_core_cold_dual.oracle.stdout"),
++            include_bytes!(
++                "../../../tests/math/generics/weyl_context_core_cold_dual.oracle.stderr"),
++            "weyl_context_core_cold_dual",
++            "WC_RECOVERY|727\n",
++        );
++    }
++
++    #[test]
++    fn weyl_context_core_prewarmed_dual_original() {
++        weyl_context_original_regression(
++            include_str!(
++                "../../../tests/math/generics/weyl_context_core_prewarmed_dual.atlas"),
++            include_bytes!(
++                "../../../tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout"),
++            include_bytes!(
++                "../../../tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr"),
++            "weyl_context_core_prewarmed_dual",
++            "WCN_RECOVERY|733\n",
++        );
+     }
+ 
+     #[test]

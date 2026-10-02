@@ -1,0 +1,34 @@
+{
+  "schema": "codex-kimi-request-v1",
+  "frozen_at": "2026-10-02T00:43:42.173472+00:00",
+  "argv": [
+    "/home/hoxide/.kimi-code/bin/kimi",
+    "--model",
+    "kimi-code/k3-256k",
+    "--output-format",
+    "stream-json",
+    "--agent-file",
+    "/home/hoxide/mycodes/atlas-rust/docs/evidence/kimi-weyl-allowlist-20261002/01-review/agent.md",
+    "--prompt",
+    "You are a bounded mechanical code-review subagent for Atlas Rust. The user authorized sending this repository excerpt to the existing local Kimi Code account, model kimi-code/k3-256k. No credentials or mathematical data are included.\n\nRead only the text in this prompt. Owned files: [] (none). Do not claim to inspect files, edit anything, run commands/tests/builds, contact HPC, create worktrees, submit jobs, commit/push, delegate, or decide mathematical correctness/acceptance. Your profile has no tools. Deliver a short Chinese review (at most 350 Chinese characters) containing verdict, any exact mismatch, and limitations. This is static text review, never a test pass.\n\nTask: check that the four expected campaign-guard strings below match the supplied actual driver strings. Then review whether the shown mutation assertion helps detect accidentally replacing the historical driver's v2 expectation while advancing only the current Weyl stage to v4. Do not infer that historical scripts should all acquire the new stage number. Flag concrete issues; distinguish optional suggestions. All predicates apart from the error detail remain unchanged.\n\nSnapshot: hpc/test_stager_allowlist.py SHA256 ce98a823fc17a7bdaa6e05412ebebcf97c323724a1fea3e47ff0acc0ce33c7a9.\nHISTORICAL_DRIVER = \"math_ladder_boundary_before.py\"\nAFTER_DRIVER = \"math_ladder_boundary_after.py\"\nINDEX_DRIVER = \"math_ladder_boundary_index.py\"\nWEYL_CAPTURE_DRIVER = \"math_weyl_context_core_capture.py\"\n\nExpected map inside exact_campaign_guard:\nexpected_messages = {\n    HISTORICAL_DRIVER: \"ladder BEFORE v2 campaign policy changed\",\n    AFTER_DRIVER: \"ladder AFTER v3 campaign policy changed\",\n    INDEX_DRIVER: \"ladder boundary index campaign policy changed\",\n    WEYL_CAPTURE_DRIVER: \"Weyl core capture campaign policy changed\",\n}\n\nActual guards (each is the same top-level if ACTIVE_CAMPAIGN != _ACTIVE_CAMPAIGN, raising RuntimeError with this literal):\nmath_ladder_boundary_before.py:55-56: \"ladder BEFORE v2 campaign policy changed\"\n  file SHA256 21dc2207690a8cd0559854eb78725c5e0d901a7e5c1c750d4feb89d55e7b8f9e\nmath_ladder_boundary_after.py:56-57: \"ladder AFTER v3 campaign policy changed\"\n  file SHA256 b6f52b1042393705498767a687175f365c1fd0f491c3f630ca4cf53d2277d0a2\nmath_ladder_boundary_index.py:55-56: \"ladder boundary index campaign policy changed\"\n  file SHA256 29eb6392458aa0d856ca88a1fba6d5eefc4e265f2e5ec5a5ba1ba41bdcf11c31\nmath_weyl_context_core_capture.py:139-140: \"Weyl core capture campaign policy changed\"\n  file SHA256 31f5aef26e14ca669ee9306efc70cc2c4f8f22fd19af11dab5e979a0296966d7\n\nGeneric rejection at the end of the per-node loop in bounded_module:\nraise ValueError(\n    \"launcher has a non-allowlisted module-level action: \"\n    + filename + \":\" + str(node.lineno) + \" \" + type(node).__name__)\n\nAddition to the existing test method (parsed means ast.parse plus retaining source text; bounded_module rejects a top-level campaign guard unless exact_campaign_guard recognizes it):\nhistorical = driver_sources()[HISTORICAL_DRIVER]\nfrozen_message = \"ladder BEFORE v2 campaign policy changed\"\nself.assertEqual(historical.count(frozen_message), 1)\nchanged = parsed(historical.replace(\n    frozen_message, \"ladder BEFORE v3 campaign policy changed\", 1))\nwith self.assertRaisesRegex(\n        ValueError, r\"math_ladder_boundary_before\\.py:55 If$\"):\n    bounded_module(changed, HISTORICAL_DRIVER)\nfor name, source in {**sources(), **driver_sources()}.items():\n    tree = parsed(source)\n    bounded_module(tree, name)\n    entry = canonical_driver_entry if name in DRIVERS else canonical_entry_guard\n    self.assertEqual(sum(entry(node) for node in tree.body), 1, name)\n\nThe historical driver is frozen and remains unchanged. The coordinator will independently review your answer and run the real checks on an HPC compute node. No mathematical or performance claim is requested.\n"
+  ],
+  "cwd": "/home/hoxide/mycodes/atlas-rust",
+  "model_alias": "kimi-code/k3-256k",
+  "session_to_resume": null,
+  "cli_version": "2.1.1",
+  "binary_sha256": "66f47536e40b02bb1d577cdd324768f73d39b8b9472e0ca140e73d8e225cd7de",
+  "runner_sha256": "beda5202021bff7f78f39af64f658c0f7e7cd501155d4474647b05b78e04cc0e",
+  "prompt_sha256": "d8647f7e8006f167d669ea3005986835d0d1a71d08071c78e40fd5fabd9e5f62",
+  "agent_sha256": "62f23c928d0882459b95c2cb35eca1608d8f5f3c1eefdaa3d38ad8054a6a373f",
+  "owned_files": [],
+  "timeout_seconds": 180.0,
+  "grace_seconds": 5,
+  "environment_controls": {
+    "KIMI_CODE_NO_AUTO_UPDATE": "1",
+    "KIMI_DISABLE_TELEMETRY": "1",
+    "KIMI_CODE_INFINITE_RETRY": "0",
+    "KIMI_LOOP_MAX_STEPS_PER_TURN": "4",
+    "KIMI_LOOP_MAX_ATTEMPTS_PER_STEP": "2",
+    "KIMI_CODE_BACKGROUND_KEEP_ALIVE_ON_EXIT": "0"
+  }
+}

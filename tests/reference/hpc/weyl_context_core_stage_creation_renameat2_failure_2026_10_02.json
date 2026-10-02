@@ -1,0 +1,87 @@
+{
+  "schema": "atlas-weyl-context-core-stage-creation-failure-v1",
+  "captured_at_utc": "2026-10-01T16:13:56Z",
+  "host": "majj@10.26.14.64",
+  "scope": "First execution of the fixed receipt-bound creator after restored connectivity; failure occurred before final stage creation and before scheduler contact.",
+  "payload": {
+    "files_excluding_manifest": 32,
+    "bytes_excluding_manifest": 1160890,
+    "overrides_sha256": "db66001115ae44517488622855117264f54ff63c9e0b03c8c2326312e61e0cb0",
+    "tree_sha256_stream": "5420a2e74ef5f7d98cd4cb2444ed3d1dfd938a9f255eea1cbee65c556d78ca5b",
+    "stager_sha256": "b165795e0ceb9aae635fc9320549024b27ef91ad2305d33b3e7d343675f0a3fd",
+    "driver_sha256": "550ff8651e6a8a771651c14b578e587c4c26945af5349d5adb5fc3dc5d3054eb"
+  },
+  "transport": {
+    "first_path": "/public/home/majj/.wcc-payload.EruJA5",
+    "first_result": "REJECTED_BEFORE_STAGER_BINARY_TAR_STREAM_WAS_NOT_BYTE_PRESERVING",
+    "first_local_tree_sha256_stream": "5420a2e74ef5f7d98cd4cb2444ed3d1dfd938a9f255eea1cbee65c556d78ca5b",
+    "first_remote_tree_sha256_stream": "aad052a57c7cc4da07dddb5414a9ff7361c266e050d65bbeb6bbc22ec796706e",
+    "first_path_removed": true,
+    "second_path": "/public/home/majj/.wcc-payload.aZKS0i",
+    "second_protocol": "scp recursive file transfer",
+    "second_local_and_remote_tree_sha256_stream": "5420a2e74ef5f7d98cd4cb2444ed3d1dfd938a9f255eea1cbee65c556d78ca5b",
+    "second_regular_files": 33,
+    "second_file_mode": "0444",
+    "second_directory_mode": "0700",
+    "second_path_removed_after_failure_capture": true,
+    "local_payload_removed_after_failure_capture": true
+  },
+  "invocation": {
+    "python": "/public/software/anaconda/anaconda3-2022.5/bin/python3.9",
+    "flags": [
+      "-E",
+      "-s",
+      "-S",
+      "-B"
+    ],
+    "exit_status": 1,
+    "exception": "ValueError: stage publication refused by renameat2: Invalid argument",
+    "failure_symbol": "progressive_submit._rename_noreplace",
+    "failure_operation": "Publish the PREPARED campaign event with renameat2(RENAME_NOREPLACE)."
+  },
+  "post_failure_remote_state": {
+    "expanded_queue_jobs": 0,
+    "campaign_ledger_sha256": "b336fb831de28f72e9138284d2c6f07ecfb178f617ebe4bec78e1c82ffb8eaa7",
+    "campaign_ledger_records": 7,
+    "target_stage_present": false,
+    "hidden_stage_transaction_present": false,
+    "stage_children_unchanged": true,
+    "scheduler_contact_reached": false,
+    "submission_intent_created": false,
+    "submission_receipt_created": false,
+    "prepared_event_final_present": false,
+    "creation_lock": {
+      "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-stage-creation.lock",
+      "mode": "0600",
+      "bytes": 0
+    },
+    "prepared_publication_residual": {
+      "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-publish-bd83ec4e79a16385851f0105ba5482376d0af5d360160beed6b23315cc1b6c1e.tmp",
+      "mode": "0444",
+      "bytes": 5481,
+      "sha256": "1588813e1562c7011397876de836db22ac18a8e249da32ef3c5c3ed4e86e28d5",
+      "destination": ".atlas-stage-creation-prepared.json",
+      "contract_sha256": "c046e43b744cadab9b4f682fa9283623a1589394950064b2e4634fe2998620d3",
+      "transaction": ".atlas-stage-creation-c046e43b744cadab9b4f682f.txn",
+      "status": "PRESERVED_FOR_EXACT_RECONCILIATION"
+    },
+    "same_directory_hardlink_probe": {
+      "path": "/public/home/majj/.wcc-rename-probe.41esTq",
+      "source_and_link_same_device_and_inode": true,
+      "link_count": 2,
+      "mode": "0444",
+      "result": "SUPPORTED",
+      "path_removed_after_probe": true
+    }
+  },
+  "classification": "PLATFORM_COMPATIBILITY_FAILURE_BEFORE_HPC_CHECKER_OR_MATHEMATICAL_EXECUTION",
+  "required_next_action": "Add a fail-closed platform-compatible publication design and regression coverage, preserve or explicitly archive the exact residual, then run the full 98-checker compute gate before any retry.",
+  "claims_not_granted": [
+    "creator acceptance",
+    "job submission",
+    "mathematical correctness",
+    "Weyl cache implementation permission",
+    "performance improvement",
+    "rank escalation"
+  ]
+}
