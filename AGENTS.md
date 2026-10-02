@@ -950,7 +950,21 @@ only that bounded claim durable and does not broaden its scope.
   evaluation. Preserve structural RootDatum Eq/Debug and W_elt validation
   order; cache only successful complete objects with current-call diagnostics.
   No production edit may precede the tests-first semantic BEFORE described
-  below. Capture stages v1 through v7 are immutable harness failures, not
+  below. UPDATE2026-10-02: BEFORE-v4 job3886748 retained that BEFORE proof, and
+  the minimal repair is now implemented locally as an UNVERIFIED candidate
+  (patch `hpc/patches/weyl_context_core_repair.patch` SHA
+  `246cd2d0dd48ee68387ed8f72a10a156e43b7d8c8c6dcb693474832450111c5c`, verified
+  only to reconstruct the working-tree bytes from the accepted baseline
+  `0359261f`/`7085d231`). The candidate interns every RootDatumHandle by full
+  content plus preference into a weak registry; each identity lazily owns one
+  coordinate kernel and one abstract group; `dual` shares the group only into
+  a cold target; Weyl `=`/`!=`/`*` check abstract-group `Arc` identity before
+  the no-value gate and replay the right word in the left system. It is NOT
+  committed and grants nothing until its changed-input AFTER gate passes. The
+  AFTER full-suite run must keep the two A1 fixture tests out of one shared
+  parallel process (run them with the serial selector, or `--skip` them in the
+  parallel suite), because process-global interning makes them interfere.
+  Capture stages v1 through v7 are immutable harness failures, not
   mathematical evidence. The latest is v7
   job3884780, FINAL `FAILED 1:0`: the 32-test stage-creation suite passed, then
   four of the 17 progressive-submit tests errored because their synthetic

@@ -31,6 +31,30 @@ performance/memory claim, or a rank release.  A1 cross-dual products are only
 no-value relations, sole-WeylElt lifetime and work-count gates all remain
 separate later steps.
 
+UPDATE, same day: the released minimal repair is now implemented locally
+(unverified).  `RootDatumHandle` gains an interned `Arc<DatumWeylIdentity>`
+carrying a success-only lazy owner coordinate kernel (`RootSystem`) and the
+abstract-group cell (`WeylInterface`); a process-global weak registry interns
+handles by complete datum content plus preference, matching the original's
+`root_datum_value` table.  `dual(RootDatum)` installs the source's abstract
+group into a cold canonical target and never overwrites a prewarmed one.
+Weyl `=`, `!=` and `*` now check the abstract-group `Arc` identity (the
+relation check also fires at no-value level) and replay the right external
+word in the left system instead of comparing foreign root permutations.
+All eight handle construction sites route through the private `interned`
+constructor; structural `RootDatum` `Eq`/`Debug` are preserved.  The
+production patch `hpc/patches/weyl_context_core_repair.patch` (SHA-256
+`246cd2d0dd48ee68387ed8f72a10a156e43b7d8c8c6dcb693474832450111c5c`,
+29,430 bytes) was verified locally to apply to the accepted baseline
+(domain_builtins `0359261f`, typed `7085d231`) and to reconstruct the exact
+working-tree bytes (domain_builtins `e6987e7c`, typed `614975c5`).  No local
+build or test ran (HPC-only rule); the two regression tests must now PASS in
+the changed-input AFTER gate, which also needs the 630-other inventory with
+the focused pair run serially or skipped in the parallel suite (global
+interning makes the two A1 fixtures interfere if run concurrently in one
+process).  The candidate is NOT committed and grants nothing until the AFTER
+gate passes.
+
 ## SUPERSEDED launch record: BEFORE-v4 submitted exactly once as job 3886748 — 2026-10-02
 
 The changed-input `weyl-context-core-before-v4` pair completed its remaining
