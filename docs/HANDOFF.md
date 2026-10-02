@@ -103,6 +103,34 @@ ACTIVE_STAGE_NAME and the stage-creation tests to after-v1; (5) disable the
 BEFORE pair in the working tree and re-pin the allowlist hashes; (6) freeze,
 reconcile and launch exactly once.  No part of this is verified or committed.
 
+UPDATE, same day: steps 1, 2, and the progressive_submit migration are now
+implemented locally (unverified, uncommitted).  The AFTER stager
+`hpc/stage_weyl_context_core_after.py` (SHA-256 currently
+`aba2930c44a73d8c008e7c5acae479f1d0cab353ac1e12190cf728f08e6fc7e2`, still
+`SUBMISSION_ENABLED = False` until the freeze) now binds the before-v4
+success as its direct predecessor: the full 37-file campaign event set, the
+180-file/18-directory/4,151,738-byte tree (canonical inventory SHA-256
+`1fa45944f8f115cb6de516feb15a2d597b3167ba33050a135add020351bd1ee7`), the
+19-record ledger `5381b3b3...`, and the new `validate_before_v4_result`
+validator wired into both run paths.  `REPAIR_PATCH_HASHES`,
+`REPAIRED_SOURCE_HASHES` (domain_builtins `e6987e7c...`, typed
+`614975c5e2...`), `AFTER_SOURCE_MANIFEST_SHA256` (`3f8cf475...`) and the
+58-entry `STAGE_INPUT_NAMES` (53 prior plus the repair patch, the before-v4
+result record and the AFTER trio) are pinned.  The AFTER driver
+`hpc/math_weyl_context_core_after.py` (SHA-256
+`9ab7426a4e725fd9eee5f5ae31a968ffb60fb870a3b37f1cb68806e6e1626f35`) applies
+the repair patch after the regression patch, requires the repaired manifest,
+calls `classify_after`, and requires both captures' `full_stdout_equal`,
+`full_stderr_equal` and `exit_status_equal` to be true.  `progressive_submit`
+now has `ACTIVE_STAGE_NAME = "weyl-context-core-after-v1"`, the lineage gained
+`("weyl-context-core-before-v4", "3886748")`, and the contract pin schema is
+`atlas-weyl-context-core-after-pin-v1`.  The BEFORE pair is now disabled in
+the working tree (stager `639b5c20...`, driver `31f5aef2...`).  Remaining:
+the test-file migration (stage-creation, progressive-submit, allowlist,
+regression AFTER tests, and a new AFTER driver checker suite) with the
+updated `EXPECTED_TEST_COUNTS`, then freeze, reconcile and one launch.  No
+local build or test ran; nothing here is verified or committed.
+
 ## SUPERSEDED launch record: BEFORE-v4 submitted exactly once as job 3886748 — 2026-10-02
 
 The changed-input `weyl-context-core-before-v4` pair completed its remaining
