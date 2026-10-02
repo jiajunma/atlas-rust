@@ -55,6 +55,54 @@ interning makes the two A1 fixtures interfere if run concurrently in one
 process).  The candidate is NOT committed and grants nothing until the AFTER
 gate passes.
 
+UPDATE, same day (AFTER preparation in progress, nothing verified or
+committed yet).  The changed-input `weyl-context-core-after-v1` gate is being
+prepared.  Done so far: `classify_after` plus the AFTER selector-state
+validator are appended to `hpc/weyl_context_core_regression.py` (BEFORE logic
+byte-identical; `_validate_observation_shape` is now parameterized by schema
+and label); the AFTER sbatch `hpc/math_weyl_context_core_after.sbatch` (SHA-256
+`b2f2ec5fb9b76fd6f9ee42052973d77f9d8e1dbb7f0446278ae7d359cb159082`) differs
+from the BEFORE sbatch only in job name, output name and driver filename; and
+`hpc/stage_weyl_context_core_after.py` (7121 lines, SHA-256
+`805d8d5f67a7ab82e85ecbc97c03d8a6ba9b5d34d37232bfbf56042f66ed8ac1`) is a
+verified faithful mirror of the BEFORE stager with exactly 28 changed/added
+lines (docstring, the five identity constants, `SUBMISSION_ENABLED = False`,
+the repair-patch and before-v4-record entries in `STAGE_INPUT_NAMES`, and the
+SLURM output pattern).  The mirror still carries BEFORE semantics in its body
+and must NOT be launched as-is.
+
+Pinned AFTER constants already determined: repair patch
+`hpc/patches/weyl_context_core_repair.patch` SHA-256
+`246cd2d0dd48ee68387ed8f72a10a156e43b7d8c8c6dcb693474832450111c5c`;
+post-repair file hashes domain_builtins `e6987e7cfc...` and typed
+`614975c5e2...`; the 1567-file AFTER source manifest SHA-256
+`3f8cf4753f29d33df8273086254a4f09170ada46f05e9c13acfdac2f5ab85c33`
+(recomputed from the frozen before-v4 report manifest with exactly those two
+entries replaced).  The direct predecessor is the before-v4 SUCCESS: job
+3886748, stage device 3431958692 / inode 162130669722468804, 180 files / 18
+directories / 4,151,738 bytes, pin `54221cf4...`, creation `c9197be0...`,
+contract `2affae9a...`, transaction `4ae83ab4...`, prepared `eaa076df...`,
+sealed `227bf9aa...`, published `0dc33624...`, intent `c94c6cc6...`, receipt
+`f53f3766...`, report `3d0c7c91...`, out `977be4c8...`, overrides
+`add7dfe0...`, and its three campaign creation events (prepared/sealed/
+published).  The before-v4 independent-inspection record is
+`tests/reference/hpc/math_weyl_context_core_before_v4_2026_10_02.json`
+(SHA-256 `bf69999feb945b67f586d92d378cc20d238cb518ef84ad6ce11b54e3e74200d3`).
+
+Remaining AFTER work, in order: (1) rebind the AFTER stager's PREDECESSOR to
+that before-v4 success record, add a `validate_before_v4_result` check on the
+inspection record, update LIFECYCLE, set `CURRENT_STAGER_PATH` to the AFTER
+stager and extend `FROZEN_LAUNCHER_HASHES`/`FROZEN_LAUNCHER_STATES` so the
+BEFORE pair is required disabled and only the AFTER pair enabled; (2) write
+the AFTER driver `hpc/math_weyl_context_core_after.py` (apply the repair
+patch after the regression patch, pin the post-repair hashes, call
+`classify_after`, require both captures' full-stream/exit equality flags to
+be true); (3) add AFTER tests to the regression-module checker and a new
+driver checker suite; (4) migrate the allowlist, `progressive_submit`
+ACTIVE_STAGE_NAME and the stage-creation tests to after-v1; (5) disable the
+BEFORE pair in the working tree and re-pin the allowlist hashes; (6) freeze,
+reconcile and launch exactly once.  No part of this is verified or committed.
+
 ## SUPERSEDED launch record: BEFORE-v4 submitted exactly once as job 3886748 — 2026-10-02
 
 The changed-input `weyl-context-core-before-v4` pair completed its remaining
