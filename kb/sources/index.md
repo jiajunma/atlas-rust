@@ -181,6 +181,12 @@ made_dominant/made_theta_stable/to_canonical_fiber/normalised 链、
 同一 Kimi probe 路由起草（exit 0，147.9s，420 秒期限），维护者对照源码逐条
 核对改写。该包是结构性阅读，不声称 grading 层的数学验收。
 
+[mod-2 线性代数：位打包向量与子空间](mod-two.md)记录 `mod_two.rs`：
+`ModTwoVector` 位打包、`ModTwoSubspace` 的 pivot 索引 RREF、crate 私有
+`ModTwoSubquotient`。对应[阅读快照](snapshots/2026-10-03-mod-two.json)；
+Kimi probe 草案因摘录漏掉未注释方法而偏薄，由维护者直接读源补齐。该包是
+结构性阅读，不声称 mod-2 层的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only
