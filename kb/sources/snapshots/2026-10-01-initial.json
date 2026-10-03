@@ -1,0 +1,135 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-01",
+  "git_base": "eba9c7ea080e61de9d4b105fbf54589c44a10b87",
+  "working_tree": true,
+  "scope": "Static reading of relevant declarations, functions, documentation passages and the root-ladder capture case; not an audit of every line.",
+  "limitations": [
+    "Contains modified and untracked source; git_base alone does not reconstruct these bytes.",
+    "Hashes identify source bytes only; no builds, tests, KB validator or fresh HPC verification ran.",
+    "Historical report contents were read; remote raw artifacts and independent-review contracts were not revalidated.",
+    "Draft knowledge pages confer no mathematical acceptance."
+  ],
+  "files": [
+    {
+      "path": "Cargo.toml",
+      "sha256": "bf840c7b9306769d4da04a2f951fe043ff745187c33cc66181fc454e7d783ce5",
+      "bytes": 283,
+      "git_status": "clean"
+    },
+    {
+      "path": "crates/atlas-core/Cargo.toml",
+      "sha256": "87350677bdfd813910aa8662f54f1bc2dae76557fc66c62c09d39e81f791bd1a",
+      "bytes": 467,
+      "git_status": "clean"
+    },
+    {
+      "path": "crates/atlas-core/src/lib.rs",
+      "sha256": "bb63e822c15367b5e315c570871dbdbe64d7eb5e921ec03581ff33805001647d",
+      "bytes": 656,
+      "git_status": "clean"
+    },
+    {
+      "path": "crates/atlas-cli/src/main.rs",
+      "sha256": "dafc7e079d4fe56818793808e3383d70598084d8c03fede56cc6f8abcf87ef9c",
+      "bytes": 5978,
+      "git_status": " M"
+    },
+    {
+      "path": "crates/atlas-core/src/session.rs",
+      "sha256": "cef588d9afc7fcd513ee1660758b229a8767c252adacdec7feea9737675de6aa",
+      "bytes": 187781,
+      "git_status": " M"
+    },
+    {
+      "path": "crates/atlas-core/src/session_frame.rs",
+      "sha256": "19889fec6d92ddbc93fa44e9f9bbbae8ff0825442a63b539b7cd50b498ee3327",
+      "bytes": 38610,
+      "git_status": " M"
+    },
+    {
+      "path": "crates/atlas-core/src/typed.rs",
+      "sha256": "7085d231921e6da78afd177da3affa1086f8204034ddc44e4c40f05b34c3467b",
+      "bytes": 770251,
+      "git_status": " M"
+    },
+    {
+      "path": "crates/atlas-core/src/frames.rs",
+      "sha256": "8c4f4c5672b9dbb72fbd459d2c8321f07c06f4ccd529087234ab7077e5674150",
+      "bytes": 12004,
+      "git_status": " M"
+    },
+    {
+      "path": "crates/atlas-real-group/src/lib.rs",
+      "sha256": "9ee97e8199f33d77b3fdcfce450a005f0c29257859da8779299dcb8a64068069",
+      "bytes": 24045,
+      "git_status": "clean"
+    },
+    {
+      "path": "crates/atlas-real-group/src/root_datum.rs",
+      "sha256": "2806219c7009babd62121f7b7945c25b3fe68eb875eaf441bbd083d2eefe0655",
+      "bytes": 19279,
+      "git_status": " M"
+    },
+    {
+      "path": "crates/atlas-real-group/src/root_system.rs",
+      "sha256": "109076ec05cf25e532fc7a951af0cbf5a725efefb318d35c2172a4528fd999f7",
+      "bytes": 41793,
+      "git_status": " M"
+    },
+    {
+      "path": "docs/COMPATIBILITY.md",
+      "sha256": "836ed98f4a202cceb399e36116bf24bff9068584a05ec6a7886fa5a8530fb62a",
+      "bytes": 7253,
+      "git_status": " M"
+    },
+    {
+      "path": "docs/LANGUAGE.md",
+      "sha256": "d887b1481329e3fec1ad6512e872f9163527f0541ab7ac330175a257218d6203",
+      "bytes": 8645,
+      "git_status": " M"
+    },
+    {
+      "path": "docs/DESIGN.md",
+      "sha256": "587407be8085c238eff4f82ebfda77d089a55c0b73ff7b76692a5eb458c2fbfb",
+      "bytes": 4923,
+      "git_status": "clean"
+    },
+    {
+      "path": "docs/HANDOFF.md",
+      "sha256": "71b7fc38b3ed226838c9325102899f544f9516b369b22c23e642bfcf6bb355d0",
+      "bytes": 689695,
+      "git_status": " M"
+    },
+    {
+      "path": "tests/reference/hpc/math_weyl_context_capture_2026_09_30.json",
+      "sha256": "bdee12811fe6ce4160ffbc2a25df18d9a9338a7b29f22d5fcd19352cf970f832",
+      "bytes": 70673,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/math/generics/root_ladder_coordinate_boundary.atlas",
+      "sha256": "dc88d6606ae855b618dcf12589ecde82edcbe482873a94bcff1001163691ec65",
+      "bytes": 1770,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/math/generics/root_ladder_coordinate_boundary.oracle.stdout",
+      "sha256": "3a7fdade43c46cf4f3048b52cf81f282db060012951ee559296f017f7d3eab80",
+      "bytes": 2304,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/math/generics/root_ladder_coordinate_boundary.oracle.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/reference/hpc/math_acceptance_index_2026_10_01.json",
+      "sha256": "7bf44311a98e5164cbbbb1eb02144c308b1839d54676f1c40b698095c71592b2",
+      "bytes": 4271,
+      "git_status": "??"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-02",
+  "git_base": "23245b5499044e8e19d014733b9808b7e0dd079c",
+  "working_tree": true,
+  "scope": "Incremental reading of independent v8 A1 capture inspection, original golden streams and tests-first regressions; historical ownership analysis remains in the retained prior snapshot.",
+  "source_prediction_snapshot": "2026-10-01-weyl-context-source-prediction.json",
+  "files": [
+    {
+      "path": "crates/atlas-core/src/domain_builtins.rs",
+      "sha256": "feeada0dc962edb391361bf5fdf61d9c99e47eccb7ea28005462ba826e31f6ea"
+    },
+    {
+      "path": "crates/atlas-core/src/typed.rs",
+      "sha256": "7085d231921e6da78afd177da3affa1086f8204034ddc44e4c40f05b34c3467b"
+    },
+    {
+      "path": "crates/atlas-core/src/session.rs",
+      "sha256": "969cdb27ccae61ca4fe3e36219801037d475517bee3614fead553024818307e7"
+    },
+    {
+      "path": "tests/reference/hpc/math_weyl_context_core_capture_v8_inspection_2026_10_02.json",
+      "sha256": "b2c7f4ece709df3506c3224a57abad896f3ecfcd6625fea97731619f629e1da3"
+    },
+    {
+      "path": "tests/math/generics/weyl_context_core_regression_catalog.json",
+      "sha256": "6a9f960753bcd2afb575cb5207d4310f21a5694505d02a83f4e4142211eaa634"
+    },
+    {
+      "path": "hpc/patches/weyl_context_core_regressions.patch",
+      "sha256": "ccd3009892dbeae2f146dff9924efa6d6bede3dca910d026c8f3ab3e1b4c49cf"
+    },
+    {
+      "path": "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout",
+      "sha256": "7a614e47b75469c441e774cbe46769dcd769c5cc0a2a31cf1868ff9b59a780dc"
+    },
+    {
+      "path": "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr",
+      "sha256": "ef4404d85f7252a611f9f4e4a5205fe6bbac2c66f48b7378a30a8053f986e157"
+    },
+    {
+      "path": "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout",
+      "sha256": "5074aab3290d4ae404bb7abb0b24ccc99036f616abec518c6479e59ec2db021f"
+    }
+  ],
+  "limitations": [
+    "A1 finite observations do not grant generic Weyl correctness or any cache/performance/rank release.",
+    "BEFORE job3884862 stopped at checker self-tests; Cargo, Atlas and the mathematical regression tests did not run.",
+    "Source bytes are dirty/untracked working-tree evidence, not a published source revision.",
+    "Compiler-generated pages are still unrefreshed: prior external-provider retry authorization remains unresolved; no retry or provider reroute occurred."
+  ]
+}

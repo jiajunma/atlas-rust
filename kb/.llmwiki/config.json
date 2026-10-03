@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "review": {
+    "hold": ["all"]
+  },
+  "sources": {
+    "recursive": true,
+    "exclude": ["index.md", "snapshots"]
+  }
+}

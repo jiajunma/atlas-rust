@@ -1,0 +1,7 @@
+engineStrict: true
+ignoreScripts: true
+
+minimumReleaseAgeExclude:
+  - '@atomicstrata/llmwiki-core@1.4.0-rc.2'
+  - '@atomicstrata/llmwiki-local-workflows@1.4.0-rc.2'
+  - llm-wiki-compiler@1.4.0-rc.2

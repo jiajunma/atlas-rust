@@ -1,0 +1,31 @@
+#!/bin/sh
+# Run the repository-pinned package with kb/ as its project root.
+set -eu
+
+atlas_kb_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$atlas_kb_dir"
+
+if [ -n "${ATLAS_KB_NODE:-}" ]; then
+    atlas_kb_node=$ATLAS_KB_NODE
+elif command -v node >/dev/null 2>&1; then
+    atlas_kb_node=$(command -v node)
+else
+    atlas_kb_node="$HOME/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
+fi
+if [ ! -x "$atlas_kb_node" ]; then
+    printf '%s\n' 'Node.js >=24 is required; set ATLAS_KB_NODE to its executable.' >&2
+    exit 1
+fi
+if [ ! -f node_modules/llm-wiki-compiler/dist/cli.js ]; then
+    printf '%s\n' 'Install kb dependencies with pnpm install --frozen-lockfile --ignore-scripts.' >&2
+    exit 1
+fi
+
+# Providers remain selectable by the caller; no credentials are stored here.
+LLMWIKI_PROVIDER=${LLMWIKI_PROVIDER:-codex-agent}
+LLMWIKI_EMBEDDINGS=${LLMWIKI_EMBEDDINGS:-off}
+LLMWIKI_OUTPUT_LANG=${LLMWIKI_OUTPUT_LANG:-zh-CN}
+PATH="$(dirname -- "$atlas_kb_node"):$PATH"
+export LLMWIKI_PROVIDER LLMWIKI_EMBEDDINGS LLMWIKI_OUTPUT_LANG PATH
+
+exec "$atlas_kb_node" node_modules/llm-wiki-compiler/dist/cli.js "$@"

@@ -1,0 +1,100 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-01",
+  "git_base": "7db322a313c3bcda1c0628e64b857ed30496e651",
+  "working_tree": true,
+  "scope": "Static reading of original Atlas root-datum/Weyl ownership and compact element representation, current Rust Weyl context/relation/element representations, the A1 source-predicted fixtures, the accepted rank-one profile, and the exceptional elliptic caller.",
+  "limitations": [
+    "The A1 Weyl identity fixtures have not run on the HPC oracle or Rust candidate; their catalog maturity is source_predicted_not_captured.",
+    "Rust sources and several evidence inputs are modified or untracked working-tree bytes; hashes identify the inspected bytes but do not establish acceptance.",
+    "The original checkout was clean at the frozen commit; its temporary absolute path is not a durable dependency.",
+    "The accepted profile and instrumented probe attribute repeated build_weyl_context work but do not isolate a Weyl kernel speedup or prove a cache hit rate.",
+    "No local build, test, interpreter run, benchmark, KB validator, new HPC stage, or scheduler submission was performed for this snapshot."
+  ],
+  "files": [
+    {
+      "path": "crates/atlas-core/src/domain_builtins.rs",
+      "sha256": "feeada0dc962edb391361bf5fdf61d9c99e47eccb7ea28005462ba826e31f6ea",
+      "bytes": 950859,
+      "git_status": " M"
+    },
+    {
+      "path": "crates/atlas-core/src/typed.rs",
+      "sha256": "7085d231921e6da78afd177da3affa1086f8204034ddc44e4c40f05b34c3467b",
+      "bytes": 770251,
+      "git_status": " M"
+    },
+    {
+      "path": "crates/atlas-real-group/src/weyl_element.rs",
+      "sha256": "b2e5b9712c5a457132aa2acc75652d998b2d821384ea2b6afb5c63791c53aa96",
+      "bytes": 41431,
+      "git_status": "clean"
+    },
+    {
+      "path": "crates/atlas-real-group/src/weyl_transducer.rs",
+      "sha256": "4bb3e72b293e6fa9f4709c996bdef388a14ec3cb81ddce2b61d85acea2718783",
+      "bytes": 40697,
+      "git_status": " M"
+    },
+    {
+      "path": "tests/math/generics/weyl_context_core_cold_dual.atlas",
+      "sha256": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+      "bytes": 1815,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/math/generics/weyl_context_core_prewarmed_dual.atlas",
+      "sha256": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+      "bytes": 1275,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/math/generics/weyl_context_core_catalog.json",
+      "sha256": "7fb77fecda841962cb98bdeddbdba58df46d673e076f87f2087cd234e2f1a717",
+      "bytes": 1283,
+      "git_status": "??"
+    },
+    {
+      "path": "docs/slices/loading_performance_rank1_2026-09-30.md",
+      "sha256": "4f0676a7fcdcaf498dfef8316527848bd4e228de2980ab7fa3500ad6c0916a62",
+      "bytes": 116720,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/reference/hpc/math_overload_command_profile_2026_09_30.json",
+      "sha256": "1d2baaddbfcb2bf09801a995ed9a6702646dd3cf9a8f396b1ddfd6d22c693915",
+      "bytes": 278650,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/reference/hpc/math_post_view_cost_probe_2026_09_30.json",
+      "sha256": "0855b34bbeda9a1dce1f1ac408f1287fc8e0e075285e24c2aa5f85e12e4cf54c",
+      "bytes": 3664629,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/reference/hpc/math_weyl_context_capture_2026_09_30.json",
+      "sha256": "bdee12811fe6ce4160ffbc2a25df18d9a9338a7b29f22d5fcd19352cf970f832",
+      "bytes": 70673,
+      "git_status": "clean"
+    },
+    {
+      "path": "original-atlas@7e1b958c7aa9456769cc9cf09ac1542814b4800a:sources/interpreter/atlas-types.w",
+      "sha256": "9b7cb69ed5999137340425bed8d41c96b452a68ad60ab2bd8173d02cc1caed78",
+      "bytes": 395061,
+      "git_status": "clean"
+    },
+    {
+      "path": "original-atlas@7e1b958c7aa9456769cc9cf09ac1542814b4800a:atlas-scripts/elliptic.at",
+      "sha256": "ac764741629173b475428d27e0d565ceff962e097e1122677eccd0bd1112bb17",
+      "bytes": 13327,
+      "git_status": "clean"
+    },
+    {
+      "path": "original-atlas@7e1b958c7aa9456769cc9cf09ac1542814b4800a:sources/structure/weyl.h",
+      "sha256": "098e8b2f890463e861020b48b1854a064caa99a7748d2516caaa67391b069965",
+      "bytes": 24087,
+      "git_status": "clean"
+    }
+  ]
+}

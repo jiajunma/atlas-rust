@@ -1,0 +1,12 @@
+{
+  "name": "atlas-rust-kb",
+  "private": true,
+  "description": "In-repository Atlas Rust knowledge base managed with llm-wiki-compiler",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "llm-wiki-compiler": "1.4.0-rc.2"
+  }
+}

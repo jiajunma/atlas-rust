@@ -1,0 +1,63 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-01",
+  "git_base": "eba9c7ea080e61de9d4b105fbf54589c44a10b87",
+  "working_tree": true,
+  "scope": "Static reading of the root-ladder coordinate-overflow candidate, its tests-first fixture, accepted BEFORE-v3 evidence, and original Atlas ladder construction.",
+  "limitations": [
+    "The Rust candidate is modified or untracked working-tree state and has not yet passed its AFTER gate.",
+    "Hashes identify bytes; they do not establish mathematical acceptance.",
+    "The original checkout path is temporary and is identified durably by commit plus file hashes, not by path.",
+    "No local build, test, interpreter run, KB validator, or new HPC mathematical run was performed for this snapshot."
+  ],
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/root_system.rs",
+      "sha256": "cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9",
+      "bytes": 42626,
+      "git_status": " M"
+    },
+    {
+      "path": "crates/atlas-core/src/session.rs",
+      "sha256": "cef588d9afc7fcd513ee1660758b229a8767c252adacdec7feea9737675de6aa",
+      "bytes": 187781,
+      "git_status": " M"
+    },
+    {
+      "path": "tests/math/generics/root_ladder_coordinate_boundary.atlas",
+      "sha256": "dc88d6606ae855b618dcf12589ecde82edcbe482873a94bcff1001163691ec65",
+      "bytes": 1770,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/math/generics/root_ladder_coordinate_boundary.oracle.stdout",
+      "sha256": "3a7fdade43c46cf4f3048b52cf81f282db060012951ee559296f017f7d3eab80",
+      "bytes": 2304,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/math/generics/root_ladder_coordinate_boundary.oracle.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "git_status": "??"
+    },
+    {
+      "path": "tests/reference/hpc/math_ladder_boundary_before_v3_2026_10_01.json",
+      "sha256": "608e996acac10ea1bacca177468fcd83f3ec39c3e579899440e11aab674fc37f",
+      "bytes": 4231,
+      "git_status": "??"
+    },
+    {
+      "path": "original-atlas@7e1b958c7aa9456769cc9cf09ac1542814b4800a:sources/structure/rootdata.cpp",
+      "sha256": "ebb7aea67379295a679990dbca80b8736f0af6d8836750e8eeaefc5098a06e06",
+      "bytes": 74658,
+      "git_status": "clean"
+    },
+    {
+      "path": "original-atlas@7e1b958c7aa9456769cc9cf09ac1542814b4800a:sources/structure/rootdata.h",
+      "sha256": "3f52ce4805eaf79a9fbb180e02acc1b90d5eec5eac995ebad71a74bdb8761d94",
+      "bytes": 30485,
+      "git_status": "clean"
+    }
+  ]
+}

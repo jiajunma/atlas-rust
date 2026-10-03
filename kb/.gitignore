@@ -1,0 +1,17 @@
+# Personal Obsidian state; shared configuration can be reviewed separately.
+.obsidian/
+.trash/
+.DS_Store
+
+# Reproducible local tool installation; manifests and lockfile are versioned.
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Keep native configuration and source state; ignore local runtime data only.
+.llmwiki/lock
+.llmwiki/embeddings.json
+.llmwiki/embeddings.bin
+.llmwiki/pending-embeddings.json
+.llmwiki/quarantined-embeddings.json
