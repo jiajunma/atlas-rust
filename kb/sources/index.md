@@ -139,6 +139,14 @@ grading 修复）与 `reduce` 正规形。对应[阅读快照](snapshots/2026-10
 Kimi probe 路由起草（exit 0，158.0s，420 秒期限），维护者对照源码逐条核对
 改写。该包是结构性阅读，不声称种子层的数学验收。
 
+[强实形式分类：平方类编号与 fiber 轨道](strong-real.md)记录 `strong_real.rs`：
+`SquareClassId` 的编号约定（与上游 low-pivot RREF 共享）、
+`StrongRealFormRep`/`StrongRealData`、`StrongRealClassification::build` 的
+平方商构造与 `fiber_size` 的 `Some(0)` 语义、`StrongRealClassPrint` 打印视图。
+对应[阅读快照](snapshots/2026-10-03-strong-real.json)；草案由同一 Kimi probe
+路由起草（exit 0，263.0s，420 秒期限），维护者对照源码逐条核对改写。该包是
+结构性阅读，不声称强实层的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only
