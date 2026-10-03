@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "e16b7373",
+ "working_tree": true,
+ "scope": "First reading of the ext_param/star layer for the new ext-param source packet: ExtRepContext, ExtParam, comparison/alignment helpers, star, the finalisation drivers and the two StarOracle implementations.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/ext_param.rs",
+   "sha256": "0eabb0696791338ceb0d55ed4408eb661e022d4cbc3728c40cc09af80b5c8029",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "ac0010b720a1ec738972a9f11aa1fe9b47132fb31df86c7d427aef0e4b8fa180",
+  "evidence_dir": "results/kimi-kb-extparam-packet-20261003",
+  "stdout_jsonl_sha256": "8342a49774f98836b551afa1a922f99c857e7df7070a4a851a97a3ea645deaa0",
+  "result": "completed, exit 0, 188.4s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "188.4s for this draft"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; the ext_param/star layer's correctness keeps its own evidence chain (unitarity gates) and is not restated here."
+}

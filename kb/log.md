@@ -244,3 +244,10 @@ inverse-Cayley 的 grading 修复。同一 Kimi probe 路由起草（exit 0，11
 平方类编号约定、StrongRealData、分类汇总与打印视图。同一 Kimi probe 路由起草
 （exit 0，263.0s）；维护者对照源码逐条核对改写。索引与 sources/index.md 已
 同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增 ext_param/star 来源包（Kimi probe 协助）
+
+新增 `sources/ext-param.md` 与快照 `2026-10-03-ext-param.json`：
+`ExtRepContext`、`ExtParam`、`star` 与 finalisation 驱动。同一 Kimi probe
+路由起草（exit 0，188.4s）；维护者对照源码逐条核对改写。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。

@@ -147,6 +147,12 @@ Kimi probe 路由起草（exit 0，158.0s，420 秒期限），维护者对照�
 路由起草（exit 0，263.0s，420 秒期限），维护者对照源码逐条核对改写。该包是
 结构性阅读，不声称强实层的数学验收。
 
+[ext_param/star 层：扩展块的参数层](ext-param.md)记录 `ext_param.rs`：
+`ExtRepContext`、`ExtParam` 值类型、比较/对齐辅助、`star` 计算与三个
+finalisation 驱动、两个 `StarOracle` 实现。对应[阅读快照](snapshots/2026-10-03-ext-param.json)；
+草案由同一 Kimi probe 路由起草（exit 0，188.4s，420 秒期限），维护者对照
+源码逐条核对改写。该包是结构性阅读，不声称 ext_param/star 层的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only
