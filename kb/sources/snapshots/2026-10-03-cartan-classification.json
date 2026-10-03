@@ -1,0 +1,29 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "d3d408fe",
+ "working_tree": true,
+ "scope": "First reading of the Cartan classification modules for the new cartan-classification source packet: CartanId numbering, budget layering, the aggregated classification, the strict Cayley order, real_form_of, and the twisted-conjugacy class layer.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/cartan_classification.rs",
+   "sha256": "babb802e248b74c1a794920e86f208744314697837c2c81645f3c7ebc2bb4067",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  },
+  {
+   "path": "crates/atlas-real-group/src/cartan_class.rs",
+   "sha256": "5ba8d82d57bdbd2ab97ecf4448c49c2bfc604647a1c05b90cee131fc703976ef",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "5d05f843795c066680d0155de4f84ca4d09a7aacfe094ce8b474b210de1ef76a",
+  "evidence_dir": "results/kimi-kb-cartan-packet-20261003",
+  "stdout_jsonl_sha256": "f2ee46a899ccd7982c8eea7d8dc70652202c5aaa1679d04e88d256fb57fdf962",
+  "result": "completed, exit 0, 210.1s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "210s for this draft; the 420s deadline gave comfortable headroom"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; Cartan classification correctness keeps its own evidence chain (Cartan3868252, rank1 class/dual-incidence coverage) and is not restated here."
+}

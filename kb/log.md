@@ -160,3 +160,11 @@ sources/index.md 已同步；未运行编译、测试或 compiler 生成。
 超时处截断（30KB 摘录超出该期限）；已采纳部分经维护者对照源码核对，其余由
 维护者补齐。教训：大模块应拆分摘录或提高期限。索引与 sources/index.md 已
 同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增 Cartan 分类来源包（Kimi probe 协助）
+
+新增 `sources/cartan-classification.md` 与快照 `2026-10-03-cartan-classification.json`：
+`CartanId` 编号、预算分层、严格 Cayley 偏序、`real_form_of`、
+`TwistedConjugacyClass`/`CartanClass` 分层。同一 Kimi probe 路由起草
+（exit 0，210.1s，420 秒期限）；维护者对照源码逐条核对改写。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。

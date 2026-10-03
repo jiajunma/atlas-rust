@@ -15,6 +15,7 @@
 | [完整块图：实形式与对偶实形式的纤维积](sources/block-graph.md) | 纤维积构造、`BlockDescent` 八值序、布局与访问器、`dual()` 与 Bruhat Hasse 图；结构性阅读，不作数学验收 |
 | [形变驱动：twisted 与 block 形变](sources/deformation-drivers.md) | 移植简化契约、`SplitInteger`、积分子系统分类、父块抽象、两个 twisted KL 和与递归形变；结构性阅读，不作数学验收 |
 | [表示参数上下文：StandardRepr 与 RepContext](sources/rep-context.md) | 参数四元组、借用视图、构造入口、lambda 派生链、奇偶/朝向/reducibility 与 finals；结构性阅读，不作数学验收 |
+| [Cartan 分类：编号、预算与实形式归属](sources/cartan-classification.md) | CartanId 的 Atlas 顺序、预算分层、严格 Cayley 偏序与 real_form_of 的 complex-only 行走；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 
