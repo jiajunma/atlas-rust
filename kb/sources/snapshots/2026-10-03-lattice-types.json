@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "496d6ff5",
+ "working_tree": true,
+ "scope": "First reading of the weight-lattice types module for the new lattice source packet: Weight/Coweight newtype discipline, pair, the checked coordinate helpers, RationalWeight common-denominator form and RationalCoweight.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/lattice.rs",
+   "sha256": "3cf4e62cf3e1a14da2e93a773751fd0b1412fc2deac9a1ec7856e591250f8509",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "f76d3247ecb56287c763afab3078d0f4099feaf6db40e1ee3afa12a127722169",
+  "evidence_dir": "results/kimi-kb-lattice2-packet-20261003",
+  "stdout_jsonl_sha256": "5beb2485763598da2e65f3d7e7cda45c4adb23034128ed16d1c060c4880a85f2",
+  "result": "completed, exit 0, 215.9s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "215.9s for this draft"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; the lattice types' correctness keeps its own evidence chain (lattice gates) and is not restated here."
+}

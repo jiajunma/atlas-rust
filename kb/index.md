@@ -32,6 +32,7 @@
 | [精确整数格线性代数：预算、饱和核与可观测基](sources/integer-lattice.md) | 计算预算、饱和核、mod-2 归约与 adapted_basis 的可观测选举；结构性阅读，不作数学验收 |
 | [紧致 grading：simple-imaginary 根的紧致性位向量](sources/grading.md) | 位向量纪律、CartanGradingData 门控与 grading↔元素互转；结构性阅读，不作数学验收 |
 | [mod-2 线性代数：位打包向量与子空间](sources/mod-two.md) | 位打包、pivot 索引 RREF 与 crate 私有子商；结构性阅读，不作数学验收 |
+| [权格类型层：Weight、Coweight 与有理权](sources/lattice-types.md) | newtype 纪律、pair 配对、公共分母归一化；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 
