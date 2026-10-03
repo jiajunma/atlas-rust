@@ -1,9 +1,9 @@
 ---
 id: atlas-implementation-map
 type: implementation
-note_status: draft
+note_status: reviewed
 aliases: [Atlas architecture, 解释器结构]
-source_snapshot: sources/snapshots/2026-10-01-initial.json
+source_snapshot: sources/snapshots/2026-10-03-weyl-core-after-gate-freeze.json
 ---
 
 # Rust 系统结构与兼容性边界
@@ -44,5 +44,6 @@ Atlas Rust 的兼容性目标位于 Atlas 语言的可观察边界。本页以 R
 - [session_frame.rs](../../../crates/atlas-core/src/session_frame.rs)：`SessionFrame`、`run_top_level`。
 - [typed.rs](../../../crates/atlas-core/src/typed.rs)：`TypedContext`；[frames.rs](../../../crates/atlas-core/src/frames.rs)：`Frame`、`EvaluationContext`。
 - [cli/main.rs](../../../crates/atlas-cli/src/main.rs)：`main`；[real-group/lib.rs](../../../crates/atlas-real-group/src/lib.rs)：领域模块。
-- [兼容性契约](../../../docs/COMPATIBILITY.md)、[来源快照](../../sources/snapshots/2026-10-01-initial.json)。
+- [兼容性契约](../../../docs/COMPATIBILITY.md)；来源快照：[2026-10-03 Weyl gate 冻结](../../sources/snapshots/2026-10-03-weyl-core-after-gate-freeze.json)（`session.rs`/`typed.rs` 的当前读取身份）与 [初始快照](../../sources/snapshots/2026-10-01-initial.json)（其余文件）。
+- 本页 2026-10-03 重读时 `session.rs`、`typed.rs` 处于 dirty 工作区（分别携带回归测试与未验证的 Weyl 修复）；上文引用的结构与枚举形状在这些字节下不变。dirty 字节只标识所读内容，不构成已提交源码或验收证据。
 - 具体领域示例：[根坐标](../math/root-coordinates.md)与 [Ladder 两版比较](../comparisons/root-ladder-cpp-rust.md)。

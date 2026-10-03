@@ -1,0 +1,10 @@
+{
+  "checked_at_utc": "2026-10-03T10:48:26Z",
+  "command": "git ls-remote https://github.com/jeffreyadams/atlasofliegroups.git HEAD refs/heads/master",
+  "head": "7e1b958c7aa9456769cc9cf09ac1542814b4800a",
+  "master": "7e1b958c7aa9456769cc9cf09ac1542814b4800a",
+  "repository": "https://github.com/jeffreyadams/atlasofliegroups.git",
+  "scope": "Read-only GitHub revision refresh. HEAD and master remain identical to the currently pinned original oracle; no source or oracle binary changed.",
+  "previous_receipt": "tests/reference/hpc/upstream_head_2026_10_01.json",
+  "context": "Checked while the Weyl context-core AFTER-v1 gate (commit 342a0511) awaits HPC submission; the SecureLink tunnel is down locally. The 347 legacy metadata records pinned to 4d3e9449 remain a separate historical state, not relabelled by this check."
+}

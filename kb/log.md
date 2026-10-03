@@ -97,3 +97,14 @@ regression catalog、tests-only patch 和当前 Rust 字节。保留旧预测快
 （ladder-bottom-membership、root-ladder-cpp-rust）重读后标记 `reviewed`；
 `sources/index.md` 与 vault 索引同步。历史 candidate 快照全部保留。未运行任何
 编译、测试或 compiler 生成。
+
+## 2026年10月3日 两个 draft 页面重读后标记 reviewed
+
+`root-coordinates` 与 `atlas-implementation-map` 按当前源码逐条核对。前者补入
+`RootSystem` 新增的 `positive`/`simple_ids`/`min_roots`/`min_coroots` 字段角色，
+`root_datum.rs` 字节未变、`root_system.rs` 用 AFTER-v3 接受版本；后者逐条核对
+workspace 成员、`SessionEvent` 六变体、`Frame` 的 `Rc`/`RefCell`、`TypedContext`
+字段，全部成立，并注明 `session.rs`/`typed.rs` 是 dirty 工作区字节。上游
+ls-remote 复核：HEAD/master 仍为 `7e1b958c`，oracle pin 未漂移，收据存
+`tests/reference/hpc/upstream_head_2026_10_03.json`。未运行编译、测试或
+compiler 生成。
