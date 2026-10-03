@@ -181,6 +181,13 @@ made_dominant/made_theta_stable/to_canonical_fiber/normalised 链、
 同一 Kimi probe 路由起草（exit 0，147.9s，420 秒期限），维护者对照源码逐条
 核对改写。该包是结构性阅读，不声称 grading 层的数学验收。
 
+[权格类型层：Weight、Coweight 与有理权](lattice-types.md)记录 `lattice.rs`：
+`Weight`/`Coweight` 的 newtype 纪律（同表示不可互换）、`pair` 配对、
+`RationalWeight` 的公共分母与 gcd 归一化、`RationalCoweight` 的逐坐标表示。
+对应[阅读快照](snapshots/2026-10-03-lattice-types.json)；草案由同一 Kimi
+probe 路由起草（exit 0，215.9s，420 秒期限），维护者对照源码逐条核对改写。
+该包是结构性阅读，不声称格类型层的数学验收。
+
 [mod-2 线性代数：位打包向量与子空间](mod-two.md)记录 `mod_two.rs`：
 `ModTwoVector` 位打包、`ModTwoSubspace` 的 pivot 索引 RREF、crate 私有
 `ModTwoSubquotient`。对应[阅读快照](snapshots/2026-10-03-mod-two.json)；
