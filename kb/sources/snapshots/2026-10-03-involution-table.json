@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "404a612f",
+ "working_tree": true,
+ "scope": "First reading of the twisted-involution table for the new involution-table source packet: record fields, image-basis seeding/transport, numbering discipline, new/add_cartan, lookup/cross/cayley/simple_root_kind accessors.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/involution_table.rs",
+   "sha256": "aab8c87ba1244ea022a35c4539185606d52316821cdc00b2b80f61524b89d8bf",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "dad7b46853196e00e8ad7aa104bcf645b2a3e1cbabc77a78123bc754a8c0f596",
+  "evidence_dir": "results/kimi-kb-invtab-packet-20261003",
+  "stdout_jsonl_sha256": "df2a671c16d2ac04b41e9be18b4ee416a6b32f8f5f849d989d5295e5da24fb98",
+  "result": "completed, exit 0, 115.5s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "115.5s for this draft"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; the involution table's correctness keeps its own evidence chain (KGB/capacity gates) and is not restated here."
+}

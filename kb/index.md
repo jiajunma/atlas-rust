@@ -22,6 +22,7 @@
 | [共享块存储：reduced 键控复用与 RepTableOwner](sources/rep-table.md) | reduced 键、LocatedBlock、with_kl_table 并发约定与 K 型公式备忘；结构性阅读，不作数学验收 |
 | [Weyl 群层：矩阵作用与词级元素的双层结构](sources/weyl-layer.md) | WeylAction/WeylElement 双层、互查桥、descent 读取方向、canonical_word 与 ParabolicPieces；结构性阅读，不作数学验收 |
 | [Compact Weyl 群的 transducer 表示](sources/weyl-transducer.md) | parabolic-subquotient 表示、Transducer 表、canonical_word 与 piece 根置换；结构性阅读，不作数学验收 |
+| [Twisted involution 表（KGB stage b）](sources/involution-table.md) | 记录格式、image-basis 播种/传送、编号纪律与 cross/Cayley 访问器；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 

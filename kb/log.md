@@ -215,3 +215,10 @@ parabolic-subquotient 表示、`coxeter_entry`、Transducer 构造、`canonical_
 与 piece 根置换。同一 Kimi probe 路由起草（exit 0，78.1s）；维护者对照源码
 逐条核对改写。索引与 sources/index.md 已同步；未运行编译、测试或 compiler
 生成。
+
+## 2026年10月3日 新增 twisted involution 表来源包（Kimi probe 协助）
+
+新增 `sources/involution-table.md` 与快照 `2026-10-03-involution-table.json`：
+记录格式、image-basis 播种/传送、编号纪律与访问器。同一 Kimi probe 路由起草
+（exit 0，115.5s）；维护者对照源码逐条核对改写。索引与 sources/index.md 已
+同步；未运行编译、测试或 compiler 生成。
