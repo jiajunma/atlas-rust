@@ -153,6 +153,13 @@ finalisation 驱动、两个 `StarOracle` 实现。对应[阅读快照](snapshot
 草案由同一 Kimi probe 路由起草（exit 0，188.4s，420 秒期限），维护者对照
 源码逐条核对改写。该包是结构性阅读，不声称 ext_param/star 层的数学验收。
 
+[KType 层：标准表示的 K-限制](ktype.md)记录 `ktype.rs`：KType 的表示不变量、
+`sr_k` 归一化、is_standard/.../is_final 判定族、`equivalent` 与
+made_dominant/made_theta_stable/to_canonical_fiber/normalised 链、
+`finals_for`/`kgp_set` 展开。对应[阅读快照](snapshots/2026-10-03-ktype.json)；
+草案由同一 Kimi probe 路由起草（exit 0，122.4s，420 秒期限），维护者对照
+源码逐条核对改写。该包是结构性阅读，不声称 KType 层的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only

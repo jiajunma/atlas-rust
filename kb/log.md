@@ -251,3 +251,10 @@ inverse-Cayley 的 grading 修复。同一 Kimi probe 路由起草（exit 0，11
 `ExtRepContext`、`ExtParam`、`star` 与 finalisation 驱动。同一 Kimi probe
 路由起草（exit 0，188.4s）；维护者对照源码逐条核对改写。索引与
 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增 KType 来源包（Kimi probe 协助）
+
+新增 `sources/ktype.md` 与快照 `2026-10-03-ktype.json`：KType 表示不变量、
+判定族、规范化链与 finals/KGP 展开。同一 Kimi probe 路由起草（exit 0，
+122.4s）；维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行
+编译、测试或 compiler 生成。
