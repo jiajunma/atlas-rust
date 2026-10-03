@@ -132,6 +132,13 @@ grading 修复）与 `reduce` 正规形。对应[阅读快照](snapshots/2026-10
 草案由同一 Kimi probe 路由起草（exit 0，116.8s，420 秒期限），维护者对照
 源码逐条核对改写。该包是结构性阅读，不声称 Tits 层的数学验收。
 
+[KGB 种子 x0：stable_log、基本余权与 RealFormSeed](real-form-seed.md)记录
+`real_form_seed.rs`：`stable_log` 的选举与前置条件、`fundamental_coweights`
+的实际余根展开（精确有理求逆）、`RealFormSeed::build` 的门控链与 `custom`
+分支。对应[阅读快照](snapshots/2026-10-03-real-form-seed.json)；草案由同一
+Kimi probe 路由起草（exit 0，158.0s，420 秒期限），维护者对照源码逐条核对
+改写。该包是结构性阅读，不声称种子层的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only
