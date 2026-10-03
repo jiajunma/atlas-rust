@@ -28,6 +28,13 @@ original 源码。旧预测快照保持原样；后继
 尚未提交 HPC（SecureLink 隧道中断），语义修复与 cache A/B 均未验收。生成页仍待
 compiler 授权及 hold-all 审查，不能把来源包更新视作已批准的生成内容。
 
+[KGB 图的结构与构造](kgb-graph-structure.md)记录 `kgb_graph.rs` 的数据布局、
+build 门控、分窗两相 BFS（Rayon 纯计算 + 顺序 intern）、上游一致的排序键与
+计数排序标准化、cross/Cayley/inverse-Cayley 链接语义和 hybrid self-contained
+存储。对应[阅读快照](snapshots/2026-10-03-kgb-graph.json)；草案由 Kimi probe
+起草、维护者对照源码逐条核对改写，调用记录见快照的 `kimi_assist`。该包是结构
+性阅读，不声称 KGB 枚举的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

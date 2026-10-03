@@ -108,3 +108,14 @@ workspace 成员、`SessionEvent` 六变体、`Frame` 的 `Rc`/`RefCell`、`Type
 ls-remote 复核：HEAD/master 仍为 `7e1b958c`，oracle pin 未漂移，收据存
 `tests/reference/hpc/upstream_head_2026_10_03.json`。未运行编译、测试或
 compiler 生成。
+
+## 2026年10月3日 新增 KGB 图来源包（Kimi probe 协助）
+
+新增 `sources/kgb-graph-structure.md` 与快照 `2026-10-03-kgb-graph.json`：
+每个弱实形式一张 KGB 图的数据布局、build 门控、分窗两相 BFS、上游一致的
+排序键与计数排序标准化、链接语义与 hybrid self-contained 存储。草案经本地
+Kimi probe（无工具 profile，`kimi-code/k3-256k`）起草；进程产出完整草案后未在
+180 秒内退出，被 runner SIGTERM 清理、无残留进程组成员；维护者对照
+`kgb_graph.rs` 逐条核对并改写，未采用的内容已剔除。经验已记入根 AGENTS.md
+（超时的 probe 仍可能已产出完整回答，先解析 stdout.jsonl）。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。

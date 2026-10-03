@@ -68,6 +68,11 @@ python3 tools/kimi_subagent.py \
   **143** SIGTERM, **1** other failure. Inspect `result.json`, raw streams and
   actual files: exit0 alone is not task acceptance. Interruption does not roll
   back edits. Review partial files and the exact session before any retry.
+  2026-10-03 lesson: a no-tool probe can produce its complete assistant
+  answer and still fail to exit before the deadline (exit 143 after SIGTERM).
+  Always parse `stdout.jsonl` for the finished assistant record before
+  discarding a timed-out probe run; the answer may be fully usable, with the
+  process-group cleanup evidence in `result.json`.
 - Do not SIGKILL the wrapper itself: no process can execute its cleanup after
   SIGKILL. The verified cleanup covers its process group, not independently
   detached daemons. Do not enable Shell/background delegation on this evidence.
