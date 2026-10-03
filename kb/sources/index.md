@@ -111,6 +111,13 @@ Kimi probe 草案在超时处截断，已采纳部分经核对、其余由维护
 草案由同一 Kimi probe 路由起草（exit 0，151.4s，420 秒期限），维护者对照
 源码逐条核对改写。该包是结构性阅读，不声称 Weyl 层的数学验收。
 
+[Compact Weyl 群的 transducer 表示](weyl-transducer.md)记录
+`weyl_transducer.rs`：parabolic-subquotient 表示（`[u8; WEYL_MAX_RANK]`）、
+`coxeter_entry` 查表、`Transducer` 构造、`CompactWeyl::new` 三步流程与
+`canonical_word` 的 piece 拼接。对应[阅读快照](snapshots/2026-10-03-weyl-transducer.json)；
+草案由同一 Kimi probe 路由起草（exit 0，78.1s，420 秒期限），维护者对照
+源码逐条核对改写。该包是结构性阅读，不声称 transducer 的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only

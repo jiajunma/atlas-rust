@@ -21,6 +21,7 @@
 | [扩展 KLV 多项式表：primitivisation 符号与逐列存储](sources/extended-kl.md) | 池/符号分离存储、DescentTable、访问语义与 fill_columns 错误策略；结构性阅读，不作数学验收 |
 | [共享块存储：reduced 键控复用与 RepTableOwner](sources/rep-table.md) | reduced 键、LocatedBlock、with_kl_table 并发约定与 K 型公式备忘；结构性阅读，不作数学验收 |
 | [Weyl 群层：矩阵作用与词级元素的双层结构](sources/weyl-layer.md) | WeylAction/WeylElement 双层、互查桥、descent 读取方向、canonical_word 与 ParabolicPieces；结构性阅读，不作数学验收 |
+| [Compact Weyl 群的 transducer 表示](sources/weyl-transducer.md) | parabolic-subquotient 表示、Transducer 表、canonical_word 与 piece 根置换；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 
