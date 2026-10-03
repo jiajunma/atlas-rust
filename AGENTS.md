@@ -509,6 +509,32 @@ ceiling and default one focused job; do not trade correctness for speed.
 
 ## Verified repair guard
 
+### Predecessor transitions: rebind every historical validator before launch
+
+- UPDATE Weyl AFTER-v1 preparation2026-10-03: advancing a campaign stager's
+  direct `PREDECESSOR` silently breaks every inherited validator that still
+  compares a frozen historical evidence record against bare
+  `PREDECESSOR`/`PREDECESSOR_STATE`/`PREDECESSOR_STAGE` (in the after stager
+  the before-v3 validator would never match) or against the mutable current
+  `EXPECTED_TEST_COUNTS`/`CHECKER_TESTS`/`STAGE_NAME` (frozen
+  `expected_test_counts_after` predictions and predecessor checker totals keep
+  their historical values; never relabel historical bytes to match the
+  successor).  Transplant the old predecessor identity into versioned
+  `BEFORE_Vn_PREDECESSOR*` constants and rebind locally, keeping the
+  validator body byte-identical to the HPC-verified original.  Campaign
+  scoped-creation-file sets in `progressive_submit` must name every retired
+  stage explicitly once it is no longer the direct predecessor
+  (before-v3 was missed when the predecessor advanced to before-v4); the
+  synthetic fixture must add the new predecessor's campaign files and bump
+  its ledger-length assertion.  The default local checkout (umask002,
+  evidence files0664) masks these failures inside the environment-sensitive
+  tests: rerun the suites under `umask 022` and replay every
+  `validate_*_failure`/`validate_*_result` against the real frozen evidence
+  bytes copied into a 0444 mirror tempdir before any launch.  This local
+  static rehearsal caught four genuine transition defects that the
+  HPC-blocked period would otherwise have spent a job on.  Local checker
+  passes never substitute for the HPC gate itself.
+
 ### Attribute small-rank loading before optimizing; retain complete outputs
 
 The ledger below preserves historical measurements and queued follow-ups.

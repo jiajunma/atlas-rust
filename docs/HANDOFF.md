@@ -1,6 +1,107 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
-## CURRENT: BEFORE-v4 FINAL COMPLETED — tests-first Weyl BEFORE retained — 2026-10-02
+## CURRENT: AFTER-v1 gate frozen locally, commit 342a0511 pushed; HPC submission BLOCKED on SecureLink tunnel — 2026-10-03
+
+The changed-input `weyl-context-core-after-v1` gate is fully finalized,
+locally verified and committed as `342a0511` on
+`origin/codex/math-benchmark-suite` (12 files, +15190/-53).  It is NOT
+submitted: the SecureLink tunnel (`tun0`) is down — the daemon and GUI
+client processes are alive since Sep 18 but no tunnel interface exists,
+`tailscale0` is logged out, and `majj@10.26.14.64:22` times out over the
+ordinary Wi-Fi gateway.  The operator must reconnect SecureLink; the exact
+launch procedure below is then immediately runnable.  No remote stage,
+intent, ledger record or job was created; nothing is in an uncertain state.
+
+Final frozen hashes: after stager `stage_weyl_context_core_after.py`
+SHA-256 `8cb4b86d9986e66c1722c87d5704ab92ee387ce426ff0f3c194b60c5320904d6`,
+after driver `math_weyl_context_core_after.py` SHA-256
+`3d7d98903a838b3a3343482d165af4b7e9b3989cc1f30a5c9ccc49950700913b`,
+after checker `test_math_weyl_context_core_after.py` (28 tests),
+allowlist `test_stager_allowlist.py` (7 tests) with
+`CURRENT_POLICY = "weyl-core-after-active"`.  Checker table:
+32+17+18+21+28+7 = 123 (regression-contract gained the four
+`classify_after` tests: 17 -> 21).  The capture/before pair is disabled
+(`SUBMISSION_ENABLED = False` in both files); only the after pair is
+enabled.  The repaired-manifest chain verifies offline: the frozen
+before-v4 report's 1567-file source manifest has canonical SHA-256
+`55f807cadb712377cbf6c0c79250b1d5e739e9757290a24209a086f89632850f`, and
+applying `REPAIRED_SOURCE_HASHES` (domain_builtins `e6987e7c`, typed
+`614975c5`) yields exactly `AFTER_SOURCE_MANIFEST_SHA256`
+`3f8cf4753f29d33df8273086254a4f09170ada46f05e9c13acfdac2f5ab85c33`.
+
+Latent transition bugs found and fixed this session by running the
+synthetic suites locally under `umask 022` and by replaying every
+evidence validator against the real frozen evidence in a 0444 mirror
+tree (local file modes mask these in the default checkout):
+
+1. `progressive_submit._validate_predecessor_state_descriptor` omitted the
+   before-v3 scoped campaign creation files from `required_campaign_files`
+   once the predecessor advanced to before-v4; the real 37-file campaign
+   state would have been rejected at stage creation.  Added
+   `before_v3_scoped_campaign_files`.
+2. `test_campaign_stage_creation.predecessor_fixture` lacked the three
+   before-v4 campaign-scoped creation files and its ledger re-read
+   assertion kept the old length (`len(history) == 19` -> `== 20`).
+3. `validate_before_v3_failure` still referenced bare
+   `PREDECESSOR`/`PREDECESSOR_STATE`/`PREDECESSOR_STAGE` (correct in the
+   before-v4 launcher where PREDECESSOR was before-v3, always-false in the
+   after module where PREDECESSOR is before-v4).  The frozen before-v3
+   identity now lives in `BEFORE_V3_PREDECESSOR*` constants transplanted
+   verbatim from the capture stager, and the validator rebinds the three
+   names locally so its body stays identical to the HPC-verified original;
+   its `successor_stage` check is the historical literal
+   `"weyl-context-core-before-v4"`, not the after stage name.
+4. The before-v1/v2/v3 failure evidences froze `expected_test_counts_after`
+   with the capture label and total 119; the before-v4 report froze
+   checker total 119.  Validators now pin
+   `BEFORE_FAILURE_PREDICTED_AFTER_COUNTS`/`BEFORE_V4_CHECKER_TOTAL`
+   literals instead of reusing the current `EXPECTED_TEST_COUNTS`/
+   `CHECKER_TESTS` (which legitimately moved to the `-after` label and
+   123).
+5. `test_running_job_recovers_exact_twentieth_attempt_and_missing_receipt`
+   never patched `driver.validate_before_v4_result` or
+   `driver.repaired_source_manifest`; both are now patched and asserted.
+
+Local suite state under `umask 022` (reading/editing/hashing only; no
+builds): campaign-stage-creation 32/32, progressive-submit 17/17,
+contract 18/18, regression-contract 21/21, after checker 27/28,
+allowlist 7/7.  The single after-checker error is the known
+environmental class: it reads the repository's evidence files at their
+checkout mode 0664 while the validator requires the stage-installed 0444;
+the HPC-verified capture checker has the same local-only behaviour.  All
+twelve evidence validators were additionally replayed directly against
+the real frozen evidence bytes in a 0444 mirror tree and accept them.
+
+Exact launch procedure once `ssh majj@10.26.14.64` answers again (one
+job, progressive boundary only; the 10-job ceiling is untouched and the
+queue was empty at before-v4 FINAL):
+
+1. Read-only reconcile on the login node: `squeue`/`sacct` empty for this
+   user, campaign ledger still 19 records with SHA-256
+   `5381b3b3a8ffcf8ae1566eb63640719ddec13955f681dbeca5361bbf9321cd5a`,
+   `stages/weyl-context-core-after-v1` absent, no accounting row for an
+   after-v1 job.
+2. Materialize commit `342a0511` in the HPC fetch checkout (fetch
+   `origin/codex/math-benchmark-suite`; never pull into a dirty shared
+   checkout), verify the after stager/driver hashes above.
+3. Build the override payload exactly as the before-v4 launch did
+   (changed inputs versus the campaign-pinned baseline), then run
+   `python3 hpc/stage_weyl_context_core_after.py PAYLOAD_ROOT
+   OVERRIDES_SHA256` on the login node.  It creates only
+   `stages/weyl-context-core-after-v1` and submits exactly one job with
+   `queue_before=[]`.
+4. Record job/pin/intent/receipt here as SUBMITTED_NOT_VERIFIED; never
+   resubmit an uncertain intent.
+
+The gate proves only: both known regressions pass on the repaired source
+with full golden-equal streams, the retained ladder control passes, the
+632-test inventory is unchanged elsewhere, and integrity/ledger checks
+hold.  It releases no mathematical, cache, performance, memory or rank
+claim; the repaired production source (`domain_builtins.rs`,
+`typed.rs`) remains uncommitted until the AFTER gate passes and is
+independently inspected.
+
+## SUPERSEDED: BEFORE-v4 FINAL COMPLETED — tests-first Weyl BEFORE retained — 2026-10-02
 
 Job `3886748` is FINAL `COMPLETED 0:0` after 450 seconds on `cu081` (2 CPUs,
 8 GiB requested, batch MaxRSS `1310532K`).  This is the retained tests-first
