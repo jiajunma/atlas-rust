@@ -258,3 +258,10 @@ sources/index.md 已同步；未运行编译、测试或 compiler 生成。
 判定族、规范化链与 finals/KGP 展开。同一 Kimi probe 路由起草（exit 0，
 122.4s）；维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行
 编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增弱实形式划分来源包（Kimi probe 协助）
+
+新增 `sources/weak-real-form.md` 与快照 `2026-10-03-weak-real-form.json`：
+编号约定、WeakRealFormPartition、代表元级归因内核。同一 Kimi probe 路由起草
+（exit 0，164.6s）；维护者对照源码逐条核对改写。索引与 sources/index.md 已
+同步；未运行编译、测试或 compiler 生成。

@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "187a6dac",
+ "working_tree": true,
+ "scope": "First reading of the weak real-form partition module for the new weak-real-form source packet: WeakRealFormId numbering convention, WeakRealFormPartition, class_of_mask, and the representative-level attribution kernel weak_real_form_at_representative.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/weak_real_form.rs",
+   "sha256": "fe22088fea7b955d1a4602891dda07c36b56b5a61d9cb03bae5964393ecb8e49",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "d5bfe7dd350231b418a3e0ec65a107b87acb85568411a08eb72294f3276bd20e",
+  "evidence_dir": "results/kimi-kb-wrf-packet-20261003",
+  "stdout_jsonl_sha256": "8802eb448dae91274bddcfa26c8cd40c20b807978c3090135be8bd68b75e46b5",
+  "result": "completed, exit 0, 164.6s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "164.6s for this draft"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; the weak real-form layer's correctness keeps its own evidence chain (Cartan/seed gates) and is not restated here."
+}

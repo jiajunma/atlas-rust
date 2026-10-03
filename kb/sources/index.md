@@ -160,6 +160,13 @@ made_dominant/made_theta_stable/to_canonical_fiber/normalised 链、
 草案由同一 Kimi probe 路由起草（exit 0，122.4s，420 秒期限），维护者对照
 源码逐条核对改写。该包是结构性阅读，不声称 KType 层的数学验收。
 
+[弱实形式划分：adjoint fiber 的 W_im 轨道](weak-real-form.md)记录
+`weak_real_form.rs`：`WeakRealFormId` 的编号约定（与上游 RealFormNbr 一致）、
+`WeakRealFormPartition` 的构建与查询、`weak_real_form_at_representative` 的
+代表元级归因与 provenance 门控。对应[阅读快照](snapshots/2026-10-03-weak-real-form.json)；
+草案由同一 Kimi probe 路由起草（exit 0，164.6s，420 秒期限），维护者对照
+源码逐条核对改写。该包是结构性阅读，不声称弱实形式层的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only
