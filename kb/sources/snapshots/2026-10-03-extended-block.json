@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "06546416",
+ "working_tree": true,
+ "scope": "First reading of the extended-block module for the new extended-block source packet: the 32-value DescValue classification with predicates, ExtGen orbit folding, extended_type, ExtBlock build/build_partial, and tune_signs with its debug verification gates.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/ext_block.rs",
+   "sha256": "dd48cc3bee5987f4e6eb0d9f9c9c9b7363109a87ceb47aa95a230ac5d06be098",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "3015f73d690b358f52ffdd67ba8c1a5bca5a0d345e221839c3bd0949081d6f99",
+  "evidence_dir": "results/kimi-kb-extblock-packet-20261003",
+  "stdout_jsonl_sha256": "a44559b628bd29bbada5d27ee373c9d6a2a47135a9b6fc240921ec688990dade",
+  "result": "completed, exit 0, 180.0s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "180s for this draft; deadline calibration by excerpt size is holding"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; extended-block correctness keeps its own evidence chain (ext-KL/unitarity gates) and is not restated here."
+}

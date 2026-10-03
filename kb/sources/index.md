@@ -82,6 +82,13 @@ Kimi probe 草案在超时处截断，已采纳部分经核对、其余由维护
 草案由同一 Kimi probe 路由起草（exit 0，111.5s），维护者对照源码逐条核对
 改写。该包是结构性阅读，不声称 inner class 的数学验收。
 
+[扩展块：delta-不动部分与折叠生成元](extended-block.md)记录 `ext_block.rs`：
+`DescValue` 32 值分类与其谓词、`ExtGen` 轨道折叠、`extended_type` 局部识别、
+`ExtBlock::build` 与 `build_partial`（含 cofolded 生成元姿态）、`tune_signs`
+与 debug_assertions 下的 `check_quadratic`/`check_braid`。对应[阅读快照](snapshots/2026-10-03-extended-block.json)；
+草案由同一 Kimi probe 路由起草（exit 0，180.0s，420 秒期限），维护者对照
+源码逐条核对改写。该包是结构性阅读，不声称扩展块的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only
