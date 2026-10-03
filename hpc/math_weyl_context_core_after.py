@@ -112,6 +112,7 @@ from stage_weyl_context_core_after import (
     validate_before_v1_failure,
     validate_before_v2_failure,
     validate_before_v3_failure,
+    validate_after_v1_failure,
     validate_before_v4_result,
     validate_parent_objects,
     validate_pin as validate_stage_pin,
@@ -151,10 +152,10 @@ if ACTIVE_CAMPAIGN != _ACTIVE_CAMPAIGN:
 SUBMISSION_ENABLED = True
 EXPECTED_STAGE = (
     "/public/home/majj/atlas-rust-campaign-20260930/stages/"
-    "weyl-context-core-after-v1"
+    "weyl-context-core-after-v2"
 )
 
-REPORT_SCHEMA = "atlas-weyl-context-core-after-v1"
+REPORT_SCHEMA = "atlas-weyl-context-core-after-v2"
 SUCCESS_STATUS = "WEYL_CONTEXT_AFTER_REGRESSIONS_PASS"
 INCOMPLETE_STATUS = "WEYL_CONTEXT_CORE_AFTER_INCOMPLETE"
 REPORT_SCOPE = (
@@ -911,8 +912,8 @@ def _validate_command_records(records, result_dir):
         elif expected_name == "source-reconstruction":
             expected = (
                 "SOURCE_RECONSTRUCTION_OK %d %s\n"
-                % (REGRESSION_SOURCE["files"],
-                   REGRESSION_SOURCE["source_manifest_sha256"])
+                % (AFTER_SOURCE_FILES,
+                   AFTER_SOURCE_MANIFEST_SHA256)
             ).encode()
             if combined != expected:
                 raise ValueError("source reconstruction evidence changed")
@@ -1172,9 +1173,9 @@ def validate_report(report, result_dir):
     source = report.get("source")
     if (type(source) is not dict
             or set(source) != {"files", "manifest_sha256", "manifest"}
-            or source.get("files") != REGRESSION_SOURCE["files"]
+            or source.get("files") != AFTER_SOURCE_FILES
             or source.get("manifest_sha256")
-               != REGRESSION_SOURCE["source_manifest_sha256"]
+               != AFTER_SOURCE_MANIFEST_SHA256
             or not isinstance(source.get("manifest"), dict)
             or len(source["manifest"]) != source["files"]
             or _sha(json.dumps(
@@ -1311,6 +1312,7 @@ def gates(root):
     validate_before_v2_failure(root, inputs)
     validate_before_v3_failure(root, inputs)
     validate_before_v4_result(root, inputs)
+    validate_after_v1_failure(root, inputs)
     catalog = validate_staged_catalog(root, inputs)
     regression_source_manifest = validate_regression_inputs(
         root, inputs, accepted_source_manifest,
@@ -2094,7 +2096,7 @@ def main():
         }
 
         campaign = campaign_stage(root)
-        with ephemeral_job_workspace(out, "weyl-core-after-v1") as work:
+        with ephemeral_job_workspace(out, "weyl-core-after-v2") as work:
             (work / "tmp").mkdir(mode=0o700)
             env = command_environment(dict(os.environ), work)
             report["environment"] = validate_environment_record(env)
@@ -2213,8 +2215,8 @@ def main():
             ).encode()
             if (raw != expected_line
                     or manifest_sha
-                       != REGRESSION_SOURCE["source_manifest_sha256"]):
-                raise ValueError("tests-first source manifest digest changed")
+                       != AFTER_SOURCE_MANIFEST_SHA256):
+                raise ValueError("repaired source manifest digest changed")
 
             record, _ = _command_record(
                 out, "release-build", root, work, env,

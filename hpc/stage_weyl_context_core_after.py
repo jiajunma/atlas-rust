@@ -35,10 +35,10 @@ from progressive_submit import (
 )
 
 
-STAGE_NAME = "weyl-context-core-after-v1"
-PIN_NAME = "weyl-context-core-after-v1-pin.json"
-PIN_SCHEMA = "atlas-weyl-context-core-after-pin-v1"
-STAGE_LOCK = ".weyl-context-core-after-v1-stage.lock"
+STAGE_NAME = "weyl-context-core-after-v2"
+PIN_NAME = "weyl-context-core-after-v2-pin.json"
+PIN_SCHEMA = "atlas-weyl-context-core-after-pin-v2"
+STAGE_LOCK = ".weyl-context-core-after-v2-stage.lock"
 SBATCH = "hpc/math_weyl_context_core_after.sbatch"
 
 # The failed predecessor BEFORE stage is immutable.  This changed-input
@@ -52,10 +52,10 @@ EXPECTED_TEST_COUNTS = {
     "test-progressive-submit": 17,
     "test-weyl-context-core-contract": 18,
     "test-weyl-context-core-regression-contract": 21,
-    "test-math-weyl-context-core-after": 28,
+    "test-math-weyl-context-core-after": 29,
     "test-stager-allowlist": 7,
 }
-CHECKER_TESTS = 123
+CHECKER_TESTS = 124
 
 # The before-v1/v2/v3 failure evidences froze this predicted after-gate
 # checker table, and the before-v4 report recorded checker total 119.  The
@@ -2873,6 +2873,61 @@ BEFORE_V4_RESULT_EVIDENCE = {
     "sha256":
         "bf69999feb945b67f586d92d378cc20d238cb518ef84ad6ce11b54e3e74200d3",
 }
+# The immutable after-v1 harness failure (job 3890328): its diagnosis record
+# and its preserved report.  The after-v2 successor must bind both.
+AFTER_V1_FAILURE_EVIDENCE = {
+    "file": (
+        "tests/reference/hpc/"
+        "math_weyl_context_core_after_v1_failure_2026_10_03.json"
+    ),
+    "sha256":
+        "4e9ff6f8c685699cd05658234c3cbdbb391b247359f600132a8c2b23387252a5",
+}
+AFTER_V1_FAILURE_REPORT = {
+    "file": (
+        "tests/reference/hpc/"
+        "math_weyl_context_core_after_v1_failure_report_2026_10_03.json"
+    ),
+    "sha256":
+        "22b0b152ba964a6efae0953b1e36bf67dbf97565ad857d13a4db0fb9e6599a61",
+    "bytes": 259179,
+}
+# The frozen before-v4 identity, retained for validate_before_v4_result after
+# PREDECESSOR advanced to the failed after-v1 stage (the v3 lesson).
+BEFORE_V4_PREDECESSOR_STAGE = (
+    "/public/home/majj/atlas-rust-campaign-20260930/"
+    "stages/weyl-context-core-before-v4"
+)
+BEFORE_V4_PREDECESSOR = {
+    "stage": BEFORE_V4_PREDECESSOR_STAGE,
+    "job": "3886748",
+    "pin_sha256":
+        "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
+    "stage_creation_sha256":
+        "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7",
+    "stage_creation_contract_sha256":
+        "2affae9a40b11f15ca97ad80e38ca95534ff6294ff43e0c7823ede57202d919a",
+    "stage_creation_transaction_sha256":
+        "4ae83ab4446267af676897c4b1b1ec2ffcf1ead2db30bca431c0140960dff030",
+    "override_manifest_sha256":
+        "add7dfe0a9d4f0efa1b7d73333149c934d9f367812b47e30a94f5fbe5ff12ebd",
+    "submission_intent_sha256":
+        "c94c6cc6b8a28f795bb3f8412c15edd7c2ca24b3611378a6771ce93bc9d10ab2",
+    "submission_receipt_sha256":
+        "f53f37662aa4607647b9055e15544fdd67e8bac9a328971a919afada93d18798",
+    "report_sha256":
+        "3d0c7c91f672e6bf41830296864a621ee11bbd260735e37c0441d6c499953bce",
+    "report_bytes": 344871,
+    "result_evidence": BEFORE_V4_RESULT_EVIDENCE,
+    "stage_tree_sha256":
+        "1fa45944f8f115cb6de516feb15a2d597b3167ba33050a135add020351bd1ee7",
+    "stage_tree_files": 180,
+    "stage_tree_directories": 18,
+    "stage_tree_bytes": 4151738,
+    "campaign_ledger_sha256":
+        "5381b3b3a8ffcf8ae1566eb63640719ddec13955f681dbeca5361bbf9321cd5a",
+    "campaign_ledger_records": 19,
+}
 BEFORE_V3_PREDECESSOR_STAGE = (
     "/public/home/majj/atlas-rust-campaign-20260930/"
     "stages/weyl-context-core-before-v3"
@@ -3005,19 +3060,19 @@ BEFORE_V3_PREDECESSOR = {
 BEFORE_V3_PREDECESSOR_REFERENCE = BEFORE_V3_PREDECESSOR
 PREDECESSOR_STAGE = (
     "/public/home/majj/atlas-rust-campaign-20260930/"
-    "stages/weyl-context-core-before-v4"
+    "stages/weyl-context-core-after-v1"
 )
 PREDECESSOR_RECORD = {
     "stage": PREDECESSOR_STAGE,
-    "script": "hpc/math_weyl_context_core_capture.sbatch",
+    "script": "hpc/math_weyl_context_core_after.sbatch",
     "queue_before": [],
     "status": "SUBMITTED",
     "max_outstanding": 10,
-    "job": "3886748",
+    "job": "3890328",
     "pin_sha256":
-        "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
+        "396f30f2dae9e52637fbfeb0c8b5510286090b0801da4787742c0f2d2b9d7bb4",
     "stage_creation_sha256":
-        "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7",
+        "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad",
 }
 PREDECESSOR_CAMPAIGN_FILES = BEFORE_V2_PREDECESSOR_CAMPAIGN_FILES | {
     ".atlas-stage-creation-weyl-context-core-before-v3-prepared.json": {
@@ -3050,96 +3105,111 @@ PREDECESSOR_CAMPAIGN_FILES = BEFORE_V2_PREDECESSOR_CAMPAIGN_FILES | {
             "0dc3362461e91ce7329567f2c766047da4d9b1362d70fe8c6e62c703df22f657",
         "bytes": 677, "mode": "0444", "nlink": 1,
     },
+    ".atlas-stage-creation-weyl-context-core-after-v1-prepared.json": {
+        "sha256":
+            "5fe6a718345f50db6b7e86a83f8c9c06ab095738b3c3617706d5304fbb382188",
+        "bytes": 21720, "mode": "0444", "nlink": 1,
+    },
+    ".atlas-stage-creation-weyl-context-core-after-v1-sealed.json": {
+        "sha256":
+            "d43fe74789db4911d45dc72da2fca6d20f5781e33e55875dd407e423deb32714",
+        "bytes": 588, "mode": "0444", "nlink": 1,
+    },
+    ".atlas-stage-creation-weyl-context-core-after-v1-published.json": {
+        "sha256":
+            "116b9adb696cf838a9a1e7e3842e0b2ce5b5a9f612b13b9b8dd5cc02831f1849",
+        "bytes": 676, "mode": "0444", "nlink": 1,
+    },
 }
 PREDECESSOR_STATE = {
     "schema": "atlas-stage-creation-predecessor-v12",
     "stage": PREDECESSOR_STAGE,
     "stage_device": 3431958692,
-    "stage_inode": 162130669722468804,
+    "stage_inode": 162130669789514533,
     "stage_tree_sha256":
-        "1fa45944f8f115cb6de516feb15a2d597b3167ba33050a135add020351bd1ee7",
-    "stage_tree_files": 180,
-    "stage_tree_directories": 18,
-    "stage_tree_bytes": 4151738,
+        "89032144b58339fe9d36b0ce81a8029f50207cb8b9b975fda53d2bb17987e68d",
+    "stage_tree_files": 164,
+    "stage_tree_directories": 19,
+    "stage_tree_bytes": 5021882,
     "record": PREDECESSOR_RECORD,
     "campaign_files": PREDECESSOR_CAMPAIGN_FILES,
     "stage_files": {
         ".atlas-stage-creation-transaction.json": {
             "sha256":
-                "4ae83ab4446267af676897c4b1b1ec2ffcf1ead2db30bca431c0140960dff030",
+                "7ae03a18ae53852a0ab02369e130bfa8c63a9ba8f93b3b8dcc6bbce777533a8c",
             "bytes": 327, "mode": "0444", "nlink": 1,
         },
         ".atlas-stage-creation.json": {
             "sha256":
-                "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7",
-            "bytes": 20900, "mode": "0444", "nlink": 1,
+                "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad",
+            "bytes": 21957, "mode": "0444", "nlink": 1,
         },
-        "weyl-context-core-before-v4-pin.json": {
+        "weyl-context-core-after-v1-pin.json": {
             "sha256":
-                "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
-            "bytes": 16999, "mode": "0444", "nlink": 1,
+                "396f30f2dae9e52637fbfeb0c8b5510286090b0801da4787742c0f2d2b9d7bb4",
+            "bytes": 17527, "mode": "0444", "nlink": 1,
         },
         "submission-intent.json": {
             "sha256":
-                "c94c6cc6b8a28f795bb3f8412c15edd7c2ca24b3611378a6771ce93bc9d10ab2",
-            "bytes": 427, "mode": "0444", "nlink": 1,
+                "e17bb18c2cfb36e53b7c3ec242c3e9db339c2ee321b9520a33a195fb7b1e46f4",
+            "bytes": 424, "mode": "0444", "nlink": 1,
         },
         "submission.json": {
             "sha256":
-                "f53f37662aa4607647b9055e15544fdd67e8bac9a328971a919afada93d18798",
-            "bytes": 10743, "mode": "0444", "nlink": 1,
+                "51443573534b25e4f4a0be14d3c8903caf65ef65d45f538af963d129a5aa3908",
+            "bytes": 10671, "mode": "0444", "nlink": 1,
         },
         "overrides/overrides.json": {
             "sha256":
-                "add7dfe0a9d4f0efa1b7d73333149c934d9f367812b47e30a94f5fbe5ff12ebd",
-            "bytes": 6690, "mode": "0444", "nlink": 1,
+                "07154f8b88155421f46d9b706c3a5ce627271e87ae1aa689cca5b025c4b52ecb",
+            "bytes": 7220, "mode": "0444", "nlink": 1,
         },
-        "results/3886748/report.json": {
+        "results/3890328/report.json": {
             "sha256":
-                "3d0c7c91f672e6bf41830296864a621ee11bbd260735e37c0441d6c499953bce",
-            "bytes": 344871, "mode": "0444", "nlink": 1,
+                "22b0b152ba964a6efae0953b1e36bf67dbf97565ad857d13a4db0fb9e6599a61",
+            "bytes": 259179, "mode": "0444", "nlink": 1,
         },
-        "results/3886748/report.sha256": {
+        "results/3890328/report.sha256": {
             "sha256":
-                "4516e044f5edcbfafd0f8bd4fd33ab5c591cd5a3504f6524cb749d65eef0b8f3",
+                "573bf2660a5fb860d079b14fce9a89ef023bac3a9f6b224b64fc629f6176dee3",
             "bytes": 65, "mode": "0444", "nlink": 1,
         },
-        "weyl-context-core-before-v4-3886748.out": {
+        "weyl-context-core-after-v1-3890328.out": {
             "sha256":
-                "977be4c8eecd41d2344f9cf53e66041943d0183b300ec877dc2972b7166d7d6f",
-            "bytes": 145, "mode": "0644", "nlink": 1,
+                "73827df9078c101a661ee84548622d13c56cf415709cb4dcdbca2425475a3cb6",
+            "bytes": 132, "mode": "0644", "nlink": 1,
         },
     },
 }
 PREDECESSOR = {
     "stage": PREDECESSOR_STAGE,
-    "job": "3886748",
+    "job": "3890328",
     "pin_sha256":
-        "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
+        "396f30f2dae9e52637fbfeb0c8b5510286090b0801da4787742c0f2d2b9d7bb4",
     "stage_creation_sha256":
-        "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7",
+        "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad",
     "stage_creation_contract_sha256":
-        "2affae9a40b11f15ca97ad80e38ca95534ff6294ff43e0c7823ede57202d919a",
+        "60597853414483ca7b5c16294df712ca6f6dce245de4c6bb7fe8e4d808aeea9e",
     "stage_creation_transaction_sha256":
-        "4ae83ab4446267af676897c4b1b1ec2ffcf1ead2db30bca431c0140960dff030",
+        "7ae03a18ae53852a0ab02369e130bfa8c63a9ba8f93b3b8dcc6bbce777533a8c",
     "override_manifest_sha256":
-        "add7dfe0a9d4f0efa1b7d73333149c934d9f367812b47e30a94f5fbe5ff12ebd",
+        "07154f8b88155421f46d9b706c3a5ce627271e87ae1aa689cca5b025c4b52ecb",
     "submission_intent_sha256":
-        "c94c6cc6b8a28f795bb3f8412c15edd7c2ca24b3611378a6771ce93bc9d10ab2",
+        "e17bb18c2cfb36e53b7c3ec242c3e9db339c2ee321b9520a33a195fb7b1e46f4",
     "submission_receipt_sha256":
-        "f53f37662aa4607647b9055e15544fdd67e8bac9a328971a919afada93d18798",
+        "51443573534b25e4f4a0be14d3c8903caf65ef65d45f538af963d129a5aa3908",
     "report_sha256":
-        "3d0c7c91f672e6bf41830296864a621ee11bbd260735e37c0441d6c499953bce",
-    "report_bytes": 344871,
+        "22b0b152ba964a6efae0953b1e36bf67dbf97565ad857d13a4db0fb9e6599a61",
+    "report_bytes": 259179,
     "result_evidence": BEFORE_V4_RESULT_EVIDENCE,
     "stage_tree_sha256":
-        "1fa45944f8f115cb6de516feb15a2d597b3167ba33050a135add020351bd1ee7",
-    "stage_tree_files": 180,
-    "stage_tree_directories": 18,
-    "stage_tree_bytes": 4151738,
+        "89032144b58339fe9d36b0ce81a8029f50207cb8b9b975fda53d2bb17987e68d",
+    "stage_tree_files": 164,
+    "stage_tree_directories": 19,
+    "stage_tree_bytes": 5021882,
     "campaign_ledger_sha256":
-        "5381b3b3a8ffcf8ae1566eb63640719ddec13955f681dbeca5361bbf9321cd5a",
-    "campaign_ledger_records": 19,
+        "09a46422ff808a6df3a2e2d84f7f7d10ecddcb5424bcbef53004e7aeea62b42d",
+    "campaign_ledger_records": 20,
 }
 PREDECESSOR_REFERENCE = PREDECESSOR
 
@@ -3216,7 +3286,7 @@ FROZEN_LAUNCHER_HASHES = {
     "hpc/math_weyl_context_core_capture.py":
         "31f5aef26e14ca669ee9306efc70cc2c4f8f22fd19af11dab5e979a0296966d7",
     "hpc/math_weyl_context_core_after.py":
-        "3d7d98903a838b3a3343482d165af4b7e9b3989cc1f30a5c9ccc49950700913b",
+        "ec7625b278dda2ddfcbb7405251eb4e46327d17118b6f2e64c2f165c45867cb4",
 }
 FROZEN_LAUNCHER_STATES = {
     "hpc/stage_weyl_parent_seal.py": "retired",
@@ -3505,6 +3575,10 @@ STAGE_INPUT_NAMES = {
         "math_weyl_context_core_before_v3_failure_2026_10_02.json"
     ),
     "tests/reference/hpc/math_weyl_context_core_before_v4_2026_10_02.json",
+    (
+        "tests/reference/hpc/"
+        "math_weyl_context_core_after_v1_failure_2026_10_03.json"
+    ),
 }
 
 SUBMISSION_RECORD_KEYS = {
@@ -3527,7 +3601,7 @@ ALLOWED_STAGE_FILES = (
     STAGE_CREATION_MARKER, STAGE_CREATION_RECEIPT, STAGE_LOCK, PIN_NAME,
     "submission-intent.json", "submission.json",
 )
-SLURM_OUTPUT_PATTERN = r"weyl-context-core-after-v1-[0-9]+\.out\Z"
+SLURM_OUTPUT_PATTERN = r"weyl-context-core-after-v2-[0-9]+\.out\Z"
 
 
 def strict_json_loads(raw):
@@ -6717,6 +6791,12 @@ def validate_before_v3_failure(root, inputs):
 
 def validate_before_v4_result(root, inputs):
     """Bind the retained BEFORE v4 result: the direct predecessor's success."""
+    # This validator is inherited from the after-v1 module, where the
+    # module-level PREDECESSOR named the before-v4 stage.  Here PREDECESSOR is
+    # the failed after-v1 stage, so rebind the two names locally to the frozen
+    # before-v4 identity; the body below is unchanged.
+    PREDECESSOR = BEFORE_V4_PREDECESSOR
+    PREDECESSOR_STAGE = BEFORE_V4_PREDECESSOR_STAGE
     reference = BEFORE_V4_RESULT_EVIDENCE
     if inputs.get(reference["file"]) != reference["sha256"]:
         raise ValueError("Weyl core BEFORE v4 result evidence hash changed")
@@ -6808,6 +6888,46 @@ def validate_before_v4_result(root, inputs):
             or not isinstance(value.get("limitations"), list)
             or not value["limitations"]):
         raise ValueError("Weyl core BEFORE v4 result evidence changed")
+    return copy.deepcopy(value)
+
+
+def validate_after_v1_failure(root, inputs):
+    """Bind the immutable after-v1 harness failure (job 3890328)."""
+    reference = AFTER_V1_FAILURE_EVIDENCE
+    if inputs.get(reference["file"]) != reference["sha256"]:
+        raise ValueError("Weyl core after-v1 failure evidence hash changed")
+    value = load_relative_json(
+        root, reference["file"], reference["sha256"], mode=0o444, nlink=1)
+    if not isinstance(value, dict):
+        raise ValueError("Weyl core after-v1 failure evidence changed")
+    reconstruction = value.get("evidence_of_correct_reconstruction") \
+        if isinstance(value.get("evidence_of_correct_reconstruction"), dict) \
+        else None
+    if (value.get("schema") != "atlas-weyl-context-core-after-failure-v1"
+            or value.get("job") != PREDECESSOR["job"]
+            or value.get("state") != "FAILED"
+            or value.get("report_status")
+               != "WEYL_CONTEXT_AFTER_HARNESS_FAILURE"
+            or value.get("classification")
+               != ("HARNESS_DRIVER_EXPECTATION_MISMATCH_AFTER_SOURCE_"
+                   "RECONSTRUCTION_BEFORE_BUILD_OR_ATLAS_EXECUTION")
+            or value.get("stage") != PREDECESSOR_STAGE
+            or value.get("pin_sha256") != PREDECESSOR["pin_sha256"]
+            or value.get("stage_creation_sha256")
+               != PREDECESSOR["stage_creation_sha256"]
+            or value.get("report_sha256") != PREDECESSOR["report_sha256"]
+            or value.get("report_bytes") != PREDECESSOR["report_bytes"]
+            or value.get("mathematical_regression_required") is not False
+            or not isinstance(reconstruction, dict)
+            or reconstruction.get("computed_manifest_sha256")
+               != AFTER_SOURCE_MANIFEST_SHA256
+            or reconstruction.get("expected_after_manifest_sha256")
+               != AFTER_SOURCE_MANIFEST_SHA256
+            or reconstruction.get("match") is not True
+            or value.get("submission_record")
+               != ("tests/reference/hpc/"
+                   "math_weyl_context_core_after_v1_submission_2026_10_03.json")):
+        raise ValueError("Weyl core after-v1 failure evidence changed")
     return copy.deepcopy(value)
 
 
@@ -7319,6 +7439,7 @@ def run_enabled(payload_root, overrides_sha256):
     validate_before_v2_failure(payload_root / "overrides", manifest)
     validate_before_v3_failure(payload_root / "overrides", manifest)
     validate_before_v4_result(payload_root / "overrides", manifest)
+    validate_after_v1_failure(payload_root / "overrides", manifest)
     regression_manifest = validate_regression_inputs(
         payload_root / "overrides", manifest, source_manifest)
     validate_catalog(payload_root / "overrides", manifest)
@@ -7365,6 +7486,7 @@ def run_enabled(payload_root, overrides_sha256):
         validate_before_v2_failure(root, manifest)
         validate_before_v3_failure(root, manifest)
         validate_before_v4_result(root, manifest)
+        validate_after_v1_failure(root, manifest)
         if validate_regression_inputs(root, manifest, installed_source_manifest) \
                 != regression_manifest:
             raise ValueError("installed regression source manifest changed")
