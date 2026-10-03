@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "c99504f4",
+ "working_tree": true,
+ "scope": "First reading of the strong real-form classification module for the new strong-real source packet: SquareClassId convention, StrongRealFormRep, StrongRealData, StrongRealClassification::build and the print view.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/strong_real.rs",
+   "sha256": "34530307523c21e1e47c191c9358a8b54d08187b6d6461eb12a43e69dabb50c0",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "a159d22aa86c66c44fa281a99e6f7f92e5d668e5888cb7a69ae756dcb419846d",
+  "evidence_dir": "results/kimi-kb-strong-packet-20261003",
+  "stdout_jsonl_sha256": "46cc4c85b2ff1dc38ca7d324b67f1e61d0a49d441303cb72a13d3352bca13560",
+  "result": "completed, exit 0, 263.0s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "263.0s for this draft"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; the strong-real layer's correctness keeps its own evidence chain (Cartan/seed gates) and is not restated here."
+}

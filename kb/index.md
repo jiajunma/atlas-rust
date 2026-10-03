@@ -25,6 +25,7 @@
 | [Twisted involution 表（KGB stage b）](sources/involution-table.md) | 记录格式、image-basis 播种/传送、编号纪律与 cross/Cayley 访问器；结构性阅读，不作数学验收 |
 | [Tits 元素：torus 部分与 Tits 群操作（KGB stage c）](sources/tits-element.md) | 元素形状、TitsCoset 门控、cross/Cayley/inverse-Cayley 与 grading 修复；结构性阅读，不作数学验收 |
 | [KGB 种子 x0：stable_log、基本余权与 RealFormSeed](sources/real-form-seed.md) | stable_log 前置条件、基本余权的实际余根展开、种子门控链；结构性阅读，不作数学验收 |
+| [强实形式分类：平方类编号与 fiber 轨道](sources/strong-real.md) | 平方类编号约定、StrongRealData、分类汇总与打印视图；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 
