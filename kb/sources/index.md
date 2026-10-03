@@ -67,6 +67,13 @@ KL 和的长度函数差异、`block_deformation_to_height` 与递归
 Kimi probe 路由起草（exit 0，168.5s），维护者对照源码逐条核对改写。该包是
 结构性阅读，不声称形变计算的数学验收。
 
+[表示参数上下文：StandardRepr 与 RepContext](rep-context.md)记录
+`rep_context.rs`：参数四元组、借用视图与派生常量、构造入口、lambda 派生链、
+挠部分打包/提升、奇偶与朝向、mod_reduce/build_srm、reducibility points、
+finals 与 deformation terms。对应[阅读快照](snapshots/2026-10-03-rep-context.json)；
+Kimi probe 草案在超时处截断，已采纳部分经核对、其余由维护者补齐。该包是
+结构性阅读，不声称参数层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
