@@ -74,6 +74,14 @@ finals 与 deformation terms。对应[阅读快照](snapshots/2026-10-03-rep-con
 Kimi probe 草案在超时处截断，已采纳部分经核对、其余由维护者补齐。该包是
 结构性阅读，不声称参数层的数学验收。
 
+[Inner class 层：构造、验证门与 twisted 共轭枚举](inner-class.md)记录
+`inner_class.rs`：有意为之的部分实现边界、构造入口、`based_involution_twist`
+验证门、`twisted_from_involution` 成员判定、三阶段 `canonicalize`、
+`canonical_involution_expr` 的 signed-entry 编码，以及 twisted 共轭枚举族
+（含 generated partition 的预算差异）。对应[阅读快照](snapshots/2026-10-03-inner-class.json)；
+草案由同一 Kimi probe 路由起草（exit 0，111.5s），维护者对照源码逐条核对
+改写。该包是结构性阅读，不声称 inner class 的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only

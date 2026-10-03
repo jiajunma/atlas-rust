@@ -168,3 +168,11 @@ sources/index.md 已同步；未运行编译、测试或 compiler 生成。
 `TwistedConjugacyClass`/`CartanClass` 分层。同一 Kimi probe 路由起草
 （exit 0，210.1s，420 秒期限）；维护者对照源码逐条核对改写。索引与
 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增 inner class 来源包（Kimi probe 协助）
+
+新增 `sources/inner-class.md` 与快照 `2026-10-03-inner-class.json`：部分实现
+边界、构造入口、验证门、三阶段 canonicalize、canonical_involution_expr 与
+twisted 共轭枚举族。同一 Kimi probe 路由起草（exit 0，111.5s，420 秒期限）；
+维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
+测试或 compiler 生成。
