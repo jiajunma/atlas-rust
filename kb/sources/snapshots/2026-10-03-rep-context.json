@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "061275e8",
+ "working_tree": true,
+ "scope": "First reading of the representation-parameter context for the new rep-context source packet: StandardRepr quadruple, RepContext borrowed view and derived constants, construction entry points, the lambda_rho/lambda/nu chain, torsion pack/lift, parity and orientation, mod_reduce/build_srm, reducibility points, finals and deformation terms.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/rep_context.rs",
+   "sha256": "18d0112e97a35869224b642512c8a1120f6df112798322b942d062be39475345",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "b831843baed55cb6e2e972dcf082f8cb1c22705d4da055c8c2bb42f1149d8c15",
+  "evidence_dir": "results/kimi-kb-repctx-packet-20261003",
+  "stdout_jsonl_sha256": "44c31d84f2145d8330571afc7e76be3120384d3cd7cbd6eba4ea38ea7b68f572",
+  "result": "timeout at 300s with a partial draft through the representative-normalization section; the completed portion was recovered from stdout.jsonl, reviewed against source, and the packet completed by the maintainer",
+  "lesson": "a 30KB-excerpt prompt needs more than 300s of drafting; split larger modules or raise the deadline. The partial answer was still usable after stdout.jsonl recovery"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; parameter-layer correctness keeps its own evidence chain (orientation/deform/unitarity gates) and is not restated here."
+}

@@ -151,3 +151,12 @@ compiler 生成。
 `block_deformation_to_height` 与递归 `twisted_deformation`。同一 Kimi probe
 路由起草（exit 0，168.5s）；维护者对照源码逐条核对改写。索引与
 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增表示参数上下文来源包（Kimi probe 部分协助）
+
+新增 `sources/rep-context.md` 与快照 `2026-10-03-rep-context.json`：
+`StandardRepr` 四元组、`RepContext` 借用视图、构造入口、lambda 派生链、
+挠部分打包/提升、奇偶/朝向/reducibility 与 finals。Kimi probe 草案在 300 秒
+超时处截断（30KB 摘录超出该期限）；已采纳部分经维护者对照源码核对，其余由
+维护者补齐。教训：大模块应拆分摘录或提高期限。索引与 sources/index.md 已
+同步；未运行编译、测试或 compiler 生成。
