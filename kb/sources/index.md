@@ -89,6 +89,13 @@ Kimi probe 草案在超时处截断，已采纳部分经核对、其余由维护
 草案由同一 Kimi probe 路由起草（exit 0，180.0s，420 秒期限），维护者对照
 源码逐条核对改写。该包是结构性阅读，不声称扩展块的数学验收。
 
+[扩展 KLV 多项式表：primitivisation 符号与逐列存储](extended-kl.md)记录
+`ext_kl.rs`：池/符号分离存储（`prim_flip` bitmap）、`DescentTable` 预计算、
+`ExtKlTable` 列式访问语义、`fill_columns` 的错误传播策略，以及模块文档载明的
+五条 deliberate deviations。对应[阅读快照](snapshots/2026-10-03-extended-kl.json)；
+草案由同一 Kimi probe 路由起草（exit 0，260.5s，420 秒期限），维护者对照
+源码逐条核对改写。该包是结构性阅读，不声称扩展 KL 的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only

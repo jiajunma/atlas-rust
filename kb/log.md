@@ -183,3 +183,11 @@ twisted 共轭枚举族。同一 Kimi probe 路由起草（exit 0，111.5s，420
 `DescValue` 32 值分类、`fold_orbits`、两种构造与 `tune_signs` 调试门。同一
 Kimi probe 路由起草（exit 0，180.0s，420 秒期限）；维护者对照源码逐条核对
 改写。索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增扩展 KLV 表来源包（Kimi probe 协助）
+
+新增 `sources/extended-kl.md` 与快照 `2026-10-03-extended-kl.json`：池/符号
+分离存储、`DescentTable`、`ExtKlTable` 访问语义、`fill_columns` 错误策略与
+五条 deliberate deviations。同一 Kimi probe 路由起草（exit 0，260.5s）；
+维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
+测试或 compiler 生成。

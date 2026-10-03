@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "27e2ab21",
+ "working_tree": true,
+ "scope": "First reading of the extended KLV table module for the new extended-kl source packet: DescentTable with primitivisation sign flips, ExtKlTable column storage, accessor semantics, fill_columns error policy and the deliberate upstream deviations.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/ext_kl.rs",
+   "sha256": "923c34ffcaae013a3ae9e9aad25b1b8daff69457c3d056e1dd1f6fca7543916b",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "279a168e5622ec43dd24b205e92e4fe559b3f16da6f733b3be00755963ecdb25",
+  "evidence_dir": "results/kimi-kb-extkl-packet-20261003",
+  "stdout_jsonl_sha256": "61c21e1c382f703d0d3da34c7c7cab9abc4ed0b871a44884d8fb4995c36a061d",
+  "result": "completed, exit 0, 260.5s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "260.5s for this draft; 420s deadline held"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; extended-KL correctness keeps its own evidence chain (unitarity gates) and is not restated here."
+}
