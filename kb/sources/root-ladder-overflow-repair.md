@@ -1,21 +1,40 @@
 ---
 title: Root ladder 固定宽度坐标溢出修复
 source: atlas-rust/root-ladder-overflow-repair
-ingestedAt: 2026-10-01T05:23:39Z
+ingestedAt: 2026-10-03T10:32:42Z
 ---
 
 # Root ladder 固定宽度坐标溢出修复
 
-编辑状态：本来源包的证据窗口止于 BEFORE-v3，尚未纳入仓库中时间上
-更新的 root-ladder 记录。下文的“候选”与“尚未”保留为该快照时点的
-历史状态；本包在重新读取源码和证据、追加新快照前不得当作当前结论。
+编辑状态：**AFTER-v3 已在限定范围内接受（2026-10-01，job 3875239）**；本包已于
+2026-10-03 按新证据窗口重读。接受范围仍不含 acceptance-index 登记、rank 提升、
+性能或内存结论。
 
 本来源包限定一个很窄的数学错误：Rust 在构造 root/coroot ladder bottom
 表时，把环境格坐标差的 `i32` 溢出当成整个 `RootSystem` 构造失败。这里把
 数学推导、original Atlas 的算法、Rust 候选修复和 HPC 证据分开记录。
 
-该证据窗口冻结时的状态是 **候选修复，AFTER 尚未接受**。已接受的 BEFORE 只证明三条新增
-回归在未修改生产代码上按预期失败；它不证明候选代码正确。
+## 2026-10-03 状态推进：AFTER-v3 限定接受
+
+tests-first 链已经闭合：BEFORE-v3（job 3873400，证据
+`tests/reference/hpc/math_ladder_boundary_before_v3_2026_10_01.json`）先证明三条
+回归在未修复源码上按预期失败；AFTER-v3（job 3875239，FINAL `COMPLETED 0:0`）
+的独立检查记录
+[`math_ladder_boundary_after_v3_2026_10_01.json`](../../tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json)
+（SHA-256 `a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15`）
+状态为 `LADDER_BOUNDARY_AFTER_ACCEPTED`：95 项 harness checker、完整 stager
+清点 70/67、domain 521/2/521 与 core 630/1/630 全部通过，源码与最终完整性
+复核通过。被接受的字节正是候选快照中记录的 `root_system.rs`
+`cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9`。
+
+接受范围仅限两条 root/coroot 坐标边界 kernel 回归、其 original-backed 解释器
+回归、两个 crate 的完整 Rust 测试套件和目录治理 harness。明确不包括：
+acceptance-index 登记、一般 root system/KGB/KLV/unitarity/Hodge/associated
+cycle/AV-ann 验收、rank 提升、性能或内存结论。候选快照保留不改写；本次阅读见
+[`snapshots/2026-10-03-root-ladder-after-v3.json`](snapshots/2026-10-03-root-ladder-after-v3.json)。
+
+以下各节保留候选时期的原始叙述作为设计记录；“候选”“尚未”等措辞仅在
+“## 2026-10-03 状态推进”一节所述范围内被上述接受取代。
 
 ## 数学对象与局部推导
 
@@ -91,11 +110,24 @@ AFTER pass。
 521/630 测试实际全部通过、original 与 Rust 完整流相等、相关溢出负例仍保留、
 retained gates 不丢失且源码/补丁/报告哈希闭合后，才具备送交独立 review 的
 条件。AFTER execution/report 不能自我验收；独立 review 本身也不能绕过正式
-账本。当前 acceptance index 尚未注册 ladder 的 stable claim contract、capture
-validator 或 claim-specific independent-review validator，不应临时编造
-`claim_id`。只有这些合约和 validator 经审查、独立机器可读 review 通过，并在
-hash-chained、checkpointed acceptance index 中追加 `accepted + math_pass` entry
-后，wiki 才能把候选改写成已验收行为。
+账本。
+
+**上述条件现已全部满足**：acceptance index 已追加 entry
+`0003-a1-torus-root-coroot-ladder-boundary`（entry SHA-256
+`1628ee21c71a91376a02982c38404cee958cb6183c57f791a42c4a668a1efc12`，
+`acceptance: accepted`、`status: math_pass`），绑定 AFTER-v3 报告
+`771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c`、
+独立 review
+`3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58` 与
+canonical 源文件清单
+`d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213`。
+其断言覆盖：原版接受全部 11 个 case 的 22 条记录、root 与 coroot 两条 kernel
+回归通过、两个 crate 完整套件通过、Rust 完整流与被捕获的原版一致、且三条
+tests-first 回归在修复前确实失败。该 entry 自带的限制仍然有效：仅限
+A1+中心环面坐标边界 fixture、AFTER 作业没有重跑原版 oracle、不是一般 root
+system 正确性、不含更高 rank、不是 KLV/unitarity/Hodge/associated
+cycle/AV-ann、不是性能或并行验收，Rust 完整套件只是回归守卫而非 oracle
+证明。
 
 ## 精确阅读快照与限制
 

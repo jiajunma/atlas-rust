@@ -1,0 +1,38 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "bd3b2352",
+ "working_tree": true,
+ "scope": "Root-ladder coordinate-boundary line after the bounded AFTER-v3 acceptance: reread the accepted source bytes, fixtures and both independent evidence records.  Supersedes the candidate-only reading window without rewriting the retained candidate snapshots.",
+ "candidate_snapshot": "2026-10-01-root-ladder-repair-candidate-v2.json",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/root_system.rs",
+   "sha256": "cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9",
+   "note": "working-tree bytes; the same bytes were the reviewed candidate and are now the bounded AFTER-v3 accepted source for this kernel"
+  },
+  {
+   "path": "tests/math/generics/root_ladder_coordinate_boundary.atlas",
+   "sha256": "dc88d6606ae855b618dcf12589ecde82edcbe482873a94bcff1001163691ec65"
+  },
+  {
+   "path": "tests/math/generics/root_ladder_coordinate_boundary.oracle.stdout",
+   "sha256": "3a7fdade43c46cf4f3048b52cf81f282db060012951ee559296f017f7d3eab80"
+  },
+  {
+   "path": "tests/math/generics/root_ladder_coordinate_boundary.oracle.stderr",
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  {
+   "path": "tests/reference/hpc/math_ladder_boundary_before_v3_2026_10_01.json",
+   "sha256": "608e996acac10ea1bacca177468fcd83f3ec39c3e579899440e11aab674fc37f",
+   "note": "tests-first BEFORE evidence: the three regressions fail on unrepaired source"
+  },
+  {
+   "path": "tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json",
+   "sha256": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15",
+   "note": "independent AFTER-v3 record, status LADDER_BOUNDARY_AFTER_ACCEPTED, job 3875239 FINAL COMPLETED 0:0"
+  }
+ ],
+ "limits": "Bounded acceptance only: the two root/coroot coordinate-boundary kernel regressions, their original-backed interpreter regression, the full atlas-real-group and atlas-core Rust suites, and the directory-governance harness.  No acceptance-index entry, rank release, performance or memory claim; historical candidate snapshots are retained unchanged."
+}

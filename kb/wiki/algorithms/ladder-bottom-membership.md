@@ -1,16 +1,18 @@
 ---
 id: ladder-bottom-membership
 type: algorithm
-note_status: needs_refresh
+note_status: reviewed
 aliases: [Root ladder bottoms]
-source_snapshot: sources/snapshots/2026-10-01-initial.json
+source_snapshot: sources/snapshots/2026-10-03-root-ladder-after-v3.json
 ---
 
 # Ladder bottom 的成员判定
 
-编辑状态：本页的证据窗口止于早期来源快照，未纳入仓库中时间上更新的
-root-ladder 记录。下文保留为待重新核对的历史说明，其中“当前”只指所列
-`source_snapshot` 的读取时点，不表示当前工作区或验收状态。
+编辑状态：本页已于 2026-10-03 按 AFTER-v3 限定接受重读。成员查询把
+`ArithmeticOverflow` 解释为“不属于存储集合”的修复已在 acceptance index
+entry `0003-a1-torus-root-coroot-ladder-boundary` 中登记为
+`accepted + math_pass`，范围仅限 A1+中心环面坐标边界 fixture 与两个 crate
+的回归套件；不含更高 rank、一般 root system、性能或内存结论。
 
 这里解释 `RootSystem::min_roots_for` 对应的有限集合运算，以及为什么成员查询的中间差值溢出不能直接等同于数学对象无效。
 
@@ -34,11 +36,15 @@ $$B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}.$$
 
 这个推导只支持完整 `i32` 存储集合中的成员判定。它不允许一般减法使用 wrapping 或 saturating 结果，不消除分配错误，也不能推广成反射等其他运算的溢出处理规则。
 
-当前 `subtract_coordinates` 在 `checked_sub` 失败时返回 `ArithmeticOverflow`，而调用者使用 `?` 传播。这与上述成员判定的语义存在已记录的错误；修复及验收仍应遵守原有回归流程。
+`subtract_coordinates` 在 `checked_sub` 失败时返回 `ArithmeticOverflow`；修复后
+`build_ladder_bottoms` 恰在该错误分支把 membership 解释为 false，其余错误继续
+传播。该修复的回归链与限定接受范围见
+[修复来源包](../../sources/root-ladder-overflow-repair.md)。
 
 ## 来源与关联
 
 - [root_system.rs](../../../crates/atlas-real-group/src/root_system.rs)：`min_roots_for`、`min_coroots_for`、`build_ladder_bottoms`、`subtract_coordinates`。
 - [项目审查记录](../../../docs/HANDOFF.md)：`Original-source review at frozen commit` 段落限定修复范围。
-- [来源快照](../../sources/snapshots/2026-10-01-initial.json)。
+- [来源快照](../../sources/snapshots/2026-10-03-root-ladder-after-v3.json)；历史初始快照
+  `2026-10-01-initial.json` 保留不改写。
 - 前置知识：[根坐标与格坐标](../math/root-coordinates.md)；历史输入和原版对比：[两版实现比较](../comparisons/root-ladder-cpp-rust.md)。

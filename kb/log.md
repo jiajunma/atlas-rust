@@ -86,3 +86,14 @@ regression catalog、tests-only patch 和当前 Rust 字节。保留旧预测快
 限制；生成页仍为 `needs_refresh`。未重试此前被拒绝的 provider 请求，没有生成
 或批准 compiler 页面。SecureLink 隧道中断，HPC 提交暂缓；无任何数学、缓存、
 性能、内存或 rank 验收。
+
+## 2026年10月3日 Root-ladder 来源包与页面按 AFTER-v3 限定接受刷新
+
+`root-ladder-overflow-repair.md` 的证据窗口推进到 AFTER-v3 限定接受：job
+3875239 独立接受、acceptance index entry `0003-a1-torus-root-coroot-ladder-boundary`
+（`accepted + math_pass`）已登记，原先的“尚未注册 claim contract”段落改写为
+该 entry 的精确引用与限制。新增只追加阅读快照
+`2026-10-03-root-ladder-after-v3.json`。两个 curated 页面
+（ladder-bottom-membership、root-ladder-cpp-rust）重读后标记 `reviewed`；
+`sources/index.md` 与 vault 索引同步。历史 candidate 快照全部保留。未运行任何
+编译、测试或 compiler 生成。

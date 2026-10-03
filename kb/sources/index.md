@@ -9,11 +9,11 @@
 [Root ladder 固定宽度坐标溢出修复](root-ladder-overflow-repair.md)是首个
 llm-wiki-compiler 原生来源包；其
 [候选后继快照](snapshots/2026-10-01-root-ladder-repair-candidate-v2.json)绑定候选
-Rust 字节、tests-first fixture、BEFORE-v3 证据和冻结 original 源码。该包的
-证据窗口到此为止；仓库中已有时间上更新但尚未纳入本包的 root-ladder
-记录。在追加新快照并重新审查前，来源包与相关页面均按
-`needs_refresh` 处理，不用于推断当前实现或验收状态。初始 candidate snapshot
-仍保留而不改写。
+Rust 字节、tests-first fixture、BEFORE-v3 证据和冻结 original 源码。
+[AFTER-v3 接受快照](snapshots/2026-10-03-root-ladder-after-v3.json)把证据窗口推进到
+限定接受：job 3875239 独立接受，acceptance index entry
+`0003-a1-torus-root-coroot-ladder-boundary` 为 `accepted + math_pass`，范围以该
+entry 的 limitations 为准。历史 candidate snapshots 保留不改写。
 
 [Weyl 对象身份、dual 历史与安全共享边界](weyl-context-identity-and-sharing.md)
 记录 original 的 weak root-datum interning、datum-local lazy WeylGroup、
@@ -23,9 +23,10 @@ history-dependent `dual()` identity，以及当前 Rust 每次重建 context 和
 绑定当前 Rust 字节、两个 core-only A1 fixture、已接受的 rank-one profile 和冻结
 original 源码。旧预测快照保持原样；后继
 [原版回归快照](snapshots/2026-10-02-weyl-core-regressions.json)记录 v8 已证实的
-两处 A1 差异和新原版 goldens。BEFORE-v1 仅运行到检查器失败，数学回归与
-语义修复仍未完成；cache A/B 尚未发生。生成页仍待 compiler 授权及 hold-all
-审查，不能把来源包更新视作已批准的生成内容。
+两处 A1 差异和新原版 goldens；[AFTER-v1 gate 冻结快照](snapshots/2026-10-03-weyl-core-after-gate-freeze.json)
+绑定已提交的 after 三件套、修复补丁与离线核验的 repaired manifest。AFTER-v1
+尚未提交 HPC（SecureLink 隧道中断），语义修复与 cache A/B 均未验收。生成页仍待
+compiler 授权及 hold-all 审查，不能把来源包更新视作已批准的生成内容。
 
 ## 权威记录的位置
 

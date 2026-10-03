@@ -5,8 +5,8 @@
 | 主题 | 阅读目的 |
 | --- | --- |
 | [根坐标与格坐标](wiki/math/root-coordinates.md) | 区分简单根坐标、环境格坐标、根与余根的编号 |
-| [Ladder bottom 的成员判定](wiki/algorithms/ladder-bottom-membership.md) | `needs_refresh`；历史证据窗口下的计算目标、不变量及固定宽度减法边界 |
-| [Ladder 的 C++ 与 Rust 实现比较](wiki/comparisons/root-ladder-cpp-rust.md) | `needs_refresh`；历史坐标选择、已发现问题和 original capture 的连接 |
+| [Ladder bottom 的成员判定](wiki/algorithms/ladder-bottom-membership.md) | 成员查询溢出语义的限定修复已被 AFTER-v3 接受（ledger entry 0003，`accepted + math_pass`），范围以 entry limitations 为准 |
+| [Ladder 的 C++ 与 Rust 实现比较](wiki/comparisons/root-ladder-cpp-rust.md) | 已按 AFTER-v3 限定接受重读；历史差异已闭合，不能外推到更高 rank 或其他操作 |
 | [Rust 系统结构与兼容性边界](wiki/systems/atlas-implementation-map.md) | 理解 Rust 模块职责，区分早期设计与实际代码 |
 | [Weyl 对象身份、dual 历史与安全共享边界](sources/weyl-context-identity-and-sharing.md) | 原版 A1 差异与 BEFORE-v4 tests-first 证据已保留；AFTER-v1 gate 已冻结待 HPC 提交；生成页 `needs_refresh`，尚无修复或缓存验收 |
 
