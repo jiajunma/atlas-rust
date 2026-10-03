@@ -30,6 +30,7 @@
 | [KType 层：标准表示的 K-限制](sources/ktype.md) | 表示不变量、判定族、规范化链与 finals/KGP 展开；结构性阅读，不作数学验收 |
 | [弱实形式划分：adjoint fiber 的 W_im 轨道](sources/weak-real-form.md) | 编号约定、WeakRealFormPartition 与代表元级归因内核；结构性阅读，不作数学验收 |
 | [精确整数格线性代数：预算、饱和核与可观测基](sources/integer-lattice.md) | 计算预算、饱和核、mod-2 归约与 adapted_basis 的可观测选举；结构性阅读，不作数学验收 |
+| [紧致 grading：simple-imaginary 根的紧致性位向量](sources/grading.md) | 位向量纪律、CartanGradingData 门控与 grading↔元素互转；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 

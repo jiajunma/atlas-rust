@@ -272,3 +272,10 @@ sources/index.md 已同步；未运行编译、测试或 compiler 生成。
 预算分层、饱和核、mod-2 归约、关系格封装与 adapted_basis。同一 Kimi probe
 路由起草（exit 0，161.7s）；维护者对照源码逐条核对改写。索引与
 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增紧致 grading 来源包（Kimi probe 协助）
+
+新增 `sources/grading.md` 与快照 `2026-10-03-grading.json`：位向量纪律、
+CartanGradingData 门控、grading↔元素互转。同一 Kimi probe 路由起草
+（exit 0，147.9s）；维护者对照源码逐条核对改写。索引与 sources/index.md 已
+同步；未运行编译、测试或 compiler 生成。

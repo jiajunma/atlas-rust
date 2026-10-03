@@ -174,6 +174,13 @@ made_dominant/made_theta_stable/to_canonical_fiber/normalised 链、
 草案由同一 Kimi probe 路由起草（exit 0，161.7s，420 秒期限），维护者对照
 源码逐条核对改写。该包是结构性阅读，不声称格层的数学验收。
 
+[紧致 grading：simple-imaginary 根的紧致性位向量](grading.md)记录
+`grading.rs`：`Grading` 的位向量纪律（与 ambient coweight 坐标的类型区分）、
+`CartanGradingData` 的两道门控与全一 base、`grading`/`element_from_grading`
+的增广消元互转。对应[阅读快照](snapshots/2026-10-03-grading.json)；草案由
+同一 Kimi probe 路由起草（exit 0，147.9s，420 秒期限），维护者对照源码逐条
+核对改写。该包是结构性阅读，不声称 grading 层的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only
