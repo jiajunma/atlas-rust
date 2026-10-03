@@ -1,6 +1,35 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
-## CURRENT: AFTER-v1 gate frozen locally, commit 342a0511 pushed; HPC submission BLOCKED on SecureLink tunnel — 2026-10-03
+## CURRENT: AFTER-v1 SUBMITTED as job 3890328 — 2026-10-03
+
+The SecureLink tunnel recovered; the launch procedure above ran exactly once.
+Fresh read-only reconciliation found: `squeue` empty, no after-v1 accounting
+row, the 19-record campaign ledger at SHA-256
+`5381b3b3a8ffcf8ae1566eb63640719ddec13955f681dbeca5361bbf9321cd5a`, and
+`stages/weyl-context-core-after-v1` absent.  The 58-input payload
+(`overrides_sha256`
+`07154f8b88155421f46d9b706c3a5ce627271e87ae1aa689cca5b025c4b52ecb`,
+2,289,044 payload bytes) was verified locally by the stager's own
+`_read_override_manifest` before transport, streamed to the single registered
+transport `/public/home/majj/.weyl-core-after-v1-payload`, mode-verified
+remotely (59 files, all 0444, no symlinks/hardlinks, exact topology), and the
+stager was invoked exactly once from that payload with login Python 3.9.12.
+It returned the submission receipt: exactly job `3890328` with
+`queue_before=[]`, pin SHA-256
+`396f30f2dae9e52637fbfeb0c8b5510286090b0801da4787742c0f2d2b9d7bb4`, stage
+creation receipt
+`ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad`.  The job
+was RUNNING on `cu115` when observed.  Both transports are removed (the remote
+removal first verified the exact single-child `overrides/` topology).  The
+submission record is
+`tests/reference/hpc/math_weyl_context_core_after_v1_submission_2026_10_03.json`.
+
+Status is `SUBMITTED_NOT_VERIFIED`: do not resubmit, create a sibling, accept
+the repair, or release any gate before the FINAL independent inspection of the
+job's report.  On FINAL, collect the report, run the independent review, and
+only then consider the repaired production source for a focused commit.
+
+## SUPERSEDED: AFTER-v1 gate frozen locally, commit 342a0511 pushed; HPC submission BLOCKED on SecureLink tunnel — 2026-10-03
 
 The changed-input `weyl-context-core-after-v1` gate is fully finalized,
 locally verified and committed as `342a0511` on

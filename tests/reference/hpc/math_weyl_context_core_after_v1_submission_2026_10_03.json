@@ -1,0 +1,851 @@
+{
+ "stage-creation.json": {
+  "contract": {
+   "campaign": "/public/home/majj/atlas-rust-campaign-20260930",
+   "inputs": {
+    "hpc/campaign_blob.py": "47e8dfb10a01513257905134dfaf6f91e73fc4337a2923d4bbd22c28a9220c52",
+    "hpc/campaign_source.py": "8190efa28e74589d03b220c183fa87bdabcb6ce76f7bb2cd7d0947defcc71dc9",
+    "hpc/campaign_workspace.py": "e63384bcdd4f4c19512f3c1e9490dad925d564373a1af376e2860078ddaed531",
+    "hpc/math_ladder_boundary_after.py": "b6f52b1042393705498767a687175f365c1fd0f491c3f630ca4cf53d2277d0a2",
+    "hpc/math_ladder_boundary_before.py": "21dc2207690a8cd0559854eb78725c5e0d901a7e5c1c750d4feb89d55e7b8f9e",
+    "hpc/math_ladder_boundary_index.py": "29eb6392458aa0d856ca88a1fba6d5eefc4e265f2e5ec5a5ba1ba41bdcf11c31",
+    "hpc/math_weyl_context_core_after.py": "3d7d98903a838b3a3343482d165af4b7e9b3989cc1f30a5c9ccc49950700913b",
+    "hpc/math_weyl_context_core_after.sbatch": "b2f2ec5fb9b76fd6f9ee42052973d77f9d8e1dbb7f0446278ae7d359cb159082",
+    "hpc/math_weyl_context_core_capture.py": "31f5aef26e14ca669ee9306efc70cc2c4f8f22fd19af11dab5e979a0296966d7",
+    "hpc/math_weyl_context_core_capture.sbatch": "9462c81735126efaf1cb547d59ff3e320de05d5eacca6dcb38b66ff9eceb7522",
+    "hpc/patches/ladder_boundary_fix.patch": "cada2e341bfba80ee587acb966413ce8cb6297593d6394b93890e02cdd730e75",
+    "hpc/patches/ladder_boundary_tests.patch": "69676d60b16591851570f58bc62ddc3bfe3a80b0ec6dad64a8eff36a9f777ca9",
+    "hpc/patches/weyl_context_core_regressions.patch": "ccd3009892dbeae2f146dff9924efa6d6bede3dca910d026c8f3ab3e1b4c49cf",
+    "hpc/patches/weyl_context_core_repair.patch": "246cd2d0dd48ee68387ed8f72a10a156e43b7d8c8c6dcb693474832450111c5c",
+    "hpc/progressive_submit.py": "c78627507e8c60dd8be89a54a87e37504a789bb589c83e22b706f7e1df1b4f3a",
+    "hpc/stage_ladder_boundary_after.py": "07558c08a25f0d00b49720392b6abe469b2286d38b29cbb63a611cf40930d90d",
+    "hpc/stage_ladder_boundary_before.py": "ff1f492adfa22f342bd0729f3df3885678de8f729a0f3d0775e5738c7ab47932",
+    "hpc/stage_ladder_boundary_index.py": "0af4060de2bc5c451c0dab15b492d258c058d206bb06d151d37efcd57ec2008e",
+    "hpc/stage_weyl_context_core_after.py": "8cb4b86d9986e66c1722c87d5704ab92ee387ce426ff0f3c194b60c5320904d6",
+    "hpc/stage_weyl_context_core_capture.py": "639b5c20d1a1efc68eebb3a240d9d2aa717c1c90757321c6b3445652fad649a6",
+    "hpc/stage_weyl_parent_seal.py": "f1c3567ab620269c3836bdc624b9573cc89d519944bfe00a7c24e859fe387fc4",
+    "hpc/test_campaign_stage_creation.py": "db466e082bb4dc840b3834844634f676dd40cfdc041e0a9150aa58f8d1f8348d",
+    "hpc/test_math_weyl_context_core_after.py": "3604739683ca0dfa7c3bf451a3314519665a3371fcb285a223b00bbb113d8818",
+    "hpc/test_progressive_submit.py": "4137c15de0f8c881016a1840448936cb167d36b18f9cc49841d6faa1b5c3f99e",
+    "hpc/test_stager_allowlist.py": "99a199934d7c47717507bf846560416a60be2e6a6acba01dcd9c3d81560d3dc7",
+    "hpc/test_weyl_context_core_contract.py": "ee675578c82911a358dd156c2be4e5432bb6517e6b6306890d65af852ddf81bf",
+    "hpc/test_weyl_context_core_regression.py": "623914f4c154c1ca6f11893d9ece9b3584a744782018cb406c73f41c3efbd862",
+    "hpc/weyl_context_core_contract.py": "5e37ca6cc992b478be735c16cd9f632454da66d1f94b58b8c536ea16efb8c426",
+    "hpc/weyl_context_core_regression.py": "6fecc1de5c53640d5f60d46ad619c4e7c30d9f7cfaff750f01575be0e3761a34",
+    "hpc/weyl_parent_seal.py": "fb9fd81b21e8bb99e673d4c5d7472b44d4805974394845e6d86f3c41355ecfb4",
+    "tests/math/generics/weyl_context_core_catalog.json": "7fb77fecda841962cb98bdeddbdba58df46d673e076f87f2087cd234e2f1a717",
+    "tests/math/generics/weyl_context_core_cold_dual.atlas": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout": "7a614e47b75469c441e774cbe46769dcd769c5cc0a2a31cf1868ff9b59a780dc",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.atlas": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr": "ef4404d85f7252a611f9f4e4a5205fe6bbac2c66f48b7378a30a8053f986e157",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout": "5074aab3290d4ae404bb7abb0b24ccc99036f616abec518c6479e59ec2db021f",
+    "tests/math/generics/weyl_context_core_regression_catalog.json": "6a9f960753bcd2afb575cb5207d4310f21a5694505d02a83f4e4142211eaa634",
+    "tests/reference/hpc/math_acceptance_index_2026_10_01.json": "801e79c8679dfd4a50ff6736b439fe097c0e0d25e5db6387edc2dfd3316a720f",
+    "tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15",
+    "tests/reference/hpc/math_ladder_boundary_after_v3_index_review_2026_10_01.json": "3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58",
+    "tests/reference/hpc/math_ladder_boundary_after_v3_report_2026_10_01.json": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c",
+    "tests/reference/hpc/math_ladder_boundary_index_v1_2026_10_01.json": "d9448e5cd53ba4c25e6a0fd91a5fdb16e3b423d48fe58531a50d7d7457afb9ad",
+    "tests/reference/hpc/math_ladder_boundary_index_v1_report_2026_10_01.json": "43cc79e1630b5ec21a24c5aa1a7c411eafffaa9a4c6911333c8752b0dc63cf9d",
+    "tests/reference/hpc/math_weyl_context_core_before_v1_failure_2026_10_02.json": "4ea80b67f853789f345911f2a61d71610bf37e3a2d99b8c77805cde3497bf427",
+    "tests/reference/hpc/math_weyl_context_core_before_v2_failure_2026_10_02.json": "ee4cc4db5b4c1bb64d280ea9e47d85ea9ca8b99356312bfce5c312f30359e80f",
+    "tests/reference/hpc/math_weyl_context_core_before_v3_failure_2026_10_02.json": "fd6dd4ce66b743c2db36429dcb609e67f4e945fc1422b3fd82b24de7bb8654fd",
+    "tests/reference/hpc/math_weyl_context_core_before_v4_2026_10_02.json": "bf69999feb945b67f586d92d378cc20d238cb518ef84ad6ce11b54e3e74200d3",
+    "tests/reference/hpc/math_weyl_context_core_capture_v1_failure_2026_10_02.json": "3ff6e579327536eb6d5686750946d668664f3adbb7e33558b7a3d4a7f528aa9f",
+    "tests/reference/hpc/math_weyl_context_core_capture_v2_failure_2026_10_02.json": "5ec936c2cbae28778df9ab4a1d4076008e4fcc6a54b95a7e6b9f47b550820fab",
+    "tests/reference/hpc/math_weyl_context_core_capture_v3_failure_2026_10_02.json": "434f1502dd65038a96b036a2c6eddbe541d84e01a1e7abb446ee86063e038b54",
+    "tests/reference/hpc/math_weyl_context_core_capture_v4_failure_2026_10_02.json": "051f5292f51dc2ed413a277932fb79556295732a58634c7cdff7cd27fe807517",
+    "tests/reference/hpc/math_weyl_context_core_capture_v5_failure_2026_10_02.json": "5620228b361952f34a5cf5400cfa21fcd1c951131a0a470a4909b0993bfc3db9",
+    "tests/reference/hpc/math_weyl_context_core_capture_v6_failure_2026_10_02.json": "98661668b2994aed264ed5bd28d0663bbbd8a5d5b434497d4463368803def6ce",
+    "tests/reference/hpc/math_weyl_context_core_capture_v7_failure_2026_10_02.json": "9a9f0b103c323cbcc9a53838c4ba94e93d0b5cfc3fe62aea22b7806184066a87",
+    "tests/reference/hpc/math_weyl_context_core_capture_v8_inspection_2026_10_02.json": "b2c7f4ece709df3506c3224a57abad896f3ecfcd6625fea97731619f629e1da3",
+    "tests/reference/hpc/math_weyl_context_core_capture_v8_submission_2026_10_02.json": "2ef561f986277f2645f8929b0b95acf30eb1f03accdd3361e89803220dca79fa",
+    "tests/reference/hpc/weyl_context_core_stage_creation_renameat2_failure_2026_10_02.json": "74d4114f397c84286d0d9aba55ba88f12f4a0607ca93ebe3ef6eeba5911c7094"
+   },
+   "lifecycle": {
+    "changed_input_reasons": [
+     "Preserve FINAL job 3886748 as the immutable direct predecessor and bind its exact retained BEFORE report, tree, nineteen-record ledger and independent inspection.",
+     "Apply the reviewed Weyl-owner repair patch after the unchanged tests-only regression patch; every other production byte stays frozen.",
+     "Keep the accepted 1561-file base, the 1567-file tests-only source, both fixtures, all four original-backed goldens and the retained ladder control exactly fixed.",
+     "Rerun the same frozen original/Rust gate with complete GNU-time-v metrics, the 632-test inventory and retained ladder control; the two regressions must now pass and the repaired Rust must match every frozen original golden."
+    ],
+    "predecessor_stage": "weyl-context-core-before-v4",
+    "retention_class": "ACTIVE_GATE_COMPACT",
+    "retirement_condition": "FINAL independent inspection, focused commit and push, zero live or uncertain job ownership, verified campaign-CAS closure, and separate explicit exact-path deletion authorization.",
+    "stage": "weyl-context-core-after-v1"
+   },
+   "overrides_sha256": "07154f8b88155421f46d9b706c3a5ce627271e87ae1aa689cca5b025c4b52ecb",
+   "pin": {
+    "path": "weyl-context-core-after-v1-pin.json",
+    "schema": "atlas-weyl-context-core-after-pin-v1",
+    "stage_creation_key": "stage_creation"
+   },
+   "predecessor_ledger_sha256": "5381b3b3a8ffcf8ae1566eb63640719ddec13955f681dbeca5361bbf9321cd5a",
+   "predecessor_state": {
+    "campaign_files": {
+     ".atlas-stage-creation-failure-1588813e1562c7011397876de836db22ac18a8e249da32ef3c5c3ed4e86e28d5.json": {
+      "bytes": 5481,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "1588813e1562c7011397876de836db22ac18a8e249da32ef3c5c3ed4e86e28d5"
+     },
+     ".atlas-stage-creation-prepared.json": {
+      "bytes": 5898,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "ee64d9b336908df79b85af16fd6fe6191a31500d73f6986af04b9e8d25e799d7"
+     },
+     ".atlas-stage-creation-published.json": {
+      "bytes": 678,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "eeb045fed8a0cab82ff710700f4558e482aa3d169390a08ebd185329192c40b0"
+     },
+     ".atlas-stage-creation-sealed.json": {
+      "bytes": 590,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "b4d71b66239c87c6925ad0de034a51764fe400ecbbd5e4194dbf3cf4b87fbaa3"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v1-prepared.json": {
+      "bytes": 17669,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "86e075a8269b26ff605c1698479b46071496c12f78333432a1a7e9f8fc947cb6"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v1-published.json": {
+      "bytes": 677,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "8edfd835e7118924cc17a6e6fdfd2b050cc995bb9f726529ca640846a2bbd638"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v1-sealed.json": {
+      "bytes": 589,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "ecedc64f0ca19cfd3eac23f3eebf5ab721f661ffcf69452530483d522bdc2921"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v2-prepared.json": {
+      "bytes": 18839,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "0563d3d7147428b18a430b6d51729c7efb9a1f8d4502612bf6acced10b7b2b3f"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v2-published.json": {
+      "bytes": 677,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "7841d14640dce85af7e2f40620b76546894672ea3d64b1f47064d5ad9dae06c0"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v2-sealed.json": {
+      "bytes": 589,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "1e0ed9bb398dd0f820c895225ae6a091206deba2004ab58db6accb79b0d7217e"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v3-prepared.json": {
+      "bytes": 19742,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "9f83056ae8c8306b02e12f8fc1c25a234d63b664e4019d1d0cb8bf826b153d72"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v3-published.json": {
+      "bytes": 677,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "1ab6c3d02d4cc97c9a039985ffbd7d657c8ba6bd65a57b2b8fae959bdbd78566"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v3-sealed.json": {
+      "bytes": 589,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "94c907686adfb63384141d6953c0d3f20df7ce4d6562629ad28d037dd20e49fb"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v4-prepared.json": {
+      "bytes": 20662,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "eaa076df62b5e75d0755f8dec25fc6ce6cd3f0fdf0a19b0422a74b4eb946e7cb"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v4-published.json": {
+      "bytes": 677,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "0dc3362461e91ce7329567f2c766047da4d9b1362d70fe8c6e62c703df22f657"
+     },
+     ".atlas-stage-creation-weyl-context-core-before-v4-sealed.json": {
+      "bytes": 589,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "227bf9aa28737e1b9c7004d0cf3f8213748025e18f8950742543afb9d03ef150"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v2-prepared.json": {
+      "bytes": 10614,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "ec440d939bd9bdc62fd917bdeca289c0dbd243456018ec030a2f72815b7045aa"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v2-published.json": {
+      "bytes": 678,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "036d741e1bff3288297ba4d7e987dcf47cf6936febd3be143e022009b6f32c1c"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v2-sealed.json": {
+      "bytes": 590,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "e3915036d7673e6cec998ed93549be4ed2e74e995eba1a17e96cc95adda77cb0"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v3-prepared.json": {
+      "bytes": 13799,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "c34413614d3f59af73462f3cbb3038ef1423340474d5335f43473ac3d1cd1c04"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v3-published.json": {
+      "bytes": 678,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "df4b01435e66eacdf28c9fac1940e0239da863f29cee6c6bb4c05e2af12f4342"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v3-sealed.json": {
+      "bytes": 590,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "55139441a0c3f5a130913aa73aeab72f1ee44bdb76556d223eafeafc52dd3786"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v4-prepared.json": {
+      "bytes": 12710,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "92b36d334df1a1a5d5e19ee8921e3bcea8dafd094173ce02da41e3b0854e0873"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v4-published.json": {
+      "bytes": 678,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "94556a39fc41caa9f15f6ece4c8030f87c7cb3a094c964e994e50759e82bed82"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v4-sealed.json": {
+      "bytes": 590,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "2aac4a9a431fe46aca4c7c45ff4170406224ca1eb2c8915a34dbabd30208ff03"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v5-prepared.json": {
+      "bytes": 15601,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "e6307e1efe1b07ba720de39948ac994604a235a00413a5aa8032220f3d5a9843"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v5-published.json": {
+      "bytes": 678,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "2227f14946639fd06df8f92bde178041be34e88b5feab9f4516ee8e8e00eda71"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v5-sealed.json": {
+      "bytes": 590,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "7e16e5bf2c8bdbc952ff9afec01860e12ab2f37dca6cf65910faa18214131452"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v6-prepared.json": {
+      "bytes": 16499,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "cabfd13f37e08a1e122b1afcc64095529062d0bd8a574052a02374c1c394e9fc"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v6-published.json": {
+      "bytes": 678,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "5b9528bd093b1d671517979b143a1bcc4e26768395dbea2ddfb7e6ab1a60f2a6"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v6-sealed.json": {
+      "bytes": 590,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "ce7ab08f63d41d4808f0791aa87d99182c13793ed5b52ae83b96105a293e5568"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v7-prepared.json": {
+      "bytes": 19544,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "23326f302ad5030ce8bca84fe082e583b704cf2f5e9459d7b0e831b7cf20d653"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v7-published.json": {
+      "bytes": 678,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "b5eebd18ddf7db75c206f6469c20f258b1d7fb2cd2fc3f6d2fb99c547102e0a6"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v7-sealed.json": {
+      "bytes": 590,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "71ac6f4387980ed91d0a159ed210b7afb42dea865551d5e9cbfb80308a0afd96"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v8-prepared.json": {
+      "bytes": 16775,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "a6dc48041076fb7b1a75d6ff624472642ed7a7a388c7fec8224bf05c8ffb0016"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v8-published.json": {
+      "bytes": 678,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "4e0d511c9a6d648ac1e7059b230177361e71ca43d8858be2382b55681fcfcc73"
+     },
+     ".atlas-stage-creation-weyl-context-core-capture-v8-sealed.json": {
+      "bytes": 590,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "4ba9d36345769dbe56ba2f154972dc23494d3c160ee470862d02fec5c19a6a46"
+     }
+    },
+    "record": {
+     "job": "3886748",
+     "max_outstanding": 10,
+     "pin_sha256": "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
+     "queue_before": [],
+     "script": "hpc/math_weyl_context_core_capture.sbatch",
+     "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v4",
+     "stage_creation_sha256": "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7",
+     "status": "SUBMITTED"
+    },
+    "schema": "atlas-stage-creation-predecessor-v12",
+    "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v4",
+    "stage_device": 3431958692,
+    "stage_files": {
+     ".atlas-stage-creation-transaction.json": {
+      "bytes": 327,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "4ae83ab4446267af676897c4b1b1ec2ffcf1ead2db30bca431c0140960dff030"
+     },
+     ".atlas-stage-creation.json": {
+      "bytes": 20900,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7"
+     },
+     "overrides/overrides.json": {
+      "bytes": 6690,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "add7dfe0a9d4f0efa1b7d73333149c934d9f367812b47e30a94f5fbe5ff12ebd"
+     },
+     "results/3886748/report.json": {
+      "bytes": 344871,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "3d0c7c91f672e6bf41830296864a621ee11bbd260735e37c0441d6c499953bce"
+     },
+     "results/3886748/report.sha256": {
+      "bytes": 65,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "4516e044f5edcbfafd0f8bd4fd33ab5c591cd5a3504f6524cb749d65eef0b8f3"
+     },
+     "submission-intent.json": {
+      "bytes": 427,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "c94c6cc6b8a28f795bb3f8412c15edd7c2ca24b3611378a6771ce93bc9d10ab2"
+     },
+     "submission.json": {
+      "bytes": 10743,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "f53f37662aa4607647b9055e15544fdd67e8bac9a328971a919afada93d18798"
+     },
+     "weyl-context-core-before-v4-3886748.out": {
+      "bytes": 145,
+      "mode": "0644",
+      "nlink": 1,
+      "sha256": "977be4c8eecd41d2344f9cf53e66041943d0183b300ec877dc2972b7166d7d6f"
+     },
+     "weyl-context-core-before-v4-pin.json": {
+      "bytes": 16999,
+      "mode": "0444",
+      "nlink": 1,
+      "sha256": "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78"
+     }
+    },
+    "stage_inode": 162130669722468804,
+    "stage_tree_bytes": 4151738,
+    "stage_tree_directories": 18,
+    "stage_tree_files": 180,
+    "stage_tree_sha256": "1fa45944f8f115cb6de516feb15a2d597b3167ba33050a135add020351bd1ee7"
+   },
+   "schema": "atlas-stage-creation-contract-v12",
+   "script": {
+    "path": "hpc/math_weyl_context_core_after.sbatch",
+    "sha256": "b2f2ec5fb9b76fd6f9ee42052973d77f9d8e1dbb7f0446278ae7d359cb159082"
+   },
+   "stage_name": "weyl-context-core-after-v1"
+  },
+  "contract_sha256": "60597853414483ca7b5c16294df712ca6f6dce245de4c6bb7fe8e4d808aeea9e",
+  "prepared_sha256": "5fe6a718345f50db6b7e86a83f8c9c06ab095738b3c3617706d5304fbb382188",
+  "schema": "atlas-stage-creation-receipt-v1",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v1",
+  "stage_device": 3431958692,
+  "stage_inode": 162130669789514533,
+  "status": "PUBLISHED",
+  "transaction": ".atlas-stage-creation-60597853414483ca7b5c1629.txn"
+ },
+ "submission-intent.json": {
+  "job": "3890328",
+  "max_outstanding": 10,
+  "pin_sha256": "396f30f2dae9e52637fbfeb0c8b5510286090b0801da4787742c0f2d2b9d7bb4",
+  "queue_before": [],
+  "script": "hpc/math_weyl_context_core_after.sbatch",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v1",
+  "stage_creation_sha256": "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad",
+  "status": "SUBMITTED"
+ },
+ "submission.json": {
+  "acceptance_eligible": false,
+  "accepted_source": {
+   "final_files": 1561,
+   "final_hashes": {
+    "crates/atlas-core/src/session.rs": "cef588d9afc7fcd513ee1660758b229a8767c252adacdec7feea9737675de6aa",
+    "crates/atlas-real-group/src/root_system.rs": "cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9"
+   },
+   "inspection": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json",
+    "sha256": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15"
+   },
+   "job": "3875239",
+   "oracle": {
+    "binary_sha256": "d4f0f3dc3a82102529aa2ec562db0601e99b368dee25d5539ca52dae2fd37a5a",
+    "commit": "7e1b958c7aa9456769cc9cf09ac1542814b4800a"
+   },
+   "parent_files": 1558,
+   "parent_source_manifest_sha256": "b027eee2efe72d0f8a20848f99cd6368c29e3884ce9be16a2e7b5c63577dd0da",
+   "patches": {
+    "hpc/patches/ladder_boundary_fix.patch": "cada2e341bfba80ee587acb966413ce8cb6297593d6394b93890e02cdd730e75",
+    "hpc/patches/ladder_boundary_tests.patch": "69676d60b16591851570f58bc62ddc3bfe3a80b0ec6dad64a8eff36a9f777ca9"
+   },
+   "report": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_report_2026_10_01.json",
+    "sha256": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c"
+   },
+   "review": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_index_review_2026_10_01.json",
+    "sha256": "3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58"
+   },
+   "sealed_fixture_hashes": {
+    "tests/math/generics/root_ladder_coordinate_boundary.atlas": "dc88d6606ae855b618dcf12589ecde82edcbe482873a94bcff1001163691ec65",
+    "tests/math/generics/root_ladder_coordinate_boundary.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/math/generics/root_ladder_coordinate_boundary.oracle.stdout": "3a7fdade43c46cf4f3048b52cf81f282db060012951ee559296f017f7d3eab80"
+   },
+   "source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+   "tests_only_hashes": {
+    "crates/atlas-core/src/session.rs": "cef588d9afc7fcd513ee1660758b229a8767c252adacdec7feea9737675de6aa",
+    "crates/atlas-real-group/src/root_system.rs": "109076ec05cf25e532fc7a951af0cbf5a725efefb318d35c2172a4528fd999f7"
+   }
+  },
+  "atlas_processes": 4,
+  "cache_gate_released": false,
+  "cargo_builds": 1,
+  "cargo_test_commands": 3,
+  "catalog": {
+   "cases": [
+    {
+     "file": "weyl_context_core_cold_dual.atlas",
+     "fixture_sha256": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+     "id": "weyl_context_core_cold_dual",
+     "input_bytes": 1916,
+     "input_sha256": "d94ae61b72215cda32b4ef040221dd81d0dd127866bc334c2ca7f43a23b820ba",
+     "intent": "accept",
+     "order": [
+      "oracle",
+      "rust"
+     ],
+     "timeout_seconds": 45
+    },
+    {
+     "file": "weyl_context_core_prewarmed_dual.atlas",
+     "fixture_sha256": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+     "id": "weyl_context_core_prewarmed_dual",
+     "input_bytes": 1386,
+     "input_sha256": "3f3bb95cf514aee419678543e135e405285b1d6db10d63eb590e27a94880ee4f",
+     "intent": "reject",
+     "order": [
+      "rust",
+      "oracle"
+     ],
+     "timeout_seconds": 45
+    }
+   ],
+   "file": "tests/math/generics/weyl_context_core_catalog.json",
+   "fresh_processes": 4,
+   "sha256": "7fb77fecda841962cb98bdeddbdba58df46d673e076f87f2087cd234e2f1a717"
+  },
+  "fresh_processes": 4,
+  "job": "3890328",
+  "lifecycle": {
+   "changed_input_reasons": [
+    "Preserve FINAL job 3886748 as the immutable direct predecessor and bind its exact retained BEFORE report, tree, nineteen-record ledger and independent inspection.",
+    "Apply the reviewed Weyl-owner repair patch after the unchanged tests-only regression patch; every other production byte stays frozen.",
+    "Keep the accepted 1561-file base, the 1567-file tests-only source, both fixtures, all four original-backed goldens and the retained ladder control exactly fixed.",
+    "Rerun the same frozen original/Rust gate with complete GNU-time-v metrics, the 632-test inventory and retained ladder control; the two regressions must now pass and the repaired Rust must match every frozen original golden."
+   ],
+   "predecessor_stage": "weyl-context-core-before-v4",
+   "retention_class": "ACTIVE_GATE_COMPACT",
+   "retirement_condition": "FINAL independent inspection, focused commit and push, zero live or uncertain job ownership, verified campaign-CAS closure, and separate explicit exact-path deletion authorization.",
+   "stage": "weyl-context-core-after-v1"
+  },
+  "math_gate_released": false,
+  "max_outstanding": 10,
+  "parent_seal_object": {
+   "bytes": 12488095,
+   "role": "weyl-parent-seal",
+   "schema": "atlas-campaign-blob-v1",
+   "sha256": "db67234c0d67dbd6a6f0327386dd113b6093d25a46569710c33dfc8bc482cdcb"
+  },
+  "performance_gate_released": false,
+  "pin_sha256": "396f30f2dae9e52637fbfeb0c8b5510286090b0801da4787742c0f2d2b9d7bb4",
+  "predecessor": {
+   "campaign_ledger_records": 19,
+   "campaign_ledger_sha256": "5381b3b3a8ffcf8ae1566eb63640719ddec13955f681dbeca5361bbf9321cd5a",
+   "job": "3886748",
+   "override_manifest_sha256": "add7dfe0a9d4f0efa1b7d73333149c934d9f367812b47e30a94f5fbe5ff12ebd",
+   "pin_sha256": "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
+   "report_bytes": 344871,
+   "report_sha256": "3d0c7c91f672e6bf41830296864a621ee11bbd260735e37c0441d6c499953bce",
+   "result_evidence": {
+    "file": "tests/reference/hpc/math_weyl_context_core_before_v4_2026_10_02.json",
+    "sha256": "bf69999feb945b67f586d92d378cc20d238cb518ef84ad6ce11b54e3e74200d3"
+   },
+   "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v4",
+   "stage_creation_contract_sha256": "2affae9a40b11f15ca97ad80e38ca95534ff6294ff43e0c7823ede57202d919a",
+   "stage_creation_sha256": "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7",
+   "stage_creation_transaction_sha256": "4ae83ab4446267af676897c4b1b1ec2ffcf1ead2db30bca431c0140960dff030",
+   "stage_tree_bytes": 4151738,
+   "stage_tree_directories": 18,
+   "stage_tree_files": 180,
+   "stage_tree_sha256": "1fa45944f8f115cb6de516feb15a2d597b3167ba33050a135add020351bd1ee7",
+   "submission_intent_sha256": "c94c6cc6b8a28f795bb3f8412c15edd7c2ca24b3611378a6771ce93bc9d10ab2",
+   "submission_receipt_sha256": "f53f37662aa4607647b9055e15544fdd67e8bac9a328971a919afada93d18798"
+  },
+  "queue_before": [],
+  "rank_gate_released": false,
+  "regression": {
+   "catalog": {
+    "bytes": 5208,
+    "file": "tests/math/generics/weyl_context_core_regression_catalog.json",
+    "sha256": "6a9f960753bcd2afb575cb5207d4310f21a5694505d02a83f4e4142211eaa634"
+   },
+   "expected_inventory": 632,
+   "fixture_bytes": {
+    "tests/math/generics/weyl_context_core_cold_dual.atlas": 1815,
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr": 0,
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout": 911,
+    "tests/math/generics/weyl_context_core_prewarmed_dual.atlas": 1275,
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr": 501,
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout": 572
+   },
+   "fixture_hashes": {
+    "tests/math/generics/weyl_context_core_cold_dual.atlas": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout": "7a614e47b75469c441e774cbe46769dcd769c5cc0a2a31cf1868ff9b59a780dc",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.atlas": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr": "ef4404d85f7252a611f9f4e4a5205fe6bbac2c66f48b7378a30a8053f986e157",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout": "5074aab3290d4ae404bb7abb0b24ccc99036f616abec518c6479e59ec2db021f"
+   },
+   "inspection": {
+    "bytes": 11902,
+    "file": "tests/reference/hpc/math_weyl_context_core_capture_v8_inspection_2026_10_02.json",
+    "sha256": "b2c7f4ece709df3506c3224a57abad896f3ecfcd6625fea97731619f629e1da3"
+   },
+   "patches": {
+    "hpc/patches/weyl_context_core_regressions.patch": "ccd3009892dbeae2f146dff9924efa6d6bede3dca910d026c8f3ab3e1b4c49cf"
+   },
+   "retained_control": "session::tests::root_ladder_coordinate_boundary_original",
+   "selector_tests": [
+    "session::tests::weyl_context_core_cold_dual_original",
+    "session::tests::weyl_context_core_prewarmed_dual_original"
+   ],
+   "source": {
+    "files": 1567,
+    "parent_files": 1561,
+    "parent_source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+    "source_manifest_sha256": "55f807cadb712377cbf6c0c79250b1d5e739e9757290a24209a086f89632850f"
+   },
+   "source_hashes": {
+    "crates/atlas-core/src/session.rs": "969cdb27ccae61ca4fe3e36219801037d475517bee3614fead553024818307e7",
+    "crates/atlas-real-group/src/root_system.rs": "cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9"
+   }
+  },
+  "retired_stager_object": {
+   "bytes": 311925,
+   "role": "retired-stager-bundle",
+   "schema": "atlas-campaign-blob-v1",
+   "sha256": "550b1330ec8806d1343d50d6ceb8488f89eb03546f6bb37c538cb5cd460e9b09"
+  },
+  "schema": "atlas-weyl-context-core-before-submission-v4",
+  "scope": "Tests-first A1 Weyl owner/dual BEFORE: unchanged production, two original-backed regression failures, one retained ladder control and four fresh original/Rust CLI processes. No mathematical, cache, performance, parallel, rank or index release.",
+  "script": "hpc/math_weyl_context_core_after.sbatch",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v1",
+  "stage_creation_sha256": "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad",
+  "status": "SUBMITTED_NOT_VERIFIED",
+  "storage_policy": "One existing-campaign child. Expanded source, Cargo target, materialized binaries and scripts are job-local and disposable.",
+  "test_counts": {
+   "test-campaign-stage-creation": 32,
+   "test-math-weyl-context-core-after": 28,
+   "test-progressive-submit": 17,
+   "test-stager-allowlist": 7,
+   "test-weyl-context-core-contract": 18,
+   "test-weyl-context-core-regression-contract": 21
+  }
+ },
+ "weyl-context-core-after-v1-pin.json": {
+  "accepted_source": {
+   "final_files": 1561,
+   "final_hashes": {
+    "crates/atlas-core/src/session.rs": "cef588d9afc7fcd513ee1660758b229a8767c252adacdec7feea9737675de6aa",
+    "crates/atlas-real-group/src/root_system.rs": "cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9"
+   },
+   "inspection": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json",
+    "sha256": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15"
+   },
+   "job": "3875239",
+   "oracle": {
+    "binary_sha256": "d4f0f3dc3a82102529aa2ec562db0601e99b368dee25d5539ca52dae2fd37a5a",
+    "commit": "7e1b958c7aa9456769cc9cf09ac1542814b4800a"
+   },
+   "parent_files": 1558,
+   "parent_source_manifest_sha256": "b027eee2efe72d0f8a20848f99cd6368c29e3884ce9be16a2e7b5c63577dd0da",
+   "patches": {
+    "hpc/patches/ladder_boundary_fix.patch": "cada2e341bfba80ee587acb966413ce8cb6297593d6394b93890e02cdd730e75",
+    "hpc/patches/ladder_boundary_tests.patch": "69676d60b16591851570f58bc62ddc3bfe3a80b0ec6dad64a8eff36a9f777ca9"
+   },
+   "report": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_report_2026_10_01.json",
+    "sha256": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c"
+   },
+   "review": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_index_review_2026_10_01.json",
+    "sha256": "3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58"
+   },
+   "sealed_fixture_hashes": {
+    "tests/math/generics/root_ladder_coordinate_boundary.atlas": "dc88d6606ae855b618dcf12589ecde82edcbe482873a94bcff1001163691ec65",
+    "tests/math/generics/root_ladder_coordinate_boundary.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/math/generics/root_ladder_coordinate_boundary.oracle.stdout": "3a7fdade43c46cf4f3048b52cf81f282db060012951ee559296f017f7d3eab80"
+   },
+   "source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+   "tests_only_hashes": {
+    "crates/atlas-core/src/session.rs": "cef588d9afc7fcd513ee1660758b229a8767c252adacdec7feea9737675de6aa",
+    "crates/atlas-real-group/src/root_system.rs": "109076ec05cf25e532fc7a951af0cbf5a725efefb318d35c2172a4528fd999f7"
+   }
+  },
+  "catalog": {
+   "cases": [
+    {
+     "file": "weyl_context_core_cold_dual.atlas",
+     "fixture_sha256": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+     "id": "weyl_context_core_cold_dual",
+     "input_bytes": 1916,
+     "input_sha256": "d94ae61b72215cda32b4ef040221dd81d0dd127866bc334c2ca7f43a23b820ba",
+     "intent": "accept",
+     "order": [
+      "oracle",
+      "rust"
+     ],
+     "timeout_seconds": 45
+    },
+    {
+     "file": "weyl_context_core_prewarmed_dual.atlas",
+     "fixture_sha256": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+     "id": "weyl_context_core_prewarmed_dual",
+     "input_bytes": 1386,
+     "input_sha256": "3f3bb95cf514aee419678543e135e405285b1d6db10d63eb590e27a94880ee4f",
+     "intent": "reject",
+     "order": [
+      "rust",
+      "oracle"
+     ],
+     "timeout_seconds": 45
+    }
+   ],
+   "file": "tests/math/generics/weyl_context_core_catalog.json",
+   "fresh_processes": 4,
+   "sha256": "7fb77fecda841962cb98bdeddbdba58df46d673e076f87f2087cd234e2f1a717"
+  },
+  "inputs": {
+   "hpc/campaign_blob.py": "47e8dfb10a01513257905134dfaf6f91e73fc4337a2923d4bbd22c28a9220c52",
+   "hpc/campaign_source.py": "8190efa28e74589d03b220c183fa87bdabcb6ce76f7bb2cd7d0947defcc71dc9",
+   "hpc/campaign_workspace.py": "e63384bcdd4f4c19512f3c1e9490dad925d564373a1af376e2860078ddaed531",
+   "hpc/math_ladder_boundary_after.py": "b6f52b1042393705498767a687175f365c1fd0f491c3f630ca4cf53d2277d0a2",
+   "hpc/math_ladder_boundary_before.py": "21dc2207690a8cd0559854eb78725c5e0d901a7e5c1c750d4feb89d55e7b8f9e",
+   "hpc/math_ladder_boundary_index.py": "29eb6392458aa0d856ca88a1fba6d5eefc4e265f2e5ec5a5ba1ba41bdcf11c31",
+   "hpc/math_weyl_context_core_after.py": "3d7d98903a838b3a3343482d165af4b7e9b3989cc1f30a5c9ccc49950700913b",
+   "hpc/math_weyl_context_core_after.sbatch": "b2f2ec5fb9b76fd6f9ee42052973d77f9d8e1dbb7f0446278ae7d359cb159082",
+   "hpc/math_weyl_context_core_capture.py": "31f5aef26e14ca669ee9306efc70cc2c4f8f22fd19af11dab5e979a0296966d7",
+   "hpc/math_weyl_context_core_capture.sbatch": "9462c81735126efaf1cb547d59ff3e320de05d5eacca6dcb38b66ff9eceb7522",
+   "hpc/patches/ladder_boundary_fix.patch": "cada2e341bfba80ee587acb966413ce8cb6297593d6394b93890e02cdd730e75",
+   "hpc/patches/ladder_boundary_tests.patch": "69676d60b16591851570f58bc62ddc3bfe3a80b0ec6dad64a8eff36a9f777ca9",
+   "hpc/patches/weyl_context_core_regressions.patch": "ccd3009892dbeae2f146dff9924efa6d6bede3dca910d026c8f3ab3e1b4c49cf",
+   "hpc/patches/weyl_context_core_repair.patch": "246cd2d0dd48ee68387ed8f72a10a156e43b7d8c8c6dcb693474832450111c5c",
+   "hpc/progressive_submit.py": "c78627507e8c60dd8be89a54a87e37504a789bb589c83e22b706f7e1df1b4f3a",
+   "hpc/stage_ladder_boundary_after.py": "07558c08a25f0d00b49720392b6abe469b2286d38b29cbb63a611cf40930d90d",
+   "hpc/stage_ladder_boundary_before.py": "ff1f492adfa22f342bd0729f3df3885678de8f729a0f3d0775e5738c7ab47932",
+   "hpc/stage_ladder_boundary_index.py": "0af4060de2bc5c451c0dab15b492d258c058d206bb06d151d37efcd57ec2008e",
+   "hpc/stage_weyl_context_core_after.py": "8cb4b86d9986e66c1722c87d5704ab92ee387ce426ff0f3c194b60c5320904d6",
+   "hpc/stage_weyl_context_core_capture.py": "639b5c20d1a1efc68eebb3a240d9d2aa717c1c90757321c6b3445652fad649a6",
+   "hpc/stage_weyl_parent_seal.py": "f1c3567ab620269c3836bdc624b9573cc89d519944bfe00a7c24e859fe387fc4",
+   "hpc/test_campaign_stage_creation.py": "db466e082bb4dc840b3834844634f676dd40cfdc041e0a9150aa58f8d1f8348d",
+   "hpc/test_math_weyl_context_core_after.py": "3604739683ca0dfa7c3bf451a3314519665a3371fcb285a223b00bbb113d8818",
+   "hpc/test_progressive_submit.py": "4137c15de0f8c881016a1840448936cb167d36b18f9cc49841d6faa1b5c3f99e",
+   "hpc/test_stager_allowlist.py": "99a199934d7c47717507bf846560416a60be2e6a6acba01dcd9c3d81560d3dc7",
+   "hpc/test_weyl_context_core_contract.py": "ee675578c82911a358dd156c2be4e5432bb6517e6b6306890d65af852ddf81bf",
+   "hpc/test_weyl_context_core_regression.py": "623914f4c154c1ca6f11893d9ece9b3584a744782018cb406c73f41c3efbd862",
+   "hpc/weyl_context_core_contract.py": "5e37ca6cc992b478be735c16cd9f632454da66d1f94b58b8c536ea16efb8c426",
+   "hpc/weyl_context_core_regression.py": "6fecc1de5c53640d5f60d46ad619c4e7c30d9f7cfaff750f01575be0e3761a34",
+   "hpc/weyl_parent_seal.py": "fb9fd81b21e8bb99e673d4c5d7472b44d4805974394845e6d86f3c41355ecfb4",
+   "tests/math/generics/weyl_context_core_catalog.json": "7fb77fecda841962cb98bdeddbdba58df46d673e076f87f2087cd234e2f1a717",
+   "tests/math/generics/weyl_context_core_cold_dual.atlas": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+   "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout": "7a614e47b75469c441e774cbe46769dcd769c5cc0a2a31cf1868ff9b59a780dc",
+   "tests/math/generics/weyl_context_core_prewarmed_dual.atlas": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+   "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr": "ef4404d85f7252a611f9f4e4a5205fe6bbac2c66f48b7378a30a8053f986e157",
+   "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout": "5074aab3290d4ae404bb7abb0b24ccc99036f616abec518c6479e59ec2db021f",
+   "tests/math/generics/weyl_context_core_regression_catalog.json": "6a9f960753bcd2afb575cb5207d4310f21a5694505d02a83f4e4142211eaa634",
+   "tests/reference/hpc/math_acceptance_index_2026_10_01.json": "801e79c8679dfd4a50ff6736b439fe097c0e0d25e5db6387edc2dfd3316a720f",
+   "tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15",
+   "tests/reference/hpc/math_ladder_boundary_after_v3_index_review_2026_10_01.json": "3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58",
+   "tests/reference/hpc/math_ladder_boundary_after_v3_report_2026_10_01.json": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c",
+   "tests/reference/hpc/math_ladder_boundary_index_v1_2026_10_01.json": "d9448e5cd53ba4c25e6a0fd91a5fdb16e3b423d48fe58531a50d7d7457afb9ad",
+   "tests/reference/hpc/math_ladder_boundary_index_v1_report_2026_10_01.json": "43cc79e1630b5ec21a24c5aa1a7c411eafffaa9a4c6911333c8752b0dc63cf9d",
+   "tests/reference/hpc/math_weyl_context_core_before_v1_failure_2026_10_02.json": "4ea80b67f853789f345911f2a61d71610bf37e3a2d99b8c77805cde3497bf427",
+   "tests/reference/hpc/math_weyl_context_core_before_v2_failure_2026_10_02.json": "ee4cc4db5b4c1bb64d280ea9e47d85ea9ca8b99356312bfce5c312f30359e80f",
+   "tests/reference/hpc/math_weyl_context_core_before_v3_failure_2026_10_02.json": "fd6dd4ce66b743c2db36429dcb609e67f4e945fc1422b3fd82b24de7bb8654fd",
+   "tests/reference/hpc/math_weyl_context_core_before_v4_2026_10_02.json": "bf69999feb945b67f586d92d378cc20d238cb518ef84ad6ce11b54e3e74200d3",
+   "tests/reference/hpc/math_weyl_context_core_capture_v1_failure_2026_10_02.json": "3ff6e579327536eb6d5686750946d668664f3adbb7e33558b7a3d4a7f528aa9f",
+   "tests/reference/hpc/math_weyl_context_core_capture_v2_failure_2026_10_02.json": "5ec936c2cbae28778df9ab4a1d4076008e4fcc6a54b95a7e6b9f47b550820fab",
+   "tests/reference/hpc/math_weyl_context_core_capture_v3_failure_2026_10_02.json": "434f1502dd65038a96b036a2c6eddbe541d84e01a1e7abb446ee86063e038b54",
+   "tests/reference/hpc/math_weyl_context_core_capture_v4_failure_2026_10_02.json": "051f5292f51dc2ed413a277932fb79556295732a58634c7cdff7cd27fe807517",
+   "tests/reference/hpc/math_weyl_context_core_capture_v5_failure_2026_10_02.json": "5620228b361952f34a5cf5400cfa21fcd1c951131a0a470a4909b0993bfc3db9",
+   "tests/reference/hpc/math_weyl_context_core_capture_v6_failure_2026_10_02.json": "98661668b2994aed264ed5bd28d0663bbbd8a5d5b434497d4463368803def6ce",
+   "tests/reference/hpc/math_weyl_context_core_capture_v7_failure_2026_10_02.json": "9a9f0b103c323cbcc9a53838c4ba94e93d0b5cfc3fe62aea22b7806184066a87",
+   "tests/reference/hpc/math_weyl_context_core_capture_v8_inspection_2026_10_02.json": "b2c7f4ece709df3506c3224a57abad896f3ecfcd6625fea97731619f629e1da3",
+   "tests/reference/hpc/math_weyl_context_core_capture_v8_submission_2026_10_02.json": "2ef561f986277f2645f8929b0b95acf30eb1f03accdd3361e89803220dca79fa",
+   "tests/reference/hpc/weyl_context_core_stage_creation_renameat2_failure_2026_10_02.json": "74d4114f397c84286d0d9aba55ba88f12f4a0607ca93ebe3ef6eeba5911c7094"
+  },
+  "lifecycle": {
+   "changed_input_reasons": [
+    "Preserve FINAL job 3886748 as the immutable direct predecessor and bind its exact retained BEFORE report, tree, nineteen-record ledger and independent inspection.",
+    "Apply the reviewed Weyl-owner repair patch after the unchanged tests-only regression patch; every other production byte stays frozen.",
+    "Keep the accepted 1561-file base, the 1567-file tests-only source, both fixtures, all four original-backed goldens and the retained ladder control exactly fixed.",
+    "Rerun the same frozen original/Rust gate with complete GNU-time-v metrics, the 632-test inventory and retained ladder control; the two regressions must now pass and the repaired Rust must match every frozen original golden."
+   ],
+   "predecessor_stage": "weyl-context-core-before-v4",
+   "retention_class": "ACTIVE_GATE_COMPACT",
+   "retirement_condition": "FINAL independent inspection, focused commit and push, zero live or uncertain job ownership, verified campaign-CAS closure, and separate explicit exact-path deletion authorization.",
+   "stage": "weyl-context-core-after-v1"
+  },
+  "overrides_sha256": "07154f8b88155421f46d9b706c3a5ce627271e87ae1aa689cca5b025c4b52ecb",
+  "parent_seal_object": {
+   "bytes": 12488095,
+   "role": "weyl-parent-seal",
+   "schema": "atlas-campaign-blob-v1",
+   "sha256": "db67234c0d67dbd6a6f0327386dd113b6093d25a46569710c33dfc8bc482cdcb"
+  },
+  "predecessor": {
+   "campaign_ledger_records": 19,
+   "campaign_ledger_sha256": "5381b3b3a8ffcf8ae1566eb63640719ddec13955f681dbeca5361bbf9321cd5a",
+   "job": "3886748",
+   "override_manifest_sha256": "add7dfe0a9d4f0efa1b7d73333149c934d9f367812b47e30a94f5fbe5ff12ebd",
+   "pin_sha256": "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78",
+   "report_bytes": 344871,
+   "report_sha256": "3d0c7c91f672e6bf41830296864a621ee11bbd260735e37c0441d6c499953bce",
+   "result_evidence": {
+    "file": "tests/reference/hpc/math_weyl_context_core_before_v4_2026_10_02.json",
+    "sha256": "bf69999feb945b67f586d92d378cc20d238cb518ef84ad6ce11b54e3e74200d3"
+   },
+   "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-before-v4",
+   "stage_creation_contract_sha256": "2affae9a40b11f15ca97ad80e38ca95534ff6294ff43e0c7823ede57202d919a",
+   "stage_creation_sha256": "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7",
+   "stage_creation_transaction_sha256": "4ae83ab4446267af676897c4b1b1ec2ffcf1ead2db30bca431c0140960dff030",
+   "stage_tree_bytes": 4151738,
+   "stage_tree_directories": 18,
+   "stage_tree_files": 180,
+   "stage_tree_sha256": "1fa45944f8f115cb6de516feb15a2d597b3167ba33050a135add020351bd1ee7",
+   "submission_intent_sha256": "c94c6cc6b8a28f795bb3f8412c15edd7c2ca24b3611378a6771ce93bc9d10ab2",
+   "submission_receipt_sha256": "f53f37662aa4607647b9055e15544fdd67e8bac9a328971a919afada93d18798"
+  },
+  "regression": {
+   "catalog": {
+    "bytes": 5208,
+    "file": "tests/math/generics/weyl_context_core_regression_catalog.json",
+    "sha256": "6a9f960753bcd2afb575cb5207d4310f21a5694505d02a83f4e4142211eaa634"
+   },
+   "expected_inventory": 632,
+   "fixture_bytes": {
+    "tests/math/generics/weyl_context_core_cold_dual.atlas": 1815,
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr": 0,
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout": 911,
+    "tests/math/generics/weyl_context_core_prewarmed_dual.atlas": 1275,
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr": 501,
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout": 572
+   },
+   "fixture_hashes": {
+    "tests/math/generics/weyl_context_core_cold_dual.atlas": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout": "7a614e47b75469c441e774cbe46769dcd769c5cc0a2a31cf1868ff9b59a780dc",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.atlas": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr": "ef4404d85f7252a611f9f4e4a5205fe6bbac2c66f48b7378a30a8053f986e157",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout": "5074aab3290d4ae404bb7abb0b24ccc99036f616abec518c6479e59ec2db021f"
+   },
+   "inspection": {
+    "bytes": 11902,
+    "file": "tests/reference/hpc/math_weyl_context_core_capture_v8_inspection_2026_10_02.json",
+    "sha256": "b2c7f4ece709df3506c3224a57abad896f3ecfcd6625fea97731619f629e1da3"
+   },
+   "patches": {
+    "hpc/patches/weyl_context_core_regressions.patch": "ccd3009892dbeae2f146dff9924efa6d6bede3dca910d026c8f3ab3e1b4c49cf"
+   },
+   "retained_control": "session::tests::root_ladder_coordinate_boundary_original",
+   "selector_tests": [
+    "session::tests::weyl_context_core_cold_dual_original",
+    "session::tests::weyl_context_core_prewarmed_dual_original"
+   ],
+   "source": {
+    "files": 1567,
+    "parent_files": 1561,
+    "parent_source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+    "source_manifest_sha256": "55f807cadb712377cbf6c0c79250b1d5e739e9757290a24209a086f89632850f"
+   },
+   "source_hashes": {
+    "crates/atlas-core/src/session.rs": "969cdb27ccae61ca4fe3e36219801037d475517bee3614fead553024818307e7",
+    "crates/atlas-real-group/src/root_system.rs": "cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9"
+   }
+  },
+  "retired_stager_object": {
+   "bytes": 311925,
+   "role": "retired-stager-bundle",
+   "schema": "atlas-campaign-blob-v1",
+   "sha256": "550b1330ec8806d1343d50d6ceb8488f89eb03546f6bb37c538cb5cd460e9b09"
+  },
+  "schema": "atlas-weyl-context-core-after-pin-v1",
+  "scope": "Tests-first A1 Weyl owner/dual BEFORE: unchanged production, two original-backed regression failures, one retained ladder control and four fresh original/Rust CLI processes. No mathematical, cache, performance, parallel, rank or index release.",
+  "stage_creation": {
+   "contract_sha256": "60597853414483ca7b5c16294df712ca6f6dce245de4c6bb7fe8e4d808aeea9e",
+   "receipt_sha256": "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad"
+  },
+  "test_counts": {
+   "test-campaign-stage-creation": 32,
+   "test-math-weyl-context-core-after": 28,
+   "test-progressive-submit": 17,
+   "test-stager-allowlist": 7,
+   "test-weyl-context-core-contract": 18,
+   "test-weyl-context-core-regression-contract": 21
+  }
+ }
+}
