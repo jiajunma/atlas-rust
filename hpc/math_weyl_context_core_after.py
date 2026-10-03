@@ -1,11 +1,11 @@
-"""Run one tests-first Weyl-context regression BEFORE gate.
+"""Run one tests-first Weyl-context regression AFTER gate.
 
-The driver preserves the four fresh-process discovery captures, re-runs both
-original-backed oracle goldens, and proves that exactly two focused Rust tests
-fail before any production repair.  Expanded source, Cargo output, binaries,
-and scripts remain inside one disposable compute-node workspace.  This gate
-records expected failures and releases no mathematical, cache, performance,
-memory, or rank claim.
+The driver reruns the same frozen gate on the repaired source and proves that
+the two known Rust regressions now pass, with the repaired Rust matching every
+frozen original golden.  Expanded source, Cargo output, binaries, and scripts
+remain inside one disposable compute-node workspace.  This gate records the
+repaired passes and releases no mathematical, cache, performance, memory, or
+rank claim.
 """
 
 import copy
@@ -60,7 +60,7 @@ from campaign_workspace import (
     ephemeral_job_workspace,
 )
 from progressive_submit import read_json_file, validate_stage_creation
-from stage_weyl_context_core_capture import (
+from stage_weyl_context_core_after import (
     ACCEPTED_SOURCE,
     CATALOG_CASES,
     CATALOG_PATH,
@@ -79,6 +79,11 @@ from stage_weyl_context_core_capture import (
     STAGE_NAME,
     SUBMISSION_ENABLED as STAGER_SUBMISSION_ENABLED,
     TESTS_ONLY_HASHES,
+    REPAIR_PATCH_HASHES,
+    REPAIR_PATCH_PATH,
+    REPAIRED_SOURCE_HASHES,
+    AFTER_SOURCE_FILES,
+    AFTER_SOURCE_MANIFEST_SHA256,
     REGRESSION_CATALOG_BYTES,
     REGRESSION_CATALOG_PATH,
     REGRESSION_CATALOG_SHA256,
@@ -107,6 +112,7 @@ from stage_weyl_context_core_capture import (
     validate_before_v1_failure,
     validate_before_v2_failure,
     validate_before_v3_failure,
+    validate_before_v4_result,
     validate_parent_objects,
     validate_pin as validate_stage_pin,
     validate_predecessor,
@@ -122,12 +128,12 @@ from weyl_context_core_contract import (
     validate_catalog as validate_contract_catalog,
 )
 from weyl_context_core_regression import (
-    BEFORE_REPRODUCED,
-    HARNESS_FAILURE as BEFORE_HARNESS_FAILURE,
-    OBSERVATION_SCHEMA as BEFORE_OBSERVATION_SCHEMA,
-    PROVENANCE_FAILURE as BEFORE_PROVENANCE_FAILURE,
-    UNEXPECTED_PASS,
-    classify_before,
+    AFTER_HARNESS_FAILURE,
+    AFTER_PROVENANCE_FAILURE,
+    AFTER_REPRODUCED,
+    AFTER_STILL_FAILING,
+    AFTER_OBSERVATION_SCHEMA,
+    classify_after,
     decode_catalog as decode_regression_catalog,
     decode_inspection as decode_regression_inspection,
     expected_provenance as expected_regression_provenance,
@@ -137,25 +143,27 @@ from weyl_parent_seal import boundary_bytes, load_parent_seal
 
 
 if ACTIVE_CAMPAIGN != _ACTIVE_CAMPAIGN:
-    raise RuntimeError("Weyl core capture campaign policy changed")
+    raise RuntimeError("Weyl core after campaign policy changed")
 
 
 # This exact driver is enabled only with its matching sole-active stager.  The
 # guard in main() precedes environment parsing and filesystem I/O.
-SUBMISSION_ENABLED = False
+SUBMISSION_ENABLED = True
 EXPECTED_STAGE = (
     "/public/home/majj/atlas-rust-campaign-20260930/stages/"
-    "weyl-context-core-before-v4"
+    "weyl-context-core-after-v1"
 )
 
-REPORT_SCHEMA = "atlas-weyl-context-core-before-v4"
-SUCCESS_STATUS = "WEYL_CONTEXT_BEFORE_EXPECTED_FAILURES_OBSERVED"
-INCOMPLETE_STATUS = "WEYL_CONTEXT_CORE_BEFORE_INCOMPLETE"
+REPORT_SCHEMA = "atlas-weyl-context-core-after-v1"
+SUCCESS_STATUS = "WEYL_CONTEXT_AFTER_REGRESSIONS_PASS"
+INCOMPLETE_STATUS = "WEYL_CONTEXT_CORE_AFTER_INCOMPLETE"
 REPORT_SCOPE = (
-    "Tests-first BEFORE reproduction of two independently confirmed core "
-    "Weyl-context regressions. It retains the four discovery captures, exact "
-    "oracle goldens, two expected Rust failures, one retained ladder control, "
-    "the complete test inventory and resource metrics; it releases no gate."
+    "Tests-first AFTER verification of the Weyl-owner repair on the unchanged "
+    "frozen inputs. It applies the reviewed repair patch, retains the four "
+    "discovery captures, exact oracle goldens, the retained ladder control, "
+    "the complete test inventory and resource metrics, and requires both "
+    "regressions to pass with the repaired Rust matching every golden; it "
+    "releases no gate."
 )
 COMMAND_TIMEOUT_SECONDS = 1200
 COMMAND_KILL_AFTER_SECONDS = 30
@@ -172,7 +180,7 @@ COMMAND_NAMES = (
     "test-progressive-submit",
     "test-weyl-context-core-contract",
     "test-weyl-context-core-regression-contract",
-    "test-math-weyl-context-core-capture",
+    "test-math-weyl-context-core-after",
     "test-stager-allowlist",
     "rustc-version",
     "cargo-version",
@@ -190,7 +198,7 @@ CHECK_COMMANDS = (
         "test-weyl-context-core-regression-contract",
         "test_weyl_context_core_regression.py",
     ),
-    ("test-math-weyl-context-core-capture", "test_math_weyl_context_core_capture.py"),
+    ("test-math-weyl-context-core-after", "test_math_weyl_context_core_after.py"),
     ("test-stager-allowlist", "test_stager_allowlist.py"),
 )
 REPORT_KEYS = {
@@ -247,7 +255,7 @@ REGRESSION_KEYS = {
     "original_rerun_invocations", "selector_command",
     "retained_control_command", "inventory_command",
 }
-BEFORE_CLAIM_KEYS = {
+CLAIM_KEYS = {
     "acceptance_eligible", "math_gate_released", "cache_gate_released",
     "performance_gate_released", "rank_gate_released",
 }
@@ -256,7 +264,7 @@ EXPECTED_COMMAND_EXITS = {
     "test-progressive-submit": {0},
     "test-weyl-context-core-contract": {0},
     "test-weyl-context-core-regression-contract": {0},
-    "test-math-weyl-context-core-capture": {0},
+    "test-math-weyl-context-core-after": {0},
     "test-stager-allowlist": {0},
     "rustc-version": {0},
     "cargo-version": {0},
@@ -285,12 +293,12 @@ LIMITATIONS = [
         "retired top-level paths."
     ),
     (
-        "This is tests-first BEFORE evidence for two already independently "
-        "confirmed discrepancies; it is not an implementation repair or "
-        "mathematical acceptance."
+        "This is tests-first AFTER evidence that the reviewed repair makes "
+        "the two regressions pass and matches the goldens; it is not a "
+        "mathematical acceptance beyond that exact scope."
     ),
     (
-        "This BEFORE releases no mathematical, cache, rank, operation, "
+        "This AFTER releases no mathematical, cache, rank, operation, "
         "parallel, memory, or performance gate."
     ),
     (
@@ -305,7 +313,7 @@ LIMITATIONS = [
     ),
     (
         "Cargo-test timing may include release test-harness compilation; it "
-        "is legitimate BEFORE resource evidence, not an accepted benchmark."
+        "is legitimate AFTER resource evidence, not an accepted benchmark."
     ),
 ]
 FORBIDDEN_REPORT_KEYS = {
@@ -320,6 +328,8 @@ COMPLETE_CAPTURE_STATUSES = {
 
 ROOT_SYSTEM = "crates/atlas-real-group/src/root_system.rs"
 SESSION = "crates/atlas-core/src/session.rs"
+DOMAIN_BUILTINS = "crates/atlas-core/src/domain_builtins.rs"
+TYPED = "crates/atlas-core/src/typed.rs"
 TEST_PATCH = "hpc/patches/ladder_boundary_tests.patch"
 PRODUCTION_PATCH = "hpc/patches/ladder_boundary_fix.patch"
 BOUNDARY_FIXTURE = "tests/math/generics/root_ladder_coordinate_boundary.atlas"
@@ -390,10 +400,10 @@ COMMAND_CONTRACTS = {
         ],
         "cwd": ".",
     },
-    "test-math-weyl-context-core-capture": {
+    "test-math-weyl-context-core-after": {
         "argv": [
             CHECKER_PYTHON, "-I", "-S", "-B", "-m", "unittest", "discover",
-            "-s", "hpc", "-p", "test_math_weyl_context_core_capture.py", "-v",
+            "-s", "hpc", "-p", "test_math_weyl_context_core_after.py", "-v",
         ],
         "cwd": ".",
     },
@@ -945,6 +955,25 @@ def regression_source_manifest(accepted_manifest):
     return manifest
 
 
+def repaired_source_manifest(regression_manifest):
+    """Derive the repaired source manifest from the tests-first manifest."""
+    if (type(regression_manifest) is not dict
+            or len(regression_manifest) != REGRESSION_SOURCE["files"]
+            or _sha(json.dumps(
+                regression_manifest, sort_keys=True, separators=(",", ":"),
+            ).encode()) != REGRESSION_SOURCE["source_manifest_sha256"]):
+        raise ValueError("tests-first source manifest changed before repair patch")
+    manifest = copy.deepcopy(regression_manifest)
+    manifest.update(REPAIRED_SOURCE_HASHES)
+    canonical = json.dumps(
+        manifest, sort_keys=True, separators=(",", ":"),
+    ).encode()
+    if (len(manifest) != AFTER_SOURCE_FILES
+            or _sha(canonical) != AFTER_SOURCE_MANIFEST_SHA256):
+        raise ValueError("repaired source manifest changed")
+    return manifest
+
+
 def _regression_inputs(root):
     root = Path(root)
     catalog_raw = _stable_relative_bytes(root, REGRESSION_CATALOG_PATH)
@@ -978,7 +1007,7 @@ def _publish_regression_inputs(out, catalog_raw, inspection_raw, artifacts):
     return catalog_reference, inspection_reference, references
 
 
-def _before_metrics(record):
+def _after_metrics(record):
     return {
         "format": "gnu-time-v",
         "seconds": record["seconds"],
@@ -992,7 +1021,7 @@ def _before_metrics(record):
     }
 
 
-def _before_observation(report, result_dir, regression_catalog):
+def _after_observation(report, result_dir, regression_catalog):
     invocations = report.get("invocations")
     commands = report.get("commands")
     if type(invocations) is not list or type(commands) is not list:
@@ -1019,7 +1048,7 @@ def _before_observation(report, result_dir, regression_catalog):
             "timed_out": record["observation"]["timed_out"],
             "termination_uncertain":
                 record["observation"]["termination_uncertain"],
-            "metrics": _before_metrics(record["observation"]),
+            "metrics": _after_metrics(record["observation"]),
         })
     if len(set(invocation_ids)) != 2:
         raise ValueError("oracle rerun invocation identities are not unique")
@@ -1039,12 +1068,12 @@ def _before_observation(report, result_dir, regression_catalog):
                 _validate_artifact(record["stdout"], result_dir)
                 + _validate_artifact(record["stderr"], result_dir)
             ),
-            "metrics": _before_metrics(record),
+            "metrics": _after_metrics(record),
         }
 
-    claims = {key: False for key in BEFORE_CLAIM_KEYS}
+    claims = {key: False for key in CLAIM_KEYS}
     observation = {
-        "schema": BEFORE_OBSERVATION_SCHEMA,
+        "schema": AFTER_OBSERVATION_SCHEMA,
         "provenance": expected_regression_provenance(),
         "original_reruns": original_reruns,
         "selector_command": command_observation("weyl-context-regressions"),
@@ -1083,10 +1112,10 @@ def _regression_classification(report, result_dir):
         for name, reference in references.items()
     }
     validate_regression_artifacts(catalog, artifacts)
-    observation, invocation_ids = _before_observation(
+    observation, invocation_ids = _after_observation(
         report, result_dir, catalog,
     )
-    classification = classify_before(
+    classification = classify_after(
         catalog_raw, inspection_raw, artifacts, observation,
     )
     if (regression.get("original_rerun_invocations") != invocation_ids
@@ -1108,7 +1137,7 @@ def validate_report(report, result_dir):
             or not report["job"].isdecimal()
             or not isinstance(report.get("node"), str) or not report["node"]
             or report.get("status") != SUCCESS_STATUS
-            or report.get("evidence_maturity") != "tests_first_before"
+            or report.get("evidence_maturity") != "tests_first_after"
             or report.get("scope") != REPORT_SCOPE
             or report.get("accepted_source")
                != report.get("pin", {}).get("accepted_source")
@@ -1225,15 +1254,20 @@ def validate_report(report, result_dir):
                    or capture.get("resource_complete") is not True
                    or capture.get("metrics_complete") is not True
                    or capture.get("stream_complete") is not True
+                   # The AFTER gate: the repaired Rust must match every
+                   # frozen original golden byte-for-byte.
+                   or capture.get("full_stdout_equal") is not True
+                   or capture.get("full_stderr_equal") is not True
+                   or capture.get("exit_status_equal") is not True
                    for capture in captures)):
         raise ValueError("capture classifier result is incomplete or changed")
     classification = _regression_classification(report, result_dir)
     if (classification != regression.get("classification")
-            or classification.get("status") != BEFORE_REPRODUCED
-            or classification.get("evidence_maturity") != "tests_first_before"
+            or classification.get("status") != AFTER_REPRODUCED
+            or classification.get("evidence_maturity") != "tests_first_after"
             or any(classification.get(key) is not False
-                   for key in BEFORE_CLAIM_KEYS)):
-        raise ValueError("tests-first BEFORE classification changed")
+                   for key in CLAIM_KEYS)):
+        raise ValueError("tests-first AFTER classification changed")
     return report
 
 
@@ -1276,10 +1310,12 @@ def gates(root):
     validate_before_v1_failure(root, inputs)
     validate_before_v2_failure(root, inputs)
     validate_before_v3_failure(root, inputs)
+    validate_before_v4_result(root, inputs)
     catalog = validate_staged_catalog(root, inputs)
     regression_source_manifest = validate_regression_inputs(
         root, inputs, accepted_source_manifest,
     )
+    repaired_manifest = repaired_source_manifest(regression_source_manifest)
     if validate_parent_objects(campaign) != PARENT_SOURCE_OBJECT:
         raise ValueError("Weyl core parent source object changed")
     seal = load_parent_seal(campaign, PARENT_SEAL_REFERENCE)
@@ -1296,6 +1332,7 @@ def gates(root):
         "receipt": receipt,
         "accepted_source_manifest": accepted_source_manifest,
         "regression_source_manifest": regression_source_manifest,
+        "repaired_source_manifest": repaired_manifest,
         "catalog": catalog,
         "seal": seal,
     }
@@ -1966,8 +2003,8 @@ def _base_report(job):
         "schema": REPORT_SCHEMA,
         "job": job,
         "node": platform.node(),
-        "status": BEFORE_HARNESS_FAILURE,
-        "evidence_maturity": "tests_first_before",
+        "status": AFTER_HARNESS_FAILURE,
+        "evidence_maturity": "tests_first_after",
         "scope": REPORT_SCOPE,
         "pin": {},
         "accepted_source": {},
@@ -2057,7 +2094,7 @@ def main():
         }
 
         campaign = campaign_stage(root)
-        with ephemeral_job_workspace(out, "weyl-core-before-v4") as work:
+        with ephemeral_job_workspace(out, "weyl-core-after-v1") as work:
             (work / "tmp").mkdir(mode=0o700)
             env = command_environment(dict(os.environ), work)
             report["environment"] = validate_environment_record(env)
@@ -2131,6 +2168,20 @@ def main():
             if (final_manifest != preflight["regression_source_manifest"]
                     or file_manifest(source) != final_manifest):
                 raise ValueError("reconstructed tests-first source changed")
+
+            repair_patch = _stable_relative_bytes(root, REPAIR_PATCH_PATH)
+            if _sha(repair_patch) != REPAIR_PATCH_HASHES[REPAIR_PATCH_PATH]:
+                raise ValueError("Weyl repair patch changed")
+            changed = _apply_unified_patch(source, root / REPAIR_PATCH_PATH)
+            if set(changed) != {DOMAIN_BUILTINS, TYPED}:
+                raise ValueError("Weyl repair patch scope changed")
+            if any(digest(source / name) != wanted
+                   for name, wanted in REPAIRED_SOURCE_HASHES.items()):
+                raise ValueError("repaired source hashes changed")
+            final_manifest = repaired_source_manifest(final_manifest)
+            if (final_manifest != preflight["repaired_source_manifest"]
+                    or file_manifest(source) != final_manifest):
+                raise ValueError("reconstructed repaired source changed")
 
             manifest_sha = _sha(json.dumps(
                 final_manifest, sort_keys=True,
@@ -2239,24 +2290,22 @@ def main():
                     work / (command_name + ".time"), active,
                 )
                 report["commands"].append(record)
-            _observation, rerun_ids = _before_observation(
+            _observation, rerun_ids = _after_observation(
                 report, out, regression_catalog,
             )
             report["regression"]["original_rerun_invocations"] = rerun_ids
             classification = _regression_classification(report, out)
             report["regression"]["classification"] = classification
             classification_status = classification.get("status")
-            allowed_before_statuses = (
-                BEFORE_REPRODUCED, UNEXPECTED_PASS,
-                BEFORE_PROVENANCE_FAILURE, BEFORE_HARNESS_FAILURE,
+            allowed_after_statuses = (
+                AFTER_REPRODUCED, AFTER_STILL_FAILING,
+                AFTER_PROVENANCE_FAILURE, AFTER_HARNESS_FAILURE,
             )
-            if (classification_status not in allowed_before_statuses
+            if (classification_status not in allowed_after_statuses
                     or any(classification.get(key) is not False
-                           for key in BEFORE_CLAIM_KEYS)):
-                raise ValueError("BEFORE classifier returned an invalid result")
-            before_complete = classification_status in {
-                BEFORE_REPRODUCED, UNEXPECTED_PASS,
-            }
+                           for key in CLAIM_KEYS)):
+                raise ValueError("AFTER classifier returned an invalid result")
+            after_complete = classification_status == AFTER_REPRODUCED
 
             final_preflight = gates(root)
             if final_preflight != preflight:
@@ -2284,7 +2333,7 @@ def main():
             report["legacy_path_open_attempts"] = list(LEGACY_PATH_OPEN_ATTEMPTS)
             if report["legacy_path_open_attempts"]:
                 raise ValueError("retired top-level path access was attempted")
-            report["complete"] = not capture_incomplete and before_complete
+            report["complete"] = not capture_incomplete and after_complete
             report["status"] = (
                 INCOMPLETE_STATUS if capture_incomplete
                 else classification_status
@@ -2298,7 +2347,7 @@ def main():
         if isinstance(error, CommandRecordFailure):
             report["failed_command"] = copy.deepcopy(error.evidence)
         report.update(
-            status=BEFORE_HARNESS_FAILURE,
+            status=AFTER_HARNESS_FAILURE,
             complete=False,
             error=traceback.format_exc(),
         )
@@ -2315,7 +2364,7 @@ def main():
                 active.update(process=None, process_group=None)
             if cleanup_uncertain or group_alive:
                 report.update(
-                    status=BEFORE_HARNESS_FAILURE,
+                    status=AFTER_HARNESS_FAILURE,
                     complete=False,
                     cleanup_error=(
                         "timed command process-group cleanup was uncertain"
@@ -2323,7 +2372,7 @@ def main():
                 )
         except Exception:
             report.update(
-                status=BEFORE_HARNESS_FAILURE,
+                status=AFTER_HARNESS_FAILURE,
                 complete=False,
                 cleanup_error=traceback.format_exc(),
             )

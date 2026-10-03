@@ -10,6 +10,7 @@ HPC = Path(__file__).resolve().parent
 AFTER_DRIVER = "math_ladder_boundary_after.py"
 INDEX_DRIVER = "math_ladder_boundary_index.py"
 WEYL_CAPTURE_DRIVER = "math_weyl_context_core_capture.py"
+WEYL_AFTER_DRIVER = "math_weyl_context_core_after.py"
 DRIVER = AFTER_DRIVER
 HISTORICAL_DRIVER = "math_ladder_boundary_before.py"
 DRIVERS = {
@@ -17,6 +18,7 @@ DRIVERS = {
     AFTER_DRIVER: "driver",
     INDEX_DRIVER: "index_driver",
     WEYL_CAPTURE_DRIVER: "weyl_capture_driver",
+    WEYL_AFTER_DRIVER: "weyl_after_driver",
 }
 STAGED_STAGERS = {
     "stage_weyl_parent_seal.py": "parent",
@@ -24,6 +26,7 @@ STAGED_STAGERS = {
     "stage_ladder_boundary_after.py": "after",
     "stage_ladder_boundary_index.py": "index",
     "stage_weyl_context_core_capture.py": "weyl_capture",
+    "stage_weyl_context_core_after.py": "weyl_after",
 }
 FROZEN_STAGE_FILENAMES = {
     "stage_cartan_before.py",
@@ -96,6 +99,7 @@ FROZEN_STAGE_FILENAMES = {
     "stage_unitarity_rank1.py",
     "stage_verified_merge.py",
     "stage_weyl_context_capture.py",
+    "stage_weyl_context_core_after.py",
     "stage_weyl_context_core_capture.py",
     "stage_weyl_parent_seal.py",
 }
@@ -108,31 +112,42 @@ RETIRED_BUNDLE_SHA256 = (
 RETIRED_BUNDLE_BYTES = 311925
 MAX_RETIRED_BUNDLE_BYTES = 1024 * 1024
 MAX_RETIRED_SOURCE_BYTES = 128 * 1024
-CURRENT_POLICY = "weyl-core-before-active"
+CURRENT_POLICY = "weyl-core-after-active"
 POLICIES = {
     "parent-only": {
         "parent": "active", "before": "pending", "after": "pending",
         "index": "pending", "before_driver": "pending", "driver": "pending",
         "index_driver": "pending", "weyl_capture": "pending",
-        "weyl_capture_driver": "pending",
+        "weyl_capture_driver": "pending", "weyl_after": "pending",
+        "weyl_after_driver": "pending",
     },
     "after-active": {
         "parent": "retired", "before": "pending", "after": "active",
         "index": "pending", "before_driver": "pending", "driver": "active",
         "index_driver": "pending", "weyl_capture": "pending",
-        "weyl_capture_driver": "pending",
+        "weyl_capture_driver": "pending", "weyl_after": "pending",
+        "weyl_after_driver": "pending",
     },
     "index-active": {
         "parent": "retired", "before": "pending", "after": "pending",
         "index": "active", "before_driver": "pending", "driver": "pending",
         "index_driver": "active", "weyl_capture": "pending",
-        "weyl_capture_driver": "pending",
+        "weyl_capture_driver": "pending", "weyl_after": "pending",
+        "weyl_after_driver": "pending",
     },
     "weyl-core-before-active": {
         "parent": "retired", "before": "pending", "after": "pending",
         "index": "pending", "before_driver": "pending", "driver": "pending",
         "index_driver": "pending", "weyl_capture": "active",
-        "weyl_capture_driver": "active",
+        "weyl_capture_driver": "active", "weyl_after": "pending",
+        "weyl_after_driver": "pending",
+    },
+    "weyl-core-after-active": {
+        "parent": "retired", "before": "pending", "after": "pending",
+        "index": "pending", "before_driver": "pending", "driver": "pending",
+        "index_driver": "pending", "weyl_capture": "pending",
+        "weyl_capture_driver": "pending", "weyl_after": "active",
+        "weyl_after_driver": "active",
     },
 }
 
@@ -184,11 +199,23 @@ WEYL_EXECUTION_SOURCE_SHA256 = {
     ),
 }
 WEYL_CAPTURE_DRIVER_SHA256 = (
-    "a8f784181cf4ec02d58ce00e5b64c0f10910ef975f65f7b53784be9d540e37ab"
+    "31f5aef26e14ca669ee9306efc70cc2c4f8f22fd19af11dab5e979a0296966d7"
 )
 WEYL_CAPTURE_STAGER_SHA256 = (
-    "c40520bef25932af212e52ab80880fec5bf3390fe8fbdd776fe318bfba0db2c2"
+    "639b5c20d1a1efc68eebb3a240d9d2aa717c1c90757321c6b3445652fad649a6"
 )
+WEYL_AFTER_STAGER_SHA256 = (
+    "8cb4b86d9986e66c1722c87d5704ab92ee387ce426ff0f3c194b60c5320904d6"
+)
+WEYL_AFTER_DRIVER_SHA256 = (
+    "3d7d98903a838b3a3343482d165af4b7e9b3989cc1f30a5c9ccc49950700913b"
+)
+WEYL_AFTER_EXECUTION_SOURCE_SHA256 = {
+    **WEYL_EXECUTION_SOURCE_SHA256,
+    "COMMAND_CONTRACTS": (
+        "f4dc66d88ed12c55118effc388a512e3b7a0d17415afc59d620fd374bbd43e1e"
+    ),
+}
 
 PARENT_IMPORTS = {
     "from contextlib import contextmanager",
@@ -276,6 +303,31 @@ WEYL_CAPTURE_DRIVER_IMPORTS = {
     "from weyl_context_core_regression import BEFORE_REPRODUCED,HARNESS_FAILURE as BEFORE_HARNESS_FAILURE,OBSERVATION_SCHEMA as BEFORE_OBSERVATION_SCHEMA,PROVENANCE_FAILURE as BEFORE_PROVENANCE_FAILURE,UNEXPECTED_PASS,classify_before,decode_catalog as decode_regression_catalog,decode_inspection as decode_regression_inspection,expected_provenance as expected_regression_provenance,validate_artifacts as validate_regression_artifacts",
     "from weyl_parent_seal import boundary_bytes,load_parent_seal",
 }
+WEYL_AFTER_STAGER_IMPORTS = {
+    "from contextlib import contextmanager",
+    "import ast", "import copy", "import fcntl", "import hashlib",
+    "import json", "import os", "from pathlib import Path,PurePosixPath",
+    "import re", "import secrets", "import stat", "import sys",
+    "from campaign_blob import read_blob,verify_blob",
+    "from campaign_source import file_manifest,verify_source_archive",
+    "from campaign_workspace import submission_scope",
+    "import weyl_context_core_regression as regression_contract",
+    "from progressive_submit import STAGE_CREATION_CONTRACT_SCHEMA,STAGE_CREATION_MARKER,STAGE_CREATION_RECEIPT,create_fixed_stage,exclusive_lock,read_json_file,save,submit_one,validate_confirmed_history,validate_stage_creation",
+}
+WEYL_AFTER_DRIVER_IMPORTS = {
+    "import copy", "import hashlib", "import json", "import math", "import os",
+    "from pathlib import Path,PurePosixPath", "import platform", "import re",
+    "import signal", "import stat", "import subprocess", "import sys",
+    "import time", "import traceback",
+    "from campaign_blob import read_blob",
+    "from campaign_source import digest,file_manifest,materialize_source_archive",
+    "from campaign_workspace import ACTIVE_CAMPAIGN,campaign_stage,create_result_folder,ephemeral_job_workspace",
+    "from progressive_submit import read_json_file,validate_stage_creation",
+    "from stage_weyl_context_core_after import ACCEPTED_SOURCE,CATALOG_CASES,CATALOG_PATH,CATALOG_SHA256,EXPECTED_TEST_COUNTS,FINAL_HASHES,PATCH_HASHES,PIN_NAME,PIN_SCHEMA,PARENT_SEAL_REFERENCE,PARENT_SOURCE_OBJECT,RETIRED_STAGER_BUNDLE_REFERENCE,SBATCH,SEALED_FIXTURE_HASHES,STAGE_LOCK,STAGE_NAME,SUBMISSION_ENABLED as STAGER_SUBMISSION_ENABLED,TESTS_ONLY_HASHES,REPAIR_PATCH_HASHES,REPAIR_PATCH_PATH,REPAIRED_SOURCE_HASHES,AFTER_SOURCE_FILES,AFTER_SOURCE_MANIFEST_SHA256,REGRESSION_CATALOG_BYTES,REGRESSION_CATALOG_PATH,REGRESSION_CATALOG_SHA256,REGRESSION_FIXTURE_HASHES,REGRESSION_INSPECTION_BYTES,REGRESSION_INSPECTION_PATH,REGRESSION_INSPECTION_SHA256,REGRESSION_PATCH_HASHES,REGRESSION_PATCH_PATH,REGRESSION_SOURCE,REGRESSION_SOURCE_HASHES,confirmed_record,existing_lock,frozen_stage_inputs,saved_json_sha,submission_receipt,validate_catalog as validate_staged_catalog,validate_capture_v1_failure,validate_capture_v2_failure,validate_capture_v3_failure,validate_capture_v4_failure,validate_capture_v5_failure,validate_capture_v6_failure,validate_capture_v7_failure,validate_capture_v8,validate_before_v1_failure,validate_before_v2_failure,validate_before_v3_failure,validate_before_v4_result,validate_parent_objects,validate_pin as validate_stage_pin,validate_predecessor,validate_prior_creation_failure,validate_regression_inputs,validate_stage_topology",
+    "from weyl_context_core_contract import CAPTURE_MATURITY,NONACCEPTING_STATUSES,classify_capture,decode_catalog as decode_discovery_catalog,validate_catalog as validate_contract_catalog",
+    "from weyl_context_core_regression import AFTER_HARNESS_FAILURE,AFTER_PROVENANCE_FAILURE,AFTER_REPRODUCED,AFTER_STILL_FAILING,AFTER_OBSERVATION_SCHEMA,classify_after,decode_catalog as decode_regression_catalog,decode_inspection as decode_regression_inspection,expected_provenance as expected_regression_provenance,validate_artifacts as validate_regression_artifacts",
+    "from weyl_parent_seal import boundary_bytes,load_parent_seal",
+}
 EXPECTED_IMPORTS = {
     "stage_weyl_parent_seal.py": PARENT_IMPORTS,
     "stage_ladder_boundary_before.py": STAGER_IMPORTS,
@@ -290,6 +342,8 @@ EXPECTED_IMPORTS = {
     INDEX_DRIVER: INDEX_DRIVER_IMPORTS,
     "stage_weyl_context_core_capture.py": WEYL_CAPTURE_STAGER_IMPORTS,
     WEYL_CAPTURE_DRIVER: WEYL_CAPTURE_DRIVER_IMPORTS,
+    "stage_weyl_context_core_after.py": WEYL_AFTER_STAGER_IMPORTS,
+    WEYL_AFTER_DRIVER: WEYL_AFTER_DRIVER_IMPORTS,
 }
 
 COMMON_STAGER_ASSIGNMENTS = {
@@ -395,6 +449,88 @@ WEYL_CAPTURE_DRIVER_ASSIGNMENTS = {
     "BOUNDARY_STDERR", "SHA256_PATTERN", "INVOCATION_ID_PATTERN",
     "MANIFEST_PROGRAM",
 }
+WEYL_AFTER_STAGER_ASSIGNMENTS = {
+    "STAGE_NAME", "PIN_NAME", "PIN_SCHEMA", "STAGE_LOCK", "SBATCH",
+    "SUBMISSION_ENABLED", "EXPECTED_TEST_COUNTS", "CHECKER_TESTS",
+    "BEFORE_FAILURE_PREDICTED_AFTER_COUNTS", "BEFORE_V4_CHECKER_TOTAL",
+    "CATALOG_PATH", "CATALOG_SHA256", "CATALOG_CASES",
+    "CATALOG_BYTES", "PREDECESSOR_CAMPAIGN_FILES",
+    "REGRESSION_CATALOG_BYTES", "REGRESSION_CATALOG_PATH",
+    "REGRESSION_CATALOG_SHA256", "REGRESSION_EXPECTED_INVENTORY",
+    "REGRESSION_FIXTURE_BYTES", "REGRESSION_FIXTURE_HASHES",
+    "REGRESSION_INSPECTION_BYTES", "REGRESSION_INSPECTION_PATH",
+    "REGRESSION_INSPECTION_SHA256", "REGRESSION_PATCH_BYTES",
+    "REGRESSION_PATCH_HASHES", "REGRESSION_PATCH_PATH", "REGRESSION_RECORD",
+    "REGRESSION_RETAINED_CONTROL", "REGRESSION_SELECTOR_TESTS",
+    "REGRESSION_SOURCE", "REGRESSION_SOURCE_HASHES",
+    "REPAIR_PATCH_PATH", "REPAIR_PATCH_HASHES", "REPAIR_PATCH_BYTES",
+    "REPAIRED_SOURCE_HASHES", "AFTER_SOURCE_FILES",
+    "AFTER_SOURCE_MANIFEST_SHA256",
+    "V7_PREDECESSOR", "V7_PREDECESSOR_RECORD", "V7_PREDECESSOR_REFERENCE",
+    "V7_PREDECESSOR_STAGE", "V7_PREDECESSOR_STATE",
+    "V8_PREDECESSOR", "V8_PREDECESSOR_RECORD", "V8_PREDECESSOR_REFERENCE",
+    "V8_PREDECESSOR_STAGE", "V8_PREDECESSOR_STATE",
+    "V8_PREDECESSOR_CAMPAIGN_FILES", "BEFORE_V1_FAILURE_EVIDENCE",
+    "BEFORE_V1_PREDECESSOR_STAGE", "BEFORE_V1_PREDECESSOR_RECORD",
+    "BEFORE_V1_PREDECESSOR_CAMPAIGN_FILES", "BEFORE_V1_PREDECESSOR_STATE",
+    "BEFORE_V1_PREDECESSOR", "BEFORE_V1_PREDECESSOR_REFERENCE",
+    "BEFORE_V2_FAILURE_EVIDENCE",
+    "BEFORE_V2_PREDECESSOR_STAGE", "BEFORE_V2_PREDECESSOR_RECORD",
+    "BEFORE_V2_PREDECESSOR_CAMPAIGN_FILES", "BEFORE_V2_PREDECESSOR_STATE",
+    "BEFORE_V2_PREDECESSOR", "BEFORE_V2_PREDECESSOR_REFERENCE",
+    "BEFORE_V3_FAILURE_EVIDENCE", "BEFORE_V4_RESULT_EVIDENCE",
+    "BEFORE_V3_PREDECESSOR_STAGE", "BEFORE_V3_PREDECESSOR_RECORD",
+    "BEFORE_V3_PREDECESSOR_CAMPAIGN_FILES", "BEFORE_V3_PREDECESSOR_STATE",
+    "BEFORE_V3_PREDECESSOR", "BEFORE_V3_PREDECESSOR_REFERENCE",
+    "V8_SUBMISSION_EVIDENCE_BYTES", "V8_SUBMISSION_EVIDENCE_PATH",
+    "V8_SUBMISSION_EVIDENCE_SHA256",
+    "AFTER_REPORT_PATH", "AFTER_INSPECTION_PATH", "AFTER_REVIEW_PATH",
+    "ACCEPTANCE_INDEX_PATH", "INDEX_REPORT_PATH", "INDEX_INSPECTION_PATH",
+    "ACCEPTED_INDEX_PREDECESSOR", "PREDECESSOR", "PREDECESSOR_REFERENCE",
+    "PREDECESSOR_STAGE", "PREDECESSOR_RECORD", "PREDECESSOR_STATE",
+    "V1_FAILURE_EVIDENCE", "V1_PREDECESSOR", "V1_PREDECESSOR_STAGE",
+    "V1_PREDECESSOR_RECORD", "V1_PREDECESSOR_STATE",
+    "V2_FAILURE_EVIDENCE", "V2_PREDECESSOR", "V2_PREDECESSOR_STAGE",
+    "V2_PREDECESSOR_RECORD", "V2_PREDECESSOR_STATE",
+    "V3_FAILURE_EVIDENCE", "V3_PREDECESSOR", "V3_PREDECESSOR_STAGE",
+    "V3_PREDECESSOR_RECORD", "V3_PREDECESSOR_STATE",
+    "V3_PREDECESSOR_REFERENCE", "V4_FAILURE_EVIDENCE",
+    "V4_PREDECESSOR", "V4_PREDECESSOR_STAGE", "V4_PREDECESSOR_RECORD",
+    "V4_PREDECESSOR_STATE", "V4_PREDECESSOR_REFERENCE",
+    "V5_FAILURE_EVIDENCE", "V5_PREDECESSOR", "V5_PREDECESSOR_STAGE",
+    "V5_PREDECESSOR_RECORD", "V5_PREDECESSOR_STATE",
+    "V5_PREDECESSOR_REFERENCE", "V6_FAILURE_EVIDENCE",
+    "V6_PREDECESSOR", "V6_PREDECESSOR_STAGE", "V6_PREDECESSOR_RECORD",
+    "V6_PREDECESSOR_STATE", "V6_PREDECESSOR_REFERENCE",
+    "V7_FAILURE_EVIDENCE",
+    "PRIOR_CREATION_FAILURE_EVIDENCE", "PRIOR_CREATION_FAILURE",
+    "PARENT_SEAL_REFERENCE", "PARENT_SOURCE_OBJECT",
+    "RETIRED_STAGER_BUNDLE_REFERENCE", "PATCH_HASHES", "TESTS_ONLY_HASHES",
+    "CURRENT_STAGER_PATH", "FROZEN_LAUNCHER_HASHES",
+    "FROZEN_LAUNCHER_STATES",
+    "FINAL_HASHES", "SEALED_FIXTURE_HASHES", "ACCEPTED_SOURCE", "LIFECYCLE",
+    "STAGE_INPUT_NAMES", "SUBMISSION_RECORD_KEYS", "PIN_KEYS",
+    "SHA256_PATTERN", "FORBIDDEN_DURABLE_STAGE_NAMES",
+    "ALLOWED_STAGE_DIRECTORIES", "ALLOWED_STAGE_FILES",
+    "SLURM_OUTPUT_PATTERN",
+}
+WEYL_AFTER_DRIVER_ASSIGNMENTS = {
+    "_ACTIVE_CAMPAIGN", "LEGACY_PATH_OPEN_ATTEMPTS", "SUBMISSION_ENABLED",
+    "EXPECTED_STAGE", "REPORT_SCHEMA", "SUCCESS_STATUS", "INCOMPLETE_STATUS",
+    "REPORT_SCOPE", "COMMAND_TIMEOUT_SECONDS", "COMMAND_KILL_AFTER_SECONDS",
+    "COMMAND_EXIT_GRACE_SECONDS",
+    "CHECKER_PYTHON", "EXPECTED_INVOCATIONS", "COMMAND_NAMES", "CHECK_COMMANDS",
+    "COMMAND_CONTRACTS", "REPORT_KEYS", "INVOCATION_KEYS",
+    "PROVENANCE_KEYS", "OBSERVATION_KEYS", "ARTIFACT_KEYS", "COMMAND_KEYS",
+    "CATALOG_RECORD",
+    "CLAIM_KEYS", "EXPECTED_COMMAND_EXITS", "REGRESSION_CATALOG_RECORD",
+    "REGRESSION_INSPECTION_RECORD", "REGRESSION_KEYS",
+    "THREAD_SETTINGS", "ENVIRONMENT_KEYS", "LIMITATIONS", "FORBIDDEN_REPORT_KEYS",
+    "COMPLETE_CAPTURE_STATUSES", "ROOT_SYSTEM", "SESSION", "TEST_PATCH",
+    "PRODUCTION_PATCH", "BOUNDARY_FIXTURE", "BOUNDARY_STDOUT",
+    "BOUNDARY_STDERR", "SHA256_PATTERN", "INVOCATION_ID_PATTERN",
+    "MANIFEST_PROGRAM", "DOMAIN_BUILTINS", "TYPED",
+}
 EXPECTED_ASSIGNMENTS = {
     "stage_weyl_parent_seal.py": set(),
     "stage_ladder_boundary_before.py": COMMON_STAGER_ASSIGNMENTS,
@@ -420,13 +556,16 @@ EXPECTED_ASSIGNMENTS = {
     INDEX_DRIVER: INDEX_DRIVER_ASSIGNMENTS,
     "stage_weyl_context_core_capture.py": WEYL_CAPTURE_STAGER_ASSIGNMENTS,
     WEYL_CAPTURE_DRIVER: WEYL_CAPTURE_DRIVER_ASSIGNMENTS,
+    "stage_weyl_context_core_after.py": WEYL_AFTER_STAGER_ASSIGNMENTS,
+    WEYL_AFTER_DRIVER: WEYL_AFTER_DRIVER_ASSIGNMENTS,
 }
 
 PROJECT_IMPORTS = {
     "campaign_blob", "campaign_source", "campaign_workspace", "progressive_submit",
     "stage_ladder_boundary_before", "stage_ladder_boundary_after",
     "stage_ladder_boundary_index", "weyl_parent_seal",
-    "stage_weyl_context_core_capture", "weyl_context_core_contract",
+    "stage_weyl_context_core_capture", "stage_weyl_context_core_after",
+    "weyl_context_core_contract",
     "weyl_context_core_regression",
 }
 
@@ -663,6 +802,7 @@ def exact_campaign_guard(node, filename):
         AFTER_DRIVER: "ladder AFTER v3 campaign policy changed",
         INDEX_DRIVER: "ladder boundary index campaign policy changed",
         WEYL_CAPTURE_DRIVER: "Weyl core capture campaign policy changed",
+        WEYL_AFTER_DRIVER: "Weyl core after campaign policy changed",
     }
     return (filename in expected_messages
             and isinstance(compare, ast.Compare)
@@ -842,7 +982,7 @@ def exact_index_contract(tree, filename):
     return True
 
 
-def exact_weyl_capture_contract(tree, filename):
+def exact_weyl_core_contract(tree, filename):
     if filename == "stage_weyl_context_core_capture.py":
         return (
             hashlib.sha256(
@@ -1008,6 +1148,147 @@ def exact_weyl_capture_contract(tree, filename):
             and literal_assignment(tree, "SHA256_PATTERN")
             == r"[0-9a-f]{64}\Z"
         )
+    if filename == "stage_weyl_context_core_after.py":
+        return (
+            hashlib.sha256(
+                getattr(tree, "_source_text", "").encode("utf-8")
+            ).hexdigest() == WEYL_AFTER_STAGER_SHA256
+            and literal_assignment(tree, "STAGE_NAME")
+            == "weyl-context-core-after-v1"
+            and literal_assignment(tree, "PIN_NAME")
+            == "weyl-context-core-after-v1-pin.json"
+            and literal_assignment(tree, "PIN_SCHEMA")
+            == "atlas-weyl-context-core-after-pin-v1"
+            and literal_assignment(tree, "SBATCH")
+            == "hpc/math_weyl_context_core_after.sbatch"
+            and literal_assignment(tree, "EXPECTED_TEST_COUNTS") == {
+                "test-campaign-stage-creation": 32,
+                "test-progressive-submit": 17,
+                "test-weyl-context-core-contract": 18,
+                "test-weyl-context-core-regression-contract": 21,
+                "test-math-weyl-context-core-after": 28,
+                "test-stager-allowlist": 7,
+            }
+            and literal_assignment(tree, "CHECKER_TESTS") == 123
+            and literal_assignment(tree, "SHA256_PATTERN")
+            == r"[0-9a-f]{64}\Z"
+            and literal_assignment(tree, "FORBIDDEN_DURABLE_STAGE_NAMES")
+            == ("source", "target", "workspace", "build")
+            and literal_assignment(tree, "CURRENT_STAGER_PATH")
+            == "hpc/stage_weyl_context_core_after.py"
+            and literal_assignment(tree, "FROZEN_LAUNCHER_HASHES") == {
+                "hpc/stage_weyl_parent_seal.py": (
+                    "f1c3567ab620269c3836bdc624b9573cc89d519944bfe00a7c24e859fe387fc4"
+                ),
+                "hpc/stage_ladder_boundary_before.py": (
+                    "ff1f492adfa22f342bd0729f3df3885678de8f729a0f3d0775e5738c7ab47932"
+                ),
+                "hpc/math_ladder_boundary_before.py": (
+                    "21dc2207690a8cd0559854eb78725c5e0d901a7e5c1c750d4feb89d55e7b8f9e"
+                ),
+                "hpc/stage_ladder_boundary_after.py": (
+                    "07558c08a25f0d00b49720392b6abe469b2286d38b29cbb63a611cf40930d90d"
+                ),
+                "hpc/math_ladder_boundary_after.py": (
+                    "b6f52b1042393705498767a687175f365c1fd0f491c3f630ca4cf53d2277d0a2"
+                ),
+                "hpc/stage_ladder_boundary_index.py": (
+                    "0af4060de2bc5c451c0dab15b492d258c058d206bb06d151d37efcd57ec2008e"
+                ),
+                "hpc/math_ladder_boundary_index.py": (
+                    "29eb6392458aa0d856ca88a1fba6d5eefc4e265f2e5ec5a5ba1ba41bdcf11c31"
+                ),
+                "hpc/stage_weyl_context_core_capture.py": (
+                    "639b5c20d1a1efc68eebb3a240d9d2aa717c1c90757321c6b3445652fad649a6"
+                ),
+                "hpc/math_weyl_context_core_capture.py": (
+                    "31f5aef26e14ca669ee9306efc70cc2c4f8f22fd19af11dab5e979a0296966d7"
+                ),
+                "hpc/math_weyl_context_core_after.py": (
+                    "3d7d98903a838b3a3343482d165af4b7e9b3989cc1f30a5c9ccc49950700913b"
+                ),
+            }
+            and literal_assignment(tree, "FROZEN_LAUNCHER_STATES") == {
+                "hpc/stage_weyl_parent_seal.py": "retired",
+                "hpc/stage_ladder_boundary_before.py": False,
+                "hpc/math_ladder_boundary_before.py": False,
+                "hpc/stage_ladder_boundary_after.py": False,
+                "hpc/math_ladder_boundary_after.py": False,
+                "hpc/stage_ladder_boundary_index.py": False,
+                "hpc/math_ladder_boundary_index.py": False,
+                "hpc/stage_weyl_context_core_capture.py": False,
+                "hpc/math_weyl_context_core_capture.py": False,
+                "hpc/stage_weyl_context_core_after.py": True,
+                "hpc/math_weyl_context_core_after.py": True,
+            }
+            and literal_assignment(tree, "RETIRED_STAGER_BUNDLE_REFERENCE") == {
+                "schema": "atlas-campaign-blob-v1",
+                "role": "retired-stager-bundle",
+                "sha256": (
+                    "550b1330ec8806d1343d50d6ceb8488f89eb03546f6bb37c538cb5cd460e9b09"
+                ),
+                "bytes": 311925,
+            }
+            and exact_weyl_after_stager_flow(tree)
+        )
+    if filename == WEYL_AFTER_DRIVER:
+        return (
+            hashlib.sha256(
+                getattr(tree, "_source_text", "").encode("utf-8")
+            ).hexdigest() == WEYL_AFTER_DRIVER_SHA256
+            and literal_assignment(tree, "EXPECTED_STAGE")
+            == (
+                "/public/home/majj/atlas-rust-campaign-20260930/stages/"
+                "weyl-context-core-after-v1"
+            )
+            and literal_assignment(tree, "REPORT_SCHEMA")
+            == "atlas-weyl-context-core-after-v1"
+            and literal_assignment(tree, "CHECKER_PYTHON")
+            == "/public/software/anaconda/anaconda3-2022.5/bin/python3.9"
+            and literal_assignment(tree, "SUCCESS_STATUS")
+            == "WEYL_CONTEXT_AFTER_REGRESSIONS_PASS"
+            and literal_assignment(tree, "INCOMPLETE_STATUS")
+            == "WEYL_CONTEXT_CORE_AFTER_INCOMPLETE"
+            and literal_assignment(tree, "EXPECTED_INVOCATIONS") == (
+                ("weyl_context_core_cold_dual", "oracle"),
+                ("weyl_context_core_cold_dual", "rust"),
+                ("weyl_context_core_prewarmed_dual", "rust"),
+                ("weyl_context_core_prewarmed_dual", "oracle"),
+            )
+            and literal_assignment(tree, "COMMAND_NAMES") == (
+                "test-campaign-stage-creation",
+                "test-progressive-submit",
+                "test-weyl-context-core-contract",
+                "test-weyl-context-core-regression-contract",
+                "test-math-weyl-context-core-after",
+                "test-stager-allowlist", "rustc-version", "cargo-version",
+                "source-reconstruction", "release-build",
+                "atlas-core-test-inventory", "weyl-context-regressions",
+                "root-ladder-control",
+            )
+            and weyl_command_cwds(tree) == {
+                "test-campaign-stage-creation": ".",
+                "test-progressive-submit": ".",
+                "test-weyl-context-core-contract": ".",
+                "test-weyl-context-core-regression-contract": ".",
+                "test-math-weyl-context-core-after": ".",
+                "test-stager-allowlist": ".",
+                "rustc-version": ".",
+                "cargo-version": ".",
+                "source-reconstruction": "workspace",
+                "release-build": "workspace/source",
+                "atlas-core-test-inventory": "workspace/source",
+                "weyl-context-regressions": "workspace/source",
+                "root-ladder-control": "workspace/source",
+            }
+            and "executable_bytes"
+            in literal_assignment(tree, "INVOCATION_KEYS")
+            and exact_weyl_after_creation_gate(tree)
+            and exact_weyl_execution_binding(
+                tree, WEYL_AFTER_EXECUTION_SOURCE_SHA256)
+            and literal_assignment(tree, "SHA256_PATTERN")
+            == r"[0-9a-f]{64}\Z"
+        )
     return True
 
 
@@ -1088,6 +1369,94 @@ def exact_weyl_creation_gate(tree):
             and catalog[0].lineno < regression[0].lineno)
 
 
+def exact_weyl_after_creation_gate(tree):
+    gates = function(tree, "gates")
+    expected_confirm = ast.parse(
+        "confirmed_record(root, pin, repair_intent=True, expected_job=job)\n"
+    ).body[0].value
+    expected_creation = ast.parse(
+        "validate_stage_creation(\n"
+        "    root, record['stage_creation_sha256'], pin_sha256=pin_sha,\n"
+        ")\n"
+    ).body[0].value
+    expected_receipt = ast.parse(
+        "read_json_file(root / 'submission.json')\n"
+    ).body[0].value
+    expected_v5_failure = ast.parse(
+        "validate_capture_v5_failure(root, inputs)\n"
+    ).body[0].value
+    expected_v6_failure = ast.parse(
+        "validate_capture_v6_failure(root, inputs)\n"
+    ).body[0].value
+    expected_v7_failure = ast.parse(
+        "validate_capture_v7_failure(root, inputs)\n"
+    ).body[0].value
+    expected_v8 = ast.parse(
+        "validate_capture_v8(root, inputs)\n"
+    ).body[0].value
+    expected_before_v1 = ast.parse(
+        "validate_before_v1_failure(root, inputs)\n"
+    ).body[0].value
+    expected_before_v2 = ast.parse(
+        "validate_before_v2_failure(root, inputs)\n"
+    ).body[0].value
+    expected_before_v3 = ast.parse(
+        "validate_before_v3_failure(root, inputs)\n"
+    ).body[0].value
+    expected_before_v4 = ast.parse(
+        "validate_before_v4_result(root, inputs)\n"
+    ).body[0].value
+    expected_catalog = ast.parse(
+        "validate_staged_catalog(root, inputs)\n"
+    ).body[0].value
+    expected_regression = ast.parse(
+        "validate_regression_inputs(root, inputs, accepted_source_manifest)\n"
+    ).body[0].value
+    expected_repaired = ast.parse(
+        "repaired_source_manifest(regression_source_manifest)\n"
+    ).body[0].value
+
+    def exact_calls(expected):
+        return [
+            node for node in ast.walk(gates)
+            if isinstance(node, ast.Call)
+            and ast.dump(node, include_attributes=False)
+               == ast.dump(expected, include_attributes=False)
+        ]
+
+    confirmed = exact_calls(expected_confirm)
+    creation = exact_calls(expected_creation)
+    receipt = exact_calls(expected_receipt)
+    v5_failure = exact_calls(expected_v5_failure)
+    v6_failure = exact_calls(expected_v6_failure)
+    v7_failure = exact_calls(expected_v7_failure)
+    v8 = exact_calls(expected_v8)
+    before_v1 = exact_calls(expected_before_v1)
+    before_v2 = exact_calls(expected_before_v2)
+    before_v3 = exact_calls(expected_before_v3)
+    before_v4 = exact_calls(expected_before_v4)
+    catalog = exact_calls(expected_catalog)
+    regression = exact_calls(expected_regression)
+    repaired = exact_calls(expected_repaired)
+    return (len(confirmed) == len(creation) == len(receipt) == 1
+            and len(v5_failure) == len(v6_failure) == len(v7_failure) == 1
+            and len(v8) == len(before_v1) == len(before_v2) == len(before_v3) == 1
+            and len(before_v4) == 1
+            and len(catalog) == len(regression) == len(repaired) == 1
+            and confirmed[0].lineno < creation[0].lineno < receipt[0].lineno
+            and receipt[0].lineno < v5_failure[0].lineno
+            and v5_failure[0].lineno < v6_failure[0].lineno
+            and v6_failure[0].lineno < v7_failure[0].lineno
+            and v7_failure[0].lineno < v8[0].lineno
+            and v8[0].lineno < before_v1[0].lineno
+            and before_v1[0].lineno < before_v2[0].lineno
+            and before_v2[0].lineno < before_v3[0].lineno
+            and before_v3[0].lineno < before_v4[0].lineno
+            and before_v4[0].lineno < catalog[0].lineno
+            and catalog[0].lineno < regression[0].lineno
+            and regression[0].lineno < repaired[0].lineno)
+
+
 def weyl_command_cwds(tree):
     assignments = [
         node for node in tree.body
@@ -1114,7 +1483,9 @@ def weyl_command_cwds(tree):
     return result
 
 
-def exact_weyl_execution_binding(tree):
+def exact_weyl_execution_binding(tree, expected_hashes=None):
+    if expected_hashes is None:
+        expected_hashes = WEYL_EXECUTION_SOURCE_SHA256
     contract_assignments = [
         node for node in tree.body
         if isinstance(node, ast.Assign) and len(node.targets) == 1
@@ -1127,13 +1498,13 @@ def exact_weyl_execution_binding(tree):
         "COMMAND_CONTRACTS": contract_assignments[0],
         **{
             name: definition(tree, name)
-            for name in WEYL_EXECUTION_SOURCE_SHA256
+            for name in expected_hashes
             if name != "COMMAND_CONTRACTS"
         },
     }
     if ({name: source_node_sha256(tree, node)
          for name, node in frozen_nodes.items()}
-            != WEYL_EXECUTION_SOURCE_SHA256):
+            != expected_hashes):
         return False
     command_cwd = function(tree, "_command_working_directory")
     command = function(tree, "_command_record")
@@ -1473,6 +1844,93 @@ def exact_weyl_capture_stager_flow(tree):
             and prior_arguments == [])
 
 
+def exact_weyl_after_stager_flow(tree):
+    parent = function(tree, "validate_parent_objects")
+    expected_verify = ast.parse(
+        "verify_blob(campaign, RETIRED_STAGER_BUNDLE_REFERENCE)\n"
+    ).body[0].value
+    verifies = [
+        node for node in ast.walk(parent)
+        if isinstance(node, ast.Call)
+        and ast.dump(node, include_attributes=False)
+        == ast.dump(expected_verify, include_attributes=False)
+    ]
+    run = function(tree, "run_enabled")
+
+    def statement_offsets(names):
+        return [
+            offset for offset, statement in enumerate(run.body)
+            if any(isinstance(node, ast.Call)
+                   and isinstance(node.func, ast.Name)
+                   and node.func.id in names
+                   for node in ast.walk(statement))
+        ]
+
+    def call_chain(name):
+        return sorted(
+            (node for node in ast.walk(run)
+             if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Name)
+             and node.func.id == name),
+            key=lambda node: node.lineno,
+        )
+
+    validations = statement_offsets({"validate_parent_objects"})
+    failure_validations = statement_offsets(
+        {"validate_prior_creation_failure"})
+    mutations = statement_offsets(
+        {"create_fixed_stage", "install_inputs", "save", "submit_pinned"})
+    install_calls = call_chain("install_inputs")
+    creation_calls = call_chain("create_fixed_stage")
+    build_pin_calls = call_chain("build_pin")
+    prior_arguments = [
+        keyword.value for call in creation_calls for keyword in call.keywords
+        if keyword.arg == "prior_failure"
+    ]
+    chains = {
+        name: call_chain(name)
+        for name in (
+            "validate_capture_v1_failure", "validate_capture_v2_failure",
+            "validate_capture_v3_failure", "validate_capture_v4_failure",
+            "validate_capture_v5_failure", "validate_capture_v6_failure",
+            "validate_capture_v7_failure", "validate_capture_v8",
+            "validate_before_v1_failure", "validate_before_v2_failure",
+            "validate_before_v3_failure", "validate_before_v4_result",
+            "validate_regression_inputs",
+        )
+    }
+    ordered_pairs = (
+        ("validate_capture_v5_failure", "validate_capture_v6_failure"),
+        ("validate_capture_v6_failure", "validate_capture_v7_failure"),
+        ("validate_capture_v7_failure", "validate_capture_v8"),
+        ("validate_capture_v8", "validate_before_v1_failure"),
+        ("validate_before_v1_failure", "validate_before_v2_failure"),
+        ("validate_before_v2_failure", "validate_before_v3_failure"),
+        ("validate_before_v3_failure", "validate_before_v4_result"),
+        ("validate_before_v4_result", "validate_regression_inputs"),
+    )
+    return (len(verifies) == 1 and len(validations) == 1
+            and len(failure_validations) == 2
+            and all(len(chain) == 2 for chain in chains.values())
+            and len(install_calls) == 1
+            and len(creation_calls) == 1
+            and len(build_pin_calls) == 1
+            and bool(mutations)
+            and validations[0] < min(mutations)
+            and failure_validations[0] < min(mutations)
+            and creation_calls[0].lineno < install_calls[0].lineno
+            and all(chain[0].lineno < creation_calls[0].lineno
+                    for chain in chains.values())
+            and all(install_calls[0].lineno < chain[1].lineno
+                    for chain in chains.values())
+            and all(chain[1].lineno < build_pin_calls[0].lineno
+                    for chain in chains.values())
+            and all(chains[before][0].lineno < chains[after][0].lineno
+                    and chains[before][1].lineno < chains[after][1].lineno
+                    for before, after in ordered_pairs)
+            and prior_arguments == [])
+
+
 def bounded_module(tree, filename):
     if filename not in EXPECTED_IMPORTS:
         raise ValueError("unknown launcher filename")
@@ -1539,7 +1997,7 @@ def bounded_module(tree, filename):
         if isinstance(node, ast.AsyncFunctionDef):
             raise ValueError("launcher has an executable async definition")
         if isinstance(node, ast.ClassDef):
-            if (filename == WEYL_CAPTURE_DRIVER
+            if (filename in (WEYL_CAPTURE_DRIVER, WEYL_AFTER_DRIVER)
                     and node.name == "CommandRecordFailure"
                     and source_node_sha256(tree, node)
                     == WEYL_EXECUTION_SOURCE_SHA256["CommandRecordFailure"]):
@@ -1580,8 +2038,8 @@ def bounded_module(tree, filename):
         raise ValueError("full-stager inventory command changed")
     if not exact_index_contract(tree, filename):
         raise ValueError("ladder index launcher contract changed")
-    if not exact_weyl_capture_contract(tree, filename):
-        raise ValueError("Weyl core capture launcher contract changed")
+    if not exact_weyl_core_contract(tree, filename):
+        raise ValueError("Weyl core launcher contract changed")
     if filename in DRIVERS:
         if sys_bytecode or len(audit_installs) != 1 or len(campaign_guards) != 1:
             raise ValueError("compute driver module guards changed")
@@ -1826,7 +2284,8 @@ class StagerAllowlist(unittest.TestCase):
         }
         for name in (
                 "stage_ladder_boundary_after.py", DRIVER,
-                "stage_weyl_context_core_capture.py"):
+                "stage_weyl_context_core_capture.py",
+                "stage_weyl_context_core_after.py"):
             tree = parsed((HPC / name).read_text(encoding="utf-8"))
             self.assertEqual(
                 literal_assignment(tree, "RETIRED_STAGER_BUNDLE_REFERENCE"),
@@ -1842,11 +2301,13 @@ class StagerAllowlist(unittest.TestCase):
             "stage_ladder_boundary_before.py": False,
             "stage_ladder_boundary_after.py": False,
             "stage_ladder_boundary_index.py": False,
-            "stage_weyl_context_core_capture.py": True,
+            "stage_weyl_context_core_capture.py": False,
+            "stage_weyl_context_core_after.py": True,
             HISTORICAL_DRIVER: False,
             AFTER_DRIVER: False,
             INDEX_DRIVER: False,
-            WEYL_CAPTURE_DRIVER: True,
+            WEYL_CAPTURE_DRIVER: False,
+            WEYL_AFTER_DRIVER: True,
         }
         for name, enabled in expected.items():
             tree = parsed((HPC / name).read_text(encoding="utf-8"))
@@ -1863,11 +2324,11 @@ class StagerAllowlist(unittest.TestCase):
         self.assertEqual(parent.count(closed), 1)
         staged["stage_weyl_parent_seal.py"] = parent.replace(
             closed, "def main():\n", 1)
-        capture = staged["stage_weyl_context_core_capture.py"]
-        staged["stage_weyl_context_core_capture.py"] = capture.replace(
+        after = staged["stage_weyl_context_core_after.py"]
+        staged["stage_weyl_context_core_after.py"] = after.replace(
             "SUBMISSION_ENABLED = True", "SUBMISSION_ENABLED = False", 1)
-        active_driver = drivers[WEYL_CAPTURE_DRIVER]
-        drivers[WEYL_CAPTURE_DRIVER] = active_driver.replace(
+        active_driver = drivers[WEYL_AFTER_DRIVER]
+        drivers[WEYL_AFTER_DRIVER] = active_driver.replace(
             "SUBMISSION_ENABLED = True", "SUBMISSION_ENABLED = False", 1)
         with self.assertRaises(ValueError):
             validate_snapshot(staged, drivers, "parent-only")
@@ -1901,6 +2362,9 @@ class StagerAllowlist(unittest.TestCase):
                     "SUBMISSION_ENABLED = False", "SUBMISSION_ENABLED = True", 1)}, drivers),
             ({**staged, "stage_weyl_context_core_capture.py": staged[
                 "stage_weyl_context_core_capture.py"].replace(
+                    "SUBMISSION_ENABLED = False", "SUBMISSION_ENABLED = True", 1)}, drivers),
+            ({**staged, "stage_weyl_context_core_after.py": staged[
+                "stage_weyl_context_core_after.py"].replace(
                     "SUBMISSION_ENABLED = True", "SUBMISSION_ENABLED = False", 1)}, drivers),
             ({**staged, "stage_weyl_context_core_capture.py": staged[
                 "stage_weyl_context_core_capture.py"].replace(
@@ -1922,6 +2386,9 @@ class StagerAllowlist(unittest.TestCase):
                 "SUBMISSION_ENABLED = False", "SUBMISSION_ENABLED = True", 1)}),
             (staged, {**drivers, WEYL_CAPTURE_DRIVER: drivers[
                 WEYL_CAPTURE_DRIVER].replace(
+                    "SUBMISSION_ENABLED = False", "SUBMISSION_ENABLED = True", 1)}),
+            (staged, {**drivers, WEYL_AFTER_DRIVER: drivers[
+                WEYL_AFTER_DRIVER].replace(
                     "SUBMISSION_ENABLED = True", "SUBMISSION_ENABLED = False", 1)}),
             (staged, {**drivers, WEYL_CAPTURE_DRIVER: drivers[
                 WEYL_CAPTURE_DRIVER].replace(

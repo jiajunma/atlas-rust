@@ -643,25 +643,27 @@ def _validate_command(command, expected_name):
     return command
 
 
-def _validate_observation_shape(observation):
+def _validate_observation_shape(
+    observation, schema=OBSERVATION_SCHEMA, label="BEFORE"
+):
     if type(observation) is not dict or frozenset(observation) != _OBSERVATION_KEYS:
-        raise ProvenanceError("BEFORE observation schema changed")
-    if observation.get("schema") != OBSERVATION_SCHEMA:
-        raise ProvenanceError("BEFORE observation version changed")
+        raise ProvenanceError(label + " observation schema changed")
+    if observation.get("schema") != schema:
+        raise ProvenanceError(label + " observation version changed")
     provenance = observation.get("provenance")
     if (
         type(provenance) is not dict
         or frozenset(provenance) != _PROVENANCE_KEYS
         or provenance != expected_provenance()
     ):
-        raise ProvenanceError("BEFORE provenance changed")
+        raise ProvenanceError(label + " provenance changed")
     claims = observation.get("claims")
     if (
         type(claims) is not dict
         or frozenset(claims) != _CLAIM_KEYS
         or any(value is not False for value in claims.values())
     ):
-        raise HarnessError("BEFORE observation attempts to release a gate")
+        raise HarnessError(label + " observation attempts to release a gate")
 
 
 def _validate_original_reruns(runs, catalog, artifacts):
@@ -845,4 +847,116 @@ def classify_before(catalog_raw, inspection_raw, artifacts, observation):
     return _classification(
         BEFORE_REPRODUCED,
         "original goldens matched and exactly the two known Rust regressions failed",
+    )
+
+
+# --- AFTER classification -------------------------------------------------
+#
+# The AFTER gate reruns the same tests-first gate on the repaired source.  A
+# successful AFTER proves that exactly the two known regressions now pass and
+# that the repaired Rust matches every frozen original golden; it releases no
+# mathematical, cache, performance, memory, or rank claim either.
+
+AFTER_OBSERVATION_SCHEMA = (
+    "atlas-weyl-context-core-regression-after-observation-v1"
+)
+AFTER_CLASSIFICATION_SCHEMA = (
+    "atlas-weyl-context-core-regression-after-classification-v1"
+)
+AFTER_REPRODUCED = "WEYL_CONTEXT_AFTER_REGRESSIONS_PASS"
+AFTER_STILL_FAILING = "WEYL_CONTEXT_AFTER_REGRESSIONS_STILL_FAIL"
+AFTER_PROVENANCE_FAILURE = "WEYL_CONTEXT_AFTER_PROVENANCE_FAILURE"
+AFTER_HARNESS_FAILURE = "WEYL_CONTEXT_AFTER_HARNESS_FAILURE"
+
+
+def _selector_state_after(command):
+    _validate_command(command, "weyl-context-regressions")
+    log = command["log"]
+    ready = _ready_records(log)
+    panics = re.findall(rb"(?m)^thread '([^']+)' (?:\(\d+\) )?panicked at", log)
+    panic_names = tuple(name.decode("utf-8") for name in panics)
+
+    if command["exit_status"] == 101:
+        if (
+            _test_result(log, "FAILED") != (0, 2, 0, 0, 630)
+            or set(panic_names) != set(SELECTOR_TESTS)
+            or len(panic_names) != 2
+            or ready != {COLD_CASE: 2, PREWARM_CASE: 4}
+        ):
+            raise HarnessError("AFTER selector failure shape changed")
+        return "still_failing"
+
+    if command["exit_status"] == 0:
+        if (
+            _test_result(log, "ok") != (2, 0, 0, 0, 630)
+            or panic_names
+            or ready != {COLD_CASE: 0, PREWARM_CASE: 8}
+        ):
+            raise HarnessError("AFTER selector pass shape changed")
+        return "expected_passes"
+    raise HarnessError("AFTER selector exit status changed")
+
+
+def _classification_after(status, reason):
+    reproduced = status == AFTER_REPRODUCED
+    still_failing = status == AFTER_STILL_FAILING
+    return {
+        "schema": AFTER_CLASSIFICATION_SCHEMA,
+        "status": status,
+        "evidence_maturity": "tests_first_after",
+        "reason": reason,
+        "original_goldens_matched": reproduced or still_failing,
+        "expected_regressions_passed": reproduced,
+        "regressions_still_failing": still_failing,
+        "retained_control_passed": reproduced or still_failing,
+        "inventory_complete": reproduced or still_failing,
+        "metrics_complete": reproduced or still_failing,
+        "acceptance_eligible": False,
+        "math_gate_released": False,
+        "cache_gate_released": False,
+        "performance_gate_released": False,
+        "rank_gate_released": False,
+    }
+
+
+def classify_after(catalog_raw, inspection_raw, artifacts, observation):
+    """Classify one complete tests-first AFTER observation.
+
+    Frozen-byte and original-rerun failures are provenance failures.  Command,
+    inventory, timing, control, and pass/failure-shape errors are harness
+    failures.  A still-failing selector is a genuine result: the repair
+    candidate did not fix the two regressions, so nothing is released.
+    """
+    try:
+        catalog = decode_catalog(catalog_raw)
+        decode_inspection(inspection_raw, catalog)
+        validate_artifacts(catalog, artifacts)
+        _validate_observation_shape(
+            observation, schema=AFTER_OBSERVATION_SCHEMA, label="AFTER"
+        )
+        _validate_original_reruns(
+            observation["original_reruns"], catalog, artifacts
+        )
+    except ProvenanceError as error:
+        return _classification_after(AFTER_PROVENANCE_FAILURE, str(error))
+    except HarnessError as error:
+        return _classification_after(AFTER_HARNESS_FAILURE, str(error))
+
+    try:
+        _validate_inventory(observation["inventory_command"])
+        _validate_control(observation["retained_control_command"])
+        selector = _selector_state_after(observation["selector_command"])
+    except HarnessError as error:
+        return _classification_after(AFTER_HARNESS_FAILURE, str(error))
+
+    if selector == "still_failing":
+        return _classification_after(
+            AFTER_STILL_FAILING,
+            "original goldens matched but the two regressions still fail, "
+            "so the repair candidate is not effective",
+        )
+    return _classification_after(
+        AFTER_REPRODUCED,
+        "original goldens matched and exactly the two known regressions "
+        "now pass",
     )

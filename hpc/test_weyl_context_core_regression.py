@@ -101,7 +101,9 @@ def command(name, code, log):
     }
 
 
-def observation(catalog, artifacts, *, selector_passes=False):
+def observation(
+    catalog, artifacts, *, selector_passes=False, schema=regression.OBSERVATION_SCHEMA
+):
     original = []
     for case in catalog["cases"]:
         original.append(
@@ -125,7 +127,7 @@ def observation(catalog, artifacts, *, selector_passes=False):
         "rank_gate_released": False,
     }
     return {
-        "schema": regression.OBSERVATION_SCHEMA,
+        "schema": schema,
         "provenance": regression.expected_provenance(),
         "original_reruns": original,
         "selector_command": command(
@@ -155,6 +157,14 @@ class WeylContextCoreRegressionTests(unittest.TestCase):
 
     def classify(self, observed):
         return regression.classify_before(
+            self.catalog_raw,
+            self.inspection_raw,
+            self.artifacts,
+            observed,
+        )
+
+    def classify_after(self, observed):
+        return regression.classify_after(
             self.catalog_raw,
             self.inspection_raw,
             self.artifacts,
@@ -482,6 +492,71 @@ class WeylContextCoreRegressionTests(unittest.TestCase):
                 result = self.classify(changed)
                 self.assertEqual(result["status"], regression.HARNESS_FAILURE)
                 self.assert_no_release(result)
+
+    def test_after_passing_selector_reports_regressions_passed(self):
+        result = self.classify_after(
+            observation(
+                self.catalog,
+                self.artifacts,
+                selector_passes=True,
+                schema=regression.AFTER_OBSERVATION_SCHEMA,
+            )
+        )
+        self.assertEqual(result["schema"], regression.AFTER_CLASSIFICATION_SCHEMA)
+        self.assertEqual(result["status"], regression.AFTER_REPRODUCED)
+        self.assertEqual(result["evidence_maturity"], "tests_first_after")
+        self.assertIs(result["expected_regressions_passed"], True)
+        self.assertIs(result["regressions_still_failing"], False)
+        self.assertTrue(result["original_goldens_matched"])
+        self.assertTrue(result["retained_control_passed"])
+        self.assertTrue(result["inventory_complete"])
+        self.assertTrue(result["metrics_complete"])
+        self.assert_no_release(result)
+
+    def test_after_still_failing_selector_reports_still_failing(self):
+        result = self.classify_after(
+            observation(
+                self.catalog,
+                self.artifacts,
+                schema=regression.AFTER_OBSERVATION_SCHEMA,
+            )
+        )
+        self.assertEqual(result["schema"], regression.AFTER_CLASSIFICATION_SCHEMA)
+        self.assertEqual(result["status"], regression.AFTER_STILL_FAILING)
+        self.assertEqual(result["evidence_maturity"], "tests_first_after")
+        self.assertIs(result["regressions_still_failing"], True)
+        self.assertIs(result["expected_regressions_passed"], False)
+        self.assertTrue(result["original_goldens_matched"])
+        self.assertTrue(result["retained_control_passed"])
+        self.assertTrue(result["inventory_complete"])
+        self.assertTrue(result["metrics_complete"])
+        self.assert_no_release(result)
+
+    def test_after_rejects_before_or_bogus_observation_schema(self):
+        for schema in (regression.OBSERVATION_SCHEMA, "bogus-schema"):
+            observed = observation(
+                self.catalog,
+                self.artifacts,
+                selector_passes=True,
+                schema=schema,
+            )
+            with self.subTest(schema=schema):
+                result = self.classify_after(observed)
+                self.assertEqual(
+                    result["status"], regression.AFTER_PROVENANCE_FAILURE
+                )
+                self.assertIs(result["expected_regressions_passed"], False)
+                self.assertIs(result["regressions_still_failing"], False)
+                self.assert_no_release(result)
+
+    def test_after_selector_rejects_unexpected_exit_status(self):
+        for code in (1, 2):
+            with self.subTest(exit_status=code):
+                record = command(
+                    "weyl-context-regressions", code, expected_failure_log()
+                )
+                with self.assertRaises(regression.HarnessError):
+                    regression._selector_state_after(record)
 
 
 if __name__ == "__main__":

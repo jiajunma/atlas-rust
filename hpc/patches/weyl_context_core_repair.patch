@@ -1,0 +1,672 @@
+--- a/crates/atlas-core/src/domain_builtins.rs
++++ b/crates/atlas-core/src/domain_builtins.rs
+@@ -143,16 +143,208 @@
+     }
+ }
+ 
+-/// A root datum handle with its construction provenance.
+-#[derive(Clone, Debug, Eq, PartialEq)]
++/// Publish only a complete successful initialization; a failure is
++/// retryable and never poisons later calls. The lock serializes only the
++/// first construction of this cell.
++#[derive(Debug)]
++struct WeylIdentityCell<T> {
++    value: OnceLock<T>,
++    initialization: Mutex<()>,
++}
++
++impl<T> Default for WeylIdentityCell<T> {
++    fn default() -> Self {
++        Self { value: OnceLock::new(), initialization: Mutex::new(()) }
++    }
++}
++
++impl<T> WeylIdentityCell<T> {
++    fn get_or_try_init(
++        &self,
++        build: impl FnOnce() -> Result<T, StructureError>,
++    ) -> Result<&T, StructureError> {
++        if let Some(value) = self.value.get() {
++            return Ok(value);
++        }
++        let _guard = self.initialization.lock().map_err(|_| {
++            StructureError::RepInvariantViolation {
++                invariant: "Weyl identity initialization mutex poisoned",
++            }
++        })?;
++        if let Some(value) = self.value.get() {
++            return Ok(value);
++        }
++        let value = build()?;
++        self.value.set(value).map_err(|_| StructureError::RepInvariantViolation {
++            invariant: "Weyl identity initialized twice",
++        })?;
++        self.value.get().ok_or(StructureError::RepInvariantViolation {
++            invariant: "Weyl identity missing after initialization",
++        })
++    }
++}
++
++/// This datum's enumerated root system: owner-local, shared by every
++/// clone, alias and `root_datum(WeylElt)` round trip of the same owner.
++#[derive(Debug)]
++struct DatumWeylKernel {
++    system: RootSystem,
++}
++
++/// The abstract Weyl group: the canonical-word interface shared exactly
++/// when the original shares its `WeylGroup` pointer.
++#[derive(Debug)]
++struct AbstractWeylGroup {
++    interface: WeylInterface,
++}
++
++/// The owner-level Weyl identity of a root datum: a success-only lazy
++/// coordinate kernel (this datum's enumerated root system) and the
++/// abstract Weyl-group identity (the canonical-word interface) that a
++/// cold-target `dual` link shares from its source
++/// (atlas-types.w:1021-1045,1140-1152). Neither cell points back to a
++/// handle, so there is no ownership cycle.
++#[derive(Debug, Default)]
++struct DatumWeylIdentity {
++    kernel: WeylIdentityCell<Arc<DatumWeylKernel>>,
++    group: WeylIdentityCell<Arc<AbstractWeylGroup>>,
++}
++
++impl DatumWeylIdentity {
++    /// This owner's enumerated root system, built once on first need.
++    fn weyl_kernel(
++        &self,
++        datum: &BasedRootDatum,
++        span: SourceSpan,
++    ) -> Result<Arc<DatumWeylKernel>, Diagnostic> {
++        self.kernel
++            .get_or_try_init(|| {
++                RootSystem::enumerate(datum, ROOT_BUDGET)
++                    .map(|system| Arc::new(DatumWeylKernel { system }))
++            })
++            .map(Arc::clone)
++            .map_err(|error| structure_diagnostic(error, span))
++    }
++
++    /// This owner's abstract Weyl group, built once on first need.
++    fn weyl_group(
++        &self,
++        datum: &BasedRootDatum,
++        span: SourceSpan,
++    ) -> Result<Arc<AbstractWeylGroup>, Diagnostic> {
++        self.group
++            .get_or_try_init(|| {
++                WeylInterface::new(datum.cartan_matrix())
++                    .map(|interface| Arc::new(AbstractWeylGroup { interface }))
++            })
++            .map(Arc::clone)
++            .map_err(|error| structure_diagnostic(error, span))
++    }
++
++    /// `root_datum_value::dual` sharing (atlas-types.w:1146-1152): install
++    /// the source's abstract group into the canonical target only while
++    /// the target is still cold; a prewarmed target is never overwritten
++    /// and stays incompatible with the source.
++    fn share_group_into_if_cold(
++        &self,
++        target: &Self,
++        source_datum: &BasedRootDatum,
++        span: SourceSpan,
++    ) -> Result<(), Diagnostic> {
++        if target.group.value.get().is_some() {
++            return Ok(());
++        }
++        let group = self.weyl_group(source_datum, span)?;
++        let _guard = target.group.initialization.lock().map_err(|_| {
++            structure_diagnostic(
++                StructureError::RepInvariantViolation {
++                    invariant: "Weyl identity initialization mutex poisoned",
++                },
++                span,
++            )
++        })?;
++        if target.group.value.get().is_none() {
++            // A racing share may have installed a group first; the stored
++            // value wins and this one is dropped unpublished.
++            let _ = target.group.value.set(group);
++        }
++        Ok(())
++    }
++}
++
++/// Canonical live identity for equal root-datum content: the original's
++/// weak `root_datum_value` interning by complete content
++/// (atlas-types.w:977-991). While an equal owner is alive, a new
++/// construction reuses its cells; once every strong reference is gone the
++/// slot expires and a later equal construction starts fresh. The retained
++/// key is only the lightweight datum content, as in the original's pool.
++static DATUM_WEYL_IDENTITIES: OnceLock<
++    Mutex<HashMap<(BasedRootDatum, bool), Weak<DatumWeylIdentity>>>,
++> = OnceLock::new();
++
++fn datum_weyl_identity(
++    datum: &BasedRootDatum,
++    prefers_coroots: bool,
++) -> Arc<DatumWeylIdentity> {
++    let key = (datum.clone(), prefers_coroots);
++    let mut registry = DATUM_WEYL_IDENTITIES
++        .get_or_init(|| Mutex::new(HashMap::new()))
++        .lock()
++        .expect("Weyl identity registry poisoned");
++    if let Some(existing) = registry.get(&key).and_then(Weak::upgrade) {
++        return existing;
++    }
++    // Sweep dead slots only when the table grows past a bound.
++    if registry.len() >= 4096 {
++        registry.retain(|_, weak| weak.strong_count() > 0);
++    }
++    let identity = Arc::new(DatumWeylIdentity::default());
++    registry.insert(key, Arc::downgrade(&identity));
++    identity
++}
++
++/// A root datum handle with its construction provenance. Structural
++/// equality and Debug deliberately ignore the Weyl identity cache.
++#[derive(Clone, Debug)]
+ pub struct RootDatumHandle {
+     datum: Arc<BasedRootDatum>,
+     lie_type: LieTypeValue,
+     isogeny: DatumIsogeny,
+     prefers_coroots: bool,
++    identity: Arc<DatumWeylIdentity>,
+ }
+ 
++impl PartialEq for RootDatumHandle {
++    fn eq(&self, other: &Self) -> bool {
++        self.datum == other.datum
++            && self.lie_type == other.lie_type
++            && self.isogeny == other.isogeny
++            && self.prefers_coroots == other.prefers_coroots
++    }
++}
++
++impl Eq for RootDatumHandle {}
++
+ impl RootDatumHandle {
++    /// The single construction entry point: every handle is interned so
++    /// equal live data share one Weyl identity, like the original's weak
++    /// `root_datum_value` table.
++    fn interned(
++        datum: BasedRootDatum,
++        lie_type: LieTypeValue,
++        isogeny: DatumIsogeny,
++        prefers_coroots: bool,
++    ) -> Self {
++        let identity = datum_weyl_identity(&datum, prefers_coroots);
++        Self {
++            datum: Arc::new(datum),
++            lie_type,
++            isogeny,
++            prefers_coroots,
++            identity,
++        }
++    }
++
+     pub(crate) fn lie_type(&self) -> &LieTypeValue {
+         &self.lie_type
+     }
+@@ -376,14 +568,16 @@
+     graph: Box<BlockGraph>,
+ }
+ 
+-/// The Weyl side of one root datum: the enumerated semisimple root system
+-/// the word-level kernel operates on, plus the internal generator
+-/// renumbering that fixes the upstream canonical-word choice.
++/// The Weyl side of one root datum: the owner-local coordinate kernel
++/// (its enumerated root system) plus the abstract-group identity carrying
++/// the internal generator renumbering that fixes the upstream
++/// canonical-word choice. Weyl compatibility is the abstract-group `Arc`
++/// identity, never the structural handle or the coordinate kernel.
+ #[derive(Debug)]
+ pub struct WeylEltContext {
+     handle: RootDatumHandle,
+-    system: RootSystem,
+-    interface: WeylInterface,
++    kernel: Arc<DatumWeylKernel>,
++    group: Arc<AbstractWeylGroup>,
+ }
+ 
+ /// A WeylElt value: the element with its construction context and its
+@@ -654,10 +848,11 @@
+                     && left.dual_rf.parent.inner_class == right.dual_rf.parent.inner_class
+                     && left.dual_rf.internal == right.dual_rf.internal
+             }
+-            // Group equality on the canonical root-permutation
+-            // representation: braid-equivalent words compare equal.
++            // Group equality is the abstract-group Arc identity; the
++            // right element is replayed in the left system so
++            // braid-equivalent words compare equal across coordinates.
+             (Self::WeylElement(left), Self::WeylElement(right)) => {
+-                left.context.handle == right.context.handle && left.element == right.element
++                weyl_elements_equal(left, right)
+             }
+             (Self::CartanClass(left, left_id), Self::CartanClass(right, right_id)) => {
+                 left.inner_class == right.inner_class && left_id == right_id
+@@ -1481,12 +1676,7 @@
+             .chain(std::iter::repeat_n(('T', 1), lattice_rank - semisimple))
+             .collect(),
+     };
+-    Ok(RootDatumHandle {
+-        datum: Arc::new(datum),
+-        lie_type: datum_type,
+-        isogeny,
+-        prefers_coroots,
+-    })
++    Ok(RootDatumHandle::interned(datum, datum_type, isogeny, prefers_coroots))
+ }
+ 
+ fn build_quotient_datum(
+@@ -1578,19 +1768,24 @@
+     )
+     .map_err(|error| runtime(span, error.to_string()))?;
+     let isogeny = classify_isogeny(&datum);
+-    Ok(RootDatumHandle {
+-        datum: Arc::new(datum),
+-        lie_type: source.lie_type.clone(),
++    Ok(RootDatumHandle::interned(
++        datum,
++        source.lie_type.clone(),
+         isogeny,
+-        prefers_coroots: source.prefers_coroots,
+-    })
++        source.prefers_coroots,
++    ))
+ }
+ 
+ /// The based root datum dual to `handle`'s: transposed Cartan matrix,
+ /// simple roots and simple coroots interchanged, and the coroot preference
+-/// switched — the upstream `RootSystem(rs,DualTag)` (`prefer_co(not
+-/// rs.prefer_co)`, rootdata.cpp:341) behind `root_datum_value::dual`
+-/// (atlas-types.w:1147-1155). The stored Lie type dualizes letter-wise
++/// switched — upstream `root_datum_value::dual` copies to `PreRootDatum`,
++/// calls `dualise`, interns it, and constructs a fresh `RootDatum` when needed
++/// (atlas-types.w:1146-1152; rootdata.cpp:1275-1282; prerootdata.h:101-102).
++/// The datum-specific coordinate kernel is never shared, but the abstract
++/// Weyl-group identity is installed into the canonical dual while that
++/// target is still cold, exactly like the original's `W_ptr` sharing; a
++/// prewarmed target keeps its own group. The stored Lie type
++/// dualizes letter-wise
+ /// (B<->C per factor, every other factor unchanged), which keeps torus
+ /// factors and factor order exactly as constructed; `Lie_type` of the dual
+ /// datum computes the same letters from the transposed Cartan matrix.
+@@ -1616,12 +1811,15 @@
+         dual_coroots,
+     )
+     .map_err(|error| runtime(span, error.to_string()))?;
+-    Ok(RootDatumHandle {
+-        isogeny: classify_isogeny(&dual),
+-        datum: Arc::new(dual),
+-        lie_type: dual_lie_type(&handle.lie_type),
+-        prefers_coroots: !handle.prefers_coroots,
+-    })
++    let isogeny = classify_isogeny(&dual);
++    let dual_handle = RootDatumHandle::interned(
++        dual,
++        dual_lie_type(&handle.lie_type),
++        isogeny,
++        !handle.prefers_coroots,
++    );
++    handle.identity.share_group_into_if_cold(&dual_handle.identity, &handle.datum, span)?;
++    Ok(dual_handle)
+ }
+ 
+ /// The Lie type of the dual datum: every B factor becomes the C factor of
+@@ -1701,12 +1899,8 @@
+         .map_err(|_| runtime(span, "Matrices of (co)roots give invalid Cartan matrix"))?;
+     let datum = BasedRootDatum::from_simple_data(lattice_rank, cartan, roots, coroots)
+         .map_err(|error| runtime(span, error.to_string()))?;
+-    Ok(RootDatumHandle {
+-        isogeny: classify_isogeny(&datum),
+-        datum: Arc::new(datum),
+-        lie_type,
+-        prefers_coroots,
+-    })
++    let isogeny = classify_isogeny(&datum);
++    Ok(RootDatumHandle::interned(datum, lie_type, isogeny, prefers_coroots))
+ }
+ 
+ fn infer_lie_type(
+@@ -2090,12 +2284,13 @@
+     // atlas-types.w:3152-3156): its coroot preference is switched
+     // (RootSystem DualTag, rootdata.cpp:341) and its Lie type is the
+     // letter-wise dual of the parent's.
+-    let handle = RootDatumHandle {
+-        isogeny: classify_isogeny(&datum),
+-        datum: Arc::new(datum),
+-        lie_type: dual_lie_type(&parent.root_datum.lie_type),
+-        prefers_coroots: !parent.root_datum.prefers_coroots,
+-    };
++    let isogeny = classify_isogeny(&datum);
++    let handle = RootDatumHandle::interned(
++        datum,
++        dual_lie_type(&parent.root_datum.lie_type),
++        isogeny,
++        !parent.root_datum.prefers_coroots,
++    );
+     build_inner_class_context(&handle, inner_class, span)
+ }
+ 
+@@ -6488,11 +6683,11 @@
+     let context = build_weyl_context(handle, span)?;
+     let mut result = Vec::with_capacity(words.len());
+     for word in words {
+-        let mut element = WeylElement::identity(&context.system)
++        let mut element = WeylElement::identity(&context.kernel.system)
+             .map_err(|error| runtime(span, error.to_string()))?;
+         for generator in word {
+             let (next, _) = element
+-                .right_multiply_simple(&context.system, generator)
++                .right_multiply_simple(&context.kernel.system, generator)
+                 .map_err(|error| runtime(span, error.to_string()))?;
+             element = next;
+         }
+@@ -9383,23 +9578,65 @@
+     }
+ }
+ 
+-/// The datum's Weyl side, built on demand: every finite root system fits
+-/// the shared root budget (E8 needs 240 of the 4096 slots).
++/// The datum's Weyl side: the owner's lazy coordinate kernel and abstract
++/// group, built once each. Every finite root system fits the shared root
++/// budget (E8 needs 240 of the 4096 slots).
+ fn build_weyl_context(
+     handle: &RootDatumHandle,
+     span: SourceSpan,
+ ) -> Result<Arc<WeylEltContext>, Diagnostic> {
+-    let system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
+-        .map_err(|error| runtime(span, error.to_string()))?;
+-    let interface = WeylInterface::new(handle.datum.cartan_matrix())
+-        .map_err(|error| runtime(span, error.to_string()))?;
++    let kernel = handle.identity.weyl_kernel(&handle.datum, span)?;
++    let group = handle.identity.weyl_group(&handle.datum, span)?;
+     Ok(Arc::new(WeylEltContext {
+         handle: handle.clone(),
+-        system,
+-        interface,
++        kernel,
++        group,
+     }))
+ }
+ 
++/// Weyl compatibility is the abstract-group `Arc` identity, never the
++/// structural handle or the coordinate kernel (the original compares the
++/// `WeylGroup` pointer, atlas-types.w:2459-2465).
++fn weyl_group_compatible(left: &WeylEltValue, right: &WeylEltValue) -> bool {
++    Arc::ptr_eq(&left.context.group, &right.context.group)
++}
++
++/// Binary Weyl relations and products compare the abstract-group identity
++/// before the no-value gate, like the original.
++pub(crate) fn require_weyl_compatible(
++    left: &WeylEltValue,
++    right: &WeylEltValue,
++    span: SourceSpan,
++) -> Result<(), Diagnostic> {
++    if !weyl_group_compatible(left, right) {
++        return Err(runtime(span, "Weyl group mismatch"));
++    }
++    Ok(())
++}
++
++/// Express the right element in the left owner's coordinates by replaying
++/// its canonical external-generator word; foreign root permutations are
++/// never compared or composed directly.
++fn weyl_replayed_in_left(
++    left: &WeylEltValue,
++    right: &WeylEltValue,
++) -> Result<WeylElement, StructureError> {
++    let system = &left.context.kernel.system;
++    let mut replayed = WeylElement::identity(system)?;
++    for &generator in &right.word {
++        replayed = replayed.right_multiply_simple(system, generator)?.0;
++    }
++    Ok(replayed)
++}
++
++/// Equality of compatible Weyl elements: the right element replayed in the
++/// left system must equal the left element.
++fn weyl_elements_equal(left: &WeylEltValue, right: &WeylEltValue) -> bool {
++    weyl_group_compatible(left, right)
++        && weyl_replayed_in_left(left, right)
++            .is_ok_and(|replayed| left.element == replayed)
++}
++
+ /// Freeze an element into a language value, computing its canonical
+ /// reduced word once (upstream `WeylGroup::word`, weyl.cpp:944-957).
+ fn weyl_elt_value(
+@@ -9408,7 +9645,7 @@
+     span: SourceSpan,
+ ) -> Result<Value, Diagnostic> {
+     let word = element
+-        .canonical_word(&context.system, &context.interface)
++        .canonical_word(&context.kernel.system, &context.group.interface)
+         .map_err(|error| runtime(span, error.to_string()))?;
+     Ok(Value::Domain(DomainValue::WeylElement(WeylEltValue {
+         context,
+@@ -12512,8 +12749,8 @@
+                     .compose(&reflection)
+                     .map_err(|error| runtime(span, error.to_string()))?;
+             }
+-            let numbering = RootNumbering::new(&context.system, context.handle.prefers_coroots());
+-            weyl_root_permutation(&context.system, &numbering, &action, span)
++            let numbering = RootNumbering::new(&context.kernel.system, context.handle.prefers_coroots());
++            weyl_root_permutation(&context.kernel.system, &numbering, &action, span)
+         }
+         "inner_class" => match arguments {
+             [Value::Domain(DomainValue::RealForm(context))] => Ok(Value::Domain(
+@@ -12829,11 +13066,11 @@
+             let word = from_fundamental_alcove(&root_system, &numbering, &walls)
+                 .map_err(|error| runtime(span, error))?;
+             let context = build_weyl_context(handle, span)?;
+-            let mut element = WeylElement::identity(&context.system)
++            let mut element = WeylElement::identity(&context.kernel.system)
+                 .map_err(|error| runtime(span, error.to_string()))?;
+             for generator in word {
+                 let (next, _) = element
+-                    .right_multiply_simple(&context.system, generator)
++                    .right_multiply_simple(&context.kernel.system, generator)
+                     .map_err(|error| runtime(span, error.to_string()))?;
+                 element = next;
+             }
+@@ -12906,11 +13143,11 @@
+                 let context = build_weyl_context(handle, span)?;
+                 let mut result = Vec::with_capacity(orbit.len());
+                 for word in orbit {
+-                    let mut element = WeylElement::identity(&context.system)
++                    let mut element = WeylElement::identity(&context.kernel.system)
+                         .map_err(|error| runtime(span, error.to_string()))?;
+                     for generator in word {
+                         let (next, _) = element
+-                            .right_multiply_simple(&context.system, generator)
++                            .right_multiply_simple(&context.kernel.system, generator)
+                             .map_err(|error| runtime(span, error.to_string()))?;
+                         element = next;
+                     }
+@@ -13170,11 +13407,11 @@
+                     if shifts.is_empty() {
+                         continue;
+                     }
+-                    let mut element = WeylElement::identity(&context.system)
++                    let mut element = WeylElement::identity(&context.kernel.system)
+                         .map_err(|error| runtime(span, error.to_string()))?;
+                     for &generator in word {
+                         let (next, _) = element
+-                            .right_multiply_simple(&context.system, generator)
++                            .right_multiply_simple(&context.kernel.system, generator)
+                             .map_err(|error| runtime(span, error.to_string()))?;
+                         element = next;
+                     }
+@@ -13291,12 +13528,9 @@
+             // simple (co)roots span (adjoint B2 stays adjoint), so classify
+             // from the datum rather than assuming simply connected.
+             let isogeny = classify_isogeny(&derived);
+-            let derived_value = Value::Domain(DomainValue::RootDatum(RootDatumHandle {
+-                datum: std::sync::Arc::new(derived),
+-                lie_type,
+-                isogeny,
+-                prefers_coroots: false,
+-            }));
++            let derived_value = Value::Domain(DomainValue::RootDatum(
++                RootDatumHandle::interned(derived, lie_type, isogeny, false),
++            ));
+             // `projector` is stored row-major; `Matrix::from_columns` wants
+             // column-major data, so flatten the transpose (prerootdata.cpp
+             // pushes the projector/injector int_Matrix with its own layout).
+@@ -13451,12 +13685,9 @@
+             // A full-rank subsystem need not span the ambient coroot lattice:
+             // original3839528's B2 integral A1 x A1 is NOT simply connected.
+             let isogeny = classify_isogeny(&datum);
+-            Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
+-                datum: std::sync::Arc::new(datum),
+-                lie_type,
+-                isogeny,
+-                prefers_coroots: false,
+-            })))
++            Ok(Value::Domain(DomainValue::RootDatum(
++                RootDatumHandle::interned(datum, lie_type, isogeny, false),
++            )))
+         }
+         "two_rho" | "two_rho_check" => {
+             arity(name, arguments, 1, span)?;
+@@ -17406,11 +17637,11 @@
+                 }
+             }
+             let context = build_weyl_context(handle, span)?;
+-            let mut element = WeylElement::identity(&context.system)
++            let mut element = WeylElement::identity(&context.kernel.system)
+                 .map_err(|error| runtime(span, error.to_string()))?;
+             for generator in word {
+                 let (next, _) = element
+-                    .right_multiply_simple(&context.system, generator)
++                    .right_multiply_simple(&context.kernel.system, generator)
+                     .map_err(|error| runtime(span, error.to_string()))?;
+                 element = next;
+             }
+@@ -17545,12 +17776,9 @@
+             let folded_lie_type =
+                 infer_lie_type(folded_datum.cartan_matrix(), datum.lattice_rank(), span)?;
+             let folded_isogeny = classify_isogeny(&folded_datum);
+-            Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
+-                datum: Arc::new(folded_datum),
+-                lie_type: folded_lie_type,
+-                isogeny: folded_isogeny,
+-                prefers_coroots: false,
+-            })))
++            Ok(Value::Domain(DomainValue::RootDatum(
++                RootDatumHandle::interned(folded_datum, folded_lie_type, folded_isogeny, false),
++            )))
+         }
+         "W_refl" => {
+             arity(name, arguments, 2, span)?;
+@@ -17559,13 +17787,13 @@
+                 .map_err(|_| runtime(span, "Integer value too big for conversion"))?;
+             let handle = as_root_datum(&arguments[0], span)?;
+             let context = build_weyl_context(handle, span)?;
+-            let numbering = RootNumbering::new(&context.system, handle.prefers_coroots());
++            let numbering = RootNumbering::new(&context.kernel.system, handle.prefers_coroots());
+             let alpha = internal_root_nbr(&index, &numbering, false, span)?;
+-            let word = reflection_word(&context.system, &numbering, alpha);
+-            let mut element = WeylElement::identity(&context.system)
++            let word = reflection_word(&context.kernel.system, &numbering, alpha);
++            let mut element = WeylElement::identity(&context.kernel.system)
+                 .map_err(|error| runtime(span, error.to_string()))?;
+             for generator in word {
+-                element = element.right_multiply_simple(&context.system, generator)
++                element = element.right_multiply_simple(&context.kernel.system, generator)
+                     .map_err(|error| runtime(span, error.to_string()))?.0;
+             }
+             weyl_elt_value(context, element, span)
+@@ -17575,11 +17803,11 @@
+             let handle = as_root_datum(&arguments[0], span)?;
+             let word = check_weyl_word(&arguments[1], handle.datum.semisimple_rank(), span)?;
+             let context = build_weyl_context(handle, span)?;
+-            let mut element = WeylElement::identity(&context.system)
++            let mut element = WeylElement::identity(&context.kernel.system)
+                 .map_err(|error| runtime(span, error.to_string()))?;
+             for generator in word {
+                 let (next, _) = element
+-                    .right_multiply_simple(&context.system, generator)
++                    .right_multiply_simple(&context.kernel.system, generator)
+                     .map_err(|error| runtime(span, error.to_string()))?;
+                 element = next;
+             }
+@@ -17954,12 +18182,12 @@
+             }
+             [Value::Domain(DomainValue::WeylElement(left)), Value::Domain(DomainValue::WeylElement(right))] =>
+             {
+-                if left.context.handle != right.context.handle {
+-                    return Err(runtime(span, "Weyl group mismatch"));
+-                }
++                require_weyl_compatible(left, right, span)?;
++                let replayed = weyl_replayed_in_left(left, right)
++                    .map_err(|error| structure_diagnostic(error, span))?;
+                 let product = left
+                     .element
+-                    .multiply(&left.context.system, &right.element)
++                    .multiply(&left.context.kernel.system, &replayed)
+                     .map_err(|error| runtime(span, error.to_string()))?;
+                 weyl_elt_value(Arc::clone(&left.context), product, span)
+             }
+@@ -18125,7 +18353,7 @@
+                 let generator = check_weyl_generator(generator, rank, span)?;
+                 let (product, _) = value
+                     .element
+-                    .right_multiply_simple(&value.context.system, generator)
++                    .right_multiply_simple(&value.context.kernel.system, generator)
+                     .map_err(|error| runtime(span, error.to_string()))?;
+                 weyl_elt_value(Arc::clone(&value.context), product, span)
+             }
+@@ -18134,7 +18362,7 @@
+                 let generator_index = check_weyl_generator(generator, rank, span)?;
+                 let (product, _) = value
+                     .element
+-                    .left_multiply_simple(&value.context.system, generator_index)
++                    .left_multiply_simple(&value.context.kernel.system, generator_index)
+                     .map_err(|error| runtime(span, error.to_string()))?;
+                 weyl_elt_value(Arc::clone(&value.context), product, span)
+             }
+@@ -18167,7 +18395,7 @@
+                 let mut product = value.element.clone();
+                 for generator in word {
+                     product = product
+-                        .right_multiply_simple(&value.context.system, generator)
++                        .right_multiply_simple(&value.context.kernel.system, generator)
+                         .map_err(|error| runtime(span, error.to_string()))?
+                         .0;
+                 }
+@@ -18179,7 +18407,7 @@
+                 let mut product = value.element.clone();
+                 for generator in word.into_iter().rev() {
+                     product = product
+-                        .left_multiply_simple(&value.context.system, generator)
++                        .left_multiply_simple(&value.context.kernel.system, generator)
+                         .map_err(|error| runtime(span, error.to_string()))?
+                         .0;
+                 }
+--- a/crates/atlas-core/src/typed.rs
++++ b/crates/atlas-core/src/typed.rs
+@@ -6194,6 +6194,18 @@
+                 let (Value::Domain(first), Value::Domain(second)) = (first, second) else {
+                     panic!("domain relation saw non-domain arguments")
+                 };
++                // Binary Weyl relations check the abstract-group identity
++                // before the no-value gate, like the original
++                // (atlas-types.w:2421-2432): incompatible owners reject even
++                // when the boolean result is discarded.
++                if let (
++                    domain_builtins::DomainValue::WeylElement(left),
++                    domain_builtins::DomainValue::WeylElement(right),
++                ) = (&first, &second)
++                {
++                    domain_builtins::require_weyl_compatible(left, right, span)
++                        .map_err(Control::Runtime)?;
++                }
+                 Ok(at_builtin_level(level, || {
+                     Value::Boolean(match relation {
+                         Relation::Equal => first == second,

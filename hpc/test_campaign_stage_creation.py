@@ -58,9 +58,9 @@ PRIOR_FAILURE_KEYS = {
     "schema", "temporary", "archive", "sha256", "bytes", "mode",
     "destination", "contract_sha256", "transaction",
 }
-SCRIPT_PATH = "hpc/math_weyl_context_core_capture.sbatch"
-PIN_PATH = "weyl-context-core-before-v4-pin.json"
-PREDECESSOR_STAGE_NAME = "weyl-context-core-before-v3"
+SCRIPT_PATH = "hpc/math_weyl_context_core_after.sbatch"
+PIN_PATH = "weyl-context-core-after-v1-pin.json"
+PREDECESSOR_STAGE_NAME = "weyl-context-core-before-v4"
 PREDECESSOR_LINEAGE = (
     ("weyl-parent-seal-v1", "3872554"),
     ("ladder-boundary-before-v2", "3872594"),
@@ -79,7 +79,8 @@ PREDECESSOR_LINEAGE = (
     ("weyl-context-core-capture-v8", "3884807"),
     ("weyl-context-core-before-v1", "3884862"),
     ("weyl-context-core-before-v2", "3884880"),
-    (PREDECESSOR_STAGE_NAME, "3884903"),
+    ("weyl-context-core-before-v3", "3884903"),
+    (PREDECESSOR_STAGE_NAME, "3886748"),
 )
 
 
@@ -223,6 +224,12 @@ class CampaignStageCreation(unittest.TestCase):
                 b'{"before_v3":"sealed"}\n',
             ".atlas-stage-creation-weyl-context-core-before-v3-published.json":
                 b'{"before_v3":"published"}\n',
+            ".atlas-stage-creation-weyl-context-core-before-v4-prepared.json":
+                b'{"before_v4":"prepared"}\n',
+            ".atlas-stage-creation-weyl-context-core-before-v4-sealed.json":
+                b'{"before_v4":"sealed"}\n',
+            ".atlas-stage-creation-weyl-context-core-before-v4-published.json":
+                b'{"before_v4":"published"}\n',
             ".atlas-stage-creation-weyl-context-core-before-v1-prepared.json":
                 b'{"before_v1":"prepared"}\n',
             ".atlas-stage-creation-weyl-context-core-before-v1-sealed.json":
@@ -241,13 +248,13 @@ class CampaignStageCreation(unittest.TestCase):
         stage_payloads = {
             ".atlas-stage-creation-transaction.json": b'{"old":"marker"}\n',
             ".atlas-stage-creation.json": b'{"old":"receipt"}\n',
-            "weyl-context-core-before-v3-pin.json": b'{"old":"pin"}\n',
+            "weyl-context-core-before-v4-pin.json": b'{"old":"pin"}\n',
             "submission-intent.json": b'{"old":"intent"}\n',
             "submission.json": b'{"old":"submission"}\n',
-            "results/3884903/report.json": b'{"status":"BEFORE_HARNESS_FAILURE"}\n',
+            "results/3886748/report.json": b'{"status":"BEFORE_HARNESS_FAILURE"}\n',
         }
         tree_only_payloads = {
-            "results/3884903/tree-only.log": b"bound only by the tree seal\n",
+            "results/3886748/tree-only.log": b"bound only by the tree seal\n",
         }
         archive_name = next(
             name for name in campaign_payloads
@@ -280,7 +287,7 @@ class CampaignStageCreation(unittest.TestCase):
             } for stage_name, job in PREDECESSOR_LINEAGE]
             record = history[-1]
             record["pin_sha256"] = self.bound_file(
-                predecessor / "weyl-context-core-before-v3-pin.json"
+                predecessor / "weyl-context-core-before-v4-pin.json"
             )["sha256"]
             record["stage_creation_sha256"] = self.bound_file(
                 predecessor / ".atlas-stage-creation.json"
@@ -290,16 +297,16 @@ class CampaignStageCreation(unittest.TestCase):
         else:
             history = json.loads(
                 (campaign / ".atlas-progressive-submit.json").read_text())
-            self.assertIn(len(history), (18, 19))
+            self.assertIn(len(history), (19, 20))
             self.assertEqual(
                 [(Path(row["stage"]).name, row["job"])
-                 for row in history[:18]],
+                 for row in history[:19]],
                 list(PREDECESSOR_LINEAGE),
             )
-            if len(history) == 19:
+            if len(history) == 20:
                 self.assertEqual(
                     Path(history[-1]["stage"]).name, ACTIVE_STAGE_NAME)
-            record = history[17]
+            record = history[18]
         value = predecessor.stat()
         stage_descriptor = progressive_submit._open_directory(predecessor)
         try:
@@ -357,7 +364,7 @@ class CampaignStageCreation(unittest.TestCase):
             "script": {"path": SCRIPT_PATH, "sha256": inputs[SCRIPT_PATH]},
             "pin": {
                 "path": PIN_PATH,
-                "schema": "atlas-weyl-context-core-before-pin-v4",
+                "schema": "atlas-weyl-context-core-after-pin-v1",
                 "stage_creation_key": "stage_creation",
             },
             "lifecycle": {
@@ -656,12 +663,12 @@ class CampaignStageCreation(unittest.TestCase):
                     campaign, payload, contract)
                 receipt = validate_stage_creation(
                     stage, receipt_sha, contract)
-            self.assertEqual(stage.name, "weyl-context-core-before-v4")
+            self.assertEqual(stage.name, "weyl-context-core-after-v1")
             self.assertEqual(receipt["contract"]["predecessor_state"],
                              descriptor)
             self.assertEqual(
                 receipt["contract"]["pin"]["schema"],
-                "atlas-weyl-context-core-before-pin-v4",
+                "atlas-weyl-context-core-after-pin-v1",
             )
             required_history = {
                 ".atlas-stage-creation-prepared.json",
@@ -726,6 +733,12 @@ class CampaignStageCreation(unittest.TestCase):
                 ".atlas-stage-creation-weyl-context-core-before-v2-"
                 "sealed.json",
                 ".atlas-stage-creation-weyl-context-core-before-v2-"
+                "published.json",
+                ".atlas-stage-creation-weyl-context-core-before-v4-"
+                "prepared.json",
+                ".atlas-stage-creation-weyl-context-core-before-v4-"
+                "sealed.json",
+                ".atlas-stage-creation-weyl-context-core-before-v4-"
                 "published.json",
             }
             failure_history = {
@@ -810,7 +823,7 @@ class CampaignStageCreation(unittest.TestCase):
                     )
                     os.link(archive, campaign / "unexpected-archive-link")
                 elif case == "tree-only-file":
-                    target = predecessor / "results/3884903/tree-only.log"
+                    target = predecessor / "results/3886748/tree-only.log"
                     target.chmod(0o644)
                     target.write_bytes(b"changed but not individually bound\n")
                     target.chmod(0o444)
@@ -820,10 +833,10 @@ class CampaignStageCreation(unittest.TestCase):
                     (predecessor / "unexpected-directory").mkdir()
                 elif case == "stage-symlink":
                     (predecessor / "unexpected-link").symlink_to(
-                        "results/3884903/tree-only.log")
+                        "results/3886748/tree-only.log")
                 else:
                     os.link(
-                        predecessor / "results/3884903/tree-only.log",
+                        predecessor / "results/3886748/tree-only.log",
                         predecessor / "unexpected-hardlink",
                     )
                 with self.patch_home(campaign), self.assertRaises(ValueError):
@@ -1881,7 +1894,7 @@ class CampaignStageCreation(unittest.TestCase):
         shutil.copyfile(script_source, script_target)
         script_target.chmod(0o444)
         pin = {
-            "schema": "atlas-weyl-context-core-before-pin-v4",
+            "schema": "atlas-weyl-context-core-after-pin-v1",
             "stage_creation": {
                 "receipt_sha256": receipt_sha256,
                 "contract_sha256": receipt["contract_sha256"],
