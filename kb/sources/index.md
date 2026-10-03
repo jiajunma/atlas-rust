@@ -103,6 +103,14 @@ Kimi probe 草案在超时处截断，已采纳部分经核对、其余由维护
 草案由同一 Kimi probe 路由起草（exit 0，112.6s，420 秒期限），维护者对照
 源码逐条核对改写。该包是结构性阅读，不声称块存储的数学验收。
 
+[Weyl 群层：矩阵作用与词级元素的双层结构](weyl-layer.md)记录 `weyl.rs` 与
+`weyl_element.rs`：WeylAction/WeylElement 双层分工与互查桥、descent 读取
+方向（左读逆向量、右读正向置换）、`canonical_word` 的不变量检查、
+`WeylInterface` 的内部生成子重编号（A/E/F/G 直取、B/C/D 反转）与
+`ParabolicPieces` 的 piece 索引。对应[阅读快照](snapshots/2026-10-03-weyl-layer.json)；
+草案由同一 Kimi probe 路由起草（exit 0，151.4s，420 秒期限），维护者对照
+源码逐条核对改写。该包是结构性阅读，不声称 Weyl 层的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only

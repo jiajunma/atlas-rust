@@ -1,0 +1,29 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "34d28e1a",
+ "working_tree": true,
+ "scope": "First reading of the Weyl layer modules for the new weyl-layer source packet: WeylAction matrix-level representation, WeylElement word-level representation, the mutual-checkability bridge, WeylInterface renumbering and ParabolicPieces.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/weyl.rs",
+   "sha256": "222f424901a52df07dd24f8a43e0f2cb24c347f1e7d5dc7c318f617f0aba5901",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  },
+  {
+   "path": "crates/atlas-real-group/src/weyl_element.rs",
+   "sha256": "b2e5b9712c5a457132aa2acc75652d998b2d821384ea2b6afb5c63791c53aa96",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "3b8ca71a5c914c0908c2371c47b726a5ace04826730a000b7c7640c4664a2b2e",
+  "evidence_dir": "results/kimi-kb-weyl-packet-20261003",
+  "stdout_jsonl_sha256": "a7d89bacebe1b231a80d8d79d77240618953666919393aa0ba66007eb8c71c24",
+  "result": "completed, exit 0, 151.4s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "151.4s for this draft"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; Weyl-layer correctness keeps its own evidence chain (capacity gates, the Weyl owner semantics line) and is not restated here."
+}
