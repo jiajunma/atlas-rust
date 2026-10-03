@@ -127,3 +127,11 @@ sources/index.md 已同步；未运行编译、测试或 compiler 生成。
 probe 路由起草；300 秒期限内正常完成（exit 0，90.7s），证实第一次 180 秒
 超时只是期限过短。维护者对照源码逐条核对改写。索引与 sources/index.md 已
 同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增部分公共块来源包（Kimi probe 协助）
+
+新增 `sources/partial-common-block.md` 与快照 `2026-10-03-partial-common-block.json`：
+`StandardReprMod`、`IntegralSubsystem`、`CommonContext` 的 srm 层面操作、
+`bruhat_below`、`PartialBlock` 构造/访问器与 `dual()` 限制。同一 Kimi probe
+路由起草（exit 0，232.8s）；维护者对照源码逐条核对改写。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。

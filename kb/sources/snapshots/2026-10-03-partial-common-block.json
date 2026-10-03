@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "f0880ac7",
+ "working_tree": true,
+ "scope": "First reading of the partial common block module for the new partial-common-block source packet: module documentation, StandardReprMod, CommonContext srm-level operations, bruhat_below, PartialBlock construction and accessors, and the dual() data transform with its documented partial-block limitation.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/partial_block.rs",
+   "sha256": "cfa526973c1fef46336456174cd40c86f373dd83845d9c899499d109cd72052e",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "d029744a8285db5ac5a8f2ab976906a316431db3822ecb97e4a18deba94b98c7",
+  "evidence_dir": "results/kimi-kb-pblock-packet-20261003",
+  "stdout_jsonl_sha256": "435b4122d82491507154ae542f156ef336cc0d0694fa92f35492014c0f41c1dc",
+  "result": "completed, exit 0, 232.8s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "300s deadline is adequate for this profile (232.8s used)"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; partial-block correctness keeps its own evidence chain (PSp4R/GL2/G2 repair gates) and is not restated here."
+}

@@ -11,6 +11,7 @@
 | [Weyl 对象身份、dual 历史与安全共享边界](sources/weyl-context-identity-and-sharing.md) | 原版 A1 差异与 BEFORE-v4 tests-first 证据已保留；AFTER-v1 gate 已冻结待 HPC 提交；生成页 `needs_refresh`，尚无修复或缓存验收 |
 | [KGB 图的结构与构造](sources/kgb-graph-structure.md) | 每个弱实形式一张图的数据布局、门控、分窗两相 BFS 与上游一致的编号；结构性阅读，不作数学验收 |
 | [KLV 多项式的存储与逐列计算](sources/kl-polynomial-table.md) | `KlPol` 布局与最小运算集、去重池、按列存储与两条递归填充路径；结构性阅读，不作数学验收 |
+| [部分公共块：Bruhat 区间上的块构造](sources/partial-common-block.md) | `StandardReprMod`、`CommonContext` 的 srm 层面操作、`bruhat_below`、`PartialBlock` 构造/访问器与 `dual()` 限制；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 

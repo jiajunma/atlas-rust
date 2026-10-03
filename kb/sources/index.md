@@ -44,6 +44,13 @@ build 门控、分窗两相 BFS（Rayon 纯计算 + 顺序 intern）、上游一
 草案由同一 Kimi probe 路由起草（300 秒期限，exit 0，90.7s），维护者对照源码
 逐条核对改写。该包是结构性阅读，不声称 KLV 计算的数学验收。
 
+[部分公共块：Bruhat 区间上的块构造](partial-common-block.md)记录
+`partial_block.rs` 的五个构件：`StandardReprMod`、`IntegralSubsystem`、
+`CommonContext` 的五个 srm 层面操作、`bruhat_below`、`PartialBlock` 的构造与
+访问器语义，以及 `dual()` 的纯数据变换与部分块限制。对应[阅读快照](snapshots/2026-10-03-partial-common-block.json)；
+草案由同一 Kimi probe 路由起草（exit 0，232.8s），维护者对照源码逐条核对
+改写。该包是结构性阅读，不声称 partial block 的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
