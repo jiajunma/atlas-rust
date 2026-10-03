@@ -1,0 +1,43 @@
+{
+ "claims_not_granted": [
+  "mathematical acceptance",
+  "cache acceptance",
+  "performance",
+  "rank release",
+  "AFTER pass"
+ ],
+ "classification": "HARNESS_DRIVER_EXPECTATION_MISMATCH_AFTER_SOURCE_RECONSTRUCTION_BEFORE_BUILD_OR_ATLAS_EXECUTION",
+ "commands_recorded": 9,
+ "elapsed_seconds": 294,
+ "error": "ValueError: tests-first source manifest digest changed",
+ "evidence_of_correct_reconstruction": {
+  "computed_manifest_sha256": "3f8cf4753f29d33df8273086254a4f09170ada46f05e9c13acfdac2f5ab85c33",
+  "expected_after_manifest_sha256": "3f8cf4753f29d33df8273086254a4f09170ada46f05e9c13acfdac2f5ab85c33",
+  "match": true,
+  "note": "the repair patch applied on HPC reconstructs the expected repaired tree byte-exactly; only the comparison constant is wrong"
+ },
+ "job": "3890328",
+ "mathematical_regression_reason": "harness-only failure: no Atlas invocation ran and the source tree reconstructed byte-exactly; no mathematical statement is implicated",
+ "mathematical_regression_required": false,
+ "node": "cu115",
+ "not_reached": [
+  "release-build",
+  "atlas-core-test-inventory",
+  "weyl-context-regressions",
+  "root-ladder-control",
+  "atlas invocations",
+  "captures"
+ ],
+ "observed_at_utc": "2026-10-03T13:50:00Z",
+ "pin_sha256": "396f30f2dae9e52637fbfeb0c8b5510286090b0801da4787742c0f2d2b9d7bb4",
+ "remediation": "changed-input successor weyl-context-core-after-v2: fix the driver's source-reconstruction expectation and validate_report to the AFTER manifest digest, fix the checker's synthetic report likewise, add a regression test for the wrong-constant failure, and resubmit exactly once.  The failed stage and job 3890328 stay immutable.",
+ "report_bytes": 259179,
+ "report_sha256": "22b0b152ba964a6efae0953b1e36bf67dbf97565ad857d13a4db0fb9e6599a61",
+ "report_status": "WEYL_CONTEXT_AFTER_HARNESS_FAILURE",
+ "root_cause": "The driver's source-reconstruction check compares the FINAL repaired manifest digest (computed after the repair patch is applied) against REGRESSION_SOURCE['source_manifest_sha256'] (the tests-only manifest). The repaired tree reconstructed byte-exactly: the computed digest 3f8cf4753f29d33df8273086254a4f09170ada46f05e9c13acfdac2f5ab85c33 equals AFTER_SOURCE_MANIFEST_SHA256 exactly.  The check should compare against AFTER_SOURCE_MANIFEST_SHA256; validate_report has the same wrong constant, and the checker's synthetic report pins the regression manifest likewise.",
+ "schema": "atlas-weyl-context-core-after-failure-v1",
+ "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v1",
+ "stage_creation_sha256": "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad",
+ "state": "FAILED",
+ "submission_record": "tests/reference/hpc/math_weyl_context_core_after_v1_submission_2026_10_03.json"
+}
