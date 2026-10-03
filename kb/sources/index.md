@@ -58,6 +58,15 @@ dual 映射、平铺布局、访问器的 `UndefBlock`/`None` 语义、`dual()` 
 草案由同一 Kimi probe 路由起草（exit 0，83.1s），维护者对照源码逐条核对改写。
 该包是结构性阅读，不声称块枚举的数学验收。
 
+[形变驱动：twisted 与 block 形变](deformation-drivers.md)记录 `deform.rs`：
+四个移植驱动入口、冻结的 domain/deform 简化契约、`SplitInteger` 算术、
+`IntegralBlockScope` 三变体（含 A1 陷阱）、奇异集与父块抽象、两个 twisted
+KL 和的长度函数差异、`block_deformation_to_height` 与递归
+`twisted_deformation`（去 memoisation、alcove_center 收缩、可取消变体）。
+对应[阅读快照](snapshots/2026-10-03-deformation-drivers.json)；草案由同一
+Kimi probe 路由起草（exit 0，168.5s），维护者对照源码逐条核对改写。该包是
+结构性阅读，不声称形变计算的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

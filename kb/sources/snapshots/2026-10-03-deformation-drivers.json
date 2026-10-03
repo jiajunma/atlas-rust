@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "505960e1",
+ "working_tree": true,
+ "scope": "First reading of the deformation drivers module for the new deformation-drivers source packet: module simplification contract, SplitInteger arithmetic, IntegralBlockScope, singular sets, KlSumParent/DeformParent, twisted KL sums, block deformation to height and recursive twisted deformation.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/deform.rs",
+   "sha256": "3e5dc2c99fcde6f21b4a0dc341243dfe579250326d51c5ab553a0a1f51d91713",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "89acf20d221e8639401861d95e8eaa1e113224726301216e634059f7c36af241",
+  "evidence_dir": "results/kimi-kb-deform-packet-20261003",
+  "stdout_jsonl_sha256": "2a6175841b6312c9d464e877454ec107ac8993c84c45dea5f866274aab1ab0a7",
+  "result": "completed, exit 0, 168.5s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "168.5s for this draft; the 300s deadline remains adequate"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; deformation correctness keeps its own evidence chain (ordinary-deform/G2/PSp4R gates) and is not restated here."
+}

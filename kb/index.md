@@ -13,6 +13,7 @@
 | [KLV 多项式的存储与逐列计算](sources/kl-polynomial-table.md) | `KlPol` 布局与最小运算集、去重池、按列存储与两条递归填充路径；结构性阅读，不作数学验收 |
 | [部分公共块：Bruhat 区间上的块构造](sources/partial-common-block.md) | `StandardReprMod`、`CommonContext` 的 srm 层面操作、`bruhat_below`、`PartialBlock` 构造/访问器与 `dual()` 限制；结构性阅读，不作数学验收 |
 | [完整块图：实形式与对偶实形式的纤维积](sources/block-graph.md) | 纤维积构造、`BlockDescent` 八值序、布局与访问器、`dual()` 与 Bruhat Hasse 图；结构性阅读，不作数学验收 |
+| [形变驱动：twisted 与 block 形变](sources/deformation-drivers.md) | 移植简化契约、`SplitInteger`、积分子系统分类、父块抽象、两个 twisted KL 和与递归形变；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 

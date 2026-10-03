@@ -143,3 +143,11 @@ sources/index.md 已同步；未运行编译、测试或 compiler 生成。
 与 Bruhat Hasse 图。同一 Kimi probe 路由起草（exit 0，83.1s）；维护者对照
 源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、测试或
 compiler 生成。
+
+## 2026年10月3日 新增形变驱动来源包（Kimi probe 协助）
+
+新增 `sources/deformation-drivers.md` 与快照 `2026-10-03-deformation-drivers.json`：
+移植简化契约、`SplitInteger`、积分子系统分类、父块抽象、两个 twisted KL 和、
+`block_deformation_to_height` 与递归 `twisted_deformation`。同一 Kimi probe
+路由起草（exit 0，168.5s）；维护者对照源码逐条核对改写。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。
