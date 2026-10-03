@@ -135,3 +135,11 @@ probe 路由起草；300 秒期限内正常完成（exit 0，90.7s），证实�
 `bruhat_below`、`PartialBlock` 构造/访问器与 `dual()` 限制。同一 Kimi probe
 路由起草（exit 0，232.8s）；维护者对照源码逐条核对改写。索引与
 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增完整块图来源包（Kimi probe 协助）
+
+新增 `sources/block-graph.md` 与快照 `2026-10-03-block-graph.json`：纤维积
+构造、`dual_involution` 配对、`BlockDescent` 八值序、布局与访问器、`dual()`
+与 Bruhat Hasse 图。同一 Kimi probe 路由起草（exit 0，83.1s）；维护者对照
+源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、测试或
+compiler 生成。

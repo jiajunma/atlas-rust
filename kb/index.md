@@ -12,6 +12,7 @@
 | [KGB 图的结构与构造](sources/kgb-graph-structure.md) | 每个弱实形式一张图的数据布局、门控、分窗两相 BFS 与上游一致的编号；结构性阅读，不作数学验收 |
 | [KLV 多项式的存储与逐列计算](sources/kl-polynomial-table.md) | `KlPol` 布局与最小运算集、去重池、按列存储与两条递归填充路径；结构性阅读，不作数学验收 |
 | [部分公共块：Bruhat 区间上的块构造](sources/partial-common-block.md) | `StandardReprMod`、`CommonContext` 的 srm 层面操作、`bruhat_below`、`PartialBlock` 构造/访问器与 `dual()` 限制；结构性阅读，不作数学验收 |
+| [完整块图：实形式与对偶实形式的纤维积](sources/block-graph.md) | 纤维积构造、`BlockDescent` 八值序、布局与访问器、`dual()` 与 Bruhat Hasse 图；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 

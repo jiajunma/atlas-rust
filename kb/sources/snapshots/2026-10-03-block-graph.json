@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "dace22a6",
+ "working_tree": true,
+ "scope": "First reading of the full block graph module for the new block-graph source packet: fibred-product construction, dual_involution pairing, BlockDescent order/dual/language codes, BlockGraph layout, accessors and the Bruhat Hasse diagram.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/block.rs",
+   "sha256": "3d3a88fa0bfc3ab7cf45b055883f3a7e9c37e5c7928e39bbc981b723883c9d8e",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "59bae0a0ed303907252d31faf33cf78c507b17b599316ad0d5f4a0e3a0076150",
+  "evidence_dir": "results/kimi-kb-block-packet-20261003",
+  "stdout_jsonl_sha256": "66b676582bb42bd7d03dfdfc94004c756dc7f26d7a86fd781da73fa9f56051a4",
+  "result": "completed, exit 0, 83.1s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "83s for this draft; the 300s deadline remains adequate"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; block correctness keeps its own evidence chain (rank6 inventories, PSp4R/GL2/G2 gates) and is not restated here."
+}

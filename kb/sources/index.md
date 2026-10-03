@@ -51,6 +51,13 @@ build 门控、分窗两相 BFS（Rayon 纯计算 + 顺序 intern）、上游一
 草案由同一 Kimi probe 路由起草（exit 0，232.8s），维护者对照源码逐条核对
 改写。该包是结构性阅读，不声称 partial block 的数学验收。
 
+[完整块图：实形式与对偶实形式的纤维积](block-graph.md)记录 `block.rs`：
+两个 KGB 图经 `dual_involution` 配对的纤维积构造、`BlockDescent` 八值序与
+dual 映射、平铺布局、访问器的 `UndefBlock`/`None` 语义、`dual()` 纯数据变换
+与 Bruhat Hasse 图。对应[阅读快照](snapshots/2026-10-03-block-graph.json)；
+草案由同一 Kimi probe 路由起草（exit 0，83.1s），维护者对照源码逐条核对改写。
+该包是结构性阅读，不声称块枚举的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
