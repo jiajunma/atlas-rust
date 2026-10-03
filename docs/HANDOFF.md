@@ -12,6 +12,16 @@ ordinary Wi-Fi gateway.  The operator must reconnect SecureLink; the exact
 launch procedure below is then immediately runnable.  No remote stage,
 intent, ledger record or job was created; nothing is in an uncertain state.
 
+Same-day documentation maintenance (all pushed): `d7bcb04d` advances the
+Weyl KB source packet to this freeze state; `bd3b2352` completes the
+initial `kb/` tree import (the vault was untracked transition-snapshot
+content; `node_modules` and `.llmwiki` runtime stay ignored);
+`5126d83d` refreshes the root-ladder packet and both curated pages to the
+accepted AFTER-v3 state, citing acceptance-index entry
+`0003-a1-torus-root-coroot-ladder-boundary` with its limitations.  The
+compiler-generated pages remain `needs_refresh`; the provider
+authorization blocker stands, so no `./kb/llmwiki compile` run happened.
+
 Final frozen hashes: after stager `stage_weyl_context_core_after.py`
 SHA-256 `8cb4b86d9986e66c1722c87d5704ab92ee387ce426ff0f3c194b60c5320904d6`,
 after driver `math_weyl_context_core_after.py` SHA-256
