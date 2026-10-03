@@ -1,0 +1,77 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "137b1aef",
+ "working_tree": true,
+ "scope": "Weyl context-core AFTER-v1 gate freeze: committed harness, frozen identities, offline repaired-manifest verification and the HPC submission blocker.  Historical BEFORE/capture evidence remains in the retained prior snapshots.",
+ "source_prediction_snapshot": "2026-10-01-weyl-context-source-prediction.json",
+ "regression_snapshot": "2026-10-02-weyl-core-regressions.json",
+ "commits": [
+  "342a0511",
+  "f838de69",
+  "137b1aef"
+ ],
+ "files": [
+  {
+   "path": "hpc/stage_weyl_context_core_after.py",
+   "sha256": "8cb4b86d9986e66c1722c87d5704ab92ee387ce426ff0f3c194b60c5320904d6",
+   "committed": "342a0511"
+  },
+  {
+   "path": "hpc/math_weyl_context_core_after.py",
+   "sha256": "3d7d98903a838b3a3343482d165af4b7e9b3989cc1f30a5c9ccc49950700913b",
+   "committed": "342a0511"
+  },
+  {
+   "path": "hpc/test_math_weyl_context_core_after.py",
+   "sha256": "3604739683ca0dfa7c3bf451a3314519665a3371fcb285a223b00bbb113d8818",
+   "committed": "342a0511"
+  },
+  {
+   "path": "hpc/test_stager_allowlist.py",
+   "sha256": "99a199934d7c47717507bf846560416a60be2e6a6acba01dcd9c3d81560d3dc7",
+   "committed": "342a0511"
+  },
+  {
+   "path": "hpc/math_weyl_context_core_after.sbatch",
+   "sha256": "b2f2ec5fb9b76fd6f9ee42052973d77f9d8e1dbb7f0446278ae7d359cb159082",
+   "committed": "342a0511"
+  },
+  {
+   "path": "hpc/patches/weyl_context_core_repair.patch",
+   "sha256": "246cd2d0dd48ee68387ed8f72a10a156e43b7d8c8c6dcb693474832450111c5c",
+   "committed": "342a0511",
+   "note": "repair travels as patch data only; repaired production source is uncommitted and unverified"
+  },
+  {
+   "path": "tests/reference/hpc/math_weyl_context_core_before_v4_2026_10_02.json",
+   "sha256": "bf69999feb945b67f586d92d378cc20d238cb518ef84ad6ce11b54e3e74200d3",
+   "note": "frozen BEFORE-v4 independent-inspection evidence"
+  },
+  {
+   "path": "docs/slices/weyl_context_core_after_v1_preparation_2026_10_03.md",
+   "sha256": "dd8e915282a1604042024fa492a984a77a7a3446073c23d20970e9b8d31a34e8",
+   "committed": "137b1aef"
+  },
+  {
+   "path": "crates/atlas-core/src/session.rs",
+   "sha256": "969cdb27ccae61ca4fe3e36219801037d475517bee3614fead553024818307e7",
+   "note": "dirty working tree; regression tests-only state"
+  },
+  {
+   "path": "crates/atlas-core/src/domain_builtins.rs",
+   "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+   "note": "dirty working tree; unverified repaired bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/typed.rs",
+   "sha256": "614975c5e2d49357b4d9ffff80145a6c69db2fd5aeef23f033faf03f594acc95",
+   "note": "dirty working tree; unverified repaired bytes"
+  }
+ ],
+ "derived_manifests": {
+  "regression_source_manifest_sha256": "55f807cadb712377cbf6c0c79250b1d5e739e9757290a24209a086f89632850f",
+  "repaired_source_manifest_sha256": "3f8cf4753f29d33df8273086254a4f09170ada46f05e9c13acfdac2f5ab85c33"
+ },
+ "limits": "Hashes identify inspected bytes only.  The AFTER gate has not run: no HPC job, no mathematical, cache, performance, memory or rank acceptance.  The SecureLink tunnel was down at snapshot time; no remote submission state exists."
+}
