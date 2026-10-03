@@ -35,6 +35,15 @@ build 门控、分窗两相 BFS（Rayon 纯计算 + 顺序 intern）、上游一
 起草、维护者对照源码逐条核对改写，调用记录见快照的 `kimi_assist`。该包是结构
 性阅读，不声称 KGB 枚举的数学验收。
 
+[KLV 多项式的存储与逐列计算](kl-polynomial-table.md)记录 `kl_polynomial.rs`
+的 `KlPol` 布局（低次在前、无尾零、零为空向量）、恰好够递归与 μ-修正的运算
+集、`KlHashTable` 去重池（`zero`/`one` 固定索引 0/1），以及 `kl_table.rs`
+按列存储（primitive-index 位置索引的池索引列、非零 μ-对列、`holes`）与
+`fill` 的两条递归分派（`recursion_column` 与 `new_recursion_column` 的
+"nice and real"/"endgame" 情形）。对应[阅读快照](snapshots/2026-10-03-kl-polynomial-table.json)；
+草案由同一 Kimi probe 路由起草（300 秒期限，exit 0，90.7s），维护者对照源码
+逐条核对改写。该包是结构性阅读，不声称 KLV 计算的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

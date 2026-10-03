@@ -119,3 +119,11 @@ Kimi probe（无工具 profile，`kimi-code/k3-256k`）起草；进程产出完�
 `kgb_graph.rs` 逐条核对并改写，未采用的内容已剔除。经验已记入根 AGENTS.md
 （超时的 probe 仍可能已产出完整回答，先解析 stdout.jsonl）。索引与
 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增 KLV 多项式来源包（Kimi probe 协助）
+
+新增 `sources/kl-polynomial-table.md` 与快照 `2026-10-03-kl-polynomial-table.json`：
+`KlPol` 布局与最小运算集、去重池、按列存储与两条递归填充路径。同一 Kimi
+probe 路由起草；300 秒期限内正常完成（exit 0，90.7s），证实第一次 180 秒
+超时只是期限过短。维护者对照源码逐条核对改写。索引与 sources/index.md 已
+同步；未运行编译、测试或 compiler 生成。
