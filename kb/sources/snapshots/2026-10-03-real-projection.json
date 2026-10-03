@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "2f5b59ed",
+ "working_tree": true,
+ "scope": "First reading of the per-involution image-basis module for the new real-projection source packet: the lift_mat/M_real pair, its seeding via column_echelon, transport along cross edges, and the coordinate/lift interface.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/real_projection.rs",
+   "sha256": "bd76f5d1f170cb0ae27f5b5d9ee36a34b6a406448deb068b2d86a052edb3f5e3",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "e692be1dc1c855d985335d72303cffa3c79630b09916838f9b795d6c51112032",
+  "evidence_dir": "results/kimi-kb-proj-packet-20261003",
+  "stdout_jsonl_sha256": "04866c389fbc9ff3a9a1ad9fe7cccf2fda6a3862c4452569917dd18a9be91443",
+  "result": "completed, exit 0, 74.5s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "74.5s for this draft"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; the projection layer's correctness keeps its own evidence chain (signed-projection and fundamental-lattice gates) and is not restated here."
+}

@@ -195,6 +195,13 @@ made_dominant/made_theta_stable/to_canonical_fiber/normalised 链、
 probe 路由起草（exit 0，215.9s，420 秒期限），维护者对照源码逐条核对改写。
 该包是结构性阅读，不声称格类型层的数学验收。
 
+[per-involution (1-θ)X* 图像基对](real-projection.md)记录
+`real_projection.rs`：`lift_mat`/`M_real` 基对、播种/传送纪律、
+`transported` 的两个矩阵方向与分解不变式、`coordinates`/`lift` 接口。
+对应[阅读快照](snapshots/2026-10-03-real-projection.json)；草案由同一 Kimi
+probe 路由起草（exit 0，74.5s，420 秒期限），维护者对照源码逐条核对改写。
+该包是结构性阅读，不声称投影层的数学验收。
+
 [mod-2 线性代数：位打包向量与子空间](mod-two.md)记录 `mod_two.rs`：
 `ModTwoVector` 位打包、`ModTwoSubspace` 的 pivot 索引 RREF、crate 私有
 `ModTwoSubquotient`。对应[阅读快照](snapshots/2026-10-03-mod-two.json)；
