@@ -191,3 +191,11 @@ Kimi probe 路由起草（exit 0，180.0s，420 秒期限）；维护者对照�
 五条 deliberate deviations。同一 Kimi probe 路由起草（exit 0，260.5s）；
 维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
 测试或 compiler 生成。
+
+## 2026年10月3日 新增共享块存储来源包（Kimi probe 协助）
+
+新增 `sources/rep-table.md` 与快照 `2026-10-03-rep-table.json`：
+`ReducedParamKey` 键控复用、`LocatedBlock`、`with_kl_table` 并发约定、
+`RepTableOwner` 与 `k_type_formula` 备忘。同一 Kimi probe 路由起草
+（exit 0，112.6s，420 秒期限）；维护者对照源码逐条核对改写。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。

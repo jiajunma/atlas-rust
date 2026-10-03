@@ -96,6 +96,13 @@ Kimi probe 草案在超时处截断，已采纳部分经核对、其余由维护
 草案由同一 Kimi probe 路由起草（exit 0，260.5s，420 秒期限），维护者对照
 源码逐条核对改写。该包是结构性阅读，不声称扩展 KL 的数学验收。
 
+[共享块存储：reduced 键控复用与 RepTableOwner](rep-table.md)记录
+`rep_table.rs`：`ReducedParamKey` 的键控复用、`LocatedBlock` 访问器、
+`with_kl_table` 的互斥与重入禁令、`RepTableOwner` 入口与 `k_type_formula`
+的备忘语义（锁外计算、提交时再复核）。对应[阅读快照](snapshots/2026-10-03-rep-table.json)；
+草案由同一 Kimi probe 路由起草（exit 0，112.6s，420 秒期限），维护者对照
+源码逐条核对改写。该包是结构性阅读，不声称块存储的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only

@@ -19,6 +19,7 @@
 | [Inner class 层：构造、验证门与 twisted 共轭枚举](sources/inner-class.md) | 部分实现边界、验证门、三阶段 canonicalize、canonical_involution_expr 与枚举族；结构性阅读，不作数学验收 |
 | [扩展块：delta-不动部分与折叠生成元](sources/extended-block.md) | `DescValue` 32 值分类、`fold_orbits`、两种构造与 `tune_signs` 调试门；结构性阅读，不作数学验收 |
 | [扩展 KLV 多项式表：primitivisation 符号与逐列存储](sources/extended-kl.md) | 池/符号分离存储、DescentTable、访问语义与 fill_columns 错误策略；结构性阅读，不作数学验收 |
+| [共享块存储：reduced 键控复用与 RepTableOwner](sources/rep-table.md) | reduced 键、LocatedBlock、with_kl_table 并发约定与 K 型公式备忘；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 
