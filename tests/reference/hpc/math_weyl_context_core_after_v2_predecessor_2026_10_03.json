@@ -1,0 +1,53 @@
+{
+ "campaign_creation_files": {
+  ".atlas-stage-creation-weyl-context-core-after-v1-prepared.json": {
+   "bytes": 21720,
+   "sha256": "5fe6a718345f50db6b7e86a83f8c9c06ab095738b3c3617706d5304fbb382188"
+  },
+  ".atlas-stage-creation-weyl-context-core-after-v1-published.json": {
+   "bytes": 676,
+   "sha256": "116b9adb696cf838a9a1e7e3842e0b2ce5b5a9f612b13b9b8dd5cc02831f1849"
+  },
+  ".atlas-stage-creation-weyl-context-core-after-v1-sealed.json": {
+   "bytes": 588,
+   "sha256": "d43fe74789db4911d45dc72da2fca6d20f5781e33e55875dd407e423deb32714"
+  }
+ },
+ "failure_evidence": "tests/reference/hpc/math_weyl_context_core_after_v1_failure_2026_10_03.json",
+ "failure_report": "tests/reference/hpc/math_weyl_context_core_after_v1_failure_report_2026_10_03.json",
+ "note": "The immutable after-v1 stage's final state, captured on HPC for the changed-input after-v2 migration after job 3890328 FAILED (harness).  The stage remains in place; nothing was modified.",
+ "observed_at_utc": "2026-10-03T13:58:00Z",
+ "predecessor": {
+  "campaign_ledger_record": {
+   "job": "3890328",
+   "max_outstanding": 10,
+   "pin_sha256": "396f30f2dae9e52637fbfeb0c8b5510286090b0801da4787742c0f2d2b9d7bb4",
+   "queue_before": [],
+   "script": "hpc/math_weyl_context_core_after.sbatch",
+   "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v1",
+   "stage_creation_sha256": "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad",
+   "status": "SUBMITTED"
+  },
+  "campaign_ledger_records_after": 20,
+  "job": "3890328",
+  "pin_sha256": "396f30f2dae9e52637fbfeb0c8b5510286090b0801da4787742c0f2d2b9d7bb4",
+  "queue_before": [],
+  "script": "hpc/math_weyl_context_core_after.sbatch",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v1",
+  "stage_creation_sha256": "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad",
+  "state": "FAILED",
+  "status_in_ledger": "SUBMITTED"
+ },
+ "schema": "atlas-weyl-context-core-after-v2-predecessor-v1",
+ "stage_state": {
+  "computed_by": "progressive_submit._predecessor_tree_binding on the login node against the live stage (two scans, publication identity stable)",
+  "schema": "atlas-stage-creation-predecessor-v12",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v1",
+  "stage_device": 3431958692,
+  "stage_inode": 162130669789514533,
+  "stage_tree_bytes": 5021882,
+  "stage_tree_directories": 19,
+  "stage_tree_files": 164,
+  "stage_tree_sha256": "89032144b58339fe9d36b0ce81a8029f50207cb8b9b975fda53d2bb17987e68d"
+ }
+}
