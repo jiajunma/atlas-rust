@@ -167,6 +167,13 @@ made_dominant/made_theta_stable/to_canonical_fiber/normalised 链、
 草案由同一 Kimi probe 路由起草（exit 0，164.6s，420 秒期限），维护者对照
 源码逐条核对改写。该包是结构性阅读，不声称弱实形式层的数学验收。
 
+[精确整数格线性代数：预算、饱和核与可观测基](integer-lattice.md)记录
+`integer_lattice.rs`：`IntegerLatticeBudget` 的预算分层、`IntegerMatrix`、
+`saturated_kernel`、`reduce_basis_mod_two`、`negative_coweight_eigenspace`、
+关系格封装与 `adapted_basis` 的可观测选举。对应[阅读快照](snapshots/2026-10-03-integer-lattice.json)；
+草案由同一 Kimi probe 路由起草（exit 0，161.7s，420 秒期限），维护者对照
+源码逐条核对改写。该包是结构性阅读，不声称格层的数学验收。
+
 [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)记录
 `cartan_classification.rs` 与 `cartan_class.rs`：`CartanId` 的 Atlas 顺序、
 六字段预算分层、聚合的严格 Cayley 偏序、`real_form_of` 的 complex-only

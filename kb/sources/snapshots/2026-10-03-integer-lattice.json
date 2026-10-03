@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "9445ecea",
+ "working_tree": true,
+ "scope": "First reading of the exact integer-lattice linear algebra module for the new integer-lattice source packet: IntegerLatticeBudget, IntegerMatrix, saturated_kernel, reduce_basis_mod_two, negative_coweight_eigenspace, the Relation* wrappers and adapted_basis.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/integer_lattice.rs",
+   "sha256": "e8891446aacb9caa87c69e9b528bf71fbbf3b8ea0b29531ca58668d193f8368e",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "5f6f8f717e6cb75b36ec2f9d19e97a6402245da8a33ce429b3d56aabe2b4fe7f",
+  "evidence_dir": "results/kimi-kb-lattice-packet-20261003",
+  "stdout_jsonl_sha256": "d4a5a1a59c382703b677514ad9daf7cfeb189f1a092d93415b2fb4bcc267d18a",
+  "result": "completed, exit 0, 161.7s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "161.7s for this draft"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; the lattice layer's correctness keeps its own evidence chain (fundamental-lattice and torus gates) and is not restated here."
+}
