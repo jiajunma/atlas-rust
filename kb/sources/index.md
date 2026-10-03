@@ -202,6 +202,13 @@ probe 路由起草（exit 0，215.9s，420 秒期限），维护者对照源码�
 probe 路由起草（exit 0，74.5s，420 秒期限），维护者对照源码逐条核对改写。
 该包是结构性阅读，不声称投影层的数学验收。
 
+[精确整数矩阵约化：matreduc 的逐操作移植](matreduc.md)记录 `matreduc.rs`：
+逐操作保真的动机（被选解下游可观测）、`IntMatrix`、`diagonalise` 的符号簿记、
+`has_solution`/`find_solution`、`in_left/right_image`、
+`inverse_upper_triangular` 与 `exp_i`。对应[阅读快照](snapshots/2026-10-03-matreduc.json)；
+草案由同一 Kimi probe 路由起草（exit 0，75.6s，420 秒期限），维护者对照源码
+逐条核对改写。该包是结构性阅读，不声称 matreduc 移植的数学验收。
+
 [mod-2 线性代数：位打包向量与子空间](mod-two.md)记录 `mod_two.rs`：
 `ModTwoVector` 位打包、`ModTwoSubspace` 的 pivot 索引 RREF、crate 私有
 `ModTwoSubquotient`。对应[阅读快照](snapshots/2026-10-03-mod-two.json)；

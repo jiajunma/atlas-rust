@@ -1,0 +1,24 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-03",
+ "git_base": "543e462f",
+ "working_tree": true,
+ "scope": "First reading of the exact integer matrix reduction module for the new matreduc source packet: IntMatrix, diagonalise with its sign bookkeeping, has_solution/find_solution, in_left/right_image, inverse_upper_triangular and exp_i.",
+ "files": [
+  {
+   "path": "crates/atlas-real-group/src/matreduc.rs",
+   "sha256": "49897e12a2572dffa8d9ce34022308d871d2a9893836732d035563be6a97cb92",
+   "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+  }
+ ],
+ "kimi_assist": {
+  "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+  "model": "kimi-code/k3-256k",
+  "prompt_sha256": "c9c9667401f099a5eeeb97c257741c253fbcc5c38a30680fca44614b44474b99",
+  "evidence_dir": "results/kimi-kb-matreduc-packet-20261003",
+  "stdout_jsonl_sha256": "0152095da8927889f702984056cb9d1a404d082c877353e61d6cb60b39943930",
+  "result": "completed, exit 0, 75.6s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+  "lesson": "75.6s for this draft"
+ },
+ "limits": "Structural reading only.  No local build/test and no new mathematical acceptance; the matreduc port's correctness keeps its own evidence chain (bit-for-bit validated against the compiled oracle per the module documentation, not re-run here) and is not restated here."
+}

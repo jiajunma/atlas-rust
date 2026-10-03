@@ -34,6 +34,7 @@
 | [mod-2 线性代数：位打包向量与子空间](sources/mod-two.md) | 位打包、pivot 索引 RREF 与 crate 私有子商；结构性阅读，不作数学验收 |
 | [权格类型层：Weight、Coweight 与有理权](sources/lattice-types.md) | newtype 纪律、pair 配对、公共分母归一化；结构性阅读，不作数学验收 |
 | [per-involution (1-θ)X* 图像基对](sources/real-projection.md) | 播种/传送纪律、坐标/lift 接口与分解不变式；结构性阅读，不作数学验收 |
+| [精确整数矩阵约化：matreduc 的逐操作移植](sources/matreduc.md) | 逐操作保真动机、diagonalise 与求解/像判定；结构性阅读，不作数学验收 |
 
 ## 写作与来源
 

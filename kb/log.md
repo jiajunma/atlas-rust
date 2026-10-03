@@ -301,3 +301,10 @@ Weight/Coweight newtype 纪律、pair、RationalWeight 归一化、RationalCowei
 `lift_mat`/`M_real` 基对、播种/传送纪律与坐标接口。同一 Kimi probe 路由起草
 （exit 0，74.5s）；维护者对照源码逐条核对改写。索引与 sources/index.md 已
 同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增 matreduc 来源包（Kimi probe 协助）
+
+新增 `sources/matreduc.md` 与快照 `2026-10-03-matreduc.json`：逐操作保真动机、
+diagonalise、求解/像判定、inverse_upper_triangular 与 exp_i。同一 Kimi probe
+路由起草（exit 0，75.6s）；维护者对照源码逐条核对改写。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。
