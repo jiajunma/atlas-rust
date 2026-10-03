@@ -279,3 +279,11 @@ sources/index.md 已同步；未运行编译、测试或 compiler 生成。
 CartanGradingData 门控、grading↔元素互转。同一 Kimi probe 路由起草
 （exit 0，147.9s）；维护者对照源码逐条核对改写。索引与 sources/index.md 已
 同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月3日 新增 mod-2 线性代数来源包（Kimi probe 部分协助）
+
+新增 `sources/mod-two.md` 与快照 `2026-10-03-mod-two.json`：`ModTwoVector`
+位打包、`ModTwoSubspace` 的 pivot 索引 RREF、`ModTwoSubquotient`。Kimi probe
+草案因摘录按文档注释选择而漏掉未注释方法、偏薄；由维护者直接读源补齐。教训：
+摘录应包含裸签名清单。索引与 sources/index.md 已同步；未运行编译、测试或
+compiler 生成。
