@@ -1,0 +1,14 @@
+{
+  "schema": "codex-kimi-result-v1",
+  "finished_at": "2026-10-05T18:50:32.698576+00:00",
+  "status": "completed",
+  "process_exit_code": 0,
+  "elapsed_seconds": 403.552,
+  "received_signals": [],
+  "cleanup_signals": [],
+  "remaining_live_group_members": [],
+  "owned_files": [],
+  "error": null,
+  "stdout.jsonl_sha256": "0b76c176115a2a454215b6c1dc2e8efd8dccc22b9442e298d02f5acb4994f207",
+  "stderr.txt_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

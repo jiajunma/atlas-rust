@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "5eb0e68c",
+  "working_tree": false,
+  "scope": "First reading of the Cartan fiber pair for the new cartan-fibers source packet: CartanFiber's denominator-first subquotient build, mod-two numerator kernel, provenance-bound elements; AdjointFiberBudget, AdjointProjection binding semantics, AdjointCartanFiber build gates and the FiberToAdjoint on-demand map.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/cartan_fiber.rs",
+      "sha256": "43214f1d486b84ea76db48756d0de232db2518600c8ba5a07f107ef7a2006116",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/adjoint_fiber.rs",
+      "sha256": "96b6dce9d23caf49d82cad7b7957c054d49b7209eb578504af7ed0f27d74f0e4",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_b9af8e02-2018-4e99-9ab5-67fd873a9116",
+    "prompt_sha256": "80b4867afdabb333ee326f966cdc050039c0e92e3a7666113200da071357d9d8",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/cartan-fibers-probe",
+    "stdout_jsonl_sha256": "0b76c176115a2a454215b6c1dc2e8efd8dccc22b9442e298d02f5acb4994f207",
+    "draft_sha256": "54be97de8f24a839eac5d4b4fd04da3feeeecc6da4514e29dc45df41589fb52a",
+    "result": "completed, exit 0, 403.6s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "A 50KB two-file prompt still completes within the 480s budget; the draft's per-file bare-signature lists and test-anchor tables were complete and accurate."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; no upstream references are re-verified here."
+}

@@ -251,6 +251,15 @@ probe 路由起草（exit 0，253.1s），维护者对照源码逐条核对改�
 路由以三文件完整字节起草（exit 0，362.1s），维护者对照源码逐条核对改写。
 该包是结构性阅读，不声称对合层的数学验收。
 
+[Cartan fiber 与伴随 Cartan fiber](cartan-fibers.md)记录 `cartan_fiber.rs`
+与 `adjoint_fiber.rs`：子商公式 `ker_F2(I+θ_Y) / red_2 ker_Z(I+θ_Y)` 的
+先分母后分子构造、元素 provenance（`Arc::ptr_eq`）语义；伴随侧的预算分层
+（`16·r²+r·n` 保留坐标、`2·n²·r` 下降操作）、`AdjointProjection` 绑定语义与
+`FiberToAdjoint` 的按需三步映射。对应
+[阅读快照](snapshots/2026-10-06-cartan-fibers.json)；草案由同一 Kimi probe
+路由起草（exit 0，403.6s），维护者对照源码逐条核对改写。该包是结构性阅读，
+不声称 fiber 层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

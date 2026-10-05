@@ -354,3 +354,12 @@ RootKind 分类、TwistedInvolution 的 w·θ 重门控。同一 Kimi probe 路�
 草案自带「高风险核对点」清单恰好覆盖最需细读处（配对条件语义、错误载荷
 不对称），加速了核对。索引与 sources/index.md 已同步；未运行编译、测试或
 compiler 生成。
+
+## 2026年10月6日 新增 Cartan fiber 对来源包（Kimi probe 协助）
+
+新增 `sources/cartan-fibers.md` 与快照 `2026-10-06-cartan-fibers.json`：
+CartanFiber 的先分母后分子子商构造、元素 provenance 语义；
+AdjointCartanFiber 的预算分层、绑定语义与 FiberToAdjoint 按需映射。
+同一 Kimi probe 路由起草（50KB 两文件完整字节，exit 0，403.6s），
+维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行
+编译、测试或 compiler 生成。
