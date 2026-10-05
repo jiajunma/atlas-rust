@@ -113,6 +113,7 @@ from stage_weyl_context_core_after import (
     validate_before_v2_failure,
     validate_before_v3_failure,
     validate_after_v1_failure,
+    validate_after_v2_failure,
     validate_before_v4_result,
     validate_parent_objects,
     validate_pin as validate_stage_pin,
@@ -152,10 +153,10 @@ if ACTIVE_CAMPAIGN != _ACTIVE_CAMPAIGN:
 SUBMISSION_ENABLED = True
 EXPECTED_STAGE = (
     "/public/home/majj/atlas-rust-campaign-20260930/stages/"
-    "weyl-context-core-after-v2"
+    "weyl-context-core-after-v3"
 )
 
-REPORT_SCHEMA = "atlas-weyl-context-core-after-v2"
+REPORT_SCHEMA = "atlas-weyl-context-core-after-v3"
 SUCCESS_STATUS = "WEYL_CONTEXT_AFTER_REGRESSIONS_PASS"
 INCOMPLETE_STATUS = "WEYL_CONTEXT_CORE_AFTER_INCOMPLETE"
 REPORT_SCOPE = (
@@ -1313,6 +1314,7 @@ def gates(root):
     validate_before_v3_failure(root, inputs)
     validate_before_v4_result(root, inputs)
     validate_after_v1_failure(root, inputs)
+    validate_after_v2_failure(root, inputs)
     catalog = validate_staged_catalog(root, inputs)
     regression_source_manifest = validate_regression_inputs(
         root, inputs, accepted_source_manifest,
@@ -2096,7 +2098,7 @@ def main():
         }
 
         campaign = campaign_stage(root)
-        with ephemeral_job_workspace(out, "weyl-core-after-v2") as work:
+        with ephemeral_job_workspace(out, "weyl-core-after-v3") as work:
             (work / "tmp").mkdir(mode=0o700)
             env = command_environment(dict(os.environ), work)
             report["environment"] = validate_environment_record(env)

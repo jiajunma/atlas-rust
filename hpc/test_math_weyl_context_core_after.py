@@ -484,6 +484,20 @@ def recovery_predecessor():
             "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad"
         ),
     })
+    history.append({
+        "stage": "/campaign/stages/weyl-context-core-after-v2",
+        "script": stager.SBATCH,
+        "queue_before": [],
+        "status": "SUBMITTED",
+        "max_outstanding": 10,
+        "job": "3890580",
+        "pin_sha256": (
+            "3820fd83e64a9a9b8503eedc379e3a4e9dc62a583ca778d232c358bd1940918a"
+        ),
+        "stage_creation_sha256": (
+            "e468bf226f31f35177703d4b5ed88ef230a03396a5be5dc94671d6bee94ec29b"
+        ),
+    })
     return history
 
 
@@ -762,26 +776,26 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
     def test_stage_identity_catalog_and_test_counts_are_exact(self):
         self.assertEqual(driver.STAGE_NAME, stager.STAGE_NAME)
         self.assertEqual(driver.STAGE_NAME,
-                         "weyl-context-core-after-v2")
+                         "weyl-context-core-after-v3")
         self.assertEqual(driver.PIN_NAME, stager.PIN_NAME)
         self.assertEqual(driver.PIN_NAME,
-                         "weyl-context-core-after-v2-pin.json")
+                         "weyl-context-core-after-v3-pin.json")
         self.assertEqual(driver.PIN_SCHEMA, stager.PIN_SCHEMA)
         self.assertEqual(driver.PIN_SCHEMA,
-                         "atlas-weyl-context-core-after-pin-v2")
+                         "atlas-weyl-context-core-after-pin-v3")
         self.assertEqual(driver.SBATCH, stager.SBATCH)
         self.assertEqual(driver.CATALOG_PATH, stager.CATALOG_PATH)
         self.assertEqual(driver.CATALOG_SHA256, stager.CATALOG_SHA256)
         self.assertEqual(driver.REPORT_SCHEMA,
-                         "atlas-weyl-context-core-after-v2")
+                         "atlas-weyl-context-core-after-v3")
         self.assertEqual(driver.SUCCESS_STATUS,
                          regression.AFTER_REPRODUCED)
         self.assertEqual(driver.EXPECTED_TEST_COUNTS,
                          stager.EXPECTED_TEST_COUNTS)
         self.assertEqual(
             driver.EXPECTED_TEST_COUNTS[
-                "test-math-weyl-context-core-after"], 29)
-        self.assertEqual(sum(driver.EXPECTED_TEST_COUNTS.values()), 124)
+                "test-math-weyl-context-core-after"], 30)
+        self.assertEqual(sum(driver.EXPECTED_TEST_COUNTS.values()), 125)
         self.assertEqual(tuple(driver.COMMAND_NAMES[:6]),
                          tuple(stager.EXPECTED_TEST_COUNTS))
         self.assertEqual(len(driver.COMMAND_NAMES), 13)
@@ -1426,7 +1440,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             provenance = value["provenance"]
             provenance["campaign_record"]["stage"] = (
                 "/public/home/majj/atlas-rust-campaign-20990101/stages/"
-                "weyl-context-core-after-v2"
+                "weyl-context-core-after-v3"
             )
             provenance["submission_receipt"] = stager.submission_receipt(
                 provenance["campaign_record"], value["pin"])
@@ -2395,11 +2409,11 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             stager.EXPECTED_TEST_COUNTS), stager.EXPECTED_TEST_COUNTS)
         self.assertEqual(
             stager.EXPECTED_TEST_COUNTS[
-                "test-math-weyl-context-core-after"], 29)
+                "test-math-weyl-context-core-after"], 30)
         self.assertEqual(
             stager.EXPECTED_TEST_COUNTS[
                 "test-weyl-context-core-regression-contract"], 21)
-        self.assertEqual(stager.CHECKER_TESTS, 124)
+        self.assertEqual(stager.CHECKER_TESTS, 125)
         self.assertEqual(stager.BEFORE_FAILURE_PREDICTED_AFTER_COUNTS, {
             "test-campaign-stage-creation": 32,
             "test-progressive-submit": 17,
@@ -2410,22 +2424,30 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             "total": 119,
         })
         self.assertEqual(stager.BEFORE_V4_CHECKER_TOTAL, 119)
-        self.assertEqual(len(stager.STAGE_INPUT_NAMES), 59)
-        self.assertEqual(stager.PREDECESSOR["campaign_ledger_records"], 20)
+        self.assertEqual(len(stager.STAGE_INPUT_NAMES), 60)
+        self.assertEqual(stager.PREDECESSOR["campaign_ledger_records"], 21)
         self.assertEqual(
             stager.PREDECESSOR["campaign_ledger_sha256"],
-            "09a46422ff808a6df3a2e2d84f7f7d10ecddcb5424bcbef53004e7aeea62b42d",
+            "c43f55dbe28cbdcee4ae35d0490842c282a4f6554f8a9973468ed8dfe53a79bd",
         )
-        self.assertEqual(stager.PREDECESSOR["job"], "3890328")
+        self.assertEqual(stager.PREDECESSOR["job"], "3890580")
+        self.assertEqual(
+            stager.PREDECESSOR["pin_sha256"],
+            "3820fd83e64a9a9b8503eedc379e3a4e9dc62a583ca778d232c358bd1940918a",
+        )
+        self.assertEqual(
+            stager.PREDECESSOR["stage_creation_contract_sha256"],
+            "e72995b75215a0d5b6c10cab5ffb7d32cb2d3aeb140bc97dbfe1f825c53f36e8",
+        )
         self.assertEqual(stager.PREDECESSOR["stage_tree_sha256"],
                          stager.PREDECESSOR_STATE["stage_tree_sha256"])
         self.assertEqual(
             stager.PREDECESSOR_STATE["stage_tree_sha256"],
-            "89032144b58339fe9d36b0ce81a8029f50207cb8b9b975fda53d2bb17987e68d",
+            "587b1d490840d5845dfb28be67168471f20d46b3222b53b462d3e96bc2b25fb6",
         )
-        self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_files"], 164)
-        self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_directories"], 19)
-        self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_bytes"], 5021882)
+        self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_files"], 128)
+        self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_directories"], 17)
+        self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_bytes"], 4740691)
         self.assertEqual(stager.BEFORE_V2_PREDECESSOR["job"], "3884880")
         self.assertEqual(
             stager.BEFORE_V2_PREDECESSOR["campaign_ledger_records"], 17)
@@ -3137,11 +3159,11 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                     hashlib.sha256(raw).hexdigest())
             self.assertIn(destination_identity, synced)
 
-    def test_running_job_recovers_exact_twenty_first_attempt_and_missing_receipt(self):
+    def test_running_job_recovers_exact_twenty_second_attempt_and_missing_receipt(self):
         predecessor = recovery_predecessor()
-        self.assertEqual(len(predecessor), 20)
+        self.assertEqual(len(predecessor), 21)
         self.assertTrue(predecessor[-1]["stage"].endswith(
-            "/weyl-context-core-after-v1"))
+            "/weyl-context-core-after-v2"))
         predecessor_contract = copy.deepcopy(stager.PREDECESSOR)
         predecessor_contract["campaign_ledger_sha256"] = (
             stager.saved_json_sha(predecessor)
@@ -3157,7 +3179,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             pin_sha256 = stager.saved_json_sha(pin)
             attempt = unconfirmed_capture_attempt(root, pin)
             history = predecessor + [copy.deepcopy(attempt)]
-            self.assertEqual(len(history), 21)
+            self.assertEqual(len(history), 22)
             ledger_path = campaign / ".atlas-progressive-submit.json"
             intent_path = root / "submission-intent.json"
             receipt_path = root / "submission.json"
@@ -3225,6 +3247,8 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                     driver, "validate_before_v4_result"))
                 after_v1_gate = stack.enter_context(patch.object(
                     driver, "validate_after_v1_failure"))
+                after_v2_gate = stack.enter_context(patch.object(
+                    driver, "validate_after_v2_failure"))
                 stack.enter_context(patch.object(
                     driver, "validate_staged_catalog",
                     return_value={"catalog": True}))
@@ -3270,6 +3294,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             before_v3_gate.assert_called_once_with(root, pin["inputs"])
             before_v4_gate.assert_called_once_with(root, pin["inputs"])
             after_v1_gate.assert_called_once_with(root, pin["inputs"])
+            after_v2_gate.assert_called_once_with(root, pin["inputs"])
             regression_gate.assert_called_once_with(
                 root, pin["inputs"], {"source": True})
             repaired_gate.assert_called_once_with({"regression": True})
@@ -3557,7 +3582,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
         self.assertEqual(stager.PREDECESSOR_STAGE,
                          stager.PREDECESSOR["stage"])
         self.assertTrue(stager.PREDECESSOR_STAGE.endswith(
-            "/stages/weyl-context-core-after-v1"))
+            "/stages/weyl-context-core-after-v2"))
         self.assertEqual(stager.PREDECESSOR_STATE["schema"],
                          "atlas-stage-creation-predecessor-v12")
         self.assertTrue(stager.BEFORE_V2_PREDECESSOR_STAGE.endswith(
@@ -3961,9 +3986,9 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         raw = (root / stager.SBATCH).read_text()
         self.assertIn("#!/bin/bash -p", raw)
-        self.assertIn("#SBATCH --job-name=atlas-weyl-core-after-v1", raw)
+        self.assertIn("#SBATCH --job-name=atlas-weyl-core-after-v3", raw)
         self.assertIn(
-            "#SBATCH --output=weyl-context-core-after-v1-%j.out", raw)
+            "#SBATCH --output=weyl-context-core-after-v3-%j.out", raw)
         self.assertIn("#SBATCH --nodes=1", raw)
         self.assertIn("#SBATCH --ntasks=1", raw)
         self.assertIn("#SBATCH --cpus-per-task=2", raw)
@@ -3980,6 +4005,37 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             raw)
         self.assertIn("-E -s -S -B hpc/math_weyl_context_core_after.py", raw)
         self.assertNotRegex(raw, r"(?m)^[^#\n]*\bsbatch\b")
+
+    def test_sbatch_labels_track_the_active_stage_identity(self):
+        # The after-v2 failure (job 3890580): the stager's
+        # SLURM_OUTPUT_PATTERN moved to v2 but the sbatch --job-name/--output
+        # labels still said after-v1, so sbatch wrote a v1-named .out file
+        # into the v2 stage and validate_stage_topology rejected the stage
+        # before any gate ran.  Pin both labels to the active stage identity
+        # so a future version bump without an sbatch migration fails here.
+        root = Path(__file__).resolve().parents[1]
+        raw = (root / stager.SBATCH).read_text()
+        self.assertIn("#SBATCH --job-name=atlas-weyl-core-after-v3", raw)
+        self.assertIn(
+            "#SBATCH --output=weyl-context-core-after-v3-%j.out", raw)
+        suffix = stager.STAGE_NAME.removeprefix("weyl-context-core-")
+        self.assertNotEqual(suffix, stager.STAGE_NAME)
+        job_name = next(
+            line for line in raw.splitlines()
+            if line.startswith("#SBATCH --job-name="))
+        output = next(
+            line for line in raw.splitlines()
+            if line.startswith("#SBATCH --output="))
+        self.assertEqual(
+            job_name, "#SBATCH --job-name=atlas-weyl-core-" + suffix)
+        self.assertEqual(
+            output, "#SBATCH --output=" + stager.STAGE_NAME + "-%j.out")
+        self.assertTrue(job_name.endswith(suffix))
+        self.assertTrue(output[len("#SBATCH --output="):].startswith(
+            stager.STAGE_NAME + "-"))
+        self.assertEqual(
+            stager.SLURM_OUTPUT_PATTERN,
+            stager.STAGE_NAME + r"-[0-9]+\.out\Z")
 
 
 if __name__ == "__main__":

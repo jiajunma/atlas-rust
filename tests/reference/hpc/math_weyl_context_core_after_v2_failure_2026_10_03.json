@@ -1,0 +1,27 @@
+{
+ "claims_not_granted": [
+  "mathematical acceptance",
+  "cache acceptance",
+  "performance",
+  "rank release",
+  "AFTER pass"
+ ],
+ "classification": "HARNESS_SBATCH_LABEL_MISMATCH_AT_TOPOLOGY_VALIDATION_BEFORE_ANY_GATE",
+ "elapsed_seconds": 3,
+ "error": "ValueError: unexpected durable capture-stage file",
+ "job": "3890580",
+ "mathematical_regression_required": false,
+ "node": "cu088",
+ "observed_at_utc": "2026-10-03T14:20:00Z",
+ "out_bytes": 847,
+ "out_sha256": "c50e274a20b95e488f8f7d03fd42f1d969ce8993aa6f5a8f87d6d0bf5e211f5d",
+ "pin_sha256": "3820fd83e64a9a9b8503eedc379e3a4e9dc62a583ca778d232c358bd1940918a",
+ "remediation": "changed-input successor weyl-context-core-after-v3: fix the sbatch labels to after-v2... note the naming: the v2 stage's own labels were never migrated; the v3 successor migrates them to after-v3.  Preserve the failed stage and job 3890580 immutable.",
+ "report": null,
+ "report_note": "no results/3890580/report.json exists: the driver failed at validate_stage_topology before any report was written",
+ "root_cause": "The v2 migration updated the stager's SLURM_OUTPUT_PATTERN to the v2 name but never updated the sbatch's --job-name/--output labels, which still said after-v1.  sbatch therefore wrote weyl-context-core-after-v1-3890580.out into the after-v2 stage, and validate_stage_topology rejected the unexpected durable file before any checker, build or Atlas command ran.",
+ "schema": "atlas-weyl-context-core-after-failure-v2",
+ "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v2",
+ "stage_creation_sha256": "e468bf226f31f35177703d4b5ed88ef230a03396a5be5dc94671d6bee94ec29b",
+ "state": "FAILED"
+}

@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v2/hpc/math_weyl_context_core_after.py", line 2397, in <module>
+    raise SystemExit(main())
+  File "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v2/hpc/math_weyl_context_core_after.py", line 2046, in main
+    preflight = gates(root)
+  File "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v2/hpc/math_weyl_context_core_after.py", line 1277, in gates
+    validate_stage_topology(root)
+  File "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v2/hpc/stage_weyl_context_core_after.py", line 3765, in validate_stage_topology
+    raise ValueError("unexpected durable capture-stage file")
+ValueError: unexpected durable capture-stage file

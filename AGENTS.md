@@ -540,6 +540,29 @@ ceiling and default one focused job; do not trade correctness for speed.
   HPC-blocked period would otherwise have spent a job on.  Local checker
   passes never substitute for the HPC gate itself.
 
+- UPDATE Weyl AFTER-v2/v3 transition2026-10-06: when a stage version bumps,
+  the sbatch `--job-name`/`--output` labels are versioned content too.
+  AFTER-v2 job3890580 FAILED in3s before any gate because the stager's
+  SLURM_OUTPUT_PATTERN moved to v2 while the sbatch labels still said v1:
+  sbatch wrote `weyl-context-core-after-v1-3890580.out` into the after-v2
+  stage and `validate_stage_topology` rejected the unexpected durable file.
+  No report.json exists for such failures; the successor's PREDECESSOR omits
+  `report_sha256`/`report_bytes` entirely rather than inventing one, and the
+  failure validator asserts `report is None` in the evidence record.  The
+  checker now pins both sbatch labels to suffixes derived from the active
+  `STAGE_NAME`, so a version bump without an sbatch migration fails locally.
+  The same transition also showed the predecessor-rebind lesson generalises:
+  `validate_after_v1_failure` referenced the bare module-level
+  `PREDECESSOR`/`PREDECESSOR_STAGE`, so advancing the predecessor to after-v2
+  required transplanting the old identity into `AFTER_V1_PREDECESSOR*` and
+  rebinding locally inside the validator — exactly the
+  `BEFORE_V4_PREDECESSOR*` pattern; audit EVERY historical validator for
+  bare-predecessor references before each launch.  The predecessor-state
+  schema string stopped bumping once it stabilised
+  (`atlas-stage-creation-predecessor-v12` is pinned by
+  `progressive_submit.STAGE_CREATION_PREDECESSOR_SCHEMA` for all current
+  predecessors); do not increment it per stage.
+
 ### Attribute small-rank loading before optimizing; retain complete outputs
 
 The ledger below preserves historical measurements and queued follow-ups.
