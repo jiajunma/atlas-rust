@@ -160,13 +160,6 @@ finalisation 驱动、两个 `StarOracle` 实现。对应[阅读快照](snapshot
 草案由同一 Kimi probe 路由起草（exit 0，188.4s，420 秒期限），维护者对照
 源码逐条核对改写。该包是结构性阅读，不声称 ext_param/star 层的数学验收。
 
-[KType 层：标准表示的 K-限制](ktype.md)记录 `ktype.rs`：KType 的表示不变量、
-`sr_k` 归一化、is_standard/.../is_final 判定族、`equivalent` 与
-made_dominant/made_theta_stable/to_canonical_fiber/normalised 链、
-`finals_for`/`kgp_set` 展开。对应[阅读快照](snapshots/2026-10-03-ktype.json)；
-草案由同一 Kimi probe 路由起草（exit 0，122.4s，420 秒期限），维护者对照
-源码逐条核对改写。该包是结构性阅读，不声称 KType 层的数学验收。
-
 [弱实形式划分：adjoint fiber 的 W_im 轨道](weak-real-form.md)记录
 `weak_real_form.rs`：`WeakRealFormId` 的编号约定（与上游 RealFormNbr 一致）、
 `WeakRealFormPartition` 的构建与查询、`weak_real_form_at_representative` 的
@@ -451,8 +444,11 @@ sr_k 规范化、六个谓词（含 is_nonzero/is_normal 的不检查前提）�
 equivalent、四个变形循环的终止预算、finals_for 的分支结构（type-2
 Cayley 移位项、parity-real 投影分裂）与 kgp_set 的位图限界 BFS。对应
 [阅读快照](snapshots/2026-10-06-ktype.json)；草案由同一 Kimi probe 路由
-起草（1100s 期限，exit 0，349.5s），维护者对照源码逐条核对改写。该包是
-结构性阅读，不声称 K 型层的数学验收。
+起草（1100s 期限，exit 0，349.5s），维护者对照源码逐条核对改写。本包在
+**未变的字节**上取代 2026-10-03 的初读（旧快照
+[2026-10-03-ktype.json](snapshots/2026-10-03-ktype.json) 保留）：初读覆盖
+不变量/谓词/规范化链，本次补充 finals_for 分支结构、kgp_set、测试锚点与
+错误普查。该包是结构性阅读，不声称 K 型层的数学验收。
 
 ## 权威记录的位置
 

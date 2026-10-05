@@ -574,3 +574,13 @@ has_solution/find_solution/in_*_image、inverse_upper_triangular、exp_i。
 同一 Kimi probe 路由起草（1100s，exit 0，349.5s），维护者对照源码逐条
 核对改写。索引与 sources/index.md 已同步；未运行编译、测试或 compiler
 生成。
+
+
+## 2026年10月6日 ktype 包重复事件与修复
+
+发现 `ktype.rs` 已有 2026-10-03 的初读包（提交 187a6dac，本次会话的
+gap 清单漏列了它）；新包在未变字节上写成后覆盖了旧包。内容无损失（新包
+是严格超集），旧快照 2026-10-03-ktype.json 保留未动。修复：删除
+sources/index.md 中的旧重复条目，在新条目与包正文中注明 supersession。
+**教训：启动一个包之前先在 `kb/sources/` 与 `sources/index.md` 里 grep
+模块名，确认没有既有包；间隙清单必须以 index.md 为准而不是凭会话记忆。**
