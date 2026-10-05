@@ -344,3 +344,13 @@ checked_inner_class_letters 的坍缩规则、layout_involution 逐字母表、
 on_basis 精确除法换基。同一 Kimi probe 路由起草（exit 0，253.1s），
 维护者对照源码逐条核对改写；连续第三次完整字节输入无事实更正。
 索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增对合类型三件套来源包（Kimi probe 协助）
+
+新增 `sources/involution-types.md` 与快照 `2026-10-06-involution-types.json`：
+LatticeInvolution 三道门控、RootInvolutionData 的根置换+余根运输验证与
+RootKind 分类、TwistedInvolution 的 w·θ 重门控。同一 Kimi probe 路由以
+三文件完整字节起草（exit 0，362.1s），维护者对照源码逐条核对改写；
+草案自带「高风险核对点」清单恰好覆盖最需细读处（配对条件语义、错误载荷
+不对称），加速了核对。索引与 sources/index.md 已同步；未运行编译、测试或
+compiler 生成。

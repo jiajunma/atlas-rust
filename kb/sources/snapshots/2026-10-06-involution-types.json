@@ -1,0 +1,36 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "bdb2b66a",
+  "working_tree": false,
+  "scope": "First reading of the three involution-representation files for the new involution-types source packet: LatticeInvolution gates (square, involutive, pairing-preserving) and anti_invariant_rank; RootInvolutionData root-permutation + coroot-transport validation, RootKind classification, subsystem simple roots; TwistedInvolution w*theta re-gating and compose_matrices.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/involution.rs",
+      "sha256": "cc906c628123d4e40aa849a7c13880cfe752d8acc91609d819e593f6b2758b77",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/twisted_involution.rs",
+      "sha256": "0f50f8062132380e5cb4845f65c910e8fd29bd69c61760608a36549712aa43ac",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/root_involution.rs",
+      "sha256": "649a4439d3c61033e7cb300c95f619b1714d0e4a4250c229e9b999c3a989127e",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_d5a23f41-a1b0-4a8c-9fcd-812147de4f21",
+    "prompt_sha256": "d984a44fa8c51327731076a90e474ca089617df44044393028a7896a3313dab1",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/involution-types-probe",
+    "stdout_jsonl_sha256": "86b4a429779ae1abb58a2dacdabab8ea17f324cbb5d1355f40d977a1ce9eb56e",
+    "draft_sha256": "c95d993c2f67e78dfe12fd7086a9ec2f9f60bd5b8311b00b6710f58559222042",
+    "result": "completed, exit 0, 362.1s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "A three-file bundle (797 lines) works on the same route; the draft's own 'high-risk points for the reviewer' list correctly anticipated the items needing the closest reads (pairing-condition semantics, error-payload asymmetries), which made verification faster."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; no upstream references are re-verified here."
+}

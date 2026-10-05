@@ -242,6 +242,15 @@ root_vertex_simple 的转置子 Cartan 逆与 labels_1 重试。对应
 probe 路由起草（exit 0，253.1s），维护者对照源码逐条核对改写。该包是结构性
 阅读，不声称字母表或对合构造的数学验收。
 
+[对合类型三件套](involution-types.md)记录 `involution.rs`、
+`twisted_involution.rs` 与 `root_involution.rs`：`LatticeInvolution` 的
+方阵/对合/配对保持三道门控与 `anti_invariant_rank`；`RootInvolutionData` 的
+根置换+余根运输验证、RootKind 分类优先级与继承正系的子系统单根；
+`TwistedInvolution` 的 `w·θ` 重门控与 `compose_matrices`。对应
+[阅读快照](snapshots/2026-10-06-involution-types.json)；草案由同一 Kimi probe
+路由以三文件完整字节起草（exit 0，362.1s），维护者对照源码逐条核对改写。
+该包是结构性阅读，不声称对合层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

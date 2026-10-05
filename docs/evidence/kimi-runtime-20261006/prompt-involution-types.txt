@@ -1,0 +1,825 @@
+你是 Atlas Rust 重实现项目的文档助理。任务：为三个同源 Rust 源文件起草一份中文知识来源包（source packet）草案，供维护者逐条核对后收录进 kb/sources/。
+
+严格规则：
+- 只依据下面给出的三个源文件字节；不要引用你没有读到的代码、文档或历史。
+- 区分「已实现行为」与「阅读推断」；不做任何数学验收、性能或正确性声明。
+- 保留精确的符号名、类型名、错误类型与边界条件（Result/错误分支、预算、顺序保证、panic/断言）。
+- 输出只是一份 Markdown 草案，开头必须是 frontmatter：
+  ---
+  title: <中文标题>
+  source: atlas-rust/involution-types
+  ingestedAt: 2026-10-05T18:00:00Z
+  ---
+- 先给出每个文件完整的「裸签名清单」（所有 pub/pub(crate) fn/struct/enum/trait 与可见 impl 块，含无注释项），再逐项解释：LatticeInvolution / TwistedInvolution / RootInvolution 各自的表示、不变量与构造门控，三者之间的转换/组合关系，测试锚点，限制与未覆盖面。
+
+文件：crates/atlas-real-group/src/involution.rs（完整字节）：
+```rust
+use crate::{BasedRootDatum, Coweight, StructureError, Weight};
+
+/// A pairing-preserving involution of a root datum's dual lattices.
+///
+/// The character and cocharacter actions are stored separately and validated
+/// together, so pairing preservation is an invariant instead of a convention
+/// imposed on callers. This type deliberately does not claim that the action
+/// preserves the finite root system; [`crate::RootInvolutionData`] establishes
+/// that stronger property — a root permutation that also transports stored
+/// coroots — against an enumerated root system.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LatticeInvolution {
+    datum: BasedRootDatum,
+    weight_action: Vec<Vec<i32>>,
+    coweight_action: Vec<Vec<i32>>,
+}
+
+impl LatticeInvolution {
+    pub fn new(
+        datum: &BasedRootDatum,
+        weight_action: Vec<Vec<i32>>,
+        coweight_action: Vec<Vec<i32>>,
+    ) -> Result<Self, StructureError> {
+        let rank = datum.lattice_rank();
+        if !is_square_of_rank(&weight_action, rank) || !is_square_of_rank(&coweight_action, rank) {
+            return Err(StructureError::InvalidInvolution);
+        }
+        if !is_identity_product(&weight_action, &weight_action)?
+            || !is_identity_product(&coweight_action, &coweight_action)?
+        {
+            return Err(StructureError::InvalidInvolution);
+        }
+        if !preserves_pairing(&weight_action, &coweight_action)? {
+            return Err(StructureError::InvalidRootAutomorphism);
+        }
+        Ok(Self {
+            datum: datum.clone(),
+            weight_action,
+            coweight_action,
+        })
+    }
+
+    pub fn identity(datum: &BasedRootDatum) -> Result<Self, StructureError> {
+        let rank = datum.lattice_rank();
+        Ok(Self {
+            datum: datum.clone(),
+            weight_action: identity_matrix(rank)?,
+            coweight_action: identity_matrix(rank)?,
+        })
+    }
+
+    pub fn lattice_rank(&self) -> usize {
+        self.weight_action.len()
+    }
+
+    pub fn datum(&self) -> &BasedRootDatum {
+        &self.datum
+    }
+
+    pub fn weight_matrix(&self) -> &[Vec<i32>] {
+        &self.weight_action
+    }
+
+    pub fn coweight_matrix(&self) -> &[Vec<i32>] {
+        &self.coweight_action
+    }
+
+    /// Rank of `X^*/ker(1-theta)`, computed from the `-1` eigenspace of this
+    /// involution. This avoids a floating-point rank calculation.
+    pub fn anti_invariant_rank(&self) -> Result<usize, StructureError> {
+        let trace =
+            self.weight_action
+                .iter()
+                .enumerate()
+                .try_fold(0_i128, |sum, (index, row)| {
+                    sum.checked_add(i128::from(row[index]))
+                        .ok_or(StructureError::ArithmeticOverflow)
+                })?;
+        let twice_rank = i128::try_from(self.lattice_rank())
+            .map_err(|_| StructureError::ArithmeticOverflow)?
+            .checked_sub(trace)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        if twice_rank < 0 || twice_rank % 2 != 0 {
+            return Err(StructureError::InvalidInvolution);
+        }
+        usize::try_from(twice_rank / 2).map_err(|_| StructureError::ArithmeticOverflow)
+    }
+
+    pub fn act_on_weight(&self, weight: &Weight) -> Result<Weight, StructureError> {
+        apply_matrix(&self.weight_action, weight.as_slice()).map(Weight::new)
+    }
+
+    pub fn act_on_coweight(&self, coweight: &Coweight) -> Result<Coweight, StructureError> {
+        apply_matrix(&self.coweight_action, coweight.as_slice()).map(Coweight::new)
+    }
+}
+
+fn identity_matrix(rank: usize) -> Result<Vec<Vec<i32>>, StructureError> {
+    let mut matrix = Vec::new();
+    matrix
+        .try_reserve_exact(rank)
+        .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
+    for row in 0..rank {
+        let mut values = Vec::new();
+        values
+            .try_reserve_exact(rank)
+            .map_err(|_| StructureError::AllocationFailed { requested: rank })?;
+        values.resize(rank, 0);
+        values[row] = 1;
+        matrix.push(values);
+    }
+    Ok(matrix)
+}
+
+fn is_square_of_rank(matrix: &[Vec<i32>], rank: usize) -> bool {
+    matrix.len() == rank && matrix.iter().all(|row| row.len() == rank)
+}
+
+fn is_identity_product(left: &[Vec<i32>], right: &[Vec<i32>]) -> Result<bool, StructureError> {
+    for (row, _) in left.iter().enumerate() {
+        for (column, _) in right.iter().enumerate() {
+            let value = checked_sum(
+                (0..left.len()).map(|middle| (left[row][middle], right[middle][column])),
+            )?;
+            if value != i128::from(row == column) {
+                return Ok(false);
+            }
+        }
+    }
+    Ok(true)
+}
+
+fn preserves_pairing(
+    weight_action: &[Vec<i32>],
+    coweight_action: &[Vec<i32>],
+) -> Result<bool, StructureError> {
+    for (weight_coordinate, _) in weight_action.iter().enumerate() {
+        for (coweight_coordinate, _) in coweight_action.iter().enumerate() {
+            let value = checked_sum((0..weight_action.len()).map(|row| {
+                (
+                    weight_action[row][weight_coordinate],
+                    coweight_action[row][coweight_coordinate],
+                )
+            }))?;
+            if value != i128::from(weight_coordinate == coweight_coordinate) {
+                return Ok(false);
+            }
+        }
+    }
+    Ok(true)
+}
+
+fn apply_matrix(matrix: &[Vec<i32>], coordinates: &[i32]) -> Result<Vec<i32>, StructureError> {
+    if matrix.len() != coordinates.len() {
+        return Err(StructureError::RankMismatch {
+            expected: matrix.len(),
+            actual: coordinates.len(),
+        });
+    }
+    matrix
+        .iter()
+        .map(|row| {
+            if row.len() != coordinates.len() {
+                return Err(StructureError::InvalidInvolution);
+            }
+            i32::try_from(checked_sum(
+                row.iter().copied().zip(coordinates.iter().copied()),
+            )?)
+            .map_err(|_| StructureError::ArithmeticOverflow)
+        })
+        .collect()
+}
+
+fn checked_sum(mut pairs: impl Iterator<Item = (i32, i32)>) -> Result<i128, StructureError> {
+    pairs.try_fold(0_i128, |sum, (left, right)| {
+        let product = i128::from(left)
+            .checked_mul(i128::from(right))
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        sum.checked_add(product)
+            .ok_or(StructureError::ArithmeticOverflow)
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pair;
+
+    #[test]
+    fn dual_actions_preserve_pairing() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![1, 0])],
+            vec![Coweight::new(vec![2, 0])],
+        )
+        .expect("rank-two A1 datum");
+        let involution = LatticeInvolution::new(
+            &datum,
+            vec![vec![-1, 0], vec![0, 1]],
+            vec![vec![-1, 0], vec![0, 1]],
+        )
+        .expect("dual sign involution");
+        let weight = involution.act_on_weight(&Weight::new(vec![3, 5])).unwrap();
+        let coweight = involution
+            .act_on_coweight(&Coweight::new(vec![7, -11]))
+            .unwrap();
+        assert_eq!(pair(&weight, &coweight), Ok(-34));
+    }
+
+    #[test]
+    fn rejects_actions_that_do_not_preserve_the_pairing() {
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        assert_eq!(
+            LatticeInvolution::new(&datum, vec![vec![-1]], vec![vec![1]]),
+            Err(StructureError::InvalidRootAutomorphism)
+        );
+    }
+
+    #[test]
+    fn rejects_non_involutive_actions() {
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        assert_eq!(
+            LatticeInvolution::new(&datum, vec![vec![2]], vec![vec![0]]),
+            Err(StructureError::InvalidInvolution)
+        );
+    }
+}
+
+```
+
+文件：crates/atlas-real-group/src/twisted_involution.rs（完整字节）：
+```rust
+use crate::{
+    BasedRootDatum, LatticeInvolution, RestrictedRootSystem, RootInvolutionData, RootSystem,
+    StructureError, WeylAction,
+};
+
+/// A Weyl translate of the distinguished involution that is again involutive.
+///
+/// Atlas Cartan classes are ultimately indexed by canonical representatives of
+/// their twisted-conjugacy orbits. This value only establishes the
+/// root-theoretic condition `w theta` squared equals one; the Cayley/cross
+/// decomposition relative to the distinguished involution lives in
+/// [`crate::CayleyCrossDecomposition`], and Atlas canonicalization lives in
+/// [`crate::InnerClass::canonicalize`], which [`crate::CartanClassification`]
+/// applies when numbering Cartan classes.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TwistedInvolution {
+    weyl_action: WeylAction,
+    root_involution: RootInvolutionData,
+}
+
+impl TwistedInvolution {
+    /// Construct `w after theta` and verify that it is a root involution.
+    pub fn new(
+        datum: &BasedRootDatum,
+        root_system: &RootSystem,
+        distinguished: &LatticeInvolution,
+        weyl_action: WeylAction,
+    ) -> Result<Self, StructureError> {
+        if root_system.datum() != datum
+            || distinguished.datum() != datum
+            || weyl_action.datum() != datum
+        {
+            return Err(StructureError::DatumMismatch);
+        }
+        let rank = datum.lattice_rank();
+        if root_system.lattice_rank() != rank {
+            return Err(StructureError::RankMismatch {
+                expected: rank,
+                actual: root_system.lattice_rank(),
+            });
+        }
+        if distinguished.lattice_rank() != rank {
+            return Err(StructureError::RankMismatch {
+                expected: rank,
+                actual: distinguished.lattice_rank(),
+            });
+        }
+        if weyl_action.rank() != rank {
+            return Err(StructureError::RankMismatch {
+                expected: rank,
+                actual: weyl_action.rank(),
+            });
+        }
+        let involution = LatticeInvolution::new(
+            datum,
+            compose_matrices(weyl_action.matrix(), distinguished.weight_matrix())?,
+            compose_matrices(
+                weyl_action.coweight_matrix(),
+                distinguished.coweight_matrix(),
+            )?,
+        )?;
+        let root_involution = RootInvolutionData::new(root_system, involution)?;
+        Ok(Self {
+            weyl_action,
+            root_involution,
+        })
+    }
+
+    pub fn weyl_action(&self) -> &WeylAction {
+        &self.weyl_action
+    }
+
+    pub fn root_involution(&self) -> &RootInvolutionData {
+        &self.root_involution
+    }
+
+    /// Restricted roots for this actual Cartan involution.
+    pub fn restricted_roots(
+        &self,
+        root_system: &RootSystem,
+    ) -> Result<RestrictedRootSystem, StructureError> {
+        RestrictedRootSystem::build(root_system, &self.root_involution)
+    }
+}
+
+pub(crate) fn compose_matrices(
+    left: &[Vec<i32>],
+    right: &[Vec<i32>],
+) -> Result<Vec<Vec<i32>>, StructureError> {
+    let rank = left.len();
+    if right.len() != rank
+        || left.iter().any(|row| row.len() != rank)
+        || right.iter().any(|row| row.len() != rank)
+    {
+        return Err(StructureError::RankMismatch {
+            expected: rank,
+            actual: right.len(),
+        });
+    }
+    left.iter()
+        .map(|row| {
+            (0..rank)
+                .map(|column| {
+                    let value =
+                        row.iter()
+                            .enumerate()
+                            .try_fold(0_i128, |sum, (middle, &entry)| {
+                                let product = i128::from(entry)
+                                    .checked_mul(i128::from(right[middle][column]))
+                                    .ok_or(StructureError::ArithmeticOverflow)?;
+                                sum.checked_add(product)
+                                    .ok_or(StructureError::ArithmeticOverflow)
+                            })?;
+                    i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)
+                })
+                .collect()
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{BasedRootDatum, LatticeInvolution, RootKind, RootSystem, WeylGroup};
+
+    use super::*;
+
+    #[test]
+    fn validates_a_weyl_translate_of_the_distinguished_involution() {
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 2).unwrap();
+        let weyl = WeylGroup::new(datum.clone()).simple_reflection(0).unwrap();
+        let twisted = TwistedInvolution::new(
+            &datum,
+            &roots,
+            &LatticeInvolution::identity(&datum).unwrap(),
+            weyl,
+        )
+        .unwrap();
+
+        assert_eq!(
+            twisted
+                .root_involution()
+                .roots_of_kind(RootKind::Real)
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn rejects_weyl_translates_that_are_not_involutive() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 6).unwrap();
+        let group = WeylGroup::new(datum.clone());
+        let order_three = group
+            .simple_reflection(0)
+            .unwrap()
+            .compose(&group.simple_reflection(1).unwrap())
+            .unwrap();
+        assert_eq!(
+            TwistedInvolution::new(
+                &datum,
+                &roots,
+                &LatticeInvolution::identity(&datum).unwrap(),
+                order_three,
+            ),
+            Err(StructureError::InvalidInvolution)
+        );
+    }
+
+    #[test]
+    fn rejects_a_weyl_action_owned_by_a_different_same_rank_datum() {
+        let a2 = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let b2 = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&a2, 6).unwrap();
+        let foreign_action = WeylGroup::new(b2).identity().unwrap();
+
+        assert_eq!(
+            TwistedInvolution::new(
+                &a2,
+                &roots,
+                &LatticeInvolution::identity(&a2).unwrap(),
+                foreign_action,
+            ),
+            Err(StructureError::DatumMismatch)
+        );
+    }
+
+    #[test]
+    fn composes_a_nontrivial_central_torus_involution_with_a_weyl_action() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![crate::Weight::new(vec![1, 0])],
+            vec![crate::Coweight::new(vec![2, 0])],
+        )
+        .unwrap();
+        let roots = RootSystem::enumerate(&datum, 2).unwrap();
+        let distinguished = LatticeInvolution::new(
+            &datum,
+            vec![vec![1, 0], vec![0, -1]],
+            vec![vec![1, 0], vec![0, -1]],
+        )
+        .unwrap();
+        let weyl = WeylGroup::new(datum.clone()).simple_reflection(0).unwrap();
+        let twisted = TwistedInvolution::new(&datum, &roots, &distinguished, weyl).unwrap();
+
+        assert_eq!(
+            twisted
+                .root_involution()
+                .roots_of_kind(RootKind::Real)
+                .count(),
+            2
+        );
+    }
+}
+
+```
+
+文件：crates/atlas-real-group/src/root_involution.rs（完整字节）：
+```rust
+use std::collections::BTreeSet;
+
+use crate::{LatticeInvolution, RootId, RootSystem, StructureError};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RootKind {
+    Imaginary,
+    Real,
+    Complex,
+}
+
+/// An involution action on a generated ordinary root system.
+///
+/// Construction validates that the dual-lattice involution truly permutes the
+/// root system and transports each stored coroot to the coroot of its image
+/// root before classifying anything. The second condition is the root-datum
+/// automorphism property: pairing preservation alone admits actions that fix
+/// every root while moving a coroot's central-torus coordinates.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RootInvolutionData {
+    involution: LatticeInvolution,
+    image_by_root: Vec<RootId>,
+    kind_by_root: Vec<RootKind>,
+    imaginary_simple_roots: Vec<RootId>,
+    real_simple_roots: Vec<RootId>,
+}
+
+impl RootInvolutionData {
+    pub fn new(
+        root_system: &RootSystem,
+        involution: LatticeInvolution,
+    ) -> Result<Self, StructureError> {
+        if involution.datum() != root_system.datum() {
+            return Err(StructureError::DatumMismatch);
+        }
+        if involution.lattice_rank() != root_system.lattice_rank() {
+            return Err(StructureError::RankMismatch {
+                expected: root_system.lattice_rank(),
+                actual: involution.lattice_rank(),
+            });
+        }
+        validate_simple_root_images(root_system, &involution)?;
+        let mut image_by_root = Vec::with_capacity(root_system.roots().len());
+        let mut kind_by_root = Vec::with_capacity(root_system.roots().len());
+        for (_, root, coroot) in root_system.entries() {
+            let image = involution.act_on_weight(root)?;
+            let image_id = root_system
+                .id_of(&image)
+                .ok_or(StructureError::InvalidRootAutomorphism)?;
+            let image_coroot =
+                root_system
+                    .coroot(image_id)
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: image_id.0,
+                        upper_bound: root_system.roots().len(),
+                    })?;
+            if involution.act_on_coweight(coroot)? != *image_coroot {
+                return Err(StructureError::InvalidRootDatumAutomorphism);
+            }
+            let negative = root
+                .as_slice()
+                .iter()
+                .map(|coordinate| {
+                    coordinate
+                        .checked_neg()
+                        .ok_or(StructureError::ArithmeticOverflow)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let kind = if image == *root {
+                RootKind::Imaginary
+            } else if image.as_slice() == negative.as_slice() {
+                RootKind::Real
+            } else {
+                RootKind::Complex
+            };
+            image_by_root.push(image_id);
+            kind_by_root.push(kind);
+        }
+        let imaginary_simple_roots =
+            subsystem_simple_roots(root_system, &kind_by_root, RootKind::Imaginary)?;
+        let real_simple_roots = subsystem_simple_roots(root_system, &kind_by_root, RootKind::Real)?;
+        Ok(Self {
+            involution,
+            image_by_root,
+            kind_by_root,
+            imaginary_simple_roots,
+            real_simple_roots,
+        })
+    }
+
+    pub fn involution(&self) -> &LatticeInvolution {
+        &self.involution
+    }
+
+    pub fn image(&self, root: RootId) -> Option<RootId> {
+        self.image_by_root.get(root.0).copied()
+    }
+
+    pub fn image_permutation(&self) -> &[RootId] {
+        &self.image_by_root
+    }
+
+    pub fn kind(&self, root: RootId) -> Option<RootKind> {
+        self.kind_by_root.get(root.0).copied()
+    }
+
+    pub fn roots_of_kind(&self, kind: RootKind) -> impl Iterator<Item = RootId> + '_ {
+        self.kind_by_root
+            .iter()
+            .enumerate()
+            .filter_map(move |(index, candidate)| (*candidate == kind).then_some(RootId(index)))
+    }
+
+    /// Simple roots of the imaginary-root subsystem in the inherited positive system.
+    pub fn imaginary_simple_roots(&self) -> &[RootId] {
+        &self.imaginary_simple_roots
+    }
+
+    /// Simple roots of the real-root subsystem in the inherited positive system.
+    pub fn real_simple_roots(&self) -> &[RootId] {
+        &self.real_simple_roots
+    }
+}
+
+fn validate_simple_root_images(
+    root_system: &RootSystem,
+    involution: &LatticeInvolution,
+) -> Result<(), StructureError> {
+    let datum = root_system.datum();
+    for (simple_root, (root, coroot)) in datum
+        .simple_roots()
+        .iter()
+        .zip(datum.simple_coroots())
+        .enumerate()
+    {
+        let image_root = involution.act_on_weight(root)?;
+        let image_id = root_system
+            .id_of(&image_root)
+            .ok_or(StructureError::SimpleRootImageNotRoot { simple_root })?;
+        let image_coroot = root_system
+            .coroot(image_id)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: image_id.0,
+                upper_bound: root_system.roots().len(),
+            })?;
+        if involution.act_on_coweight(coroot)? != *image_coroot {
+            return Err(StructureError::SimpleCorootImageMismatch {
+                simple_root,
+                image_root,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn subsystem_simple_roots(
+    root_system: &RootSystem,
+    kinds: &[RootKind],
+    kind: RootKind,
+) -> Result<Vec<RootId>, StructureError> {
+    let positive = kinds
+        .iter()
+        .enumerate()
+        .filter_map(|(index, candidate_kind)| (*candidate_kind == kind).then_some(RootId(index)))
+        .filter(|&root| {
+            root_system
+                .simple_coordinates(root)
+                .is_some_and(|coordinates| coordinates.iter().all(|&coordinate| coordinate >= 0))
+        })
+        .collect::<Vec<_>>();
+    let positive_coordinates = positive
+        .iter()
+        .map(|&root| {
+            root_system
+                .simple_coordinates(root)
+                .map(|coordinates| coordinates.to_vec())
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: root.0,
+                    upper_bound: root_system.roots().len(),
+                })
+        })
+        .collect::<Result<BTreeSet<_>, _>>()?;
+    let mut simple_roots = Vec::new();
+    for candidate in positive {
+        let candidate_coordinates =
+            root_system
+                .simple_coordinates(candidate)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: candidate.0,
+                    upper_bound: root_system.roots().len(),
+                })?;
+        let mut decomposable = false;
+        for summand in &positive_coordinates {
+            let remainder = candidate_coordinates
+                .iter()
+                .zip(summand)
+                .map(|(&candidate_coordinate, &summand_coordinate)| {
+                    candidate_coordinate
+                        .checked_sub(summand_coordinate)
+                        .ok_or(StructureError::ArithmeticOverflow)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            if positive_coordinates.contains(&remainder) {
+                decomposable = true;
+                break;
+            }
+        }
+        if !decomposable {
+            simple_roots.push(candidate);
+        }
+    }
+    Ok(simple_roots)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{BasedRootDatum, Coweight, LatticeInvolution, RootSystem, Weight};
+
+    use super::*;
+
+    #[test]
+    fn classifies_real_and_complex_a2_roots() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 6).unwrap();
+        let data = RootInvolutionData::new(
+            &roots,
+            LatticeInvolution::new(
+                &datum,
+                vec![vec![0, -1], vec![-1, 0]],
+                vec![vec![0, -1], vec![-1, 0]],
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(data.roots_of_kind(RootKind::Real).count(), 2);
+        assert_eq!(data.roots_of_kind(RootKind::Complex).count(), 4);
+        assert_eq!(data.roots_of_kind(RootKind::Imaginary).count(), 0);
+        assert_eq!(
+            data.real_simple_roots(),
+            &[roots.id_of(&Weight::new(vec![1, 1])).unwrap()]
+        );
+    }
+
+    #[test]
+    fn rejects_pairing_preserving_actions_that_do_not_permute_roots() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 6).unwrap();
+        let involution = LatticeInvolution::new(
+            &datum,
+            vec![vec![-1, 0], vec![1, 1]],
+            vec![vec![-1, 1], vec![0, 1]],
+        )
+        .unwrap();
+        assert_eq!(
+            RootInvolutionData::new(&roots, involution),
+            Err(StructureError::SimpleRootImageNotRoot { simple_root: 0 })
+        );
+    }
+
+    #[test]
+    fn reports_a_positive_simple_root_with_the_wrong_image_coroot() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![1, 0])],
+            vec![Coweight::new(vec![2, 0])],
+        )
+        .unwrap();
+        let roots = RootSystem::enumerate(&datum, 2).unwrap();
+        let involution = LatticeInvolution::new(
+            &datum,
+            vec![vec![1, 2], vec![0, -1]],
+            vec![vec![1, 0], vec![2, -1]],
+        )
+        .unwrap();
+
+        assert_eq!(
+            RootInvolutionData::new(&roots, involution),
+            Err(StructureError::SimpleCorootImageMismatch {
+                simple_root: 0,
+                image_root: Weight::new(vec![1, 0]),
+            })
+        );
+    }
+
+    #[test]
+    fn reports_a_negative_simple_root_with_the_wrong_image_coroot() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![1, 0])],
+            vec![Coweight::new(vec![2, 0])],
+        )
+        .unwrap();
+        let roots = RootSystem::enumerate(&datum, 2).unwrap();
+        let involution = LatticeInvolution::new(
+            &datum,
+            vec![vec![-1, 2], vec![0, 1]],
+            vec![vec![-1, 0], vec![2, 1]],
+        )
+        .unwrap();
+
+        assert_eq!(
+            RootInvolutionData::new(&roots, involution),
+            Err(StructureError::SimpleCorootImageMismatch {
+                simple_root: 0,
+                image_root: Weight::new(vec![-1, 0]),
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_a_root_system_from_a_different_same_rank_datum() {
+        let a2 = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let product_a1 = BasedRootDatum::standard(vec![vec![2, 0], vec![0, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&product_a1, 4).unwrap();
+
+        assert_eq!(
+            RootInvolutionData::new(&roots, LatticeInvolution::identity(&a2).unwrap()),
+            Err(StructureError::DatumMismatch)
+        );
+    }
+
+    #[test]
+    fn classifies_identity_as_imaginary() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![1, 0])],
+            vec![Coweight::new(vec![2, 0])],
+        )
+        .unwrap();
+        let roots = RootSystem::enumerate(&datum, 2).unwrap();
+        let data =
+            RootInvolutionData::new(&roots, LatticeInvolution::identity(&datum).unwrap()).unwrap();
+        assert_eq!(data.roots_of_kind(RootKind::Imaginary).count(), 2);
+    }
+
+    #[test]
+    fn finds_the_inherited_simple_basis_of_the_imaginary_subsystem() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let roots = RootSystem::enumerate(&datum, 6).unwrap();
+        let data =
+            RootInvolutionData::new(&roots, LatticeInvolution::identity(&datum).unwrap()).unwrap();
+
+        assert_eq!(
+            data.imaginary_simple_roots(),
+            &[
+                roots.id_of(&Weight::new(vec![0, 1])).unwrap(),
+                roots.id_of(&Weight::new(vec![1, 0])).unwrap(),
+            ]
+        );
+    }
+}
+
+```
