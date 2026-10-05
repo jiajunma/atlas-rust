@@ -303,6 +303,18 @@ probe 路由起草（exit 0，347.5s），维护者对照源码逐条核对改�
 路由起草（exit 0，440.2s），维护者对照源码逐条核对改写。该包是结构性阅读；
 整个模块尚未接线（`RepTable::lookup` 不调用它），不声称数学验收。
 
+[弱实形式标签与外部编号](real-form-labels-order.md)记录
+`real_form_labels.rs` 与 `real_form_order.rs`：`RealFormLabels::build` 的
+出处闸门与 grading 关联机制（Cayley 回拉翻转、cross 运送、增广子空间求解、
+quasisplit 锚点）、`base_grading_extension`；`ExternalFormOrder` 的
+depth+tiebreak 排序（严格无并列断言、quasisplit 居末）、`DepthTables`、
+`verified_generator_map`、`special_grading_key`。对应
+[阅读快照](snapshots/2026-10-06-real-form-labels-order.json)；草案由同一
+Kimi probe 路由起草（53KB 两文件，exit 0，487.8s），维护者对照源码逐条
+核对改写；草案发现两处真实源码观察（DepthTables::build 的死循环、
+weight_sum 的恒 Some Option），已记录为清理候选。该包是结构性阅读，不声称
+标签/编号层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

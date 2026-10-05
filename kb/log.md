@@ -406,3 +406,14 @@ int_item 的 (a)–(f) 流程、fundamental_alcove_walls、pos_simples、
 make_relative_to。同一 Kimi probe 路由起草（46KB 单文件，exit 0，440.2s），
 维护者对照源码逐条核对改写；草案的「接口使用面」表格是有用的段落模式。
 索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增实形式标签/编号来源包（Kimi probe 协助）
+
+新增 `sources/real-form-labels-order.md` 与快照
+`2026-10-06-real-form-labels-order.json`：RealFormLabels 的出处闸门与
+grading 关联机制、base_grading_extension；ExternalFormOrder 的严格
+(depth, tiebreak) 排序、DepthTables、verified_generator_map、
+special_grading_key。同一 Kimi probe 路由起草（53KB 两文件，exit 0，
+487.8s），维护者对照源码逐条核对改写；草案发现 DepthTables::build 的死
+循环与 weight_sum 恒 Some 两处真实源码观察，已记录为清理候选。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。

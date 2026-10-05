@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "74cc4901",
+  "working_tree": false,
+  "scope": "First reading of the weak-real-form labels and external ordering pair for the new real-form-labels-order source packet: RealFormLabels::build gates and the grading-based legacy correlation, base_grading_extension, ExternalFormOrder's depth+tiebreak sort with the strict-order assertion, DepthTables, verified_generator_map, special_grading_key.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/real_form_labels.rs",
+      "sha256": "9f194a2446ce1d1fef5ac1e3a657777659aa436dc7155e8dfe39e81bd085ecdc",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/real_form_order.rs",
+      "sha256": "36a5eba8ac093a09233c2ae075f123a3577e9a408cf363866e75f78501004a85",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_01a0974d-4a14-4b03-831e-826e0c8c0de4",
+    "prompt_sha256": "d2a7893ea186643d6c6015881def83e629a6a826af421314435339d815841ab6",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/real-form-labels-order-probe",
+    "stdout_jsonl_sha256": "8fffd3d6b36ae2578f706b5d38195d41cb418e727940c1e8af79bae2287e3be4",
+    "draft_sha256": "55d050a99384b3f810a690ebe16ee07e1c0944a4657116bc2f965d717b808d31",
+    "result": "completed, exit 0, 487.8s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The 53KB two-file prompt at 488s remains reliable; the draft surfaced two genuine source observations (a dead no-op loop in DepthTables::build, weight_sum's always-Some Option) that the packet now records as cleanup candidates."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}
