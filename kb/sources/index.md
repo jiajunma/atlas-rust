@@ -400,6 +400,15 @@ saturating/checked 策略并存、reflection_word 的贪心扫描与反转约定
 Kimi probe 路由起草（300s 期限，exit 0，274.4s），维护者对照源码逐条
 核对改写。该包是结构性阅读，不声称这三层的数学验收。
 
+[格值类型与 KLV 多项式引擎](lattice-kl-polynomial.md)记录 `lattice.rs` 与
+`kl_polynomial.rs`：Weight/Coweight 的类型区分、RationalWeight 单公分母
+纪律与 halve 不归一约定、KlPol 的 trim 不变量与递归操作集、KlHashTable
+种子池（及 `Default` 空池隐患）。对应
+[阅读快照](snapshots/2026-10-06-lattice-kl-polynomial.json)；草案由同一
+Kimi probe 路由起草（r1 在 360s 超时留有草稿残片，r2 以 600s 期限
+exit 0，326.1s；超时规则上修为 ~24s/KB），维护者对照源码逐条核对改写。
+该包是结构性阅读，不声称这两层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

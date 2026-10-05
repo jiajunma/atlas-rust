@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "bf19b5f1",
+  "working_tree": false,
+  "scope": "First reading of the lattice value types and the minimal KLV polynomial engine for the new lattice-kl-polynomial source packet: Weight/Coweight, RationalWeight's common-denominator discipline, RationalCoweight, KlPol's trim invariant and the recursion operation set, KlHashTable's seeded pool.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/lattice.rs",
+      "sha256": "3cf4e62cf3e1a14da2e93a773751fd0b1412fc2deac9a1ec7856e591250f8509",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/kl_polynomial.rs",
+      "sha256": "de27bf1e6486570c1504d423e2864c7046e83d2b0385e253e3f4b056d80be973",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_1ab1e6d0-32f1-444f-943c-39759c182ad6",
+    "prompt_sha256": "8a759c6ffb69697a0e6051e2c78c3b82531c14cf461776c74ab56461b8900828",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/lattice-kl-polynomial-probe-r2",
+    "stdout_jsonl_sha256": "889e5248bcafc190805f8a85c2072ce390a46969ed1ccf7878d8512aaef31e59",
+    "draft_sha256": "f466b9406447de3993e7abb220a7fb5cfed7a33b5f9cef69865e6f991c0b21f1",
+    "result": "r2 completed, exit 0, 326.1s; r1 (docs/evidence/kimi-runtime-20261006/lattice-kl-polynomial-probe) TIMED OUT at 360s with a 9KB partial draft, kept as failure evidence. Draft reviewed claim-by-claim against source and rewritten by the maintainer.",
+    "lesson": "Timeout rule revised: the 13s/KB floor is not enough margin — this 25.5KB prompt needed 326s of real work and died at a 360s deadline while finalizing. Use ~24s/KB (or double the estimate) for prompts above 20KB. The draft itself was exact, including the stale coefficient() doc, the reversed dot_coroot RankMismatch fields, and the Default-vs-new() pool hazard."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

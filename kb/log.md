@@ -513,3 +513,15 @@ reflection_word 贪心扫描与无上限循环。同一 Kimi probe 路由起草
 （300s，exit 0，274.4s），维护者对照源码逐条核对改写；草案标记的四处
 防御策略不一致均属实并保留为复核备注。索引与 sources/index.md 已同步；
 未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增格值/KLV 多项式来源包（Kimi probe 协助，含一次超时）
+
+新增 `sources/lattice-kl-polynomial.md` 与快照
+`2026-10-06-lattice-kl-polynomial.json`：Weight/Coweight 区分、
+RationalWeight 归一纪律、KlPol trim 不变量与递归操作集、KlHashTable
+种子池与 Default 隐患。Kimi probe r1 在 360s 期限超时（25.5KB 提示实测
+需要 326s），保留失败证据后以 600s 期限重试成功（exit 0，326.1s）；
+**超时规则上修：>20KB 的提示用 ~24s/KB（或双倍估计）**。维护者对照源码
+逐条核对改写，并补充一处跨文件观察（两处 gcd_u64 副本的 (0,0) 语义已
+漂移）。索引与 sources/index.md 已同步；未运行编译、测试或 compiler
+生成。
