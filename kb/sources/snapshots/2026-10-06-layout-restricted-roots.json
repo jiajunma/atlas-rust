@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "ef6e9e06",
+  "working_tree": false,
+  "scope": "First reading of the inner-class layout and restricted roots for the new layout-restricted-roots source packet: InnerClassLayout::build, twist_permutation, inner_class_letters with the Complex-pair rotation and the replicated upstream shift order, torus_ranks via the Smith-basis quotient involution; RestrictedWeight/RestrictedRootSystem with the (1-theta) encoding and fiber aggregation.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/layout.rs",
+      "sha256": "ef921b6ba8345b23ede33a903fc59c4fe850ac08c1dddbe2f01a645c1a11f18d",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/restricted_roots.rs",
+      "sha256": "56c2e649c38c36eca0b65a20cc3cfdd4f94d1e3d94f6213e05a42f6d895c5da9",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_aeb59d6a-4cd5-47f2-b9f7-08427ace7073",
+    "prompt_sha256": "ebed9245a635cd55de0ba06ec8f6ea93c5aae057e35edc01990719700042158d",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/layout-restricted-probe",
+    "stdout_jsonl_sha256": "905008aefb2c46587edd446d91484f991ee36343f74d75b26b114b309dee102b",
+    "draft_sha256": "3f7b67ba9411833ae9740caa5704ec7dcafb39af6e0879b5d73303bb38942c1a",
+    "result": "completed, exit 0, 182.9s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The 25KB two-file prompt completed in 183s — the fastest so far; the ~13s/KB timeout rule has headroom at this size."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

@@ -340,6 +340,14 @@ TitsCoset 下降循环、基本纤维 grading 目标、轨道游走与最小选�
 路由起草（540s 期限，exit 0，414.4s），维护者对照源码逐条核对改写。该包是
 结构性阅读，不声称合成种子层的数学验收。
 
+[内类布局与限制根系](layout-restricted-roots.md)记录 `layout.rs` 与
+`restricted_roots.rs`：`InnerClassLayout::build`（twist 置换、Dynkin 分支
+字母判定、Complex 对旋转与上游移位顺序的逐字复制、中心环面 Smith 商对合）、
+`RestrictedWeight` 的 (1-θ) 编码与 `RestrictedRootSystem` 的纤维聚合。
+对应[阅读快照](snapshots/2026-10-06-layout-restricted-roots.json)；草案由
+同一 Kimi probe 路由起草（exit 0，182.9s——目前最快），维护者对照源码逐条
+核对改写。该包是结构性阅读，不声称这两层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

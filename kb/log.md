@@ -444,3 +444,12 @@ elected_square_root 与 minimal_torus_part 的完整流程。同一 Kimi probe �
 起草（期限按新教训放宽到 540s，exit 0，414.4s），维护者对照源码逐条核对
 改写；草案独立指出 encode 的恒 Ok 签名与正例测试 coch==factor 的覆盖缺口。
 索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增内类布局/限制根来源包（Kimi probe 协助）
+
+新增 `sources/layout-restricted-roots.md` 与快照
+`2026-10-06-layout-restricted-roots.json`：InnerClassLayout 的构建与
+Complex 对旋转、上游移位顺序怪癖、环面 Smith 商对合；RestrictedWeight 的
+(1-θ) 编码与纤维聚合。同一 Kimi probe 路由起草（exit 0，182.9s——目前
+最快），维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；
+未运行编译、测试或 compiler 生成。
