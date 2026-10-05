@@ -332,6 +332,14 @@ make_diff_integral_orthogonal/make_relative_to/sr_with_modifier）。对应
 probe 路由起草但在 480s 期限处截断（2.9 节内），已覆盖部分核对无误，尾部由
 维护者按完整阅读补齐。该包是结构性阅读；两文件均未接线，不声称数学验收。
 
+[合成实形的选定余特征与初始环面部分](minimal-torus.md)记录
+`minimal_torus.rs`：`elected_square_root`（字重建往返校验、delta-then-w
+运输、stable_log 调用）与 `minimal_torus_part`（入口门、初始环面部分、
+TitsCoset 下降循环、基本纤维 grading 目标、轨道游走与最小选举）。对应
+[阅读快照](snapshots/2026-10-06-minimal-torus.json)；草案由同一 Kimi probe
+路由起草（540s 期限，exit 0，414.4s），维护者对照源码逐条核对改写。该包是
+结构性阅读，不声称合成种子层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

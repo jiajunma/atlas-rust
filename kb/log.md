@@ -436,3 +436,11 @@ RepContext 扩展方法。Kimi probe 在 480s 期限截断（SIGTERM；单个 as
 记录是完整 JSON 但内容断在句中——教训：按 ~13s/KB 估期限）；已覆盖部分
 核对无误，测试/限制章节由维护者按完整阅读补齐。索引与 sources/index.md
 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增合成实形种子来源包（Kimi probe 协助）
+
+新增 `sources/minimal-torus.md` 与快照 `2026-10-06-minimal-torus.json`：
+elected_square_root 与 minimal_torus_part 的完整流程。同一 Kimi probe 路由
+起草（期限按新教训放宽到 540s，exit 0，414.4s），维护者对照源码逐条核对
+改写；草案独立指出 encode 的恒 Ok 签名与正例测试 coch==factor 的覆盖缺口。
+索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。

@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "7cb3fb67",
+  "working_tree": false,
+  "scope": "First reading of the synthetic-real-form seed layer for the new minimal-torus source packet: elected_square_root (word-rebuild round trip, delta-then-w transport, stable_log call) and minimal_torus_part (entry gates, initial torus part, the descent loop via TitsCoset, the fundamental-fiber grading targets, the orbit walk, minimal election).",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/minimal_torus.rs",
+      "sha256": "feeca107507d937297cb86c81f5b4092199efb71b1a5db4690ebcb24315cb06b",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_5aea0369-fe4f-44fb-8c0f-9094e39eb022",
+    "prompt_sha256": "e2e2bcf6861520a46ef974d7ea788174a19d36bf4771f43b4dc954cd469d8ce1",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/minimal-torus-probe",
+    "stdout_jsonl_sha256": "fa18c0fa6a5ad83e35bba0ee283712a0193403b5729bc6e0ca12fbbb984e2c2d",
+    "draft_sha256": "4bd217d3c9b9f5685ca0bc9f206bb37bbef5221bc15bef66d098ec6e32154e1e",
+    "result": "completed, exit 0, 414.4s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "With the timeout scaled to 540s this 26KB prompt completed comfortably; the draft caught the infallible-body Result signature of encode and the coch==factor test-coverage gap unprompted."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}
