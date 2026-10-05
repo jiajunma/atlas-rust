@@ -453,3 +453,12 @@ Complex 对旋转、上游移位顺序怪癖、环面 Smith 商对合；Restrict
 (1-θ) 编码与纤维聚合。同一 Kimi probe 路由起草（exit 0，182.9s——目前
 最快），维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；
 未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增 Weyl 阶/展示层来源包（Kimi probe 协助）
+
+新增 `sources/weyl-size-presentation.md` 与快照
+`2026-10-06-weyl-size-presentation.json`：weyl_order_of_cartan 的分量 BFS
+与分支形状分派、branch_lengths；build_presentations 与状态位。同一
+Kimi probe 路由起草（exit 0，292.1s），维护者对照源码逐条核对改写；
+草案的两处阅读观察（秩检查落后于扫描、负边乘积计度数不提重数）均正确
+并保留。索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。

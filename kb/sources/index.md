@@ -348,6 +348,14 @@ TitsCoset 下降循环、基本纤维 grading 目标、轨道游走与最小选�
 同一 Kimi probe 路由起草（exit 0，182.9s——目前最快），维护者对照源码逐条
 核对改写。该包是结构性阅读，不声称这两层的数学验收。
 
+[Weyl 群阶识别与实形展示层](weyl-size-presentation.md)记录 `weyl_size.rs`
+与 `presentation.rs`：`weyl_order_of_cartan` 的分量 BFS 与分支形状分派
+（B/C 不敏感、F4 内双键识别、D/E 分支长度）；`build_presentations` 与
+`RealFormPresentation` 的四个状态位。对应
+[阅读快照](snapshots/2026-10-06-weyl-size-presentation.json)；草案由同一
+Kimi probe 路由起草（exit 0，292.1s），维护者对照源码逐条核对改写。该包是
+结构性阅读，不声称这两层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

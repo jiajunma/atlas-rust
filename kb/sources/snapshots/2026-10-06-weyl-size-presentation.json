@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "d291c1f4",
+  "working_tree": false,
+  "scope": "First reading of the Weyl-order recognition and the real-form presentation layer for the new weyl-size-presentation source packet: weyl_order_of_cartan's component BFS and branch-shape dispatch, branch_lengths; build_presentations and the RealFormPresentation status bits.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/weyl_size.rs",
+      "sha256": "aeef7f9eccad2a884a5dcc9336e17fe32209f78fc950db23edb3264d81a13bc1",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/presentation.rs",
+      "sha256": "9672ea758bec05e4f93f6b7b46861723dc1d52fcf44fbb17f4e27bcd7efef30d",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_02f6eab4-2b5e-40d0-af29-fe958f886b3c",
+    "prompt_sha256": "02eafaa31dde6e14c90e6d488023fa62244623f5174d6994feada496713fcb50",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/weyl-size-presentation-probe",
+    "stdout_jsonl_sha256": "b2b382f8c7747c410c0dc876264506ac6e567d35d216dd8aecd45a2000c823a3",
+    "draft_sha256": "a1bbb215fd95d10b17c0fb0fb7c39923a070a4e4faf441548a87793059a40d28",
+    "result": "completed, exit 0, 292.1s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The draft's reading observations (the rank check trailing the compact/split scan; negative edge products counting toward degree without raising max_multiplicity) were both correct and are retained in the packet as reading observations."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}
