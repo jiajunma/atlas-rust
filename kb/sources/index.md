@@ -315,6 +315,14 @@ Kimi probe 路由起草（53KB 两文件，exit 0，487.8s），维护者对照�
 weight_sum 的恒 Some Option），已记录为清理候选。该包是结构性阅读，不声称
 标签/编号层的数学验收。
 
+[逐块 KL 支撑数据](kl-support.md)记录 `kl_support.rs`：`RankFlags` 的
+u32 位集（rank ≤ 32）、`validate_topology` 构造门控、下降/good-ascent 分类
+（ImaginaryTypeII 两者皆不入）、length-stop 表、懒填充的本原索引机制及其
+prepare-first 前置条件链。对应
+[阅读快照](snapshots/2026-10-06-kl-support.json)；草案由同一 Kimi probe 路由
+起草（exit 0，321.1s），维护者对照源码逐条核对改写。该包是结构性阅读，
+不声称 KL 支撑层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

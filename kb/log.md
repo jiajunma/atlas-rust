@@ -417,3 +417,12 @@ special_grading_key。同一 Kimi probe 路由起草（53KB 两文件，exit 0�
 487.8s），维护者对照源码逐条核对改写；草案发现 DepthTables::build 的死
 循环与 weight_sum 恒 Some 两处真实源码观察，已记录为清理候选。索引与
 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增 KL 支撑来源包（Kimi probe 协助）
+
+新增 `sources/kl-support.md` 与快照 `2026-10-06-kl-support.json`：
+RankFlags 位集、validate_topology 门控、下降/good-ascent 分类、
+length-stop 表、懒填充本原索引及其 prepare-first 前置条件链。同一
+Kimi probe 路由起草（16KB 单文件，exit 0，321.1s），维护者对照源码
+逐条核对改写。索引与 sources/index.md 已同步；未运行编译、测试或
+compiler 生成。

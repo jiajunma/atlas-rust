@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "405ec2d9",
+  "working_tree": false,
+  "scope": "First reading of the KL support layer for the new kl-support source packet: RankFlags bitset semantics, KlSupport's validate_topology gate, descent/good-ascent classification (ImaginaryTypeII excluded from both), the length-stop table, the lazily filled primitive-index machinery with its prepare-first precondition.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/kl_support.rs",
+      "sha256": "b579833c965a5276cab003a457bca3cc76998591eb4fd20558176bfda3389221",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_25df5575-83ab-4c30-a050-2e857a874cf5",
+    "prompt_sha256": "a5c9b2dc0a5382ac8d73230ef3d4cf949c371bc63582a2b5cfd2e1e2187eac50",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/kl-support-probe",
+    "stdout_jsonl_sha256": "bf28cb21afcfbc2d1c4c9c8fadc9323b74342dfff4a87e3f9838f0291a376f97",
+    "draft_sha256": "91f3db3e7c2b3686b6c9184289972c0cebdcf742543e4e7cc30828f824b511d7",
+    "result": "completed, exit 0, 321.1s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "Small files (16KB) return proportionally faster (321s); the draft's panic-path/precondition table caught the prepare_prim_index requirement chain exactly."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}
