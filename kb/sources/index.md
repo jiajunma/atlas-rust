@@ -446,6 +446,14 @@ add_cartan 的种子/外序 BFS/闭轨不变量与查询面。对应
 同一 Kimi probe 路由起草（1600s 期限，exit 0，658.1s），维护者对照源码
 逐条核对改写。该包是结构性阅读，不声称这两层的数学验收。
 
+[K 型值与谓词/变形链](ktype.md)记录 `ktype.rs`：KType 的当选代表不变量与
+sr_k 规范化、六个谓词（含 is_nonzero/is_normal 的不检查前提）、
+equivalent、四个变形循环的终止预算、finals_for 的分支结构（type-2
+Cayley 移位项、parity-real 投影分裂）与 kgp_set 的位图限界 BFS。对应
+[阅读快照](snapshots/2026-10-06-ktype.json)；草案由同一 Kimi probe 路由
+起草（1100s 期限，exit 0，349.5s），维护者对照源码逐条核对改写。该包是
+结构性阅读，不声称 K 型层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

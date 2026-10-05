@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "6beb9f90",
+  "working_tree": false,
+  "scope": "First reading of the K-type layer for the new ktype source packet: KType's elected lambda-rho invariant, sr_k normalization, the predicate chain (standard/dominant/nonzero/semifinal/normal/final), equivalent, the four deformation loops with their termination budgets, finals_for's branch structure and kgp_set's BFS discipline.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/ktype.rs",
+      "sha256": "04af728e4934f8fabc8ea004c807b4f56ce9d49cdc05e68272d38e8af74181db",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_c8b811c5-5b5c-4990-94d8-f6b50c1658dc",
+    "prompt_sha256": "98ffeca293eb7afa3be8382e6fa85d0a7239e9099df4e1e6a177c567af2d643f",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/ktype-probe",
+    "stdout_jsonl_sha256": "4392a97fd2c0a9920a3fd09e2a2d3346ef3b314336734f595fe09a03a0620384",
+    "draft_sha256": "a2a19bcffb7b47205863d003806c1ce99bfefb11deb069d81f84a58ca6bdd956",
+    "result": "completed, exit 0, 349.5s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "All 10 RepInvariantViolation literals, the finals_for branch structure, and the observational (assertion-free) status of tests 8/9 were exact; the height-provenance asymmetry observation is retained in the packet."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

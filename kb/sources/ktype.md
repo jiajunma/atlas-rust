@@ -1,86 +1,82 @@
 ---
-title: KType 层：标准表示的 K-限制
+title: K 型值与 RepContext 谓词/变形（ktype.rs）
 source: atlas-rust/ktype
-ingestedAt: 2026-10-03T10:32:42Z
+ingestedAt: 2026-10-06T09:20:00Z
 ---
 
-# KType 层：标准表示的 K-限制
+# K 型值与 RepContext 谓词/变形（ktype.rs）
 
-编辑状态：**结构性阅读，草稿经 Kimi probe 起草、维护者逐条对照源码核对后改写**。
-本包解释 `ktype.rs` 的表示不变量与判定链；其正确性属于它自己的 HPC 证据链
-（K-type formula 与 unitarity gate 等），本包不重述也不扩展。所读字节见
-[`snapshots/2026-10-03-ktype.json`](snapshots/2026-10-03-ktype.json)
-（`ktype.rs` SHA-256
-`04af728e4934f8fabc8ea004c807b4f56ce9d49cdc05e68272d38e8af74181db`，dirty
-工作区）。
+编辑状态：**结构性阅读完成；草案由 Kimi probe 起草，维护者对照源码逐条核对改写**。
+本包覆盖 `ktype.rs`（981 行）：上游 `gkmod/K_repr.h/cpp` 的 K_type 层。
+`KType { x: KgbId, lam_rho: Weight, height: u32 }` = 标准表示参数去掉 ν 的
+K-限制；存储的 `lam_rho` 恒为其 `(1−θ_x)X*`-陪集的 `lambda_unique` 当选
+代表（规范化只在 `sr_k` 发生一次），`height` 构造时预计算。本包是结构性
+阅读，不声称数学验收；上游行号仅转录自注释。
 
-## 定位与表示不变量
+## 构造与谓词链
 
-`KType` 是标准表示的 K-限制，即 K 的不可约表示：参数数据是
-[StandardRepr](rep-context.md) 去掉 `nu` 部分（K_repr.h:25-30）。存储的是
-**选定的** `lambda-rho` 代表——模 $(1-\theta_x)X^*$ 的归一化只在
-`KType::sr_k`（`Rep_context::sr_K`，K_repr.cpp:25-32）中发生一次——因此值
-相等是上游的严格分量相等（K_repr.h:56-60），而 `equivalent` 关系经移到
-canonical involution 计算（K_repr.cpp:159-171）。字段：
-`x: KgbId`、`lam_rho: Weight`、`height: u32`（构造时预计算，
-K_repr.h:36-44）。原始构造器是 `pub(crate)`；归一化是 `sr_k` 的职责。
+- `new`（pub(crate)）是原始构造器，不校验不变量——crate 内可装入任意
+  height，纪律靠调用方；crate 外只能经 `sr_k`。
+- `sr_k(rc, x, λ−ρ)`：`lambda_unique` 规范化 + 预存 `(1+θ)λ` 的 height，
+  其中 `(1+θ)λ = λ_ρ + θ·λ_ρ + (1+θ)ρ`（theta_plus_1_lambda 同式）。
+- `theta_plus_1_eval(α)`（私有核）：`⟨λ_ρ, α∨⟩ + colevel(α) +
+  ⟨λ_ρ, (θα)∨⟩ + colevel(θα)`，谓词集只用其符号/零测试。
+- 谓词：`is_standard`（单虚余根上 eval ≥ 0）；`is_dominant`（所有单根
+  theta_plus_1_eval ≥ 0）；`is_nonzero`（无奇异紧单虚根；**假设
+  is_standard 成立但不检查**）；`is_semifinal`（测试权重
+  `2λ_ρ + 2ρ − 2ρ_R` 在实单根上配对 ≡ 0 mod 4）；`is_normal`（无奇异
+  复下降；上游断言四联前提，本移植因计算是 total 而不检查——注释声明）；
+  `is_final`（eval<0 拒绝；eval==0 时按 KGB 状态分派：ic 拒绝、Real 奇
+  配对拒绝、Complex 下降拒绝、inc 放行）。
+- `equivalent`：先同 Cartan 类，再各自 `to_canonical_fiber` 后严格相等。
 
-## 性质判定族
+## 变形与展开
 
-- `is_standard`（K_repr.cpp:46-57）：`lambda` 在 simply-imaginary coroots
-  上弱支配。
-- `is_dominant`（:59-69）：$(1+\theta_x)\lambda$ 在每个单余根上弱支配。
-- `is_nonzero`（:71-83）：不存在 singular 的 compact simply-imaginary
-  root；与上游一致地假定 `is_standard` 成立。
-- `is_semifinal`（:85-100）：没有 really-simple root 在测试权
-  $2(\lambda-\rho) + 2\rho - 2\rho_R$ 上取奇值。
-- `is_normal`（:102-123）：不存在 singular complex descent；上游断言前四个
-  谓词成立且只在形容词链中调用——本移植因计算本身是 total 的而不带前置条件
-  求值。
-- `is_final`（:126-157）：$(1+\theta_x)\lambda$ 的支配性加上不存在任何
-  singular descent。
+- `made_dominant`：非标准输入报 `"standard K-type in make_dominant"`；
+  预算 = `weight_defect((1+θ)λ)`，超限报 `"dominance termination"`；对负
+  求值复单根 cross + 反射，每轮末尾 lambda_unique 重规范化。height 在
+  Weyl 共轭移动下不变（注释断言），原样携带。
+- `made_theta_stable`：耗尽复下降；图大小为「慷慨」终止界
+  （`"theta-stable termination"`）。
+- `to_canonical_fiber`：沿 `InnerClass::canonicalize` 的词 cross；每个
+  生成元必须是复单根（`"canonical fiber cross"`）。
+- `normalised`：典范化后耗尽奇异复下降与负复求值；预算 =
+  `weight_defect + 图大小 + 1`（`"normal form termination"`）。
+- `finals_for`（K_repr.cpp:290-396）：带号重数表（**无序**，合并在语言
+  层）。工作栈驱动，无显式终止计数。分支：ic 且 eval<0 → 双反射 +
+  coef 取负；ic 且 eval==0 → 丢弃（奇异紧因子）；inc 且 eval<0 → 推入
+  Cayley 像项，若 cross 不动（type-2）再推 `λ_ρ+α` 移位项，然后 cross
+  过去并取负；Complex 且（eval<0 或下降）→ cross + 反射；Real 且
+  `⟨λ_ρ, α∨⟩` 奇 → 投影到墙（`shift=(eval+1)/2`）并按逆 Cayley 分裂
+  （无双值则只推 first；`None` 报 `"parity real inverse Cayley"`）。
+  **height 来源不对称**（阅读观察）：todo 新项经 `sr_k` 重算 height，
+  而结果项用 `KType::new(x, normalized, 沿用待处理项的 height)`。
+  `simple_reflect` 第三参数：`im_wt` 用 0、`lr` 用 1（全文件一致；
+  语义在 RepContext 侧）。
+- `kgp_set`（K_repr.cpp:398-464）：先 `made_theta_stable`；Levi 生成元 =
+  theta-stable 元的实单根（映射不回生成元下标者**静默跳过**）；BFS 由
+  `present` 位图限界（每 KGB 元至多入队一次）。Real 分支的
+  `shift = eval/2` **不查奇偶**（final/semifinal 前提由调用方负责——注释
+  称 wrapper 先检查）；注释「first 更可能已插入，故后试」：先处理
+  second。Complex 分支反射用第三参数 0。
 
-## 等价关系与规范化链
+## 测试锚点与限制
 
-`equivalent`：先判定是否属于同一 Cartan class（经 `graph().cartan_of`），
-再双方将 `to_canonical_fiber` 后做严格相等比较。
-
-规范化链：
-- `made_dominant`（K_repr.cpp:174-204）：沿 $(1+\theta)\lambda$ 取负值的
-  complex simple roots 做 cross 直至支配；非 standard 输入报错（对应上游
-  "Non standard K-type in make_dominant"）。存储的 height 不变（该权重只按
-  Weyl 共轭移动），与上游一致。终止由 `weight_defect` 预算保证。
-- `made_theta_stable`（:207-233）：穷尽该 involution 的 simple complex
-  descents；每次 cross 都是 descent，故以图大小作为宽松的终止上限。
-- `to_canonical_fiber`（:236-256）：沿 `InnerClass::canonicalize` 的字 cross
-  到该 Cartan class 的选定 fiber。
-- `normalised`（:262-289）：先移到 canonical involution，再穷尽 singular
-  complex descents（以及负的 complex 评估），在存在时得到一个 final 的类成员。
-
-## 展开
-
-- `finals_for`（K_repr.cpp:290-396）：把（可能非 final 的）K-type 展开为其
-  等价类中 final K-types 的带符号重数列表：经 complex/noncompact-imaginary
-  crosses 与 Cayley transforms 使 $(1+\theta_x)\lambda$ 支配，丢弃 singular
-  compact 因子，并沿 parity real roots 分裂。返回表**无序**；系数合并发生在
-  语言层、按多项式的规范项序进行。边界情形：final K-type 恰好产生自身、重数
-  为 1。
-- `kgp_set`（:398-464）：作用于（final 或 semifinal 的）K-type，给出从
-  theta-stable 代表出发、经 inverse-Cayley splits 与沿 real-simple Levi
-  生成元的 complex crosses 可达的 K-types；按上游的 BFS 发现顺序。
-  semifinal 前置条件由调用方负责（wrapper 在调用前检查）。
+9 个测试：split A1 的冻结契约锚点（x=2 的 [0] K 型、六谓词全真、三个
+变形均不动、模 2X* 相等性）；finals_for 三形态（final 自身、奇异保留、
+负参数下降为两项 x=0[coef −1]+x=2[coef +1]）；reducibility_points 两空；
+StandardRepr 往返（sr ↔ sr_k_of_standard/sr_of_ktype）；su(2,1) 的非
+final 锚点（x=4/5 的 elected 代表，注释记录 lambda_unique 在 release
+build 不记录主元取负、x=4 当选基为 (2,−1),[1,0]）。**测试 8/9
+（su21_deform_*、su21_finals_for_singular_gamma_zero）只有 eprintln!
+无断言**——观察型，不构成机械锚点。未覆盖：kgp_set 整体、全部终止预算
+错误、equivalent 的异 Cartan 分支、to_canonical_fiber 的错误分支、各
+溢出/分配分支。
 
 ## 来源与限制
 
-- 源码：[ktype.rs](../../../crates/atlas-real-group/src/ktype.rs)；阅读快照
-  [`2026-10-03-ktype.json`](snapshots/2026-10-03-ktype.json)。
-- 上游行号均转述自源码注释（K_repr.h/K_repr.cpp），未独立重读上游，随版本
-  演进可能漂移。
-- 关联：[表示参数上下文](rep-context.md)、[KGB 图结构](kgb-graph-structure.md)、
-  [Inner class 层](inner-class.md)、[形变驱动](deformation-drivers.md)。
-- 本包未执行任何构建、测试或原版运行，不含数学验收、性能或并行结论。
-- 起草经由本地 Kimi probe（无工具 profile，`kimi-code/k3-256k`；exit 0，
-  122.4s，420 秒期限）。草案由维护者对照源码逐条核对改写；其「待源码核对」
-  项中涉及 `equivalent` 的同 Cartan 类门控、`made_dominant` 的 height 不变量
-  与终止预算的内容均已按源码落实，其余骨架内容未采用。调用记录见快照的
-  `kimi_assist`。
+精确读取身份见
+[`2026-10-06-ktype.json`](snapshots/2026-10-06-ktype.json)：
+绑定 Git base、文件字节 SHA-256 与 Kimi 调用记录。草案由 Kimi probe
+（无工具档案）以完整字节起草（1100s 期限，exit 0，349.5s），维护者对照
+源码逐条核对改写。本次知识维护未执行 Atlas、Cargo、测试或 benchmark。

@@ -565,3 +565,12 @@ has_solution/find_solution/in_*_image、inverse_upper_triangular、exp_i。
 分离启动——自我管理期限安全但失去任务跟踪，已记录，优先用后台任务路由），
 维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
 测试或 compiler 生成。
+
+## 2026年10月6日 新增 K 型来源包（Kimi probe 协助）
+
+新增 `sources/ktype.md` 与快照 `2026-10-06-ktype.json`：KType 当选代表
+不变量、六谓词链、equivalent、四个变形循环与终止预算、finals_for 分支
+结构、kgp_set 位图 BFS；并记录 height 来源不对称与两个无断言观察型测试。
+同一 Kimi probe 路由起草（1100s，exit 0，349.5s），维护者对照源码逐条
+核对改写。索引与 sources/index.md 已同步；未运行编译、测试或 compiler
+生成。
