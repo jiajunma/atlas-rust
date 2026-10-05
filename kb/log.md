@@ -482,3 +482,14 @@ crossed_word 前向顺序、10 个测试锚点与未覆盖分支清单。同一 
 路由起草（exit 0，398.9s），维护者对照源码逐条核对改写；草案的 53 变体
 普查与全部 Display 文案精确，未覆盖分支与直接下标 panic 面观察均正确并
 保留。索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增全局 KGB 来源包（Kimi probe 协助）
+
+新增 `sources/global-kgb.md` 与快照 `2026-10-06-global-kgb.json`：
+GlobalTorusElement 的约化纪律与算术历史、x_pack 指纹、基本纤维/平方类
+播种、六阶段 build 与 14 个 KgbInvariantViolation 字面量、print_X 版式
+与 4 个测试锚点（含 rank-0 未测的 NOTE）。同一 Kimi probe 路由起草
+（800s 期限，exit 0，520.9s；13s/KB 超时规则成立），维护者对照源码逐条
+核对改写；草案的错误字面量普查、status/cross 参数序不对称、
+torus_label 吞错与 print_layout 传播的不一致、panic 面清单均精确并保留。
+索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。

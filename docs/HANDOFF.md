@@ -54,6 +54,16 @@ goldens byte-equal, the retained ladder control, integrity, ephemeral
 workspace absent) before considering the repaired production source for a
 focused commit.
 
+Parallel local lane (no HPC needed): the KB source-packet sweep through
+`kb/sources/` continues via the verified Kimi probe route (full-bytes
+prompt, maintainer claim-by-claim verification, per-packet snapshot JSON
+under `kb/sources/snapshots/`).  Latest packet commit on this branch:
+global-kgb (see `kb/log.md` for the running list).  Remaining large gaps:
+`block.rs` (probe in flight at this writing),
+`ext_block.rs`/`ext_kl.rs`/`ext_param.rs`, `rep_context.rs`/`rep_table.rs`,
+`kl_polynomial.rs`/`kl_table.rs`, and the whole `crates/atlas-core/`
+language layer.
+
 ## SUPERSEDED: AFTER-v1 job 3890328 submitted, then FINAL FAILED on a harness constant bug — 2026-10-03
 
 Outcome: FINAL `FAILED` on cu115 after 4m54s; no Atlas invocation ran.

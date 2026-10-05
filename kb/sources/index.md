@@ -374,6 +374,14 @@ mod-2 规范化、`crossed_word` 的前向折叠顺序。对应
 Kimi probe 路由起草（exit 0，398.9s），维护者对照源码逐条核对改写。该包是
 结构性阅读，不声称错误覆盖面或 Tits 传输的数学验收。
 
+[内类范围 KGB 图与 print_X 布局](global-kgb.md)记录 `global_kgb.rs`：
+GlobalTorusElement 的「构造约化、反射不再约化」纪律（负分子 `[0,-1]/2`
+锚点）、x_pack 指纹的适应基投影、基本纤维与平方类播种、六阶段 build 与
+全部 14 个 `KgbInvariantViolation` 字面量、print_X 逐字节版式。对应
+[阅读快照](snapshots/2026-10-06-global-kgb.json)；草案由同一 Kimi probe
+路由起草（800s 期限，exit 0，520.9s——13s/KB 规则成立），维护者对照源码
+逐条核对改写。该包是结构性阅读，不声称全局 KGB 的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "6e3aec0a",
+  "working_tree": false,
+  "scope": "First reading of the inner-class-wide global KGB graph for the new global-kgb source packet: GlobalTorusElement's reduce-on-construction/not-after-reflection discipline, the x_pack fingerprint via adapted-basis projection, fundamental fiber and square-class seeding, the six build phases with their KgbInvariantViolation literals, the query/print layer, and the 4 test anchors.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/global_kgb.rs",
+      "sha256": "ba5004561f7199027a974ac01f03ec6baf240ef963d2e56fc77f19314913a372",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_c0454c8d-595c-4b10-9765-d8f8b717ab6d",
+    "prompt_sha256": "cd0166448e2aa97d72454f84f8b774be045b218617475cffe810e85ffcd22c3e",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/global-kgb-probe",
+    "stdout_jsonl_sha256": "e43fe395aa2c9d1807b805ff8b919651e5f5e1e8df02fdffc1e393661cd8b436",
+    "draft_sha256": "2a4d51e438ca91cd555f164c73368089c03499da718588ed423adac35986a798",
+    "result": "completed, exit 0, 520.9s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The 57KB full-bytes prompt at an 800s deadline produced a complete, accurate census: all 14 KgbInvariantViolation literals, the build phases, the status/cross parameter-order asymmetry, the torus_label .ok() vs print_layout propagation inconsistency, and the panic-surface list were all exact. The 13s/KB timeout rule held (520.9s for 57.5KB)."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}
