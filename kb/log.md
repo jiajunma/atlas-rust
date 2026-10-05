@@ -335,3 +335,12 @@ wall_set 分层、并查集分量、root_vertex_simple 的 labels_1 重试。同
 Kimi probe 路由以完整文件字节起草（exit 0，269.5s），维护者对照源码逐条
 核对改写；连续第二次完整字节输入均无需事实更正，该模式成为此路由默认。
 索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增内类字母/对合查表来源包（Kimi probe 协助）
+
+新增 `sources/primitive-involution.md` 与快照
+`2026-10-06-primitive-involution.json`：`InnerClassLetterError` 文案、
+checked_inner_class_letters 的坍缩规则、layout_involution 逐字母表、
+on_basis 精确除法换基。同一 Kimi probe 路由起草（exit 0，253.1s），
+维护者对照源码逐条核对改写；连续第三次完整字节输入无事实更正。
+索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。

@@ -233,6 +233,15 @@ root_vertex_simple 的转置子 Cartan 逆与 labels_1 重试。对应
 文件字节起草（exit 0，269.5s），维护者对照源码逐条核对改写。该包是结构性
 阅读，不声称 alcove 计算的数学验收。
 
+[内类字母解析与逐字母对合查表](primitive-involution.md)记录
+`primitive_involution.rs`：`InnerClassLetterError` 的上游逐字节文案、
+`checked_inner_class_letters` 的跳过分隔/字母坍缩规则（`'s'` 恰在 -1∈W 处
+坍缩、`'u'` 仅存于偶秩 D）、`layout_involution` 的逐字母表与 Bourbaki 重编号、
+`on_basis` 的精确除法换基（四类失败折叠为同一个 `None`）。对应
+[阅读快照](snapshots/2026-10-06-primitive-involution.json)；草案由同一 Kimi
+probe 路由起草（exit 0，253.1s），维护者对照源码逐条核对改写。该包是结构性
+阅读，不声称字母表或对合构造的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
