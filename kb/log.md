@@ -326,3 +326,12 @@ STAGE_NAME、predecessor-v12 不递增）以及 SecureLink 隧道再次中断导
 以两个文件的完整字节（42KB 提示）代替摘录，避免了 mod-two 的遗漏模式；
 维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
 测试或 compiler 生成。
+
+## 2026年10月6日 新增 alcove 几何来源包（Kimi probe 协助）
+
+新增 `sources/alcove.md` 与快照 `2026-10-06-alcove.json`：alcove_center 的
+墙方程/通分/-θ 校验链、denominator 守卫的 rank≥63 边界、RootNumbering、
+wall_set 分层、并查集分量、root_vertex_simple 的 labels_1 重试。同一
+Kimi probe 路由以完整文件字节起草（exit 0，269.5s），维护者对照源码逐条
+核对改写；连续第二次完整字节输入均无需事实更正，该模式成为此路由默认。
+索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。

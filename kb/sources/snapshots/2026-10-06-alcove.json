@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "1a0f171a",
+  "working_tree": true,
+  "scope": "First reading of the alcove-geometry module for the new alcove source packet: alcove_center (wall equations, rational solve, -theta fixed-subspace guard), denominator_exceeds_alcove_bound, RootNumbering ordering, wall_set stratification, root_components union-find, barycentre_eq, labels_for_component, root_vertex_of_alcove/root_vertex_simple with the labels_1 retry, rational_inverse.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/alcove.rs",
+      "sha256": "5dab882e9c68db713fa2c273e76504ee76de1cb54169c6925fa7a32fe6faa1db",
+      "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_d1dce0ee-7f18-44df-bfb8-4bb85f095ee1",
+    "prompt_sha256": "c9e349f39648a10249959b1a08c643636f66705af55328c7276b5f607f8e6a72",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/alcove-probe",
+    "stdout_jsonl_sha256": "4b890c872a9e1a256078a9e1abe7044f25eddc786c1e9a4490861816b3b73c5e",
+    "draft_sha256": "405f42ebd1cb0955eb40702b2e0261e6d408a60807587b2e8b77467e478f3ff2",
+    "result": "completed, exit 0, 269.5s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "Second consecutive full-bytes prompt: the draft was again complete (all private helpers and both tests covered) and needed only voice edits; the full-bytes pattern is now the default for this route."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream C++ line references are transcribed from doc comments and were not re-verified."
+}

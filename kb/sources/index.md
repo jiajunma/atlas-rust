@@ -225,6 +225,14 @@ Kimi probe 草案因摘录漏掉未注释方法而偏薄，由维护者直接读
 完整字节输入避免了 mod-two 的摘录遗漏模式。该包是结构性阅读，不声称根数据
 层或对偶构造的数学验收。
 
+[Alcove 几何：alcove_center 与 root_vertex_of_alcove](alcove.md)记录
+`alcove.rs`：墙方程与有理求解、-θ 不动子空间校验、分母界的 rank≥63 守卫、
+RootNumbering 的正根排序/负根镜像编号、wall_set 分层、root_components 并查集、
+root_vertex_simple 的转置子 Cartan 逆与 labels_1 重试。对应
+[阅读快照](snapshots/2026-10-06-alcove.json)；草案由同一 Kimi probe 路由以完整
+文件字节起草（exit 0，269.5s），维护者对照源码逐条核对改写。该包是结构性
+阅读，不声称 alcove 计算的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
