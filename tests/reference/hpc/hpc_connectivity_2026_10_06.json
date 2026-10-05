@@ -1,0 +1,7 @@
+{
+ "schema": "atlas-hpc-connectivity-note-v1",
+ "observed_at_utc": "2026-10-05T16:05:00Z/2026-10-05T17:15:00Z",
+ "state": "ROUTE_DOWN",
+ "detail": "tun0 absent; 10.26.14.64 routes via ordinary Wi-Fi gateway 192.168.3.1 on wlp0s20f3; ssh ConnectTimeout=10 to majj@10.26.14.64 times out; 60 background polls over ~60 minutes all failed. No remote directory, submission intent or job was created or queried. The prepared weyl-context-core-after-v3 payload (overrides sha 0d554771c461e058430aba8b432bbb9391101367e57ce8f25cb97adb147860ad) stays local; submission waits for the route, driven by retry cron 01M46K8XDAVSG0MN88HD0S5XA1. This supersedes no frozen evidence; the recovered-route reconciliation in math_weyl_context_core_after_v2_submission_2026_10_03.json remains the last good state.",
+ "supersedes": null
+}

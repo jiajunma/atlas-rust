@@ -1,6 +1,65 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
-## CURRENT: AFTER-v1 SUBMITTED as job 3890328 — 2026-10-03
+## CURRENT: AFTER-v3 migration pushed; submission PENDING on SecureLink tunnel — 2026-10-06
+
+Both earlier after attempts failed on harness bugs, never on mathematics:
+
+- AFTER-v1 job 3890328 FINAL FAILED: the driver's source-reconstruction
+  check compared the final repaired manifest digest against the tests-only
+  REGRESSION_SOURCE constant (the HPC reconstruction was byte-exact; only
+  the comparison constant was wrong).  Evidence/diagnosis: commits
+  `da1c9ae4` and `8c57b184`; records
+  `tests/reference/hpc/math_weyl_context_core_after_v1_failure_2026_10_03.json`
+  and its full report companion.
+- AFTER-v2 job 3890580 FINAL FAILED in 3s before any checker: the v2
+  migration updated the stager's SLURM_OUTPUT_PATTERN but not the sbatch
+  `--job-name`/`--output` labels (still v1), so sbatch's output file
+  tripped `validate_stage_topology`; no report exists.  Records:
+  `tests/reference/hpc/math_weyl_context_core_after_v2_failure_2026_10_03.json`,
+  `..._failure_out_2026_10_03.txt` and
+  `..._after_v2_submission_2026_10_03.json`.
+
+The after-v3 successor is committed and pushed as `93abd29b` (11 files):
+sbatch labels migrated to v3, the failed after-v2 stage is bound as the
+immutable predecessor with a new `validate_after_v2_failure` gate wired
+into both run paths and the driver, `validate_after_v1_failure` keeps its
+exact body behind an `AFTER_V1_PREDECESSOR` local rebind, a new checker
+regression pins both sbatch labels to suffixes derived from the active
+`STAGE_NAME`, and `progressive_submit` gained the retired after-v1 scoped
+campaign files.  Local suites: 125 tests pass; the single remaining error
+is the known 0444-environment evidence-mode check (green on HPC).  Stager
+SHA-256 `77a04c6aaef8a1c32e89c37c2c4827fdc4c7cb3065b08751ac026c8013282298`,
+driver SHA-256
+`47d62831f7a583d12f761b7bd142d563aaa5126dbfc60e2eeb53ebd50f8abc24`.
+
+The 60-input payload (`overrides_sha256`
+`0d554771c461e058430aba8b432bbb9391101367e57ce8f25cb97adb147860ad`) was
+built from HEAD bytes and passed the payload stager's own full local
+validation chain (sentinel placed before the HPC-only
+`validate_parent_objects`).  Submission is BLOCKED on the SecureLink
+tunnel: `tun0` absent since about 2026-10-05T16:05Z, and 60 polls over
+about 60 minutes all timed out (recorded in
+`tests/reference/hpc/hpc_connectivity_2026_10_06.json`).  No remote stage,
+intent, ledger record or job exists for v3.  Retry cron
+`01M46K8XDAVSG0MN88HD0S5XA1` carries the complete submission runbook and
+fires when ssh answers; the payload lives in
+`/tmp/weyl-after-v3-payload-ykbps2aw` (if /tmp was cleared, rebuild from
+`93abd29b` with the procedure in the cron prompt, then re-run the local
+pre-flight before transport).
+
+Once submitted: record job/pin/intent/receipt as `SUBMITTED_NOT_VERIFIED`,
+then collect FINAL and run the independent inspection (125 checkers, the
+632-test inventory, both regressions PASS on the repaired source, all four
+goldens byte-equal, the retained ladder control, integrity, ephemeral
+workspace absent) before considering the repaired production source for a
+focused commit.
+
+## SUPERSEDED: AFTER-v1 job 3890328 submitted, then FINAL FAILED on a harness constant bug — 2026-10-03
+
+Outcome: FINAL `FAILED` on cu115 after 4m54s; no Atlas invocation ran.
+The failure and its diagnosis are recorded in the CURRENT section above;
+the launch narrative below is kept verbatim as the transport reference.
+The original text follows.
 
 The SecureLink tunnel recovered; the launch procedure above ran exactly once.
 Fresh read-only reconciliation found: `squeue` empty, no after-v1 accounting
