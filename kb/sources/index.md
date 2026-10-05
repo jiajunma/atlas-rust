@@ -295,6 +295,14 @@ provenance 门、peeling 循环（预算检查在 descent 发现之后、步进�
 probe 路由起草（exit 0，347.5s），维护者对照源码逐条核对改写。该包是
 结构性阅读，不声称两条线的数学验收。
 
+[典范整数据驻留与 Weyl 姿态定位器](locator.md)记录 `locator.rs`：
+`IntegralDatumTable`/`IntegralDatumItem`/`BlockLocator` 三件套、`int_item`
+的 (a)–(f) 流程（alcove 顶点、factor_dominant、墙面求值、词过滤、余根
+加法闭包、驻留幂等、simple_pi 构造）、`make_relative_to` 的逆置换合成。
+对应[阅读快照](snapshots/2026-10-06-locator.json)；草案由同一 Kimi probe
+路由起草（exit 0，440.2s），维护者对照源码逐条核对改写。该包是结构性阅读；
+整个模块尚未接线（`RepTable::lookup` 不调用它），不声称数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

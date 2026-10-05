@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "2d848da5",
+  "working_tree": false,
+  "scope": "First reading of the integral-datum locator layer for the new locator source packet: BlockLocator/IntegralDatumItem/IntegralDatumTable, the int_item (a)-(f) pipeline (alcove vertex, factor_dominant, wall evaluation, word filtering, additive closure, interning, image/simple_pi construction), fundamental_alcove_walls via the coroot ladder tables, pos_simples, and make_relative_to.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/locator.rs",
+      "sha256": "74dbead29a08fb636724b8dbb5d89c6cc1e64607f45cf6f72e5b2a61542255b5",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_9baa9510-ac49-4769-8962-3f59cab8c2ca",
+    "prompt_sha256": "8b9da7fdd8f6c1578839ec2cc3e7e5bd1fe1c2ad9d9c8497a7395d5ac52233e5",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/locator-probe",
+    "stdout_jsonl_sha256": "549eae55ae91c39c6d36153f51140a60b575868ca55348ce6e151e93cf0bf29e",
+    "draft_sha256": "227df781a397b1074c381721b6d0ed8c7e0d17673e67053159f1418c61810418",
+    "result": "completed, exit 0, 440.2s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The 46KB single-file prompt at 440s is the slowest so far; still reliable. The draft's interface-surface table (exact method set used from RootSystem/WeylElement) is a useful section pattern for future packets."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

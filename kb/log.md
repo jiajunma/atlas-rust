@@ -398,3 +398,11 @@ CayleyCrossDecomposition 的 provenance 门、peeling 预算位置、逆序重�
 fiber_rank。同一 Kimi probe 路由起草（33KB 两文件，exit 0，347.5s），
 维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
 测试或 compiler 生成。
+
+## 2026年10月6日 新增 locator 来源包（Kimi probe 协助）
+
+新增 `sources/locator.md` 与快照 `2026-10-06-locator.json`：驻留三件套、
+int_item 的 (a)–(f) 流程、fundamental_alcove_walls、pos_simples、
+make_relative_to。同一 Kimi probe 路由起草（46KB 单文件，exit 0，440.2s），
+维护者对照源码逐条核对改写；草案的「接口使用面」表格是有用的段落模式。
+索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
