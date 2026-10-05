@@ -308,3 +308,12 @@ Weight/Coweight newtype 纪律、pair、RationalWeight 归一化、RationalCowei
 diagonalise、求解/像判定、inverse_upper_triangular 与 exp_i。同一 Kimi probe
 路由起草（exit 0，75.6s）；维护者对照源码逐条核对改写。索引与
 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 Weyl 身份来源包推进到 AFTER v1/v2 失败与 v3 迁移
+
+更新 `sources/weyl-context-identity-and-sharing.md`：编辑状态与新增
+2026-10-06 节记录 AFTER-v1（3890328，错误比较常量）与 AFTER-v2
+（3890580，sbatch 标签未随版本迁移）两次 harness 失败、v3 迁移提交
+93abd29b 的要点（AFTER_V1_PREDECESSOR 本地重绑定、sbatch 标签钉到
+STAGE_NAME、predecessor-v12 不递增）以及 SecureLink 隧道再次中断导致的
+提交暂缓。仅人工维护来源包；未运行编译、测试或 compiler 生成。

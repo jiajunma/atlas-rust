@@ -1,13 +1,13 @@
 ---
 title: Weyl 对象身份、dual 历史与安全共享边界
 source: atlas-rust/weyl-context-identity-and-sharing
-ingestedAt: 2026-10-03T10:32:42Z
+ingestedAt: 2026-10-05T18:00:04Z
 ---
 
 # Weyl 对象身份、dual 历史与安全共享边界
 
-编辑状态：**BEFORE-v4 已保留 tests-first 证据；最小语义修复已作为未验证候选实现；
-AFTER-v1 gate 已冻结并提交（342a0511），HPC 提交因 SecureLink 隧道中断而暂缓**。
+编辑状态：**AFTER-v1/v2 均为 harness 失败（均不涉及数学）；v3 迁移已提交推送
+（93abd29b），HPC 提交因 SecureLink 隧道再次中断而暂缓**。
 本来源包
 解释性能线索为何同时触及可观察语义；它不是缓存实现、数学验收或加速结论。
 旧 discovery catalog 的 `source_predicted_not_captured` 是不可改写的历史输入；
@@ -15,7 +15,44 @@ AFTER-v1 gate 已冻结并提交（342a0511），HPC 提交因 SecureLink 隧道
 catalog，不把预测数组改称 golden。编译器生成页仍未刷新，外部 provider 重试的
 既有授权阻碍未解除。
 
-## 2026-10-03 AFTER-v1 gate 冻结（未提交、未验证）
+## 2026-10-06 AFTER v1/v2 harness 失败与 v3 迁移
+
+- AFTER-v1 job `3890328` FINAL `FAILED`（cu115，4m54s）：driver 的源码重建断言
+  把最终修复 manifest 摘要错比到 tests-only 的 `REGRESSION_SOURCE` 常量；HPC
+  实际重建逐字节正确（`3f8cf475…` == `AFTER_SOURCE_MANIFEST_SHA256`），未运行
+  任何 checker/Atlas 命令，不涉及数学。修正并入 v2（commit `3572862e`）；证据
+  冻结于 `math_weyl_context_core_after_v1_failure_2026_10_03.json` 及其完整
+  report 伴侣。
+- AFTER-v2 job `3890580` FINAL `FAILED`（cu088，3s）：v2 迁移更新了 stager 的
+  `SLURM_OUTPUT_PATTERN`，却没有迁移 sbatch 的 `--job-name`/`--output` 标签
+  （仍是 v1）；sbatch 写出的 `weyl-context-core-after-v1-3890580.out` 被
+  `validate_stage_topology` 判为意外持久文件，在任何 gate 之前失败，没有
+  report.json。证据：`math_weyl_context_core_after_v2_failure_2026_10_03.json`
+  （分类 `HARNESS_SBATCH_LABEL_MISMATCH_AT_TOPOLOGY_VALIDATION_BEFORE_ANY_GATE`）
+  及对应 failure_out、submission 记录。
+- after-v3 已提交推送（`93abd29b`，11 个文件）：sbatch 标签迁移；after-v2 作为
+  不可变前驱绑定（无 report 时 `PREDECESSOR` 直接不含
+  `report_sha256`/`report_bytes`，而非虚构哈希）；新增 `validate_after_v2_failure`
+  接入两条 run 路径与 driver gates；`validate_after_v1_failure` 经
+  `AFTER_V1_PREDECESSOR` 本地重绑定保持函数体逐字节不变；checker 新增一项把
+  sbatch 两个标签钉到由 `STAGE_NAME` 派生的后缀（29→30，总数 124→125）；
+  `progressive_submit` 增补已退役 after-v1 的 scoped campaign 文件；
+  predecessor-state schema 保持 `atlas-stage-creation-predecessor-v12`（该常量由
+  `progressive_submit.STAGE_CREATION_PREDECESSOR_SCHEMA` 钉住，不随 stage 递增）。
+- 本地六套件 125 测试通过（仅剩已知的 0444 环境证据检查，在 HPC 上为绿色）。
+  60 输入 payload（overrides sha
+  `0d554771c461e058430aba8b432bbb9391101367e57ce8f25cb97adb147860ad`）已用
+  payload 自带 stager 通过全部本地验证（哨兵停在 HPC-only 的
+  `validate_parent_objects`）。提交因 SecureLink 隧道再次断开（约
+  2026-10-05T16:05Z 起 `tun0` 缺席）而暂缓；无远端 stage/intent/job；重试由
+  cron 驱动。连接状态记录：
+  `tests/reference/hpc/hpc_connectivity_2026_10_06.json`。
+
+经验教训（亦见根 AGENTS.md 2026-10-06 条目）：stage 版本递进时 sbatch 标签
+同样是受版本约束的内容；凡引用裸 `PREDECESSOR` 的历史 validator 都必须在启动前
+审计并做本地重绑定。
+
+## 2026-10-03 AFTER-v1 gate 冻结（后被提交并失败，见 2026-10-06 节）
 
 changed-input 后继 `weyl-context-core-after-v1` 的 stager/driver/checker 已冻结并
 随 `342a0511` 提交推送；生产修复仍以补丁数据形式随 gate 输入传输，修复后的
