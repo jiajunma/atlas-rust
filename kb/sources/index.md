@@ -260,6 +260,15 @@ probe 路由起草（exit 0，253.1s），维护者对照源码逐条核对改�
 路由起草（exit 0，403.6s），维护者对照源码逐条核对改写。该包是结构性阅读，
 不声称 fiber 层的数学验收。
 
+[实 Weyl 群与块稳定子](real-weyl.md)记录 `real_weyl.rs`：`RealWeyl` 的
+14 个根/类型列表（含 `real_r` 填对偶侧这一交叉）、`dual_side` 对偶 fiber 链
+的临时重建（`tw*w0` 只是典范对偶代表元的共轭）、`fiber_side` 的紧基/正交
+非紧根/R-群核、`simple_basis` 的外层终止怪癖、`simple_complex` 的对合成对
+删除、打印层的冒号不一致与字节契约。对应
+[阅读快照](snapshots/2026-10-06-real-weyl.json)；草案由同一 Kimi probe 路由
+起草（68KB 单文件，exit 0，253.7s），维护者对照源码逐条核对改写。该包是
+结构性阅读，不声称实 Weyl 层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "3cf1e085",
+  "working_tree": true,
+  "scope": "First reading of the real Weyl group / block stabilizer layer for the new real-weyl source packet: RealWeyl payload and its 14 lists, the real_weyl constructor chain, the ad-hoc dual fiber rebuild (dual_side), fiber_side (compact basis, orthogonal noncompact roots, R-group kernel), simple_basis's outer-break quirk, simple_complex pairing, twisted_orbit_size, RealWeylGenerators, and the byte-exact print layer.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/real_weyl.rs",
+      "sha256": "1a2890a0c8b6a7fc1a2ba25307011fb571097cb8b640608f6955bd1b253cf1f6",
+      "note": "dirty working tree (transition snapshot); hash identifies the inspected bytes only"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_4c40ef84-6943-4870-8550-bc4732f93394",
+    "prompt_sha256": "443286d17523fcda366c84d543a498c7765d6b9d7c5138a4903e0975eb717a17",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/real-weyl-probe",
+    "stdout_jsonl_sha256": "9f3e892709dde5bd983ee49f3f023e6999622df3a919107db4001ea463415735",
+    "draft_sha256": "cf209fb12b3110633250fcad3aeba9789c29c4104f37c64a52f85c860cb6dc0f",
+    "result": "completed, exit 0, 253.7s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "A 68KB single-file prompt completed in 254s — larger prompts do not scale linearly in wall time; the draft correctly caught the subtle real_r/imaginary_r cross-assignment and the simple_basis outer-break quirk."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; the oracle provenance (/tmp/probe_rw_all.at vs upstream rev 4d3e9449) is transcribed from test comments, not re-verified here."
+}

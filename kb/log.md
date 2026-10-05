@@ -363,3 +363,12 @@ AdjointCartanFiber 的预算分层、绑定语义与 FiberToAdjoint 按需映射
 同一 Kimi probe 路由起草（50KB 两文件完整字节，exit 0，403.6s），
 维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行
 编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增实 Weyl 群来源包（Kimi probe 协助）
+
+新增 `sources/real-weyl.md` 与快照 `2026-10-06-real-weyl.json`：RealWeyl
+载荷、dual_side 临时重建、fiber_side 三包、simple_basis/simple_complex
+怪癖、twisted_orbit_size、打印层字节契约。同一 Kimi probe 路由起草（68KB
+单文件，exit 0，253.7s），维护者对照源码逐条核对改写；草案正确捕捉到
+real_r/imaginary_r 交叉赋值与 simple_basis 外层终止怪癖。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。
