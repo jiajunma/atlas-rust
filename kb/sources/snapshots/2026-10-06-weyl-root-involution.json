@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "07971951",
+  "working_tree": false,
+  "scope": "First reading of the matrix-level Weyl action layer and the root-involution classification data for the new weyl-root-involution source packet: WeylAction's provenance Arc and dual matrices, compose/compose_fast/apply_matrix, enumerate_actions via CompactWeyl + rayon, RootInvolutionData's validation order and subsystem simple-root election.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/weyl.rs",
+      "sha256": "222f424901a52df07dd24f8a43e0f2cb24c347f1e7d5dc7c318f617f0aba5901",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/root_involution.rs",
+      "sha256": "649a4439d3c61033e7cb300c95f619b1714d0e4a4250c229e9b999c3a989127e",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_380d9bdb-ba70-4aec-bf1d-c70edb32f7a4",
+    "prompt_sha256": "f8eb9d900ba179ed4af5d90974ad89ce41d7462bedf1ebbfdefba62c96bee005",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/weyl-root-involution-probe",
+    "stdout_jsonl_sha256": "add9f248dc282e520fd990df786605ab400476a4ee1b7b72305dc3562ddd23b7",
+    "draft_sha256": "805c047d055c8faf31d6295c831290635c84d1c18d9f9f03bf75a520dbde2c70",
+    "result": "completed, exit 0, 327.7s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "Every gate order, error shape and test assertion was exact; the draft's review list (datum-in-Eq tension, dead insert_action, unchecked as-i32 narrowing, untested root_reflection) is real and retained in the packet."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

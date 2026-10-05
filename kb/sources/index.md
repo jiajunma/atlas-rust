@@ -409,6 +409,14 @@ Kimi probe 路由起草（r1 在 360s 超时留有草稿残片，r2 以 600s 期
 exit 0，326.1s；超时规则上修为 ~24s/KB），维护者对照源码逐条核对改写。
 该包是结构性阅读，不声称这两层的数学验收。
 
+[Weyl 矩阵作用与根对合分类](weyl-root-involution.md)记录 `weyl.rs` 与
+`root_involution.rs`：WeylAction 的 Arc 溯源与双矩阵、compose/apply 的
+检查层级与 compose_fast 热路径、enumerate_actions 的 CompactWeyl+rayon
+管线、RootInvolutionData 的五步校验与子系单根选举。对应
+[阅读快照](snapshots/2026-10-06-weyl-root-involution.json)；草案由同一
+Kimi probe 路由起草（600s 期限，exit 0，327.7s），维护者对照源码逐条
+核对改写。该包是结构性阅读，不声称这两层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

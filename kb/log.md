@@ -525,3 +525,13 @@ RationalWeight 归一纪律、KlPol trim 不变量与递归操作集、KlHashTab
 逐条核对改写，并补充一处跨文件观察（两处 gcd_u64 副本的 (0,0) 语义已
 漂移）。索引与 sources/index.md 已同步；未运行编译、测试或 compiler
 生成。
+
+## 2026年10月6日 新增 Weyl 作用/根对合来源包（Kimi probe 协助）
+
+新增 `sources/weyl-root-involution.md` 与快照
+`2026-10-06-weyl-root-involution.json`：WeylAction 溯源与双矩阵、
+compose_fast 热路径、CompactWeyl+rayon 枚举管线、RootInvolutionData
+校验链与子系单根选举。同一 Kimi probe 路由起草（600s，exit 0，327.7s），
+维护者对照源码逐条核对改写；草案的复核清单（datum 进 Eq 的张力、
+insert_action 死代码、as i32 截断、枚举序无锚定）均属实并保留。
+索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
