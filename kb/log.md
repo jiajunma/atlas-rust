@@ -471,3 +471,14 @@ Kimi probe 路由起草（exit 0，292.1s），维护者对照源码逐条核对
 form_type_name。同一 Kimi probe 路由起草（exit 0，264.2s），维护者对照
 源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、测试或
 compiler 生成。
+
+## 2026年10月6日 新增 StructureError/全局 Tits 来源包（Kimi probe 协助）
+
+新增 `sources/error-global-tits.md` 与快照
+`2026-10-06-error-global-tits.json`：StructureError 的 53 变体字段形态
+家族（14 invariant + 7 resource-limit 及 u64 例外）、GlobalTitsElement
+构造门槛、crossed_generator 的 RootKind 三分支与虚根整性门槛、
+crossed_word 前向顺序、10 个测试锚点与未覆盖分支清单。同一 Kimi probe
+路由起草（exit 0，398.9s），维护者对照源码逐条核对改写；草案的 53 变体
+普查与全部 Display 文案精确，未覆盖分支与直接下标 panic 面观察均正确并
+保留。索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。

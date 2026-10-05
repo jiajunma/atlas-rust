@@ -364,6 +364,16 @@ Kimi probe 路由起草（exit 0，292.1s），维护者对照源码逐条核对
 Kimi probe 路由起草（exit 0，264.2s），维护者对照源码逐条核对改写。该包是
 结构性阅读，不声称这两层的数学验收。
 
+[StructureError 分类学与全局 Tits 传输](error-global-tits.md)记录
+`error.rs` 与 `global_tits.rs`：53 个错误变体的字段形态家族（invariant /
+resource-limit 两大带名家族及其例外）、`GlobalTitsElement` 的三重来源门槛、
+`crossed_generator` 的 RootKind 三分支（虚根整性门槛
+`InvalidStrongTorusFactor`、复根用余根方向反射、实根不动）与逐坐标
+mod-2 规范化、`crossed_word` 的前向折叠顺序。对应
+[阅读快照](snapshots/2026-10-06-error-global-tits.json)；草案由同一
+Kimi probe 路由起草（exit 0，398.9s），维护者对照源码逐条核对改写。该包是
+结构性阅读，不声称错误覆盖面或 Tits 传输的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

@@ -1,0 +1,896 @@
+你是 Atlas Rust 重实现项目的文档助理。任务：为两个同源 Rust 源文件起草一份中文知识来源包（source packet）草案，供维护者逐条核对后收录进 kb/sources/。
+
+严格规则：
+- 只依据下面给出的两个源文件字节；不要引用你没有读到的代码、文档或历史。
+- 区分「已实现行为」与「阅读推断」；不做任何数学验收、性能或正确性声明。
+- 保留精确的符号名、类型名、错误类型与边界条件（Result/错误分支、预算、顺序保证、panic/断言）。
+- 输出只是一份 Markdown 草案，开头必须是 frontmatter：
+  ---
+  title: <中文标题>
+  source: atlas-rust/error-global-tits
+  ingestedAt: 2026-10-06T00:00:00Z
+  ---
+- 先给出每个文件完整的「裸签名清单」（所有 pub/pub(crate) fn/struct/enum/trait 与可见 impl 块，含无注释项），再逐项解释：error.rs 的 StructureError 变体分类学（每个变体的字段与语义分组）；global_tits.rs 的全局 Tits 层职责与构造。两文件的接口关系；测试锚点；限制与未覆盖面。
+
+文件：crates/atlas-real-group/src/error.rs（完整字节）：
+```rust
+use std::fmt;
+
+use crate::lattice::Weight;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum StructureError {
+    EmptyRootDatum,
+    NonSquareCartan,
+    InvalidCartanMatrix,
+    RankMismatch {
+        expected: usize,
+        actual: usize,
+    },
+    DatumMismatch,
+    IndexOutOfRange {
+        index: usize,
+        upper_bound: usize,
+    },
+    InvalidInvolution,
+    InvalidBasedAutomorphism,
+    InvalidRootAutomorphism,
+    InvalidRootDatumAutomorphism,
+    SimpleRootImageNotRoot {
+        simple_root: usize,
+    },
+    SimpleCorootImageMismatch {
+        simple_root: usize,
+        image_root: Weight,
+    },
+    RootSystemTooLarge,
+    WeylGroupTooLarge,
+    ResourceLimitExceeded {
+        limit: usize,
+    },
+    AllocationFailed {
+        requested: usize,
+    },
+    InvalidIntegerMatrixShape,
+    IntegerLatticeInvariantViolation,
+    IntegerLatticeResourceLimit {
+        resource: &'static str,
+        limit: u64,
+    },
+    RootSystemResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    RootSystemInvariantViolation {
+        invariant: &'static str,
+    },
+    GradingShiftsNotFaithful,
+    ImpossibleGrading,
+    InvalidStrongTorusFactor,
+    WeakRealFormResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    CayleyCrossResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    CayleyCrossInvariantViolation {
+        invariant: &'static str,
+    },
+    RealFormLabelInvariantViolation {
+        invariant: &'static str,
+    },
+    CartanClassificationInvariantViolation {
+        invariant: &'static str,
+    },
+    StrongRealResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    StrongRealInvariantViolation {
+        invariant: &'static str,
+    },
+    WeylElementInvariantViolation {
+        invariant: &'static str,
+    },
+    InvolutionTableResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    InvolutionTableInvariantViolation {
+        invariant: &'static str,
+    },
+    TitsCosetInvariantViolation {
+        invariant: &'static str,
+    },
+    SeedResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    SeedInvariantViolation {
+        invariant: &'static str,
+    },
+    KgbInvariantViolation {
+        invariant: &'static str,
+    },
+    BlockInvariantViolation {
+        invariant: &'static str,
+    },
+    RepInvariantViolation {
+        invariant: &'static str,
+    },
+    RealFormOrderInvariantViolation {
+        invariant: &'static str,
+    },
+    LayoutInvariantViolation {
+        invariant: &'static str,
+    },
+    DistinguishedInvolutionMismatch,
+    ModTwoSubquotientInvariantViolation,
+    NotInModTwoSubspace,
+    CartanFiberMismatch,
+    CartanFiberInvolutionMismatch,
+    CartanFiberMapDoesNotDescend {
+        relation: &'static str,
+    },
+    AdjointFiberResourceLimit {
+        resource: &'static str,
+        limit: usize,
+    },
+    ArithmeticOverflow,
+    /// A code path whose behavior the upstream oracle defines but this
+    /// crate has not ported yet; raised loudly instead of computing on a
+    /// wrong approximation.
+    NotYetImplemented {
+        feature: &'static str,
+    },
+    RootPairingMismatch {
+        row: usize,
+        column: usize,
+        expected: i32,
+        actual: i32,
+    },
+    RealFormNotDefinedOnCartan,
+}
+
+impl fmt::Display for StructureError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::EmptyRootDatum => write!(f, "root datum must have positive rank"),
+            Self::NonSquareCartan => write!(f, "Cartan matrix must be square"),
+            Self::InvalidCartanMatrix => write!(f, "invalid generalized Cartan matrix"),
+            Self::RankMismatch { expected, actual } => write!(
+                f,
+                "lattice rank mismatch: expected {expected}, got {actual}"
+            ),
+            Self::DatumMismatch => write!(f, "operations require the same based root datum"),
+            Self::IndexOutOfRange { index, upper_bound } => {
+                write!(f, "index {index} is outside the range 0..{upper_bound}")
+            }
+            Self::InvalidInvolution => write!(f, "Cartan involution is not an involution"),
+            Self::InvalidBasedAutomorphism => {
+                write!(
+                    f,
+                    "distinguished involution does not preserve the simple root/coroot system"
+                )
+            }
+            Self::InvalidRootAutomorphism => {
+                write!(f, "root automorphism does not preserve the Cartan pairing")
+            }
+            Self::InvalidRootDatumAutomorphism => {
+                write!(f, "root permutation does not transport coroots to coroots")
+            }
+            Self::SimpleRootImageNotRoot { simple_root } => {
+                write!(f, "simple root {simple_root} does not map to a root")
+            }
+            Self::SimpleCorootImageMismatch {
+                simple_root,
+                image_root,
+            } => write!(
+                f,
+                "simple coroot {simple_root} does not map to the coroot of image root {image_root:?}"
+            ),
+            Self::RootSystemTooLarge => {
+                write!(f, "root-system closure exceeded the finite-system limit")
+            }
+            Self::WeylGroupTooLarge => {
+                write!(f, "Weyl-group closure exceeded the finite-system limit")
+            }
+            Self::ResourceLimitExceeded { limit } => {
+                write!(f, "enumeration exceeded its resource limit of {limit}")
+            }
+            Self::AllocationFailed { requested } => {
+                write!(f, "could not reserve storage for {requested} elements")
+            }
+            Self::InvalidIntegerMatrixShape => {
+                write!(f, "integer matrix has an invalid shape")
+            }
+            Self::IntegerLatticeInvariantViolation => {
+                write!(f, "integer-lattice reduction invariant was violated")
+            }
+            Self::IntegerLatticeResourceLimit { resource, limit } => {
+                write!(
+                    f,
+                    "integer-lattice {resource} exceeded its limit of {limit}"
+                )
+            }
+            Self::RootSystemResourceLimit { resource, limit } => {
+                write!(f, "root-system {resource} exceeded its limit of {limit}")
+            }
+            Self::RootSystemInvariantViolation { invariant } => {
+                write!(f, "root-system {invariant} invariant was violated")
+            }
+            Self::GradingShiftsNotFaithful => {
+                write!(f, "grading shifts do not determine a unique fiber element")
+            }
+            Self::ImpossibleGrading => {
+                write!(f, "no fiber element has the requested grading")
+            }
+            Self::InvalidStrongTorusFactor => {
+                write!(f, "Torus factor does not define a valid strong involution")
+            }
+            Self::WeakRealFormResourceLimit { resource, limit } => {
+                write!(f, "weak-real-form {resource} exceeded its limit of {limit}")
+            }
+            Self::CayleyCrossResourceLimit { resource, limit } => {
+                write!(f, "Cayley-cross {resource} exceeded its limit of {limit}")
+            }
+            Self::CayleyCrossInvariantViolation { invariant } => {
+                write!(f, "Cayley-cross {invariant} invariant was violated")
+            }
+            Self::RealFormLabelInvariantViolation { invariant } => {
+                write!(f, "real-form-label {invariant} invariant was violated")
+            }
+            Self::CartanClassificationInvariantViolation { invariant } => {
+                write!(
+                    f,
+                    "Cartan-classification {invariant} invariant was violated"
+                )
+            }
+            Self::StrongRealResourceLimit { resource, limit } => {
+                write!(f, "strong-real {resource} exceeded its limit of {limit}")
+            }
+            Self::StrongRealInvariantViolation { invariant } => {
+                write!(f, "strong-real {invariant} invariant was violated")
+            }
+            Self::WeylElementInvariantViolation { invariant } => {
+                write!(f, "Weyl-element {invariant} invariant was violated")
+            }
+            Self::InvolutionTableResourceLimit { resource, limit } => {
+                write!(
+                    f,
+                    "involution-table {resource} exceeded its limit of {limit}"
+                )
+            }
+            Self::InvolutionTableInvariantViolation { invariant } => {
+                write!(f, "involution-table {invariant} invariant was violated")
+            }
+            Self::TitsCosetInvariantViolation { invariant } => {
+                write!(f, "Tits-coset {invariant} invariant was violated")
+            }
+            Self::SeedResourceLimit { resource, limit } => {
+                write!(f, "seed {resource} exceeded its limit of {limit}")
+            }
+            Self::SeedInvariantViolation { invariant } => {
+                write!(f, "seed {invariant} invariant was violated")
+            }
+            Self::KgbInvariantViolation { invariant } => {
+                write!(f, "KGB {invariant} invariant was violated")
+            }
+            Self::BlockInvariantViolation { invariant } => {
+                write!(f, "block {invariant} invariant was violated")
+            }
+            Self::RepInvariantViolation { invariant } => {
+                write!(f, "rep-context {invariant} invariant was violated")
+            }
+            Self::RealFormOrderInvariantViolation { invariant } => {
+                write!(f, "real-form order {invariant} invariant was violated")
+            }
+            Self::LayoutInvariantViolation { invariant } => {
+                write!(f, "inner-class layout {invariant} invariant was violated")
+            }
+            Self::DistinguishedInvolutionMismatch => {
+                write!(
+                    f,
+                    "twisted involution does not factor through this inner class's distinguished involution"
+                )
+            }
+            Self::ModTwoSubquotientInvariantViolation => {
+                write!(f, "mod-two subquotient invariant was violated")
+            }
+            Self::NotInModTwoSubspace => {
+                write!(f, "mod-two vector does not belong to the required subspace")
+            }
+            Self::CartanFiberMismatch => {
+                write!(f, "Cartan-fiber elements belong to different fibers")
+            }
+            Self::CartanFiberInvolutionMismatch => {
+                write!(f, "Cartan-fiber map requires the same Cartan involution")
+            }
+            Self::CartanFiberMapDoesNotDescend { relation } => {
+                write!(
+                    f,
+                    "Cartan-fiber map does not preserve the {relation} relation"
+                )
+            }
+            Self::AdjointFiberResourceLimit { resource, limit } => {
+                write!(f, "adjoint-fiber {resource} exceeded its limit of {limit}")
+            }
+            Self::ArithmeticOverflow => write!(f, "root-system arithmetic overflow"),
+            Self::NotYetImplemented { feature } => write!(f, "{feature} is not yet implemented"),
+            Self::RootPairingMismatch {
+                row,
+                column,
+                expected,
+                actual,
+            } => write!(
+                f,
+                "root pairing ({row},{column}) is {actual}, expected {expected}"
+            ),
+            Self::RealFormNotDefinedOnCartan => {
+                write!(f, "Cartan class not defined for real form")
+            }
+        }
+    }
+}
+
+impl std::error::Error for StructureError {}
+
+```
+
+文件：crates/atlas-real-group/src/global_tits.rs（完整字节）：
+```rust
+//! Exact rational torus transport for Atlas's global Tits cross action.
+//!
+//! Unlike [`crate::TitsCoset`], this carrier retains the full rational
+//! cocharacter, including central coordinates.  It is the transport needed
+//! while a synthetic strong involution is moved to a canonical Cartan
+//! representative; reduction to a fiber's mod-two quotient happens later.
+
+use malachite::base::num::arithmetic::traits::Floor;
+use malachite::base::num::basic::traits::Zero;
+use malachite::Rational;
+
+use crate::grading::try_capacity;
+use crate::twisted_involution::compose_matrices;
+use crate::{
+    InnerClass, RationalCoweight, RootKind, StructureError, TwistedInvolution, Weight, WeylAction,
+};
+
+/// A rational torus factor paired with its twisted involution.
+///
+/// The torus coordinates are canonical representatives in `[0, 2)`.  Fields
+/// stay private so every value has passed the rank, datum, and distinguished-
+/// involution provenance gates.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub(crate) struct GlobalTitsElement {
+    torus_factor: RationalCoweight,
+    twisted_involution: TwistedInvolution,
+}
+
+impl GlobalTitsElement {
+    pub(crate) fn new(
+        inner_class: &InnerClass,
+        torus_factor: RationalCoweight,
+        twisted_involution: TwistedInvolution,
+    ) -> Result<Self, StructureError> {
+        let rank = inner_class.datum().lattice_rank();
+        if torus_factor.dimension() != rank {
+            return Err(StructureError::RankMismatch {
+                expected: rank,
+                actual: torus_factor.dimension(),
+            });
+        }
+        validate_context(inner_class, &twisted_involution)?;
+        Ok(Self {
+            torus_factor: normalize_torus_factor(torus_factor.coordinates())?,
+            twisted_involution,
+        })
+    }
+
+    pub(crate) fn torus_factor(&self) -> &RationalCoweight {
+        &self.torus_factor
+    }
+
+    pub(crate) fn twisted_involution(&self) -> &TwistedInvolution {
+        &self.twisted_involution
+    }
+
+    /// Apply one simple cross action `s * (t,w) * delta(s)`.
+    pub(crate) fn crossed_generator(
+        &self,
+        inner_class: &InnerClass,
+        generator: usize,
+    ) -> Result<Self, StructureError> {
+        validate_context(inner_class, &self.twisted_involution)?;
+        let semisimple_rank = inner_class.datum().semisimple_rank();
+        if generator >= semisimple_rank {
+            return Err(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: semisimple_rank,
+            });
+        }
+
+        let roots = inner_class.root_system();
+        let simple_root =
+            *roots
+                .simple_root_ids()
+                .get(generator)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: generator,
+                    upper_bound: roots.simple_root_ids().len(),
+                })?;
+        let kind = self
+            .twisted_involution
+            .root_involution()
+            .kind(simple_root)
+            .ok_or(StructureError::InvalidRootAutomorphism)?;
+
+        let mut torus_coordinates = copy_rationals(self.torus_factor.coordinates())?;
+        match kind {
+            RootKind::Complex => {
+                let pairing = rational_pair(
+                    &inner_class.datum().simple_roots()[generator],
+                    &torus_coordinates,
+                )?;
+                add_scaled_coroot(
+                    &mut torus_coordinates,
+                    &inner_class.datum().simple_coroots()[generator],
+                    -pairing,
+                )?;
+            }
+            RootKind::Imaginary => {
+                let pairing = rational_pair(
+                    &inner_class.datum().simple_roots()[generator],
+                    &torus_coordinates,
+                )?;
+                if pairing != pairing.clone().floor() {
+                    return Err(StructureError::InvalidStrongTorusFactor);
+                }
+                add_scaled_coroot(
+                    &mut torus_coordinates,
+                    &inner_class.datum().simple_coroots()[generator],
+                    Rational::from(1) - pairing,
+                )?;
+            }
+            RootKind::Real => {}
+        }
+        normalize_coordinates(&mut torus_coordinates);
+
+        let twisted_generator = distinguished_generator_image(inner_class, generator)?;
+        let left = WeylAction::simple_reflection(inner_class.datum(), generator)?;
+        let right = WeylAction::simple_reflection(inner_class.datum(), twisted_generator)?;
+        let action = left
+            .compose(self.twisted_involution.weyl_action())?
+            .compose(&right)?;
+        let twisted_involution = TwistedInvolution::new(
+            inner_class.datum(),
+            roots,
+            inner_class.distinguished_involution().involution(),
+            action,
+        )?;
+        Ok(Self {
+            torus_factor: RationalCoweight::from_coordinates(torus_coordinates),
+            twisted_involution,
+        })
+    }
+
+    /// Apply generators from first to last, matching upstream
+    /// `cross_act(GlobalTitsElement&, const WeylWord&)`.
+    pub(crate) fn crossed_word(
+        &self,
+        inner_class: &InnerClass,
+        word: &[usize],
+    ) -> Result<Self, StructureError> {
+        validate_context(inner_class, &self.twisted_involution)?;
+        let mut current = self.clone();
+        for &generator in word {
+            current = current.crossed_generator(inner_class, generator)?;
+        }
+        Ok(current)
+    }
+}
+
+fn validate_context(
+    inner_class: &InnerClass,
+    twisted: &TwistedInvolution,
+) -> Result<(), StructureError> {
+    if twisted.weyl_action().datum() != inner_class.datum()
+        || twisted.root_involution().involution().datum() != inner_class.datum()
+    {
+        return Err(StructureError::DatumMismatch);
+    }
+    let distinguished = inner_class.distinguished_involution().involution();
+    let stored = twisted.root_involution().involution();
+    if compose_matrices(
+        twisted.weyl_action().matrix(),
+        distinguished.weight_matrix(),
+    )? != stored.weight_matrix()
+        || compose_matrices(
+            twisted.weyl_action().coweight_matrix(),
+            distinguished.coweight_matrix(),
+        )? != stored.coweight_matrix()
+    {
+        return Err(StructureError::DistinguishedInvolutionMismatch);
+    }
+    Ok(())
+}
+
+fn distinguished_generator_image(
+    inner_class: &InnerClass,
+    generator: usize,
+) -> Result<usize, StructureError> {
+    let simple_roots = inner_class.root_system().simple_root_ids();
+    let simple_root = *simple_roots
+        .get(generator)
+        .ok_or(StructureError::IndexOutOfRange {
+            index: generator,
+            upper_bound: simple_roots.len(),
+        })?;
+    let image = inner_class
+        .distinguished_involution()
+        .image(simple_root)
+        .ok_or(StructureError::InvalidBasedAutomorphism)?;
+    simple_roots
+        .iter()
+        .position(|&candidate| candidate == image)
+        .ok_or(StructureError::InvalidBasedAutomorphism)
+}
+
+fn rational_pair(weight: &Weight, coweight: &[Rational]) -> Result<Rational, StructureError> {
+    if weight.rank() != coweight.len() {
+        return Err(StructureError::RankMismatch {
+            expected: weight.rank(),
+            actual: coweight.len(),
+        });
+    }
+    Ok(weight
+        .as_slice()
+        .iter()
+        .zip(coweight)
+        .fold(Rational::ZERO, |sum, (&coefficient, coordinate)| {
+            sum + Rational::from(coefficient) * coordinate
+        }))
+}
+
+fn add_scaled_coroot(
+    coordinates: &mut [Rational],
+    coroot: &crate::Coweight,
+    scale: Rational,
+) -> Result<(), StructureError> {
+    if coordinates.len() != coroot.rank() {
+        return Err(StructureError::RankMismatch {
+            expected: coroot.rank(),
+            actual: coordinates.len(),
+        });
+    }
+    for (coordinate, &direction) in coordinates.iter_mut().zip(coroot.as_slice()) {
+        *coordinate += Rational::from(direction) * &scale;
+    }
+    Ok(())
+}
+
+fn normalize_torus_factor(coordinates: &[Rational]) -> Result<RationalCoweight, StructureError> {
+    let mut normalized = copy_rationals(coordinates)?;
+    normalize_coordinates(&mut normalized);
+    Ok(RationalCoweight::from_coordinates(normalized))
+}
+
+fn copy_rationals(coordinates: &[Rational]) -> Result<Vec<Rational>, StructureError> {
+    let mut copied = try_capacity(coordinates.len())?;
+    copied.extend(coordinates.iter().cloned());
+    Ok(copied)
+}
+
+fn normalize_coordinates(coordinates: &mut [Rational]) {
+    for coordinate in coordinates {
+        let quotient = (coordinate.clone() / Rational::from(2)).floor();
+        *coordinate -= Rational::from(quotient) * Rational::from(2);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{BasedRootDatum, Coweight, LatticeInvolution, RootSystem, WeylGroup};
+
+    fn rational(numerator: i32, denominator: i32) -> Rational {
+        Rational::from(numerator) / Rational::from(denominator)
+    }
+
+    fn compact_inner(datum: BasedRootDatum, root_budget: usize) -> InnerClass {
+        let distinguished = LatticeInvolution::identity(&datum).unwrap();
+        InnerClass::new(datum, distinguished, root_budget).unwrap()
+    }
+
+    fn twisted(inner_class: &InnerClass, action: WeylAction) -> TwistedInvolution {
+        TwistedInvolution::new(
+            inner_class.datum(),
+            inner_class.root_system(),
+            inner_class.distinguished_involution().involution(),
+            action,
+        )
+        .unwrap()
+    }
+
+    fn element(
+        inner_class: &InnerClass,
+        coordinates: Vec<Rational>,
+        action: WeylAction,
+    ) -> GlobalTitsElement {
+        GlobalTitsElement::new(
+            inner_class,
+            RationalCoweight::from_coordinates(coordinates),
+            twisted(inner_class, action),
+        )
+        .unwrap()
+    }
+
+    fn adjoint_a1() -> BasedRootDatum {
+        BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn normalizes_every_coordinate_modulo_two() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![2, 0])],
+            vec![Coweight::new(vec![1, 0])],
+        )
+        .unwrap();
+        let inner_class = compact_inner(datum.clone(), 2);
+        let value = element(
+            &inner_class,
+            vec![rational(-1, 2), rational(9, 2)],
+            WeylGroup::new(datum).identity().unwrap(),
+        );
+
+        assert_eq!(
+            value.torus_factor().coordinates(),
+            &[rational(3, 2), rational(1, 2)]
+        );
+    }
+
+    #[test]
+    fn rank_zero_and_an_empty_word_are_identity_transport() {
+        let datum = BasedRootDatum::from_simple_data(0, vec![], vec![], vec![]).unwrap();
+        let inner_class = compact_inner(datum.clone(), 0);
+        let value = element(
+            &inner_class,
+            vec![],
+            WeylGroup::new(datum).identity().unwrap(),
+        );
+
+        assert_eq!(value.crossed_word(&inner_class, &[]).unwrap(), value);
+    }
+
+    #[test]
+    fn a1_imaginary_cross_distinguishes_compact_and_noncompact_factors() {
+        let datum = adjoint_a1();
+        let inner_class = compact_inner(datum.clone(), 2);
+        let identity = WeylGroup::new(datum).identity().unwrap();
+        let compact = element(&inner_class, vec![rational(1, 2)], identity.clone());
+        let noncompact = element(&inner_class, vec![Rational::ZERO], identity);
+
+        assert_eq!(
+            compact
+                .crossed_generator(&inner_class, 0)
+                .unwrap()
+                .torus_factor()
+                .coordinates(),
+            &[rational(1, 2)]
+        );
+        assert_eq!(
+            noncompact
+                .crossed_generator(&inner_class, 0)
+                .unwrap()
+                .torus_factor()
+                .coordinates(),
+            &[Rational::from(1)]
+        );
+    }
+
+    #[test]
+    fn a1_imaginary_cross_requires_an_integral_root_pairing() {
+        let datum = adjoint_a1();
+        let inner_class = compact_inner(datum.clone(), 2);
+        let value = element(
+            &inner_class,
+            vec![rational(1, 4)],
+            WeylGroup::new(datum).identity().unwrap(),
+        );
+
+        assert_eq!(
+            value.crossed_generator(&inner_class, 0),
+            Err(StructureError::InvalidStrongTorusFactor)
+        );
+    }
+
+    #[test]
+    fn a1_real_cross_leaves_both_components_unchanged() {
+        let datum = adjoint_a1();
+        let inner_class = compact_inner(datum.clone(), 2);
+        let reflection = WeylGroup::new(datum).simple_reflection(0).unwrap();
+        let value = element(&inner_class, vec![rational(3, 4)], reflection);
+
+        assert_eq!(value.crossed_generator(&inner_class, 0).unwrap(), value);
+    }
+
+    #[test]
+    fn a2_complex_cross_reflects_the_rational_coweight() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let inner_class = compact_inner(datum.clone(), 6);
+        let group = WeylGroup::new(datum.clone());
+        let first = group.simple_reflection(0).unwrap();
+        let value = element(
+            &inner_class,
+            vec![rational(1, 3), rational(1, 2)],
+            first.clone(),
+        );
+        let crossed = value.crossed_generator(&inner_class, 1).unwrap();
+        let second = group.simple_reflection(1).unwrap();
+        let expected_action = second.compose(&first).unwrap().compose(&second).unwrap();
+
+        assert_eq!(
+            crossed.torus_factor().coordinates(),
+            &[rational(5, 6), rational(3, 2)]
+        );
+        assert_eq!(
+            crossed.twisted_involution(),
+            &twisted(&inner_class, expected_action)
+        );
+    }
+
+    #[test]
+    fn a2_word_execution_is_forward_and_noncommuting() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let inner_class = compact_inner(datum.clone(), 6);
+        let value = element(
+            &inner_class,
+            vec![Rational::ZERO, Rational::ZERO],
+            WeylGroup::new(datum).identity().unwrap(),
+        );
+
+        let forward = value.crossed_word(&inner_class, &[0, 1]).unwrap();
+        let explicit = value
+            .crossed_generator(&inner_class, 0)
+            .unwrap()
+            .crossed_generator(&inner_class, 1)
+            .unwrap();
+        let reverse = value.crossed_word(&inner_class, &[1, 0]).unwrap();
+
+        assert_eq!(forward, explicit);
+        assert_eq!(
+            forward.torus_factor().coordinates(),
+            &[Rational::ZERO, Rational::from(1)]
+        );
+        assert_eq!(
+            reverse.torus_factor().coordinates(),
+            &[Rational::from(1), Rational::ZERO]
+        );
+        assert_ne!(forward, reverse);
+    }
+
+    #[test]
+    fn b2_complex_cross_uses_the_coroot_not_the_root_direction() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let inner_class = compact_inner(datum.clone(), 8);
+        let group = WeylGroup::new(datum);
+        let value = element(
+            &inner_class,
+            vec![Rational::ZERO, rational(1, 2)],
+            group.simple_reflection(0).unwrap(),
+        );
+
+        assert_eq!(
+            value
+                .crossed_generator(&inner_class, 1)
+                .unwrap()
+                .torus_factor()
+                .coordinates(),
+            &[Rational::from(1), rational(3, 2)]
+        );
+    }
+
+    #[test]
+    fn a1_with_central_torus_preserves_the_central_coordinate() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![2, 0])],
+            vec![Coweight::new(vec![1, 0])],
+        )
+        .unwrap();
+        let inner_class = compact_inner(datum.clone(), 2);
+        let value = element(
+            &inner_class,
+            vec![Rational::ZERO, rational(7, 3)],
+            WeylGroup::new(datum).identity().unwrap(),
+        );
+
+        assert_eq!(
+            value
+                .crossed_generator(&inner_class, 0)
+                .unwrap()
+                .torus_factor()
+                .coordinates(),
+            &[Rational::from(1), rational(1, 3)]
+        );
+    }
+
+    #[test]
+    fn rejects_rank_generator_datum_and_distinguished_mismatches() {
+        let datum = adjoint_a1();
+        let inner_class = compact_inner(datum.clone(), 2);
+        let identity = WeylGroup::new(datum.clone()).identity().unwrap();
+        assert_eq!(
+            GlobalTitsElement::new(
+                &inner_class,
+                RationalCoweight::from_coordinates(vec![]),
+                twisted(&inner_class, identity.clone()),
+            ),
+            Err(StructureError::RankMismatch {
+                expected: 1,
+                actual: 0,
+            })
+        );
+        let value = element(&inner_class, vec![Rational::ZERO], identity);
+        assert_eq!(
+            value.crossed_generator(&inner_class, 1),
+            Err(StructureError::IndexOutOfRange {
+                index: 1,
+                upper_bound: 1,
+            })
+        );
+
+        let foreign_datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let foreign_inner = compact_inner(foreign_datum.clone(), 2);
+        let foreign_twisted = twisted(
+            &foreign_inner,
+            WeylGroup::new(foreign_datum).identity().unwrap(),
+        );
+        assert_eq!(
+            GlobalTitsElement::new(
+                &inner_class,
+                RationalCoweight::from_coordinates(vec![Rational::ZERO]),
+                foreign_twisted,
+            ),
+            Err(StructureError::DatumMismatch)
+        );
+
+        let a2 = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let compact_a2 = compact_inner(a2.clone(), 6);
+        let roots = RootSystem::enumerate(&a2, 6).unwrap();
+        let foreign_distinguished = LatticeInvolution::new(
+            &a2,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let foreign_twisted = TwistedInvolution::new(
+            &a2,
+            &roots,
+            &foreign_distinguished,
+            WeylGroup::new(a2.clone()).identity().unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            GlobalTitsElement::new(
+                &compact_a2,
+                RationalCoweight::from_coordinates(vec![Rational::ZERO, Rational::ZERO]),
+                foreign_twisted,
+            ),
+            Err(StructureError::DistinguishedInvolutionMismatch)
+        );
+    }
+}
+
+```

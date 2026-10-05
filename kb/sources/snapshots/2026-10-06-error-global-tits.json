@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "bacd838a",
+  "working_tree": false,
+  "scope": "First reading of the crate-wide StructureError taxonomy and the global Tits cross-action transport layer for the new error-global-tits source packet: the 53 variants and their field-shape families, GlobalTitsElement's provenance gates, crossed_generator's RootKind branches with the imaginary integrality gate, crossed_word's forward order, and the 10 test anchors.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/error.rs",
+      "sha256": "5f5ecd275f1f695d91d01ec13b018afceb11a653d9f197f9255d28f73f11562c",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/global_tits.rs",
+      "sha256": "bba1d05a3fc1174556d76f1ce0c6935721c32f81d6daf330d2d8cf290e0bd5c2",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_6b166da5-e890-4e6a-8ce7-d49c221d02e5",
+    "prompt_sha256": "b035eb4a563974ab6efd79f4297ac3d24b4d08801b05dab5f5a01cf95a048110",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/error-global-tits-probe",
+    "stdout_jsonl_sha256": "9e6e6454ee8d91843ea37413f24af47444c368531674bd000e10adf2f38f5132",
+    "draft_sha256": "56129c7cc189a8d932c222afbf942007686bef12b39c1cb188d932f81a9ef2dc",
+    "result": "completed, exit 0, 398.9s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The 53-variant census and every Display text were exact, including the u64 limit exception and the {image_root:?} Debug formatting; the draft correctly separated the 7 directly constructed variants from propagated ones and flagged the uncovered branches and the direct-indexing panic surface."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; the error variants' construction sites outside global_tits.rs are not enumerated here."
+}
