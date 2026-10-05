@@ -215,6 +215,16 @@ probe 路由起草（exit 0，74.5s，420 秒期限），维护者对照源码�
 Kimi probe 草案因摘录漏掉未注释方法而偏薄，由维护者直接读源补齐。该包是
 结构性阅读，不声称 mod-2 层的数学验收。
 
+[BasedRootDatum 与对偶内类构造](root-datum-dual.md)记录 `root_datum.rs` 与
+`dual.rs`：`BasedRootDatum` 的两秩区分与构造门控、radical/coradical 饱和核、
+简单反射与可失败克隆；`dual_datum` 转置互换、`longest_action` 下坡行走、
+`dual_inner_class` 的 `negative_transposed` 装配、`dual_cartan_correspondence`
+的根像置换键（上游代表元是共轭而非矩阵相等）与 `dual_real_form_count` 管线。
+对应[阅读快照](snapshots/2026-10-06-root-datum-dual.json)；草案由 Kimi probe
+以两文件完整字节起草（exit 0，387.3s），维护者对照源码逐条核对改写——
+完整字节输入避免了 mod-two 的摘录遗漏模式。该包是结构性阅读，不声称根数据
+层或对偶构造的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

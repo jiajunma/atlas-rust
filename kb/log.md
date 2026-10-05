@@ -317,3 +317,12 @@ sources/index.md 已同步；未运行编译、测试或 compiler 生成。
 93abd29b 的要点（AFTER_V1_PREDECESSOR 本地重绑定、sbatch 标签钉到
 STAGE_NAME、predecessor-v12 不递增）以及 SecureLink 隧道再次中断导致的
 提交暂缓。仅人工维护来源包；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增根数据与对偶构造来源包（Kimi probe 协助）
+
+新增 `sources/root-datum-dual.md` 与快照 `2026-10-06-root-datum-dual.json`：
+`BasedRootDatum` 构造门控、radical/coradical 饱和核、简单反射；`dual.rs`
+五个公开入口与原词重放。同一 Kimi probe 路由起草（exit 0，387.3s），本次
+以两个文件的完整字节（42KB 提示）代替摘录，避免了 mod-two 的遗漏模式；
+维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
+测试或 compiler 生成。

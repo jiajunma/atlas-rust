@@ -1,0 +1,1084 @@
+你是 Atlas Rust 重实现项目的文档助理。任务：为两个 Rust 源文件起草一份中文知识来源包（source packet）草案，供维护者逐条核对后收录进 kb/sources/。
+
+严格规则：
+- 只依据下面给出的两个源文件字节；不要引用你没有读到的代码、文档或历史。
+- 区分「已实现行为」与「阅读推断」；不做任何数学验收、性能或正确性声明。
+- 保留精确的符号名、类型名、错误类型与边界条件（Result/错误分支、预算、顺序保证、panic/断言）。
+- 输出只是一份 Markdown 草案，开头必须是 frontmatter：
+  ---
+  title: <中文标题>
+  source: atlas-rust/root-datum-and-dual
+  ingestedAt: 2026-10-05T18:00:00Z
+  ---
+- 结构建议：概览；root_datum.rs（BasedRootDatum 的字段、构造门控、radical/coradical 基、反射）；dual.rs（dual_datum、longest_action、dual_inner_class、dual_cartan_correspondence、dual_real_form_count 各自的契约与错误路径）；两文件之间的调用关系；限制与未覆盖面。
+- 先给出每个文件的「裸签名清单」（所有 pub fn/struct/enum/trait 与可见 impl 块），再逐项解释——上次草案因摘录漏掉未注释方法而偏薄，这次务必完整。
+
+文件一：crates/atlas-real-group/src/root_datum.rs（完整字节）：
+```rust
+use malachite::Rational;
+
+use crate::lattice::try_copy_coordinates;
+use crate::{pair, Coweight, StructureError, Weight};
+
+/// Validated simple-root data inside a character/cocharacter lattice pair.
+///
+/// `lattice_rank` is the rank of the full reductive torus. `semisimple_rank`
+/// is the number of simple roots. They coincide only when there is no central
+/// torus. This type deliberately has no global rank cap.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct BasedRootDatum {
+    lattice_rank: usize,
+    cartan: Vec<Vec<i32>>,
+    simple_roots: Vec<Weight>,
+    simple_coroots: Vec<Coweight>,
+}
+
+impl BasedRootDatum {
+    /// Construct the standard-coordinate datum determined by a Cartan matrix.
+    pub fn standard(cartan: Vec<Vec<i32>>) -> Result<Self, StructureError> {
+        let rank = validate_cartan(&cartan)?;
+        let simple_roots = (0..rank)
+            .map(|row| {
+                let mut coordinates = vec![0; rank];
+                coordinates[row] = 1;
+                Weight::new(coordinates)
+            })
+            .collect();
+        let simple_coroots = (0..rank)
+            .map(|column| Coweight::new(cartan.iter().map(|row| row[column]).collect()))
+            .collect();
+        Self::from_simple_data(rank, cartan, simple_roots, simple_coroots)
+    }
+
+    /// Construct a datum with an explicit full lattice rank and simple data.
+    pub fn from_simple_data(
+        lattice_rank: usize,
+        cartan: Vec<Vec<i32>>,
+        simple_roots: Vec<Weight>,
+        simple_coroots: Vec<Coweight>,
+    ) -> Result<Self, StructureError> {
+        let semisimple_rank = validate_cartan(&cartan)?;
+        if lattice_rank < semisimple_rank {
+            return Err(StructureError::RankMismatch {
+                expected: semisimple_rank,
+                actual: lattice_rank,
+            });
+        }
+        if simple_roots.len() != semisimple_rank {
+            return Err(StructureError::RankMismatch {
+                expected: semisimple_rank,
+                actual: simple_roots.len(),
+            });
+        }
+        if simple_coroots.len() != semisimple_rank {
+            return Err(StructureError::RankMismatch {
+                expected: semisimple_rank,
+                actual: simple_coroots.len(),
+            });
+        }
+        for root in &simple_roots {
+            ensure_lattice_rank(lattice_rank, root.rank())?;
+        }
+        for coroot in &simple_coroots {
+            ensure_lattice_rank(lattice_rank, coroot.rank())?;
+        }
+        for (row, root) in simple_roots.iter().enumerate() {
+            for (column, coroot) in simple_coroots.iter().enumerate() {
+                let actual = pair(root, coroot)?;
+                let expected = cartan[row][column];
+                if actual != expected {
+                    return Err(StructureError::RootPairingMismatch {
+                        row,
+                        column,
+                        expected,
+                        actual,
+                    });
+                }
+            }
+        }
+        Ok(Self {
+            lattice_rank,
+            cartan,
+            simple_roots,
+            simple_coroots,
+        })
+    }
+
+    pub fn lattice_rank(&self) -> usize {
+        self.lattice_rank
+    }
+
+    pub fn semisimple_rank(&self) -> usize {
+        self.cartan.len()
+    }
+
+    pub fn cartan_matrix(&self) -> &[Vec<i32>] {
+        &self.cartan
+    }
+
+    pub fn simple_roots(&self) -> &[Weight] {
+        &self.simple_roots
+    }
+
+    pub fn simple_coroots(&self) -> &[Coweight] {
+        &self.simple_coroots
+    }
+
+    /// The coradical basis (rootdata.cpp:858 `lattice::perp`): a basis of
+    /// the weights orthogonal to all simple coroots — the kernel of the
+    /// matrix whose rows are the coroots. The `root_coradical` wrapper
+    /// exports these basis vectors as columns after the simple roots.
+    pub fn coradical_basis(&self) -> Result<Vec<Weight>, StructureError> {
+        let basis = crate::integer_lattice::saturated_kernel(
+            &self.annihilator_matrix(&self.coroot_rows())?,
+            &self.budget(),
+        )?;
+        let mut result = Vec::with_capacity(basis.rank());
+        for column in basis.columns() {
+            let mut coordinates = Vec::with_capacity(self.lattice_rank);
+            for entry in column {
+                coordinates
+                    .push(i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?);
+            }
+            result.push(Weight::new(coordinates));
+        }
+        Ok(result)
+    }
+
+    /// The radical basis (rootdata.cpp:859 `lattice::perp` of the
+    /// coroots): a basis of the coweights orthogonal to all simple roots
+    /// — the kernel of the matrix whose rows are the roots. The
+    /// `coroot_radical` wrapper exports these columns after the simple
+    /// coroots.
+    pub fn radical_basis(&self) -> Result<Vec<Coweight>, StructureError> {
+        let basis = crate::integer_lattice::saturated_kernel(
+            &self.annihilator_matrix(&self.root_rows())?,
+            &self.budget(),
+        )?;
+        let mut result = Vec::with_capacity(basis.rank());
+        for column in basis.columns() {
+            let mut coordinates = Vec::with_capacity(self.lattice_rank);
+            for entry in column {
+                coordinates
+                    .push(i32::try_from(entry).map_err(|_| StructureError::ArithmeticOverflow)?);
+            }
+            result.push(Coweight::new(coordinates));
+        }
+        Ok(result)
+    }
+
+    fn annihilator_matrix(
+        &self,
+        rows: &[Vec<i32>],
+    ) -> Result<crate::integer_lattice::IntegerMatrix, StructureError> {
+        if rows.is_empty() {
+            // No equations means the full ambient lattice is the kernel.
+            // Inferring the column count from empty rows would lose its rank.
+            crate::integer_lattice::IntegerMatrix::zero(0, self.lattice_rank, &self.budget())
+        } else {
+            crate::integer_lattice::IntegerMatrix::from_i32_rows(rows, &self.budget())
+        }
+    }
+
+    /// The simple-coroot rows (the coradical annihilator matrix).
+    fn coroot_rows(&self) -> Vec<Vec<i32>> {
+        self.simple_coroots
+            .iter()
+            .map(|coweight| coweight.as_slice().to_vec())
+            .collect()
+    }
+
+    /// The simple-root rows (the radical annihilator matrix).
+    fn root_rows(&self) -> Vec<Vec<i32>> {
+        self.simple_roots
+            .iter()
+            .map(|weight| weight.as_slice().to_vec())
+            .collect()
+    }
+
+    fn budget(&self) -> crate::IntegerLatticeBudget {
+        crate::IntegerLatticeBudget::new(64, 100_000, 100_000, 128)
+    }
+
+    pub fn reflect_weight(
+        &self,
+        generator: usize,
+        weight: &Weight,
+    ) -> Result<Weight, StructureError> {
+        if weight.rank() != self.lattice_rank {
+            return Err(StructureError::RankMismatch {
+                expected: self.lattice_rank,
+                actual: weight.rank(),
+            });
+        }
+        let root = self
+            .simple_roots
+            .get(generator)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: self.semisimple_rank(),
+            })?;
+        let coefficient = i128::from(pair(weight, &self.simple_coroots[generator])?);
+        reflect_coordinates(weight.as_slice(), root.as_slice(), coefficient).map(Weight::new)
+    }
+
+    /// Dual simple reflection `y - <alpha_generator, y> alpha_generator_vee`
+    /// on the cocharacter lattice, mirroring [`Self::reflect_weight`].
+    pub fn reflect_coweight(
+        &self,
+        generator: usize,
+        coweight: &Coweight,
+    ) -> Result<Coweight, StructureError> {
+        if coweight.rank() != self.lattice_rank {
+            return Err(StructureError::RankMismatch {
+                expected: self.lattice_rank,
+                actual: coweight.rank(),
+            });
+        }
+        let coroot = self
+            .simple_coroots
+            .get(generator)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: self.semisimple_rank(),
+            })?;
+        let coefficient = i128::from(pair(&self.simple_roots[generator], coweight)?);
+        reflect_coordinates(coweight.as_slice(), coroot.as_slice(), coefficient).map(Coweight::new)
+    }
+
+    /// Fallible copy of the already-validated fields, avoiding both an
+    /// unchecked `Clone` and a redundant `from_simple_data` re-validation.
+    pub(crate) fn try_clone(&self) -> Result<Self, StructureError> {
+        let mut cartan = Vec::new();
+        cartan.try_reserve_exact(self.cartan.len()).map_err(|_| {
+            StructureError::AllocationFailed {
+                requested: self.cartan.len(),
+            }
+        })?;
+        for row in &self.cartan {
+            cartan.push(try_copy_coordinates(row)?);
+        }
+        let mut simple_roots = Vec::new();
+        simple_roots
+            .try_reserve_exact(self.simple_roots.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.simple_roots.len(),
+            })?;
+        for root in &self.simple_roots {
+            simple_roots.push(Weight::new(try_copy_coordinates(root.as_slice())?));
+        }
+        let mut simple_coroots = Vec::new();
+        simple_coroots
+            .try_reserve_exact(self.simple_coroots.len())
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: self.simple_coroots.len(),
+            })?;
+        for coroot in &self.simple_coroots {
+            simple_coroots.push(Coweight::new(try_copy_coordinates(coroot.as_slice())?));
+        }
+        Ok(Self {
+            lattice_rank: self.lattice_rank,
+            cartan,
+            simple_roots,
+            simple_coroots,
+        })
+    }
+}
+
+fn reflect_coordinates(
+    values: &[i32],
+    direction: &[i32],
+    coefficient: i128,
+) -> Result<Vec<i32>, StructureError> {
+    let mut reflected = Vec::new();
+    reflected
+        .try_reserve_exact(values.len())
+        .map_err(|_| StructureError::AllocationFailed {
+            requested: values.len(),
+        })?;
+    for (&coordinate, &direction_coordinate) in values.iter().zip(direction) {
+        let correction = coefficient
+            .checked_mul(i128::from(direction_coordinate))
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        let value = i128::from(coordinate)
+            .checked_sub(correction)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        reflected.push(i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?);
+    }
+    Ok(reflected)
+}
+
+fn ensure_lattice_rank(expected: usize, actual: usize) -> Result<(), StructureError> {
+    if expected == actual {
+        Ok(())
+    } else {
+        Err(StructureError::RankMismatch { expected, actual })
+    }
+}
+
+fn validate_cartan(cartan: &[Vec<i32>]) -> Result<usize, StructureError> {
+    let rank = cartan.len();
+    if cartan.iter().any(|row| row.len() != rank) {
+        return Err(StructureError::NonSquareCartan);
+    }
+    for (row, entries) in cartan.iter().enumerate() {
+        if entries[row] != 2
+            || entries
+                .iter()
+                .enumerate()
+                .any(|(column, &entry)| row != column && entry > 0)
+        {
+            return Err(StructureError::InvalidCartanMatrix);
+        }
+    }
+    for (row, entries) in cartan.iter().enumerate() {
+        for (column, &entry) in entries.iter().enumerate() {
+            if (entry == 0) != (cartan[column][row] == 0) {
+                return Err(StructureError::InvalidCartanMatrix);
+            }
+        }
+    }
+    if !is_finite_type(cartan) {
+        return Err(StructureError::InvalidCartanMatrix);
+    }
+    Ok(rank)
+}
+
+fn is_finite_type(cartan: &[Vec<i32>]) -> bool {
+    let rank = cartan.len();
+    let mut symmetrizer = vec![None; rank];
+    for seed in 0..rank {
+        if symmetrizer[seed].is_some() {
+            continue;
+        }
+        symmetrizer[seed] = Some(Rational::from(1));
+        let mut pending = vec![seed];
+        while let Some(row) = pending.pop() {
+            let row_scale = symmetrizer[row]
+                .as_ref()
+                .expect("pending Cartan vertex has a scale")
+                .clone();
+            for column in 0..rank {
+                let forward = cartan[row][column];
+                if forward == 0 {
+                    continue;
+                }
+                let expected = row_scale.clone() * Rational::from(forward)
+                    / Rational::from(cartan[column][row]);
+                match &symmetrizer[column] {
+                    Some(actual) if actual != &expected => return false,
+                    Some(_) => {}
+                    None => {
+                        symmetrizer[column] = Some(expected);
+                        pending.push(column);
+                    }
+                }
+            }
+        }
+    }
+
+    let scales = symmetrizer
+        .into_iter()
+        .map(|scale| scale.expect("every Cartan vertex receives a scale"))
+        .collect::<Vec<_>>();
+    let mut lower = vec![vec![Rational::from(0); rank]; rank];
+    let mut diagonal = vec![Rational::from(0); rank];
+    for column in 0..rank {
+        let mut pivot = scales[column].clone() * Rational::from(cartan[column][column]);
+        for (factor, diag) in lower[column][..column].iter().zip(&diagonal[..column]) {
+            pivot -= factor.clone() * factor.clone() * diag.clone();
+        }
+        if pivot <= 0 {
+            return false;
+        }
+        diagonal[column] = pivot;
+        lower[column][column] = Rational::from(1);
+        for row in (column + 1)..rank {
+            let mut entry = scales[row].clone() * Rational::from(cartan[row][column]);
+            for ((row_factor, column_factor), diag) in lower[row][..column]
+                .iter()
+                .zip(&lower[column][..column])
+                .zip(&diagonal[..column])
+            {
+                entry -= row_factor.clone() * column_factor.clone() * diag.clone();
+            }
+            lower[row][column] = entry / diagonal[column].clone();
+        }
+    }
+    true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keeps_total_and_semisimple_rank_separate() {
+        let datum = BasedRootDatum::from_simple_data(
+            3,
+            vec![vec![2]],
+            vec![Weight::new(vec![1, 0, 0])],
+            vec![Coweight::new(vec![2, 0, 0])],
+        )
+        .expect("A1 with a rank-two central torus is valid");
+        assert_eq!(datum.lattice_rank(), 3);
+        assert_eq!(datum.semisimple_rank(), 1);
+    }
+
+    #[test]
+    fn accepts_rank_above_atlas_compatibility_limit() {
+        let rank = 33;
+        let mut cartan = vec![vec![0; rank]; rank];
+        for row in 0..rank {
+            cartan[row][row] = 2;
+            if row + 1 < rank {
+                cartan[row][row + 1] = -1;
+                cartan[row + 1][row] = -1;
+            }
+        }
+        let datum = BasedRootDatum::standard(cartan).expect("A33 is a valid dynamic datum");
+        assert_eq!(datum.lattice_rank(), rank);
+        assert_eq!(datum.semisimple_rank(), rank);
+    }
+
+    #[test]
+    fn accepts_non_simply_laced_finite_type() {
+        let datum =
+            BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).expect("B2 is finite type");
+        assert_eq!(datum.semisimple_rank(), 2);
+    }
+
+    #[test]
+    fn rejects_non_finite_cartan_matrices_and_insufficient_lattice_rank() {
+        let affine = vec![vec![2, -2], vec![-2, 2]];
+        assert_eq!(
+            BasedRootDatum::standard(affine),
+            Err(StructureError::InvalidCartanMatrix)
+        );
+        let indefinite = vec![vec![2, -3], vec![-3, 2]];
+        assert_eq!(
+            BasedRootDatum::standard(indefinite),
+            Err(StructureError::InvalidCartanMatrix)
+        );
+        assert_eq!(
+            BasedRootDatum::from_simple_data(
+                1,
+                vec![vec![2], vec![0, 2]],
+                vec![Weight::new(vec![1]), Weight::new(vec![0])],
+                vec![Coweight::new(vec![2]), Coweight::new(vec![0])],
+            ),
+            Err(StructureError::NonSquareCartan)
+        );
+        assert_eq!(
+            BasedRootDatum::from_simple_data(
+                0,
+                vec![vec![2]],
+                vec![Weight::new(vec![1])],
+                vec![Coweight::new(vec![2])],
+            ),
+            Err(StructureError::RankMismatch {
+                expected: 1,
+                actual: 0,
+            })
+        );
+    }
+
+    #[test]
+    fn reflects_coweights_dually_and_rejects_narrowing_overflow() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![1, 0])],
+            vec![Coweight::new(vec![2, 0])],
+        )
+        .unwrap();
+        assert_eq!(
+            datum.reflect_coweight(0, &Coweight::new(vec![7, 11])),
+            Ok(Coweight::new(vec![-7, 11]))
+        );
+        assert_eq!(
+            datum.reflect_coweight(0, &Coweight::new(vec![i32::MIN, 5])),
+            Err(StructureError::ArithmeticOverflow)
+        );
+        assert_eq!(
+            datum.reflect_coweight(1, &Coweight::new(vec![0, 0])),
+            Err(StructureError::IndexOutOfRange {
+                index: 1,
+                upper_bound: 1,
+            })
+        );
+    }
+
+    #[test]
+    fn fallible_clone_reproduces_the_datum() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        assert_eq!(datum.try_clone().unwrap(), datum);
+    }
+
+    #[test]
+    fn supports_a_central_torus_without_roots() {
+        let datum = BasedRootDatum::from_simple_data(3, vec![], vec![], vec![])
+            .expect("a torus has no roots but has positive lattice rank");
+        assert_eq!(datum.lattice_rank(), 3);
+        assert_eq!(datum.semisimple_rank(), 0);
+    }
+}
+
+#[cfg(test)]
+mod torus_radical_regression_tests {
+    use super::*;
+
+    fn expected_columns(rank: usize) -> Vec<Vec<i32>> {
+        (0..rank)
+            .map(|column| (0..rank).map(|row| i32::from(row == column)).collect())
+            .collect()
+    }
+
+    #[test]
+    fn root_free_coradical_retains_the_ambient_lattice() {
+        for rank in [0, 1, 2, 4] {
+            let datum = BasedRootDatum::from_simple_data(rank, vec![], vec![], vec![])
+                .expect("valid root-free datum");
+            let actual: Vec<Vec<i32>> = datum.coradical_basis().unwrap().iter()
+                .map(|weight| weight.as_slice().to_vec()).collect();
+            assert_eq!(actual, expected_columns(rank),
+                "root-free coradical must span the full ambient lattice");
+        }
+    }
+
+    #[test]
+    fn root_free_radical_retains_the_ambient_lattice() {
+        for rank in [0, 1, 2, 4] {
+            let datum = BasedRootDatum::from_simple_data(rank, vec![], vec![], vec![])
+                .expect("valid root-free datum");
+            let actual: Vec<Vec<i32>> = datum.radical_basis().unwrap().iter()
+                .map(|weight| weight.as_slice().to_vec()).collect();
+            assert_eq!(actual, expected_columns(rank),
+                "root-free radical must span the full ambient lattice");
+        }
+    }
+}
+
+```
+
+文件二：crates/atlas-real-group/src/dual.rs（完整字节）：
+```rust
+//! The dual inner class of an inner class, and the number of dual real forms.
+//!
+//! Upstream the dual based involution is `rootdata::dualBasedInvolution`
+//! (rootdata.cpp:1357-1365): with `w0 = rd.to_dominant(-rd.twoRho())` (the
+//! longest Weyl group element, characterized by sending `2rho` to `-2rho`)
+//! the result is `(q * rd.action_matrix(w0)).negative_transposed()`, where
+//! `q` is the distinguished involution of the original inner class. The dual
+//! based root datum transposes the Cartan matrix and swaps simple roots with
+//! simple coroots (upstream `RootDatum(rd, tags::DualTag)`), and the number
+//! of dual real forms is the size of the fundamental weak-real-form
+//! partition of the dual inner class at its distinguished involution
+//! (complexredgp.cpp `InnerClass::numDualRealForms`).
+
+use crate::adjoint_fiber::{AdjointCartanFiber, AdjointFiberBudget};
+use crate::cartan_fiber::CartanFiber;
+use crate::grading::CartanGradingData;
+use crate::integer_lattice::IntegerLatticeBudget;
+use crate::twisted_involution::compose_matrices;
+use crate::weak_real_form::WeakRealFormPartition;
+use crate::{
+    BasedRootDatum, CartanClassification, CartanId, Coweight, InnerClass, LatticeInvolution,
+    StructureError, TwistedInvolution, Weight, WeylAction, WeylElement, WeylGroup, WeylInterface,
+};
+
+/// The based root datum dual to `datum`: transposed Cartan matrix, simple
+/// roots and simple coroots interchanged.
+pub fn dual_datum(datum: &BasedRootDatum) -> Result<BasedRootDatum, StructureError> {
+    let semisimple_rank = datum.semisimple_rank();
+    let cartan = datum.cartan_matrix();
+    let transposed: Vec<Vec<i32>> = (0..semisimple_rank)
+        .map(|row| cartan.iter().map(|cartan_row| cartan_row[row]).collect())
+        .collect();
+    let dual_roots: Vec<Weight> = datum
+        .simple_coroots()
+        .iter()
+        .map(|coroot| Weight::new(coroot.as_slice().to_vec()))
+        .collect();
+    let dual_coroots: Vec<Coweight> = datum
+        .simple_roots()
+        .iter()
+        .map(|root| Coweight::new(root.as_slice().to_vec()))
+        .collect();
+    BasedRootDatum::from_simple_data(datum.lattice_rank(), transposed, dual_roots, dual_coroots)
+}
+
+/// Twice the sum of the positive roots, in weight coordinates
+/// (`RootDatum::twoRho`).
+fn two_rho(inner_class: &InnerClass) -> Result<Weight, StructureError> {
+    let root_system = inner_class.root_system();
+    let mut sum = vec![0_i64; inner_class.datum().lattice_rank()];
+    for (id, root, _) in root_system.entries() {
+        if root_system.is_positive(id) != Some(true) {
+            continue;
+        }
+        for (slot, &value) in sum.iter_mut().zip(root.as_slice()) {
+            *slot = slot
+                .checked_add(i64::from(value))
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+    }
+    let mut coordinates = Vec::with_capacity(sum.len());
+    for value in sum {
+        coordinates.push(i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?);
+    }
+    Ok(Weight::new(coordinates))
+}
+
+/// The longest Weyl group element, characterized by sending `2rho` to
+/// `-2rho` (`rd.to_dominant(-rd.twoRho())`).
+///
+/// Unlike a full Weyl-group enumeration, the descent walk from `2rho` to
+/// `-2rho` takes exactly the reduced length of the longest element
+/// (upstream `WeylGroup::longest` is transducer O(rank); this is the
+/// equivalent O(length) walk — each step reflects by a generator with
+/// positive coroot pairing, which lowers the height of `2rho` by one).
+pub fn longest_action(
+    inner_class: &InnerClass,
+    weyl_budget: usize,
+) -> Result<WeylAction, StructureError> {
+    let datum = inner_class.datum();
+    let rank = datum.semisimple_rank();
+    let two_rho_weight = two_rho(inner_class)?;
+    let negative: Vec<i32> = two_rho_weight
+        .as_slice()
+        .iter()
+        .map(|value| {
+            value
+                .checked_neg()
+                .ok_or(StructureError::ArithmeticOverflow)
+        })
+        .collect::<Result<_, _>>()?;
+    let negative_rho = Weight::new(negative);
+
+    let group = WeylGroup::new(datum.clone());
+    let mut action = WeylAction::identity(datum)?;
+    let mut current = two_rho_weight;
+    let mut steps = 0_usize;
+    while current != negative_rho {
+        let mut advanced = false;
+        for s in 0..rank {
+            let coroot = datum.simple_coroots()[s].as_slice();
+            let mut pairing: i64 = 0;
+            for (index, &coordinate) in coroot.iter().enumerate() {
+                pairing += i64::from(coordinate) * i64::from(current.as_slice()[index]);
+            }
+            if pairing > 0 {
+                let reflection = group.simple_reflection(s)?;
+                action = reflection.compose(&action)?;
+                current = reflection.act(&current)?;
+                advanced = true;
+                break;
+            }
+        }
+        steps += 1;
+        if steps > weyl_budget || !advanced {
+            return Err(StructureError::LayoutInvariantViolation {
+                invariant: "longest Weyl element",
+            });
+        }
+    }
+    Ok(action)
+}
+
+/// The distinguished involution of the dual inner class
+/// (`dualBasedInvolution`): `-(q * W0)^t` on the dual weight lattice, with
+/// `W0` the action matrix of the longest Weyl element.
+fn dual_involution(
+    inner_class: &InnerClass,
+    weyl_budget: usize,
+) -> Result<Vec<Vec<i32>>, StructureError> {
+    let longest = longest_action(inner_class, weyl_budget)?;
+    // M = q * W0; the dual involution is -M^t (the coweight action -M is
+    // derived at construction, since M is an involution).
+    let distinguished = inner_class.distinguished_involution().involution();
+    compose_matrices(distinguished.weight_matrix(), longest.matrix())
+}
+
+/// Build the dual inner class of `inner_class`.
+///
+/// The Weyl budget bounds the enumeration locating the longest element;
+/// `root_budget` bounds the dual root-system closure.
+pub fn dual_inner_class(
+    inner_class: &InnerClass,
+    weyl_budget: usize,
+    root_budget: usize,
+) -> Result<InnerClass, StructureError> {
+    let dual = dual_datum(inner_class.datum())?;
+    let product = dual_involution(inner_class, weyl_budget)?;
+
+    let rank = product.len();
+    let mut dual_weight = vec![vec![0_i32; rank]; rank];
+    let mut dual_coweight = vec![vec![0_i32; rank]; rank];
+    for (row, product_row) in product.iter().enumerate() {
+        for (column, &value) in product_row.iter().enumerate() {
+            let negated = value
+                .checked_neg()
+                .ok_or(StructureError::ArithmeticOverflow)?;
+            dual_weight[column][row] = negated;
+            dual_coweight[row][column] = negated;
+        }
+    }
+    let involution = LatticeInvolution::new(&dual, dual_weight, dual_coweight)?;
+    InnerClass::new(dual, involution, root_budget)
+}
+
+/// The Cartan-class correspondence across duality, for every Cartan class of
+/// `classification` in crate Cartan order.
+///
+/// Upstream builds the dual inner class's Cartan list from the original one
+/// in reverse order, pairing the Cartan with representative twisted
+/// involution `tw` against the dual Cartan of twisted involution `tw * w0`
+/// (innerclass.cpp:435-441, the dual `InnerClass` constructor). The dual
+/// distinguished involution is `-(delta * w0)^t` (`dualBasedInvolution`),
+/// and transposition is contragredient, so the paired dual Cartan involution
+/// on the dual weight lattice — the original coweight lattice — simplifies:
+/// `(w * w0)|co ∘ (-(delta * w0)^t)` = `-(w * delta)|co`, the negative of
+/// the original Cartan involution read on the coweight side. Upstream then
+/// canonicalizes the dual twisted involution, so the dual class's stored
+/// representative is generally a CONJUGATE of `tw * w0` and matrix
+/// comparison is unsound; the class is instead located by the root-image
+/// permutation that lattice map induces on the dual roots, exactly the key
+/// of [`crate::TwistedConjugacyPartition::class_of`]. Each entry carries
+/// the dual CartanId with the dual class's weak-real-form count (upstream
+/// `CartanClass::numDualRealForms`, the dual fiber's weak-real partition
+/// size). A class miss is an invariant violation, never a hole. Partitions
+/// may enumerate members or canonicalize them on demand. The legacy budget
+/// argument is unused here.
+pub fn dual_cartan_correspondence(
+    inner_class: &InnerClass,
+    classification: &CartanClassification,
+    dual: &InnerClass,
+    dual_classification: &CartanClassification,
+    _weyl_budget: usize,
+) -> Result<Vec<(CartanId, usize)>, StructureError> {
+    let original_fundamental = classification.cartan_ids().next().ok_or(
+        StructureError::CartanClassificationInvariantViolation {
+            invariant: "dual Cartan correspondence",
+        },
+    )?;
+    if classification
+        .cartan_class(original_fundamental)
+        .expect("cartan_ids yields in-range ids")
+        .representative()
+        .weyl_action()
+        .datum()
+        != inner_class.datum()
+    {
+        return Err(StructureError::DatumMismatch);
+    }
+    let dual_fundamental = dual_classification.cartan_ids().next().ok_or(
+        StructureError::CartanClassificationInvariantViolation {
+            invariant: "dual Cartan correspondence",
+        },
+    )?;
+    if dual_classification
+        .cartan_class(dual_fundamental)
+        .expect("cartan_ids yields in-range ids")
+        .representative()
+        .weyl_action()
+        .datum()
+        != dual.datum()
+    {
+        return Err(StructureError::DatumMismatch);
+    }
+
+    // Query through the provenance-checked API: direct classifications now
+    // store representatives only and canonicalize nonrepresentative members.
+    let partition = std::sync::Arc::clone(dual_classification.twisted_partition());
+    let mut cartan_of_raw = vec![None; partition.classes().len()];
+    for id in dual_classification.cartan_ids() {
+        let dual_class = dual_classification
+            .cartan_class(id)
+            .expect("cartan_ids yields in-range ids");
+        let raw = partition.class_of(dual_class.representative())?;
+        cartan_of_raw[raw] = Some(id);
+    }
+
+    let mut correspondence = Vec::with_capacity(classification.cartan_classes().len());
+    // The public argument was not a budget on this lookup. Bound the
+    // longest-element walk by the already enumerated root count instead.
+    let longest = longest_action(dual, dual.root_system().roots().len())?;
+    for cartan_class in classification.cartan_classes() {
+        let twisted = dual_twisted_representative(inner_class, cartan_class.representative(), dual, &longest)?;
+        let raw = partition.class_of(&twisted)?;
+        let dual_id =
+            cartan_of_raw[raw].ok_or(StructureError::CartanClassificationInvariantViolation {
+                invariant: "dual Cartan correspondence",
+            })?;
+        let form_count = dual_classification
+            .cartan_class(dual_id)
+            .expect("cartan_ids yields in-range ids")
+            .partition()
+            .class_count();
+        correspondence.push((dual_id, form_count));
+    }
+    Ok(correspondence)
+}
+
+/// The same primal-word replay used by RealWeylContext's dual fiber: w*w0
+/// on the dual datum. Unlike a bare root-permutation lookup this preserves
+/// both lattice actions and the distinguished-involution provenance.
+pub(crate) fn dual_twisted_representative(
+    primal: &InnerClass,
+    twisted: &TwistedInvolution,
+    dual: &InnerClass,
+    longest: &WeylAction,
+) -> Result<TwistedInvolution, StructureError> {
+    let system = primal.root_system();
+    let interface = WeylInterface::new(primal.datum().cartan_matrix())?;
+    let word = WeylElement::from_action(system, twisted.weyl_action())?
+        .canonical_word(system, &interface)?;
+    let group = WeylGroup::new(dual.datum().clone());
+    let mut action = group.identity()?;
+    for generator in word {
+        action = action.compose(&group.simple_reflection(generator)?)?;
+    }
+    action = action.compose(longest)?;
+    TwistedInvolution::new(dual.datum(), dual.root_system(),
+        dual.distinguished_involution().involution(), action)
+}
+
+/// The number of dual real forms of `inner_class`: the fundamental
+/// weak-real-form partition size of the dual inner class
+/// (`InnerClass::numDualRealForms`).
+pub fn dual_real_form_count(
+    inner_class: &InnerClass,
+    weyl_budget: usize,
+    integer_budget: &IntegerLatticeBudget,
+    adjoint_budget: &AdjointFiberBudget,
+    fiber_budget: usize,
+    root_budget: usize,
+) -> Result<usize, StructureError> {
+    let dual = dual_inner_class(inner_class, weyl_budget, root_budget)?;
+    let fundamental =
+        CartanFiber::build(dual.distinguished_involution().involution(), integer_budget)?;
+    let adjoint = AdjointCartanFiber::build(
+        dual.root_system(),
+        dual.distinguished_involution(),
+        &fundamental,
+        adjoint_budget,
+    )?;
+    let grading = CartanGradingData::build(
+        dual.root_system(),
+        dual.distinguished_involution(),
+        &adjoint,
+    )?;
+    let partition = WeakRealFormPartition::build(&grading, fiber_budget)?;
+    Ok(partition.class_count())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{BasedRootDatum, Coweight, InnerClass, LatticeInvolution, Weight};
+
+    use super::*;
+
+    fn integer_budget() -> IntegerLatticeBudget {
+        IntegerLatticeBudget::new(64, 100_000, 100_000, 128)
+    }
+
+    fn adjoint_budget() -> AdjointFiberBudget {
+        AdjointFiberBudget::new(integer_budget(), 50_000, 100_000)
+    }
+
+    fn dual_count(datum: &BasedRootDatum, involution: LatticeInvolution) -> usize {
+        let inner_class = InnerClass::new(datum.clone(), involution, 256).unwrap();
+        dual_real_form_count(
+            &inner_class,
+            256,
+            &integer_budget(),
+            &adjoint_budget(),
+            256,
+            256,
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn simply_connected_a1_has_two_dual_real_forms() {
+        // The dual datum of sc A1 is adjoint A1; its two dual real forms are
+        // the compact and split forms of the adjoint inner class.
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        assert_eq!(dual_count(&datum, involution), 2);
+    }
+
+    #[test]
+    fn adjoint_a1_has_two_dual_real_forms() {
+        // The dual datum of adjoint A1 is sc A1.
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        assert_eq!(dual_count(&datum, involution), 2);
+    }
+
+    #[test]
+    fn equal_rank_a2_has_a_single_dual_real_form() {
+        // Oracle: sc A2 compact inner class prints "2 real forms and 1 dual
+        // real form": the dual is the quasi-split adjoint A2, which has the
+        // single form PSL(3,R).
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        assert_eq!(dual_count(&datum, involution), 1);
+    }
+
+    #[test]
+    fn twisted_a2_dual_is_again_twisted_with_two_forms() {
+        // The twist swaps the A2 simple roots; the dual inner class of the
+        // quasi-split A2 is again quasi-split, with two dual real forms
+        // (SU(3)/SU(2,1) of the adjoint dual datum... counted as classes).
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let twist = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        assert_eq!(dual_count(&datum, twist), 2);
+    }
+
+    #[test]
+    fn compact_b2_has_three_dual_real_forms() {
+        // Oracle: sc B2 compact inner class prints "3 real forms and 3 dual
+        // real forms" (for B2, w0 = -1, so the compact and split inner
+        // classes coincide on both sides).
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        assert_eq!(dual_count(&datum, involution), 3);
+    }
+
+    #[test]
+    fn dual_involution_of_identity_is_minus_w0_transposed() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let identity = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::new(datum, identity, 6).unwrap();
+        // W0 for A2 sends e1 -> -e2, e2 -> -e1, so -W0^t = [[0,1],[1,0]].
+        let product = dual_involution(&inner_class, 6).unwrap();
+        assert_eq!(product, vec![vec![0, -1], vec![-1, 0]]);
+    }
+
+    #[test]
+    fn simply_connected_a1_cartans_pair_with_the_dual_cartans_in_reverse() {
+        // Oracle (capture 3501500, A1 compact inner class): Cartan #0 occurs
+        // for 1 dual real form, Cartan #1 for 2. The dual inner class is the
+        // adjoint A1, whose split Cartan (#1) carries only the quasisplit
+        // dual form while its fundamental Cartan (#0) carries both.
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            2,
+        )
+        .unwrap();
+        let budget =
+            crate::CartanClassificationBudget::new(integer_budget(), adjoint_budget(), 2, 64, 64);
+        let classification = CartanClassification::build(&inner_class, &budget).unwrap();
+        let dual = dual_inner_class(&inner_class, 2, 64).unwrap();
+        let dual_classification = CartanClassification::build(&dual, &budget).unwrap();
+        let correspondence = dual_cartan_correspondence(
+            &inner_class,
+            &classification,
+            &dual,
+            &dual_classification,
+            2,
+        )
+        .unwrap();
+        assert_eq!(correspondence, vec![(CartanId(1), 1), (CartanId(0), 2)],);
+    }
+
+    #[test]
+    fn compact_b2_correspondence_is_a_bijection_onto_the_dual_cartans() {
+        // B2 has w0 = -1 central, so the compact inner class is its own dual
+        // type. The fundamental Cartan pairs with the dual `w0` class — only
+        // the quasisplit dual form has a split Cartan — and the original
+        // `w0` class (involution -1 on the whole lattice) pairs with the
+        // dual fundamental, which every one of the three dual real forms
+        // contains.
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            8,
+        )
+        .unwrap();
+        let budget =
+            crate::CartanClassificationBudget::new(integer_budget(), adjoint_budget(), 8, 64, 64);
+        let classification = CartanClassification::build(&inner_class, &budget).unwrap();
+        assert_eq!(classification.cartan_classes().len(), 4);
+        let dual = dual_inner_class(&inner_class, 8, 64).unwrap();
+        let dual_classification = CartanClassification::build(&dual, &budget).unwrap();
+        let correspondence = dual_cartan_correspondence(
+            &inner_class,
+            &classification,
+            &dual,
+            &dual_classification,
+            8,
+        )
+        .unwrap();
+        assert_eq!(correspondence.len(), 4);
+        assert_eq!(correspondence[0].1, 1);
+        let longest_index = classification
+            .cartan_classes()
+            .iter()
+            .position(|class| {
+                class
+                    .representative()
+                    .root_involution()
+                    .involution()
+                    .weight_matrix()
+                    .iter()
+                    .enumerate()
+                    .all(|(row, entries)| {
+                        entries
+                            .iter()
+                            .enumerate()
+                            .all(|(column, &entry)| entry == -i32::from(row == column))
+                    })
+            })
+            .expect("the w0 class is enumerated");
+        assert_eq!(correspondence[longest_index].1, 3);
+        assert!(correspondence.iter().all(|&(_, count)| count >= 1));
+        let mut ids: Vec<usize> = correspondence
+            .iter()
+            .map(|&(id, _)| {
+                dual_classification
+                    .cartan_ids()
+                    .position(|other| other == id)
+                    .unwrap()
+            })
+            .collect();
+        ids.sort_unstable();
+        assert_eq!(ids, vec![0, 1, 2, 3]);
+    }
+}
+
+```
