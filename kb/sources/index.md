@@ -437,6 +437,15 @@ Kimi probe 路由起草（1200s 期限，exit 0，455.9s），维护者对照源
 核对改写（含符号簿记逐行追踪）。该包是结构性阅读，不声称这两层的数学
 验收。
 
+[弱实形划分与扭对合表](weak-real-form-involution-table.md)记录
+`weak_real_form.rs` 与 `involution_table.rs`：掩码轨道游走与升序最小编号、
+weak_real_form_at_representative 的九道闸门（含出处闸门与整性闸门先于虚
+grading）、记录字段的典范推导纪律与像基对的播种+搬运（B2 x=4 锚点）、
+add_cartan 的种子/外序 BFS/闭轨不变量与查询面。对应
+[阅读快照](snapshots/2026-10-06-weak-real-form-involution-table.json)；草案由
+同一 Kimi probe 路由起草（1600s 期限，exit 0，658.1s），维护者对照源码
+逐条核对改写。该包是结构性阅读，不声称这两层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

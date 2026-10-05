@@ -555,3 +555,13 @@ has_solution/find_solution/in_*_image、inverse_upper_triangular、exp_i。
 同一 Kimi probe 路由起草（1200s，exit 0，455.9s），维护者对照源码逐条
 核对改写；草案的 row_minus 簿记追踪与非受检算术不对称观察均属实并保留。
 索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增弱实形/对合表来源包（Kimi probe 协助）
+
+新增 `sources/weak-real-form-involution-table.md` 与快照
+`2026-10-06-weak-real-form-involution-table.json`：掩码轨道游走与编号
+规则、九道闸门、像基对播种+搬运（B2 x=4 锚点）、add_cartan BFS 与查询面。
+同一 Kimi probe 路由起草（1600s 期限，exit 0，658.1s；本次以 shell &
+分离启动——自我管理期限安全但失去任务跟踪，已记录，优先用后台任务路由），
+维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
+测试或 compiler 生成。

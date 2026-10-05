@@ -1,0 +1,1698 @@
+你是 Atlas Rust 重实现项目的文档助理。任务：为两个同源 Rust 源文件起草一份中文知识来源包（source packet）草案，供维护者逐条核对后收录进 kb/sources/。
+
+严格规则：
+- 只依据下面给出的两个源文件字节；不要引用你没有读到的代码、文档或历史。
+- 区分「已实现行为」与「阅读推断」；不做任何数学验收、性能或正确性声明。
+- 保留精确的符号名、类型名、错误类型与边界条件（Result/错误分支、预算、顺序保证、panic/断言）。
+- 输出只是一份 Markdown 草案，开头必须是 frontmatter：
+  ---
+  title: <中文标题>
+  source: atlas-rust/weak-real-form-involution-table
+  ingestedAt: 2026-10-06T00:00:00Z
+  ---
+- 先给出每个文件完整的「裸签名清单」（所有 pub/pub(crate) fn/struct/enum/trait 与可见 impl 块，含无注释项），再逐项解释每个文件的职责与核心算法、两文件的接口关系、错误分支与预算、测试锚点、限制与未覆盖面。
+
+文件：crates/atlas-real-group/src/weak_real_form.rs（完整字节）：
+```rust
+use malachite::base::num::arithmetic::traits::DivisibleBy;
+use malachite::{Integer, Rational};
+
+use crate::grading::try_capacity;
+use crate::twisted_involution::compose_matrices;
+use crate::{
+    AdjointCartanFiber, AdjointFiberElement, CartanClassification, CartanGradingData, Grading,
+    InnerClass, LatticeInvolution, ModTwoVector, StructureError, TwistedInvolution, WeylAction,
+};
+
+/// Sentinel for a mask the orbit walk has not classified yet.
+const CLASS_SENTINEL: u32 = u32::MAX;
+
+/// Masks are `u64`, so the adjoint fiber dimension must fit below the sign of
+/// no bit at all — 63 keeps every `1 << dimension` shift in range.
+pub(crate) const MAX_MASK_BITS: usize = 63;
+
+/// Stable identifier for one weak real form of one Cartan involution.
+///
+/// Numbers are assigned by ascending minimal element of each `W_im` orbit in
+/// canonical-coordinate integer order. The stage-(d) ordering audit
+/// (`SEED_X0_DESIGN.md`) PROVED this coincides with upstream's internal
+/// `RealFormNbr` numbering (same ascending orbit seeding, same low-pivot
+/// RREF subquotient bases, same coordinate extraction) — these ids are NOT
+/// under the adapter deferral; only the interpreter's external
+/// `FormNumberMap` order needs an adapter permutation. Class 0 is the orbit
+/// of the identity element, the quasisplit normalization. Ids minted by the
+/// fundamental Cartan's partition additionally serve as the crate's global
+/// real-form numbers, carried by [`crate::RealFormLabels`].
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct WeakRealFormId(pub(crate) usize);
+
+/// The partition of an adjoint Cartan fiber into `W_im` orbits.
+///
+/// Orbits correspond to the weak real forms of the inner class at this
+/// Cartan involution. The partition owns its class table and one
+/// deterministic representative element per class; real-form labels live in
+/// [`crate::RealFormLabels`] and the square-class/strong-real layer in
+/// [`crate::StrongRealClassification`].
+#[derive(Clone, Debug)]
+pub struct WeakRealFormPartition {
+    adjoint: AdjointCartanFiber,
+    class_of_by_mask: Vec<u32>,
+    representatives: Vec<AdjointFiberElement>,
+}
+
+impl WeakRealFormPartition {
+    /// Partition the adjoint fiber underlying validated grading tables.
+    ///
+    /// `max_elements` is the caller's bound on the enumerated fiber size
+    /// `2^dimension`; the walk cost is bounded by that count times the
+    /// imaginary rank, so no second knob exists.
+    pub fn build(grading: &CartanGradingData, max_elements: usize) -> Result<Self, StructureError> {
+        let adjoint = grading.adjoint_fiber();
+        let dimension = adjoint.dimension();
+        if dimension > MAX_MASK_BITS {
+            return Err(StructureError::WeakRealFormResourceLimit {
+                resource: "mask bits",
+                limit: MAX_MASK_BITS,
+            });
+        }
+
+        let imaginary_rank = grading.imaginary_rank();
+        let mut base = try_capacity::<bool>(imaginary_rank)?;
+        let mut alpha_columns = try_capacity::<u64>(imaginary_rank)?;
+        let mut m_alpha_masks = try_capacity::<u64>(imaginary_rank)?;
+        for imaginary_index in 0..imaginary_rank {
+            base.push(
+                grading
+                    .base_grading()
+                    .is_noncompact(imaginary_index)
+                    .ok_or(StructureError::IndexOutOfRange {
+                        index: imaginary_index,
+                        upper_bound: imaginary_rank,
+                    })?,
+            );
+            let mut column = 0_u64;
+            for adjoint_basis_index in 0..dimension {
+                let shift = grading.grading_shift(adjoint_basis_index).ok_or(
+                    StructureError::IndexOutOfRange {
+                        index: adjoint_basis_index,
+                        upper_bound: dimension,
+                    },
+                )?;
+                if shift.is_noncompact(imaginary_index) == Some(true) {
+                    column |= 1_u64 << adjoint_basis_index;
+                }
+            }
+            let element = grading.adjoint_m_alpha(imaginary_index).ok_or(
+                StructureError::IndexOutOfRange {
+                    index: imaginary_index,
+                    upper_bound: imaginary_rank,
+                },
+            )?;
+            let translation = mask_of(adjoint, element)?;
+            alpha_columns.push(column);
+            m_alpha_masks.push(translation);
+        }
+
+        let orbits = walk_mask_orbits(
+            dimension,
+            max_elements,
+            &base,
+            &alpha_columns,
+            &m_alpha_masks,
+            weak_limit_error,
+        )?;
+        let mut representatives = try_capacity(orbits.representative_masks.len())?;
+        for &mask in &orbits.representative_masks {
+            representatives.push(element_of(adjoint, mask)?);
+        }
+
+        Ok(Self {
+            adjoint: adjoint.clone(),
+            class_of_by_mask: orbits.class_of_by_mask,
+            representatives,
+        })
+    }
+
+    /// The number of weak real forms at this Cartan involution.
+    pub fn class_count(&self) -> usize {
+        self.representatives.len()
+    }
+
+    /// The id-typed enumeration of `0..class_count()`.
+    pub fn classes(&self) -> impl ExactSizeIterator<Item = WeakRealFormId> {
+        (0..self.representatives.len()).map(WeakRealFormId)
+    }
+
+    /// The weak real form whose orbit contains this element.
+    pub fn class_of(
+        &self,
+        element: &AdjointFiberElement,
+    ) -> Result<WeakRealFormId, StructureError> {
+        let mask = mask_of(&self.adjoint, element)?;
+        self.class_of_mask(mask)
+    }
+
+    /// The weak real form whose orbit contains the element whose canonical
+    /// coordinates are `mask` (bit `i` = adjoint basis direction `i`). This
+    /// is the crate's fiber-element enumeration order, so it backs
+    /// language-level per-element queries such as `fiber_partition`.
+    pub fn class_of_mask(&self, mask: u64) -> Result<WeakRealFormId, StructureError> {
+        let index = index_from_mask(mask)?;
+        let class =
+            self.class_of_by_mask
+                .get(index)
+                .copied()
+                .ok_or(StructureError::IndexOutOfRange {
+                    index,
+                    upper_bound: self.class_of_by_mask.len(),
+                })?;
+        usize::try_from(class)
+            .map_err(|_| StructureError::ArithmeticOverflow)
+            .map(WeakRealFormId)
+    }
+
+    /// The minimal element of a class in canonical-coordinate integer order.
+    /// Bounded by `class_count()`.
+    pub fn class_representative(&self, class: WeakRealFormId) -> Option<&AdjointFiberElement> {
+        self.representatives.get(class.0)
+    }
+
+    /// The class of the identity element: the quasisplit weak real form,
+    /// which is class 0 under this crate's ascending-minimal numbering.
+    pub fn quasisplit_class(&self) -> WeakRealFormId {
+        WeakRealFormId(0)
+    }
+
+    /// The validated adjoint fiber this partition was computed against.
+    pub fn adjoint_fiber(&self) -> &AdjointCartanFiber {
+        &self.adjoint
+    }
+}
+
+/// Attribute a raw Atlas-language torus factor at one stored Cartan
+/// representative to its global weak real form.
+///
+/// This is the representative-level kernel of upstream `real_form_of`
+/// (`atlas-types.w:3878-3894`, `innerclass.cpp:1305-1355`): first apply the
+/// dual fixed-point projection `v -> (v + v theta) / 2` using Atlas's row-
+/// vector/right-product convention. Integral pairings of the projected value
+/// make the square central; even pairings mark noncompact simple-imaginary
+/// roots, the grading identifies a local adjoint-fiber orbit, and the Cartan's
+/// label maps that orbit to the fundamental weak-form numbering.
+///
+/// `twisted` must be exactly a representative stored by `classification`.
+/// Moving a general twisted involution to that representative also transports
+/// its torus factor through table-backed Tits cross actions; this helper does
+/// not silently build or extend that table. The later `minimal_torus_part`
+/// descent additionally needs the still-separate inverse-Cayley operation.
+pub fn weak_real_form_at_representative(
+    inner_class: &InnerClass,
+    classification: &CartanClassification,
+    twisted: &TwistedInvolution,
+    raw_torus_factor: &[Rational],
+) -> Result<WeakRealFormId, StructureError> {
+    let rank = inner_class.datum().lattice_rank();
+    if raw_torus_factor.len() != rank {
+        return Err(StructureError::RankMismatch {
+            expected: rank,
+            actual: raw_torus_factor.len(),
+        });
+    }
+
+    // CartanClassification does not retain an InnerClass handle. Its first
+    // representative is nevertheless the normalized distinguished
+    // involution, so reconstruct that value as an explicit provenance gate
+    // before any class lookup. The work is bounded by the owned datum and root
+    // system; a future retained provenance token could make this check cheap.
+    let fundamental = TwistedInvolution::new(
+        inner_class.datum(),
+        inner_class.root_system(),
+        inner_class.distinguished_involution().involution(),
+        WeylAction::identity(inner_class.datum())?,
+    )?;
+    if classification
+        .cartan_classes()
+        .first()
+        .map(|class| class.representative())
+        != Some(&fundamental)
+    {
+        return Err(StructureError::DatumMismatch);
+    }
+
+    if twisted.weyl_action().datum() != inner_class.datum() {
+        return Err(StructureError::DatumMismatch);
+    }
+    let delta = inner_class.distinguished_involution().involution();
+    let theta = twisted.root_involution().involution();
+    if compose_matrices(twisted.weyl_action().matrix(), delta.weight_matrix())?
+        != theta.weight_matrix()
+        || compose_matrices(
+            twisted.weyl_action().coweight_matrix(),
+            delta.coweight_matrix(),
+        )? != theta.coweight_matrix()
+    {
+        return Err(StructureError::DistinguishedInvolutionMismatch);
+    }
+
+    let cartan = classification
+        .cartan_classes()
+        .iter()
+        .find(|class| class.representative() == twisted)
+        .ok_or(StructureError::CartanClassificationInvariantViolation {
+            invariant: "synthetic real-form Cartan representative",
+        })?;
+    let torus_factor = project_torus_factor(theta, raw_torus_factor)?;
+
+    // Equivalently to upstream's even-pairing check on the doubled
+    // projection, the projected factor must pair integrally with every simple
+    // root. Check this before extracting the imaginary grading so a real
+    // Cartan, whose imaginary basis is empty, cannot bypass the gate.
+    for root in inner_class.datum().simple_roots() {
+        integral_pairing(&torus_factor, root.as_slice())?;
+    }
+
+    let mut noncompact = try_capacity(cartan.grading().imaginary_rank())?;
+    for (imaginary_index, &root_id) in cartan.grading().imaginary_simple_roots().iter().enumerate()
+    {
+        let root = inner_class.root_system().root(root_id).ok_or(
+            StructureError::CartanClassificationInvariantViolation {
+                invariant: "synthetic real-form imaginary root",
+            },
+        )?;
+        if integral_pairing(&torus_factor, root.as_slice())?.divisible_by(&Integer::from(2)) {
+            noncompact.push(imaginary_index);
+        }
+    }
+    let grading = Grading::from_noncompact(cartan.grading().imaginary_rank(), noncompact)?;
+    let element = cartan.grading().element_from_grading(&grading)?;
+    let local = cartan.partition().class_of(&element)?;
+    cartan
+        .labels()
+        .label(local)
+        .ok_or(StructureError::CartanClassificationInvariantViolation {
+            invariant: "synthetic real-form label",
+        })
+}
+
+fn project_torus_factor(
+    theta: &LatticeInvolution,
+    raw_torus_factor: &[Rational],
+) -> Result<Vec<Rational>, StructureError> {
+    let rank = theta.lattice_rank();
+    if raw_torus_factor.len() != rank {
+        return Err(StructureError::RankMismatch {
+            expected: rank,
+            actual: raw_torus_factor.len(),
+        });
+    }
+    let matrix = theta.weight_matrix();
+    let mut projected = try_capacity(rank)?;
+    for column in 0..rank {
+        let mut transported = Rational::from(0);
+        for (row, theta_row) in matrix.iter().enumerate() {
+            transported += &raw_torus_factor[row] * Rational::from(theta_row[column]);
+        }
+        projected.push((&raw_torus_factor[column] + transported) / Rational::from(2));
+    }
+    Ok(projected)
+}
+
+fn integral_pairing(torus_factor: &[Rational], root: &[i32]) -> Result<Integer, StructureError> {
+    if root.len() != torus_factor.len() {
+        return Err(StructureError::RankMismatch {
+            expected: root.len(),
+            actual: torus_factor.len(),
+        });
+    }
+    let pairing = torus_factor
+        .iter()
+        .zip(root)
+        .fold(Rational::from(0), |sum, (value, &coordinate)| {
+            sum + value * Rational::from(coordinate)
+        });
+    Integer::try_from(pairing).map_err(|_| StructureError::InvalidStrongTorusFactor)
+}
+
+fn weak_limit_error(resource: &'static str, limit: usize) -> StructureError {
+    StructureError::WeakRealFormResourceLimit { resource, limit }
+}
+
+/// The shared `W_im` mask-orbit walk over a `2^dimension` mod-two group.
+///
+/// The transition rule is `FiberAction`: at imaginary index `i`, a mask
+/// whose grading bit (`base[i] XOR parity(mask AND alpha_columns[i])`) is
+/// noncompact translates by `m_alpha_masks[i]`. Classes are numbered by
+/// ascending minimal mask; `representative_masks[c]` is class `c`'s minimal
+/// mask. The caller supplies the resource-limit constructor so error
+/// attribution names the stage whose walk tripped.
+pub(crate) struct MaskOrbits {
+    pub(crate) class_of_by_mask: Vec<u32>,
+    pub(crate) representative_masks: Vec<u64>,
+}
+
+pub(crate) fn walk_mask_orbits(
+    dimension: usize,
+    max_elements: usize,
+    base: &[bool],
+    alpha_columns: &[u64],
+    m_alpha_masks: &[u64],
+    limit_error: fn(&'static str, usize) -> StructureError,
+) -> Result<MaskOrbits, StructureError> {
+    if dimension > MAX_MASK_BITS {
+        return Err(limit_error("mask bits", MAX_MASK_BITS));
+    }
+    // The mask-bits gate above keeps this shift in range; the comparison is
+    // deliberately unsaturated so `dimension == 64` cannot slip past a
+    // `usize::MAX` limit on a 64-bit host.
+    let required = 1_u128 << dimension;
+    if required > widened(max_elements) {
+        return Err(limit_error("fiber elements", max_elements));
+    }
+    let element_count =
+        usize::try_from(required).map_err(|_| StructureError::ArithmeticOverflow)?;
+    let imaginary_rank = base.len();
+    // Involutivity of each generator is `<alpha_s, alpha_s_vee> = 2` read
+    // mod two through validated grading tables; upstream only ever assumes
+    // each generator permutes the group.
+    for (column, translation) in alpha_columns.iter().zip(m_alpha_masks) {
+        debug_assert_eq!((translation & column).count_ones() % 2, 0);
+    }
+
+    let mut class_of_by_mask = try_capacity::<u32>(element_count)?;
+    class_of_by_mask.resize(element_count, CLASS_SENTINEL);
+    let mut pending = try_capacity::<u64>(element_count)?;
+    let mut class_count: usize = 0;
+    for seed_index in 0..element_count {
+        if class_of_by_mask[seed_index] != CLASS_SENTINEL {
+            continue;
+        }
+        let class = seeded_class(class_count, limit_error)?;
+        class_of_by_mask[seed_index] = class;
+        pending.push(mask_from_index(seed_index)?);
+        while let Some(mask) = pending.pop() {
+            for imaginary_index in 0..imaginary_rank {
+                let paired = (mask & alpha_columns[imaginary_index]).count_ones() & 1 == 1;
+                if base[imaginary_index] != paired {
+                    // Noncompact at this root: translate by its m_alpha.
+                    let image = mask ^ m_alpha_masks[imaginary_index];
+                    let image_index = index_from_mask(image)?;
+                    if class_of_by_mask[image_index] == CLASS_SENTINEL {
+                        class_of_by_mask[image_index] = class;
+                        pending.push(image);
+                    }
+                }
+            }
+        }
+        class_count = class_count
+            .checked_add(1)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+    }
+
+    // Classes are numbered by ascending minimal mask, so the first ascending
+    // occurrence of each class number is its representative.
+    let mut representative_masks = try_capacity(class_count)?;
+    for (index, &class) in class_of_by_mask.iter().enumerate() {
+        let class = usize::try_from(class).map_err(|_| StructureError::ArithmeticOverflow)?;
+        if class == representative_masks.len() {
+            representative_masks.push(mask_from_index(index)?);
+        }
+    }
+    debug_assert_eq!(representative_masks.len(), class_count);
+
+    Ok(MaskOrbits {
+        class_of_by_mask,
+        representative_masks,
+    })
+}
+
+/// Convert the next class ordinal into a stored class number, rejecting the
+/// sentinel. This guard is reachable in principle: a simply-connected product
+/// has zero adjoint `m_alpha` vectors, so every mask is a singleton class.
+fn seeded_class(
+    class_count: usize,
+    limit_error: fn(&'static str, usize) -> StructureError,
+) -> Result<u32, StructureError> {
+    match u32::try_from(class_count) {
+        Ok(class) if class != CLASS_SENTINEL => Ok(class),
+        _ => Err(limit_error("classes", CLASS_SENTINEL as usize)),
+    }
+}
+
+fn mask_of(
+    fiber: &AdjointCartanFiber,
+    element: &AdjointFiberElement,
+) -> Result<u64, StructureError> {
+    debug_assert!(fiber.dimension() <= MAX_MASK_BITS);
+    let coordinates = fiber.coordinates(element)?;
+    let mut mask = 0_u64;
+    for index in 0..fiber.dimension() {
+        if coordinates.bit(index) == Some(true) {
+            mask |= 1_u64 << index;
+        }
+    }
+    Ok(mask)
+}
+
+fn element_of(
+    fiber: &AdjointCartanFiber,
+    mask: u64,
+) -> Result<AdjointFiberElement, StructureError> {
+    let mut representative = ModTwoVector::zero(fiber.datum().rank())?;
+    for (index, basis) in fiber.basis_representatives().iter().enumerate() {
+        if mask & (1_u64 << index) != 0 {
+            representative.xor_assign(basis)?;
+        }
+    }
+    fiber.element_from_ambient(representative)
+}
+
+fn mask_from_index(index: usize) -> Result<u64, StructureError> {
+    u64::try_from(index).map_err(|_| StructureError::ArithmeticOverflow)
+}
+
+fn index_from_mask(mask: u64) -> Result<usize, StructureError> {
+    usize::try_from(mask).map_err(|_| StructureError::ArithmeticOverflow)
+}
+
+fn widened(value: usize) -> u128 {
+    u128::try_from(value).unwrap_or(u128::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::integer_lattice::IntegerLatticeBudget;
+    use crate::{
+        AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, CartanFiber, Coweight,
+        LatticeInvolution, RootInvolutionData, RootSystem, Weight,
+    };
+
+    use super::*;
+
+    fn integer_budget() -> IntegerLatticeBudget {
+        IntegerLatticeBudget::new(64, 100_000, 100_000, 128)
+    }
+
+    fn adjoint_budget() -> AdjointFiberBudget {
+        AdjointFiberBudget::new(integer_budget(), 50_000, 100_000)
+    }
+
+    fn classification_budget(weyl_budget: usize) -> CartanClassificationBudget {
+        CartanClassificationBudget::new(integer_budget(), adjoint_budget(), weyl_budget, 8, 8)
+    }
+
+    fn simply_connected_a1() -> (InnerClass, CartanClassification) {
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            2,
+        )
+        .unwrap();
+        let classification =
+            CartanClassification::build(&inner_class, &classification_budget(2)).unwrap();
+        (inner_class, classification)
+    }
+
+    fn grading_chain(
+        datum: &BasedRootDatum,
+        involution: LatticeInvolution,
+        max_roots: usize,
+    ) -> (AdjointCartanFiber, CartanGradingData) {
+        let roots = RootSystem::enumerate(datum, max_roots).unwrap();
+        let data = RootInvolutionData::new(&roots, involution.clone()).unwrap();
+        let source = CartanFiber::build(&involution, &integer_budget()).unwrap();
+        let adjoint = AdjointCartanFiber::build(&roots, &data, &source, &adjoint_budget()).unwrap();
+        let grading = CartanGradingData::build(&roots, &data, &adjoint).unwrap();
+        (adjoint, grading)
+    }
+
+    fn ambient(rank: usize, indices: impl IntoIterator<Item = usize>) -> ModTwoVector {
+        ModTwoVector::from_ones(rank, indices).unwrap()
+    }
+
+    #[test]
+    fn synthetic_a1_representatives_match_the_frozen_weak_form_anchors() {
+        let (inner_class, classification) = simply_connected_a1();
+        let compact_cartan = classification.cartan_classes()[0].representative();
+        let split_cartan = classification.cartan_classes()[1].representative();
+        let zero = Rational::from(0);
+        let half = Rational::from(1) / Rational::from(2);
+
+        assert_eq!(
+            weak_real_form_at_representative(
+                &inner_class,
+                &classification,
+                compact_cartan,
+                std::slice::from_ref(&zero),
+            ),
+            Ok(WeakRealFormId(0))
+        );
+        assert_eq!(
+            weak_real_form_at_representative(
+                &inner_class,
+                &classification,
+                split_cartan,
+                std::slice::from_ref(&zero),
+            ),
+            Ok(WeakRealFormId(0))
+        );
+        assert_eq!(
+            weak_real_form_at_representative(
+                &inner_class,
+                &classification,
+                compact_cartan,
+                std::slice::from_ref(&half),
+            ),
+            Ok(WeakRealFormId(1))
+        );
+    }
+
+    #[test]
+    fn synthetic_a1_gates_rank_and_noncentral_raw_factors() {
+        let (inner_class, classification) = simply_connected_a1();
+        let representative = classification.cartan_classes()[0].representative();
+
+        assert_eq!(
+            weak_real_form_at_representative(&inner_class, &classification, representative, &[]),
+            Err(StructureError::RankMismatch {
+                expected: 1,
+                actual: 0,
+            })
+        );
+        let quarter = Rational::from(1) / Rational::from(4);
+        assert_eq!(
+            weak_real_form_at_representative(
+                &inner_class,
+                &classification,
+                representative,
+                std::slice::from_ref(&quarter),
+            ),
+            Err(StructureError::InvalidStrongTorusFactor)
+        );
+    }
+
+    #[test]
+    fn synthetic_a1_rejects_a_foreign_same_rank_classification_first() {
+        let (inner_class, _) = simply_connected_a1();
+        let foreign_datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let foreign_inner = InnerClass::new(
+            foreign_datum.clone(),
+            LatticeInvolution::identity(&foreign_datum).unwrap(),
+            2,
+        )
+        .unwrap();
+        let foreign_classification =
+            CartanClassification::build(&foreign_inner, &classification_budget(2)).unwrap();
+        let foreign_representative = foreign_classification.cartan_classes()[0].representative();
+
+        assert_eq!(
+            weak_real_form_at_representative(
+                &inner_class,
+                &foreign_classification,
+                foreign_representative,
+                &[Rational::from(0)],
+            ),
+            Err(StructureError::DatumMismatch)
+        );
+    }
+
+    #[test]
+    fn synthetic_a2_reflection_rejects_a_raw_basis_with_half_integral_projection() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let inner_class = InnerClass::new(
+            datum.clone(),
+            LatticeInvolution::identity(&datum).unwrap(),
+            6,
+        )
+        .unwrap();
+        let classification =
+            CartanClassification::build(&inner_class, &classification_budget(6)).unwrap();
+        let reflection = classification
+            .cartan_classes()
+            .iter()
+            .find(|class| {
+                class
+                    .representative()
+                    .root_involution()
+                    .roots_of_kind(crate::RootKind::Real)
+                    .count()
+                    == 2
+            })
+            .unwrap()
+            .representative();
+        let theta = reflection.root_involution().involution().weight_matrix();
+        let basis_index = (0..datum.lattice_rank())
+            .find(|&row| {
+                (0..datum.lattice_rank()).any(|column| {
+                    let identity = i32::from(row == column);
+                    (identity + theta[row][column]) % 2 != 0
+                })
+            })
+            .expect("an A2 reflection has a half-integral projected basis vector");
+        let mut raw = vec![Rational::from(0); datum.lattice_rank()];
+        raw[basis_index] = Rational::from(1);
+        let projected =
+            project_torus_factor(reflection.root_involution().involution(), raw.as_slice())
+                .unwrap();
+        assert!(projected.iter().any(|value| {
+            Integer::try_from(value).is_err()
+                && Integer::try_from(value * Rational::from(2)).is_ok()
+        }));
+
+        let error =
+            weak_real_form_at_representative(&inner_class, &classification, reflection, &raw)
+                .unwrap_err();
+        assert_eq!(error, StructureError::InvalidStrongTorusFactor);
+        assert_eq!(
+            error.to_string(),
+            "Torus factor does not define a valid strong involution"
+        );
+    }
+
+    #[test]
+    fn a2_identity_has_two_weak_real_forms() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let (adjoint, grading) = grading_chain(&datum, involution, 6);
+        let partition = WeakRealFormPartition::build(&grading, 4).unwrap();
+
+        assert_eq!(partition.class_count(), 2);
+        assert_eq!(partition.classes().len(), 2);
+        let identity = adjoint.identity().unwrap();
+        assert_eq!(
+            partition.class_of(&identity).unwrap(),
+            partition.quasisplit_class()
+        );
+        // The quasisplit orbit picks up both basis directions; the singleton
+        // is their sum.
+        for indices in [vec![0], vec![1]] {
+            let element = adjoint.element_from_ambient(ambient(2, indices)).unwrap();
+            assert_eq!(
+                partition.class_of(&element).unwrap(),
+                partition.quasisplit_class()
+            );
+        }
+        let compact = adjoint.element_from_ambient(ambient(2, [0, 1])).unwrap();
+        assert_eq!(partition.class_of(&compact).unwrap(), WeakRealFormId(1));
+        for class in partition.classes() {
+            let representative = partition.class_representative(class).unwrap();
+            assert_eq!(partition.class_of(representative).unwrap(), class);
+        }
+    }
+
+    #[test]
+    fn b2_identity_has_three_weak_real_forms_in_the_pinned_order() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let (adjoint, grading) = grading_chain(&datum, involution, 8);
+        let partition = WeakRealFormPartition::build(&grading, 4).unwrap();
+
+        assert_eq!(partition.class_count(), 3);
+        let expected = [ambient(2, []), ambient(2, [0]), ambient(2, [0, 1])];
+        for (class, representative) in partition.classes().zip(&expected) {
+            assert_eq!(
+                &adjoint
+                    .canonical_representative(partition.class_representative(class).unwrap())
+                    .unwrap(),
+                representative
+            );
+        }
+        assert_eq!(
+            partition.class_of(&adjoint.identity().unwrap()).unwrap(),
+            partition.quasisplit_class()
+        );
+    }
+
+    #[test]
+    fn simply_connected_a1_has_a_trivial_action_and_singleton_classes() {
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let (adjoint, grading) = grading_chain(&datum, involution, 2);
+        let partition = WeakRealFormPartition::build(&grading, 2).unwrap();
+
+        assert_eq!(partition.class_count(), 2);
+        let other = adjoint.element_from_ambient(ambient(1, [0])).unwrap();
+        assert_eq!(partition.class_of(&other).unwrap(), WeakRealFormId(1));
+    }
+
+    #[test]
+    fn the_a2_diagram_twist_has_one_weak_real_form() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let twist = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let (adjoint, grading) = grading_chain(&datum, twist, 6);
+        let partition = WeakRealFormPartition::build(&grading, 1).unwrap();
+
+        assert_eq!(partition.class_count(), 1);
+        let identity = adjoint.identity().unwrap();
+        assert_eq!(
+            partition.class_representative(partition.quasisplit_class()),
+            Some(&identity)
+        );
+        assert!(partition.class_representative(WeakRealFormId(1)).is_none());
+    }
+
+    #[test]
+    fn rejects_foreign_elements_and_undersized_budgets() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let (_, grading) = grading_chain(&datum, involution.clone(), 6);
+        let partition = WeakRealFormPartition::build(&grading, 4).unwrap();
+
+        let (foreign_adjoint, _) = grading_chain(&datum, involution, 6);
+        let foreign = foreign_adjoint.identity().unwrap();
+        assert_eq!(
+            partition.class_of(&foreign),
+            Err(StructureError::CartanFiberMismatch)
+        );
+
+        assert!(matches!(
+            WeakRealFormPartition::build(&grading, 3),
+            Err(StructureError::WeakRealFormResourceLimit {
+                resource: "fiber elements",
+                limit: 3,
+            })
+        ));
+    }
+
+    #[test]
+    fn large_products_are_rejected_by_honest_budgets_not_rank_caps() {
+        let rank = 33;
+        let mut cartan = vec![vec![0; rank]; rank];
+        for (index, row) in cartan.iter_mut().enumerate() {
+            row[index] = 2;
+        }
+        let datum = BasedRootDatum::standard(cartan).unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let (_, grading) = grading_chain(&datum, involution, 2 * rank);
+        assert!(matches!(
+            WeakRealFormPartition::build(&grading, 1_000_000),
+            Err(StructureError::WeakRealFormResourceLimit {
+                resource: "fiber elements",
+                limit: 1_000_000,
+            })
+        ));
+
+        let rank = 64;
+        let mut cartan = vec![vec![0; rank]; rank];
+        for (index, row) in cartan.iter_mut().enumerate() {
+            row[index] = 2;
+        }
+        let datum = BasedRootDatum::standard(cartan).unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        // The upstream fiber budgets must be generous enough that the
+        // mask-bits gate is genuinely what rejects this rank.
+        let roots = RootSystem::enumerate(&datum, 2 * rank).unwrap();
+        let data = RootInvolutionData::new(&roots, involution.clone()).unwrap();
+        let source = CartanFiber::build(&involution, &integer_budget()).unwrap();
+        let adjoint = AdjointCartanFiber::build(
+            &roots,
+            &data,
+            &source,
+            &AdjointFiberBudget::new(integer_budget(), 200_000, 1_000_000),
+        )
+        .unwrap();
+        let grading = CartanGradingData::build(&roots, &data, &adjoint).unwrap();
+        assert!(matches!(
+            WeakRealFormPartition::build(&grading, usize::MAX),
+            Err(StructureError::WeakRealFormResourceLimit {
+                resource: "mask bits",
+                limit: MAX_MASK_BITS,
+            })
+        ));
+    }
+
+    #[test]
+    fn the_class_number_guard_rejects_the_sentinel_ordinal() {
+        assert_eq!(seeded_class(5, weak_limit_error), Ok(5));
+        assert_eq!(
+            seeded_class(usize::try_from(u32::MAX).unwrap(), weak_limit_error),
+            Err(StructureError::WeakRealFormResourceLimit {
+                resource: "classes",
+                limit: usize::try_from(u32::MAX).unwrap(),
+            })
+        );
+    }
+}
+```
+
+文件：crates/atlas-real-group/src/involution_table.rs（完整字节）：
+```rust
+//! The twisted-involution table (KGB stage b).
+//!
+//! Per-Cartan contiguous orbits of twisted involutions, each record carrying
+//! the word-level element, the matrix-level [`TwistedInvolution`] (theta plus
+//! root classification), the mod-2 dedup subspace, `(1+theta)rho`, both
+//! lengths, and the `(1-theta)X^*` image-basis pair (`lift_mat`, `M_real`).
+//! Every record field is derived canonically from theta at entry EXCEPT the
+//! image-basis pair: matching upstream's `InvolutionTable` record
+//! (involutions.h:104-105), it is seeded by the echelon reduction of
+//! `1-theta` at the orbit's canonical involution (involutions.cpp:196-208)
+//! and transported along the cross-action BFS (involutions.cpp:242-243),
+//! because the basis is path-dependent and `y_lift`'s signs depend on it.
+//! Numbering is the caller's Cartan add order (the documented discipline is
+//! ascending [`CartanId`]) with an external-order BFS inside each orbit.
+
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
+use crate::grading::try_capacity;
+use crate::integer_lattice::{negative_coweight_eigenspace, reduce_basis_mod_two};
+use crate::real_projection::RealProjection;
+use crate::{
+    CartanClassification, CartanId, CayleyCrossDecomposition, InnerClass, IntegerLatticeBudget,
+    LatticeInvolution, ModTwoSubspace, RootId, RootKind, RootSystem, StructureError,
+    TwistedInvolution, Weight, WeylAction, WeylElement,
+};
+
+/// Stable identifier of one twisted involution in one table's numbering.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct InvolutionId(pub(crate) usize);
+
+/// Owned budgets for one involution table: the entry-count cap plus the
+/// nested integral budget threading to the per-entry eigenlattice reduction.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InvolutionTableBudget {
+    max_involutions: usize,
+    integer_lattice: IntegerLatticeBudget,
+}
+
+impl InvolutionTableBudget {
+    pub const fn new(max_involutions: usize, integer_lattice: IntegerLatticeBudget) -> Self {
+        Self {
+            max_involutions,
+            integer_lattice,
+        }
+    }
+}
+
+/// One twisted involution's record: canonical-from-theta data plus the
+/// path-transported `(1-theta)X^*` image-basis pair.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct InvolutionRecord {
+    element: WeylElement,
+    involution: TwistedInvolution,
+    mod_space: ModTwoSubspace,
+    theta_plus_one_rho: Weight,
+    involution_length: usize,
+    weyl_length: usize,
+    projection: RealProjection,
+}
+
+impl InvolutionRecord {
+    pub fn weyl_element(&self) -> &WeylElement {
+        &self.element
+    }
+
+    pub fn twisted_involution(&self) -> &TwistedInvolution {
+        &self.involution
+    }
+
+    /// Shallow convenience for the composed lattice involution theta.
+    pub fn theta(&self) -> &LatticeInvolution {
+        self.involution.root_involution().involution()
+    }
+
+    /// The X_* mod-2 dedup subspace; its ordered basis serves the
+    /// inverse-Cayley repair of the Tits stage.
+    pub fn mod_space(&self) -> &ModTwoSubspace {
+        &self.mod_space
+    }
+
+    pub fn involution_length(&self) -> usize {
+        self.involution_length
+    }
+
+    pub fn weyl_length(&self) -> usize {
+        self.weyl_length
+    }
+
+    pub fn theta_plus_one_rho(&self) -> &Weight {
+        &self.theta_plus_one_rho
+    }
+
+    /// The `(1-theta)X^*` image-basis pair (upstream `record`'s
+    /// `M_real`/`lift_mat`): seeded from theta at the orbit's canonical
+    /// involution, then transported along the cross-action BFS
+    /// (involutions.cpp:242-243), so it carries the path-dependent signs
+    /// the oracle's `y_lift` relies on.
+    pub(crate) fn projection(&self) -> &RealProjection {
+        &self.projection
+    }
+}
+
+/// The involution table: per-Cartan contiguous orbit slices of twisted
+/// involutions, shared across the real forms of one inner class.
+#[derive(Clone, Debug)]
+pub struct InvolutionTable {
+    inner_class: Arc<InnerClass>,
+    budget: InvolutionTableBudget,
+    twist: Vec<usize>,
+    reflections: Vec<WeylElement>,
+    reflection_actions: Vec<WeylAction>,
+    two_rho: Weight,
+    records: Vec<InvolutionRecord>,
+    index_by_permutation: BTreeMap<Vec<RootId>, InvolutionId>,
+    cross_links: Vec<Vec<InvolutionId>>,
+    orbits: Vec<(CartanId, usize, usize)>,
+}
+
+impl InvolutionTable {
+    /// An empty table for one inner class, filled by [`Self::add_cartan`].
+    ///
+    /// The inner class owns the datum, root system, and distinguished
+    /// involution together, so no cross-input gate is needed. Derived once
+    /// here: the validated simple twist, the rank simple-reflection
+    /// elements (the BFS edge must NOT rebuild reflections per call), and
+    /// `2rho` from the positivity slice.
+    pub fn new(
+        inner_class: &InnerClass,
+        budget: InvolutionTableBudget,
+    ) -> Result<Self, StructureError> {
+        let datum = inner_class.datum();
+        let root_system = inner_class.root_system();
+        let delta_data = inner_class.distinguished_involution();
+        let semisimple_rank = datum.semisimple_rank();
+        let simple_ids = root_system.simple_root_ids();
+
+        let mut twist = try_capacity(semisimple_rank)?;
+        for &simple_id in simple_ids {
+            let image = delta_data
+                .image(simple_id)
+                .ok_or(StructureError::InvalidBasedAutomorphism)?;
+            let position = simple_ids
+                .iter()
+                .position(|&candidate| candidate == image)
+                .ok_or(StructureError::InvalidBasedAutomorphism)?;
+            twist.push(position);
+        }
+
+        let mut reflections = try_capacity(semisimple_rank)?;
+        let mut reflection_actions = try_capacity(semisimple_rank)?;
+        for generator in 0..semisimple_rank {
+            let action = WeylAction::simple_reflection(datum, generator)?;
+            reflections.push(WeylElement::from_action(root_system, &action)?);
+            reflection_actions.push(action);
+        }
+
+        let lattice_rank = datum.lattice_rank();
+        let mut two_rho = try_capacity(lattice_rank)?;
+        two_rho.resize(lattice_rank, 0_i32);
+        for (id, root, _) in root_system.entries() {
+            if root_system.positivity()[id.0] {
+                for (sum, &coordinate) in two_rho.iter_mut().zip(root.as_slice()) {
+                    *sum = sum
+                        .checked_add(coordinate)
+                        .ok_or(StructureError::ArithmeticOverflow)?;
+                }
+            }
+        }
+
+        Ok(Self {
+            inner_class: Arc::new(inner_class.clone()),
+            budget,
+            twist,
+            reflections,
+            reflection_actions,
+            two_rho: Weight::new(two_rho),
+            records: Vec::new(),
+            index_by_permutation: BTreeMap::new(),
+            cross_links: Vec::new(),
+            orbits: Vec::new(),
+        })
+    }
+
+    /// Generate one Cartan class's orbit as a contiguous slice.
+    ///
+    /// Idempotent: re-adding a class returns its existing slice. The seed
+    /// and expected size both come from the classification's class, so they
+    /// can never be a mismatched pair; the generated orbit must fill the
+    /// expected size exactly.
+    pub fn add_cartan(
+        &mut self,
+        classification: &CartanClassification,
+        cartan: CartanId,
+    ) -> Result<(InvolutionId, usize), StructureError> {
+        if let Some(&(_, start, size)) = self.orbits.iter().find(|(id, _, _)| *id == cartan) {
+            return Ok((InvolutionId(start), size));
+        }
+        let class = classification
+            .cartan_class(cartan)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: cartan.0,
+                upper_bound: classification.cartan_classes().len(),
+            })?;
+        let representative = class.representative();
+        self.gate_twisted(representative)?;
+        let expected = class.twisted_involution_count();
+
+        let start = self.records.len();
+        self.records
+            .try_reserve(expected)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: expected,
+            })?;
+        self.cross_links
+            .try_reserve(expected)
+            .map_err(|_| StructureError::AllocationFailed {
+                requested: expected,
+            })?;
+
+        // Seed: convert the matrix-level representative once, then apply the
+        // (W_length + #Cayley)/2 formula. `CayleyCrossDecomposition` is a
+        // per-class tool only — never per entry at scale.
+        let seed_element =
+            WeylElement::from_action(self.inner_class.root_system(), representative.weyl_action())?;
+        let seed_w_length = seed_element.length();
+        let decomposition = CayleyCrossDecomposition::build(
+            &self.inner_class,
+            representative,
+            seed_w_length
+                .checked_add(1)
+                .ok_or(StructureError::ArithmeticOverflow)?,
+        )?;
+        let cayley_count = decomposition.cayley_roots().len();
+        let length_sum = seed_w_length
+            .checked_add(cayley_count)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        if length_sum % 2 != 0 {
+            return Err(StructureError::InvolutionTableInvariantViolation {
+                invariant: "length parity",
+            });
+        }
+        push_record(
+            &self.inner_class,
+            &self.budget,
+            &self.two_rho,
+            &mut self.records,
+            &mut self.index_by_permutation,
+            seed_element,
+            representative.weyl_action().clone(),
+            length_sum / 2,
+            None,
+        )?;
+
+        // External-order BFS. Cross links are filled at each node's visit,
+        // so after the orbit closes every (generator, node) edge is an O(1)
+        // stored link.
+        let semisimple_rank = self.twist.len();
+        let mut cursor = start;
+        while cursor < self.records.len() {
+            let current_element = self.records[cursor].element.clone();
+            let current_action = self.records[cursor].involution.weyl_action().clone();
+            let current_length = self.records[cursor].involution_length;
+            let current_projection = self.records[cursor].projection().clone();
+            let mut links = try_capacity(semisimple_rank)?;
+            for generator in 0..semisimple_rank {
+                let neighbor = self.reflections[generator]
+                    .multiply(self.inner_class.root_system(), &current_element)?
+                    .multiply(
+                        self.inner_class.root_system(),
+                        &self.reflections[self.twist[generator]],
+                    )?;
+                if let Some(&existing) = self.index_by_permutation.get(neighbor.image_permutation())
+                {
+                    links.push(existing);
+                    continue;
+                }
+                let new_length =
+                    stepped_length(current_length, current_element.length(), neighbor.length())?;
+                let new_action = self.reflection_actions[generator]
+                    .compose(&current_action)?
+                    .compose(&self.reflection_actions[self.twist[generator]])?;
+                // Transport the image basis across the cross edge
+                // (involutions.cpp:242-243): the PLAIN generator s, not
+                // twist(s) — delta is already incorporated in theta.
+                let transported =
+                    current_projection.transported(self.reflection_actions[generator].matrix())?;
+                let id = push_record(
+                    &self.inner_class,
+                    &self.budget,
+                    &self.two_rho,
+                    &mut self.records,
+                    &mut self.index_by_permutation,
+                    neighbor,
+                    new_action,
+                    new_length,
+                    Some(transported),
+                )?;
+                links.push(id);
+            }
+            self.cross_links.push(links);
+            cursor = cursor
+                .checked_add(1)
+                .ok_or(StructureError::ArithmeticOverflow)?;
+        }
+
+        let size = self.records.len() - start;
+        if size != expected {
+            return Err(StructureError::InvolutionTableInvariantViolation {
+                invariant: "orbit size",
+            });
+        }
+        self.orbits.push((cartan, start, size));
+        Ok((InvolutionId(start), size))
+    }
+
+    /// Number of a twisted involution, if its Cartan class has been added.
+    /// Keyed by the forward root permutation, which stage (a) pinned as a
+    /// complete equality key; a same-cardinality foreign system remains the
+    /// caller's contract.
+    pub fn lookup(&self, element: &WeylElement) -> Option<InvolutionId> {
+        self.index_by_permutation
+            .get(element.image_permutation())
+            .copied()
+    }
+
+    /// Bounded by the involution count.
+    pub fn record(&self, id: InvolutionId) -> Option<&InvolutionRecord> {
+        self.records.get(id.0)
+    }
+
+    /// The stored cross-action link `s * w * twist(s)` — O(1) after build.
+    pub fn cross(
+        &self,
+        generator: usize,
+        id: InvolutionId,
+    ) -> Result<InvolutionId, StructureError> {
+        let links = self
+            .cross_links
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.cross_links.len(),
+            })?;
+        links
+            .get(generator)
+            .copied()
+            .ok_or(StructureError::IndexOutOfRange {
+                index: generator,
+                upper_bound: links.len(),
+            })
+    }
+
+    /// The Cayley neighbor `s * w`, or `None` while its Cartan class has not
+    /// been added. The stage-(e) contract adds the form's upward-closed
+    /// Cartan set first, after which `None` is the caller's invariant
+    /// violation.
+    pub fn cayley(
+        &self,
+        generator: usize,
+        id: InvolutionId,
+    ) -> Result<Option<InvolutionId>, StructureError> {
+        let record = self
+            .records
+            .get(id.0)
+            .ok_or(StructureError::IndexOutOfRange {
+                index: id.0,
+                upper_bound: self.records.len(),
+            })?;
+        let reflection =
+            self.reflections
+                .get(generator)
+                .ok_or(StructureError::IndexOutOfRange {
+                    index: generator,
+                    upper_bound: self.reflections.len(),
+                })?;
+        let product = reflection.multiply(self.inner_class.root_system(), &record.element)?;
+        Ok(self
+            .index_by_permutation
+            .get(product.image_permutation())
+            .copied())
+    }
+
+    /// One accessor covering upstream's three `is_*_simple` tests.
+    pub fn simple_root_kind(&self, id: InvolutionId, generator: usize) -> Option<RootKind> {
+        let record = self.records.get(id.0)?;
+        let &simple_id = self
+            .inner_class
+            .root_system()
+            .simple_root_ids()
+            .get(generator)?;
+        record.involution.root_involution().kind(simple_id)
+    }
+
+    /// The Cartan class whose orbit slice contains this involution.
+    pub fn cartan_of(&self, id: InvolutionId) -> Option<CartanId> {
+        self.orbits
+            .iter()
+            .find(|(_, start, size)| id.0 >= *start && id.0 < start + size)
+            .map(|&(cartan, _, _)| cartan)
+    }
+
+    pub fn involution_count(&self) -> usize {
+        self.records.len()
+    }
+
+    /// The contiguous orbit slice of an added Cartan class, with its typed
+    /// starting number.
+    pub fn orbit_slice(&self, cartan: CartanId) -> Option<(InvolutionId, &[InvolutionRecord])> {
+        self.orbits
+            .iter()
+            .find(|(id, _, _)| *id == cartan)
+            .map(|&(_, start, size)| (InvolutionId(start), &self.records[start..start + size]))
+    }
+
+    pub fn root_system(&self) -> &RootSystem {
+        self.inner_class.root_system()
+    }
+
+    pub fn inner_class(&self) -> &InnerClass {
+        self.inner_class.as_ref()
+    }
+
+    pub(crate) fn inner_class_shared(&self) -> &Arc<InnerClass> {
+        &self.inner_class
+    }
+
+    /// Factorization provenance: the representative must be `w after delta`
+    /// for THIS inner class's delta.
+    fn gate_twisted(&self, twisted: &TwistedInvolution) -> Result<(), StructureError> {
+        use crate::twisted_involution::compose_matrices;
+        if twisted.weyl_action().datum() != self.inner_class.datum() {
+            return Err(StructureError::DatumMismatch);
+        }
+        let delta = self.inner_class.distinguished_involution().involution();
+        let stored = twisted.root_involution().involution();
+        if compose_matrices(twisted.weyl_action().matrix(), delta.weight_matrix())?
+            != stored.weight_matrix()
+            || compose_matrices(
+                twisted.weyl_action().coweight_matrix(),
+                delta.coweight_matrix(),
+            )? != stored.coweight_matrix()
+        {
+            return Err(StructureError::DistinguishedInvolutionMismatch);
+        }
+        Ok(())
+    }
+}
+
+/// Involution length across one cross edge: the Weyl-length change must be
+/// exactly `+-2` for a NEW involution (`0` means the edge fixes it, which the
+/// dedup hit already consumed), and the involution length steps by half.
+fn stepped_length(
+    current_length: usize,
+    current_w_length: usize,
+    neighbor_w_length: usize,
+) -> Result<usize, StructureError> {
+    let before =
+        isize::try_from(current_w_length).map_err(|_| StructureError::ArithmeticOverflow)?;
+    let after =
+        isize::try_from(neighbor_w_length).map_err(|_| StructureError::ArithmeticOverflow)?;
+    let change = after
+        .checked_sub(before)
+        .ok_or(StructureError::ArithmeticOverflow)?;
+    match change {
+        2 => current_length
+            .checked_add(1)
+            .ok_or(StructureError::ArithmeticOverflow),
+        -2 => current_length
+            .checked_sub(1)
+            .ok_or(StructureError::ArithmeticOverflow),
+        _ => Err(StructureError::InvolutionTableInvariantViolation {
+            invariant: "twisted length step",
+        }),
+    }
+}
+
+/// The single entry path: every record field except the image-basis pair is
+/// derived fresh from theta; the pair is seeded from theta at the orbit's
+/// canonical involution and thereafter TRANSPORTED along the cross edge that
+/// first reached the record (`Some`), matching upstream's `add_involution` /
+/// `add_cross` split — the basis is path-dependent, so it is never
+/// re-derived from theta away from the seed.
+/// A free function over disjoint table fields so the BFS can hold the
+/// reflection caches while inserting.
+#[allow(clippy::too_many_arguments)]
+fn push_record(
+    inner_class: &InnerClass,
+    budget: &InvolutionTableBudget,
+    two_rho: &Weight,
+    records: &mut Vec<InvolutionRecord>,
+    index_by_permutation: &mut BTreeMap<Vec<RootId>, InvolutionId>,
+    element: WeylElement,
+    action: WeylAction,
+    involution_length: usize,
+    transported_projection: Option<RealProjection>,
+) -> Result<InvolutionId, StructureError> {
+    if records.len() == budget.max_involutions {
+        return Err(StructureError::InvolutionTableResourceLimit {
+            resource: "involutions",
+            limit: budget.max_involutions,
+        });
+    }
+    let involution = TwistedInvolution::new(
+        inner_class.datum(),
+        inner_class.root_system(),
+        inner_class.distinguished_involution().involution(),
+        action,
+    )?;
+    let theta = involution.root_involution().involution();
+    let eigenlattice =
+        negative_coweight_eigenspace(theta.coweight_matrix(), &budget.integer_lattice)?;
+    let mod_space = reduce_basis_mod_two(&eigenlattice)?;
+    let theta_two_rho = theta.act_on_weight(two_rho)?;
+    let mut coordinates = try_capacity(two_rho.as_slice().len())?;
+    for (&plain, &reflected) in two_rho.as_slice().iter().zip(theta_two_rho.as_slice()) {
+        let sum = plain
+            .checked_add(reflected)
+            .ok_or(StructureError::ArithmeticOverflow)?;
+        if sum % 2 != 0 {
+            return Err(StructureError::InvolutionTableInvariantViolation {
+                invariant: "theta rho parity",
+            });
+        }
+        coordinates.push(sum / 2);
+    }
+    let projection = match transported_projection {
+        Some(projection) => {
+            // The transport preserves lift_mat*m_real == 1-theta
+            // algebraically; verify the edge math against this record's
+            // freshly derived theta.
+            projection.check_against(theta)?;
+            projection
+        }
+        None => RealProjection::build(theta)?,
+    };
+    let weyl_length = element.length();
+    let id = InvolutionId(records.len());
+    let mut key = try_capacity(element.image_permutation().len())?;
+    key.extend_from_slice(element.image_permutation());
+    index_by_permutation.insert(key, id);
+    records.push(InvolutionRecord {
+        element,
+        involution,
+        mod_space,
+        theta_plus_one_rho: Weight::new(coordinates),
+        involution_length,
+        weyl_length,
+        projection,
+    });
+    Ok(id)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        AdjointFiberBudget, BasedRootDatum, CartanClassificationBudget, Coweight,
+        LatticeInvolution, ModTwoVector,
+    };
+
+    use super::*;
+
+    fn table_budget(max_involutions: usize) -> InvolutionTableBudget {
+        InvolutionTableBudget::new(
+            max_involutions,
+            IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+        )
+    }
+
+    fn class_budget(weyl: usize) -> CartanClassificationBudget {
+        CartanClassificationBudget::new(
+            IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+            AdjointFiberBudget::new(
+                IntegerLatticeBudget::new(64, 100_000, 100_000, 128),
+                50_000,
+                100_000,
+            ),
+            weyl,
+            64,
+            64,
+        )
+    }
+
+    fn context(
+        cartan: Vec<Vec<i32>>,
+        distinguished: Option<Vec<Vec<i32>>>,
+        roots: usize,
+        weyl: usize,
+    ) -> (InnerClass, CartanClassification) {
+        let datum = BasedRootDatum::standard(cartan).unwrap();
+        let distinguished = match distinguished {
+            Some(matrix) => LatticeInvolution::new(&datum, matrix.clone(), matrix).unwrap(),
+            None => LatticeInvolution::identity(&datum).unwrap(),
+        };
+        let inner_class = InnerClass::new(datum, distinguished, roots).unwrap();
+        let classification =
+            CartanClassification::build(&inner_class, &class_budget(weyl)).unwrap();
+        (inner_class, classification)
+    }
+
+    fn filled_table(
+        inner_class: &InnerClass,
+        classification: &CartanClassification,
+        max_involutions: usize,
+    ) -> InvolutionTable {
+        let mut table = InvolutionTable::new(inner_class, table_budget(max_involutions)).unwrap();
+        for id in 0..classification.cartan_classes().len() {
+            table.add_cartan(classification, CartanId(id)).unwrap();
+        }
+        table
+    }
+
+    #[test]
+    fn a1_split_has_two_singleton_orbits_and_is_idempotent() {
+        let (inner_class, classification) = context(vec![vec![2]], None, 2, 2);
+        let mut table = InvolutionTable::new(&inner_class, table_budget(4)).unwrap();
+        let first = table.add_cartan(&classification, CartanId(0)).unwrap();
+        let second = table.add_cartan(&classification, CartanId(1)).unwrap();
+        assert_eq!(first, (InvolutionId(0), 1));
+        assert_eq!(second, (InvolutionId(1), 1));
+        assert_eq!(table.involution_count(), 2);
+        assert_eq!(
+            table.add_cartan(&classification, CartanId(0)).unwrap(),
+            first
+        );
+
+        for id in [InvolutionId(0), InvolutionId(1)] {
+            assert_eq!(table.cross(0, id).unwrap(), id);
+        }
+        let fundamental = table.record(InvolutionId(0)).unwrap();
+        assert!(fundamental.weyl_element().is_identity());
+        assert_eq!(fundamental.involution_length(), 0);
+        assert_eq!(fundamental.theta_plus_one_rho(), &Weight::new(vec![1]));
+        assert_eq!(fundamental.mod_space().rank(), 0);
+
+        let split = table.record(InvolutionId(1)).unwrap();
+        assert_eq!(split.weyl_length(), 1);
+        assert_eq!(split.involution_length(), 1);
+        assert_eq!(split.theta_plus_one_rho(), &Weight::new(vec![0]));
+        assert_eq!(split.mod_space().rank(), 1);
+        assert_eq!(
+            split
+                .mod_space()
+                .quotient_representative(ModTwoVector::from_ones(1, vec![0]).unwrap())
+                .unwrap(),
+            ModTwoVector::zero(1).unwrap()
+        );
+        assert_eq!(table.cartan_of(InvolutionId(1)), Some(CartanId(1)));
+        assert_eq!(
+            table.simple_root_kind(InvolutionId(0), 0),
+            Some(RootKind::Imaginary)
+        );
+        assert_eq!(
+            table.simple_root_kind(InvolutionId(1), 0),
+            Some(RootKind::Real)
+        );
+    }
+
+    #[test]
+    fn b2_split_orbits_match_the_classification_and_are_reproducible() {
+        let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let table = filled_table(&inner_class, &classification, 8);
+        assert_eq!(
+            table.involution_count(),
+            classification.twisted_involution_count()
+        );
+        for (index, class) in classification.cartan_classes().iter().enumerate() {
+            let (_, slice) = table.orbit_slice(CartanId(index)).unwrap();
+            assert_eq!(slice.len(), class.twisted_involution_count());
+        }
+        let again = filled_table(&inner_class, &classification, 8);
+        for index in 0..classification.cartan_classes().len() {
+            assert_eq!(
+                table.orbit_slice(CartanId(index)).unwrap(),
+                again.orbit_slice(CartanId(index)).unwrap()
+            );
+        }
+    }
+
+    #[test]
+    fn b2_records_are_canonical_from_theta() {
+        let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let table = filled_table(&inner_class, &classification, 8);
+        let delta_data = inner_class.distinguished_involution();
+        for index in 0..table.involution_count() {
+            let record = table.record(InvolutionId(index)).unwrap();
+            assert_eq!(record.weyl_length(), record.weyl_element().length());
+            for (root, _, _) in inner_class.root_system().entries() {
+                let delta_image = delta_data.image(root).unwrap();
+                assert_eq!(
+                    record.twisted_involution().root_involution().image(root),
+                    record.weyl_element().image(delta_image)
+                );
+            }
+            let decomposition = CayleyCrossDecomposition::build(
+                &inner_class,
+                record.twisted_involution(),
+                record.weyl_length() + 1,
+            )
+            .unwrap();
+            assert_eq!(
+                record.involution_length(),
+                (record.weyl_length() + decomposition.cayley_roots().len()) / 2
+            );
+            let two_rho = Weight::new(vec![3, 4]);
+            let reflected = record.theta().act_on_weight(&two_rho).unwrap();
+            let expected: Vec<i32> = two_rho
+                .as_slice()
+                .iter()
+                .zip(reflected.as_slice())
+                .map(|(&a, &b)| (a + b) / 2)
+                .collect();
+            assert_eq!(record.theta_plus_one_rho(), &Weight::new(expected));
+            for generator in 0..2 {
+                let simple_id = inner_class.root_system().simple_root_ids()[generator];
+                assert_eq!(
+                    table.simple_root_kind(InvolutionId(index), generator),
+                    record
+                        .twisted_involution()
+                        .root_involution()
+                        .kind(simple_id)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn b2_cayley_edge_appears_only_once_its_cartan_is_added() {
+        let (inner_class, classification) = context(vec![vec![2, -2], vec![-1, 2]], None, 8, 8);
+        let mut table = InvolutionTable::new(&inner_class, table_budget(8)).unwrap();
+        let (fundamental, size) = table.add_cartan(&classification, CartanId(0)).unwrap();
+        assert_eq!(size, 1);
+        assert!(table
+            .record(fundamental)
+            .unwrap()
+            .weyl_element()
+            .is_identity());
+        assert_eq!(table.cayley(0, fundamental).unwrap(), None);
+
+        for id in 1..classification.cartan_classes().len() {
+            table.add_cartan(&classification, CartanId(id)).unwrap();
+        }
+        let target = table.cayley(0, fundamental).unwrap().unwrap();
+        let record = table.record(target).unwrap();
+        assert_eq!(record.weyl_length(), 1);
+        assert_eq!(record.involution_length(), 1);
+        for generator in 0..2 {
+            assert_eq!(table.cross(generator, fundamental).unwrap(), fundamental);
+        }
+    }
+
+    #[test]
+    fn twisted_a2_orbits_match_the_classification() {
+        let (inner_class, classification) = context(
+            vec![vec![2, -1], vec![-1, 2]],
+            Some(vec![vec![0, 1], vec![1, 0]]),
+            6,
+            6,
+        );
+        let table = filled_table(&inner_class, &classification, 4);
+        assert_eq!(
+            table.involution_count(),
+            classification.twisted_involution_count()
+        );
+        let mut sizes: Vec<usize> = (0..classification.cartan_classes().len())
+            .map(|index| table.orbit_slice(CartanId(index)).unwrap().1.len())
+            .collect();
+        sizes.sort_unstable();
+        assert_eq!(sizes, vec![1, 3]);
+    }
+
+    /// The B2 x=4 oracle anchor (pinned arm64 oracle run): the involution
+    /// theta=[[-1,0],[2,1]] is reached from its Cartan orbit's seed along
+    /// cross edges, and the oracle's TRANSPORTED lift_mat column is
+    /// [2,-2] — while a fresh echelon reduction of 1-theta gives [-2,2].
+    /// The record must carry the transported basis (involutions.cpp:
+    /// 242-243), since y_lift's sign depends on it. The datum is the
+    /// simply-connected B2 of the dual_KL_block fixture (fundamental-
+    /// weight lattice basis).
+    #[test]
+    fn b2_projection_is_transported_not_recomputed() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -2], vec![-1, 2]],
+            vec![Weight::new(vec![2, -2]), Weight::new(vec![-1, 2])],
+            vec![Coweight::new(vec![1, 0]), Coweight::new(vec![0, 1])],
+        )
+        .unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        let inner_class = InnerClass::new(datum, involution, 8).unwrap();
+        let classification = CartanClassification::build(&inner_class, &class_budget(8)).unwrap();
+        let table = filled_table(&inner_class, &classification, 8);
+        let target = vec![vec![-1, 0], vec![2, 1]];
+        let record = (0..table.involution_count())
+            .map(InvolutionId)
+            .map(|id| table.record(id).unwrap())
+            .find(|record| record.theta().weight_matrix() == target.as_slice())
+            .expect("B2 table holds theta=[[-1,0],[2,1]]");
+        assert_eq!(record.projection().lift_mat, vec![vec![2], vec![-2]]);
+        assert_eq!(record.projection().m_real, vec![vec![1, 0]]);
+        // The fresh echelon build lands on the opposite sign — the value
+        // the parameter layer used to compute on the spot.
+        let recomputed = RealProjection::build(record.theta()).unwrap();
+        assert_eq!(recomputed.lift_mat, vec![vec![-2], vec![2]]);
+        assert_ne!(recomputed, *record.projection());
+    }
+
+    #[test]
+    fn budget_and_out_of_range_inputs_are_guarded() {
+        let (inner_class, classification) = context(vec![vec![2]], None, 2, 2);
+        let mut small = InvolutionTable::new(&inner_class, table_budget(1)).unwrap();
+        small.add_cartan(&classification, CartanId(0)).unwrap();
+        assert_eq!(
+            small.add_cartan(&classification, CartanId(1)),
+            Err(StructureError::InvolutionTableResourceLimit {
+                resource: "involutions",
+                limit: 1,
+            })
+        );
+        assert_eq!(
+            small.add_cartan(&classification, CartanId(9)),
+            Err(StructureError::IndexOutOfRange {
+                index: 9,
+                upper_bound: 2,
+            })
+        );
+        assert_eq!(small.record(InvolutionId(99)), None);
+        assert_eq!(
+            small.cross(5, InvolutionId(0)),
+            Err(StructureError::IndexOutOfRange {
+                index: 5,
+                upper_bound: 1,
+            })
+        );
+
+        let (foreign_inner, _) = context(vec![vec![2, -1], vec![-1, 2]], None, 6, 6);
+        let foreign_identity = WeylElement::identity(foreign_inner.root_system()).unwrap();
+        assert_eq!(small.lookup(&foreign_identity), None);
+    }
+}
+
+```

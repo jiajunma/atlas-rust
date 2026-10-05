@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "bec20501",
+  "working_tree": false,
+  "scope": "First reading of the weak-real-form W_im orbit partition and the twisted-involution table for the new weak-real-form-involution-table source packet: the mask-orbit walk with its numbering rule, weak_real_form_at_representative's gate chain, the record fields and their canonical-from-theta discipline, the seeded-and-transported image-basis pair, add_cartan's BFS and the query surface.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/weak_real_form.rs",
+      "sha256": "fe22088fea7b955d1a4602891dda07c36b56b5a61d9cb03bae5964393ecb8e49",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/involution_table.rs",
+      "sha256": "aab8c87ba1244ea022a35c4539185606d52316821cdc00b2b80f61524b89d8bf",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_bccd8c17-79bb-4451-abf1-123a7c67b210",
+    "prompt_sha256": "0810fa1db41356d7e9d4c0038a0a2c49b953593e06de6c26eb442ed24ba477a8",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/weak-real-form-involution-table-probe",
+    "stdout_jsonl_sha256": "e62c5f11056d0883e4464f44496603967cb562e211fe2983e52015ebab4b5412",
+    "draft_sha256": "34d4092c154d9a9e7397ac77f35f92eac2083002e677d2fc44f7da3c95850a67",
+    "result": "completed, exit 0, 658.1s (66KB prompt; launched detached, self-managed deadline); draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The gate chain, all invariant literals, and the B2 transported-vs-recomputed anchor were exact; the draft's silent-overwrite (BTreeMap::insert) and missing overall provenance-gate observations are retained in the packet. Launch note: this probe was started detached (shell &) instead of via the task system — self-managed deadline is safe, but tracking/notification is lost; prefer the background task route."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}
