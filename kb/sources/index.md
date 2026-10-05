@@ -278,6 +278,14 @@ probe 路由起草（exit 0，253.1s），维护者对照源码逐条核对改�
 「十一边界用例」与实测八组的数量差异（已记录待核）。该包是结构性阅读，
 不声称根系层的数学验收；溢出修复的演进见 root-ladder-overflow-repair 包。
 
+[Dynkin 分类器](dynkin.md)记录 `dynkin.rs`：`classify` 的输入契约与
+first-fresh-vertex 分量合并、秩二 B/C 由给定顺序决定（历史编号教训的落点）、
+秩 >2 的度分析字母判定、各型起点选择（含 E 型长臂交换）、
+`bourbaki_permutation` 与 `folded_cartan`（经 cofold 公式）。对应
+[阅读快照](snapshots/2026-10-06-dynkin.json)；草案由同一 Kimi probe 路由起草
+（exit 0，375.2s），维护者对照源码逐条核对改写。该包是结构性阅读，不声称
+分类器的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

@@ -381,3 +381,11 @@ RootSystem 的三表对齐存储、BFS 闭包枚举、RootSystemBudget 语义、
 （exit 0，342.7s），维护者对照源码逐条核对改写；草案独立发现注释
 「十一边界用例」与实测八组的数量差异，已记录待核。索引与
 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增 Dynkin 分类器来源包（Kimi probe 协助）
+
+新增 `sources/dynkin.md` 与快照 `2026-10-06-dynkin.json`：classify 输入契约、
+first-fresh-vertex 分量合并、秩二 B/C 给定序规则、各型起点选择与 E 型长臂
+交换、bourbaki_permutation、folded_cartan。同一 Kimi probe 路由起草（exit 0，
+375.2s），维护者对照源码逐条核对改写；草案的错误位点表与可达性标注加速了
+核对。索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。

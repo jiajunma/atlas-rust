@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "bc09ca31",
+  "working_tree": false,
+  "scope": "First reading of the Dynkin classifier for the new dynkin source packet: classify's input contract, first-fresh-vertex component merging, classify_component's rank-2 given-order B/C rule and rank>2 letter analysis, the per-letter start selection including the E long-arm swap, bourbaki_permutation, and folded_cartan via the cofold formulas.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/dynkin.rs",
+      "sha256": "5b2bb3b75928ceee480dd11ca7861577868fb3cd9edf357565993b78be179647",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_fb8cfad5-4ce5-4e61-bc61-1c22267d6614",
+    "prompt_sha256": "09f98686eb03977fdf4d8a005f6a0fb6e5bab822ed8b553973923c18eed77d27",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/dynkin-probe",
+    "stdout_jsonl_sha256": "d4880cd84619d655bd7c348b0c61cef56f03d14556e01214355f9f378dad5e5f",
+    "draft_sha256": "394dc6e8dae3b769e9346a0e8f5309eb8dd5832592230740e05e01dc5cf44a29",
+    "result": "completed, exit 0, 375.2s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The draft's per-site error table with reachability annotations made verification fast; zero factual corrections were needed."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream line references are transcribed from comments, not re-verified here."
+}
