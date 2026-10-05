@@ -269,6 +269,15 @@ probe 路由起草（exit 0，253.1s），维护者对照源码逐条核对改�
 起草（68KB 单文件，exit 0，253.7s），维护者对照源码逐条核对改写。该包是
 结构性阅读，不声称实 Weyl 层的数学验收。
 
+[普通根系的确定性枚举](root-system.md)记录 `root_system.rs`：`RootId`/
+`RootSet`/`RootSystemBudget`、BFS 闭包枚举与字典序存储、访问器语义
+（`bracket` 根左余右、`id_of` 二分、预计算正负表）、梯子底表及其
+「溢出即非成员」修复形态、25 个测试锚点。对应
+[阅读快照](snapshots/2026-10-06-root-system.json)；草案由同一 Kimi probe 路由
+起草（exit 0，342.7s），维护者对照源码逐条核对改写；草案独立发现注释
+「十一边界用例」与实测八组的数量差异（已记录待核）。该包是结构性阅读，
+不声称根系层的数学验收；溢出修复的演进见 root-ladder-overflow-repair 包。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

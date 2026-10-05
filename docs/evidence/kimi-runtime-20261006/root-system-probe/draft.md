@@ -1,0 +1,348 @@
+```markdown
+---
+title: root_system.rs：普通根系闭包的确定性枚举、显式调用方预算与梯子底表
+source: atlas-rust/root-system
+ingestedAt: 2026-10-05T18:00:00Z
+---
+
+> **草案状态**：待维护者逐条核对后收录。标注约定：
+> - 【实现】= 可直接从所给字节读出的代码行为；
+> - 【推断】= 阅读推断，未由代码直接断言；
+> - 【注释】= 仅出现在注释中的声称，本文件无法独立验证（涉及上游 Atlas 文件行号、oracle 捕获编号等）。
+>
+> 本包不作任何数学验收、性能或正确性声明。
+
+## 0. 文件定位
+
+- 路径：`crates/atlas-real-group/src/root_system.rs`。
+- 角色【实现】：基于 `BasedRootDatum` 生成有限普通根系（`RootSystem`），提供稳定根编号（`RootId`）、位集（`RootSet`）、显式资源预算（`RootSystemBudget`）、梯子底表（`min_roots` / `min_coroots`）及若干访问器。
+- 依赖【实现】（文件头 `use`）：
+  - `std::collections::{BTreeMap, VecDeque}`；
+  - `crate::lattice::{pair_coordinates, try_copy_coordinates}`；
+  - `crate::{pair, BasedRootDatum, Coweight, StructureError, Weight, WeylAction}`。
+- 测试内额外依赖【实现】：`crate::WeylGroup`。
+
+## 1. 裸签名清单
+
+### 1.1 `RootId`（pub）
+
+```rust
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct RootId(pub(crate) usize);
+
+impl RootId {
+    pub fn from_usize(index: usize) -> Self
+    pub fn index(&self) -> usize
+}
+```
+
+### 1.2 `RootSystemBudget`（pub，字段全部私有）
+
+```rust
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RootSystemBudget {
+    max_lattice_rank: usize,
+    max_roots: usize,
+    max_coordinate_entries: usize,
+    max_reflection_steps: usize,
+}
+
+impl RootSystemBudget {
+    pub const fn new(
+        max_lattice_rank: usize,
+        max_roots: usize,
+        max_coordinate_entries: usize,
+        max_reflection_steps: usize,
+    ) -> Self
+    pub fn complete_for(datum: &BasedRootDatum, max_roots: usize) -> Self
+}
+```
+
+（无字段读取器；`new` 不做任何校验。）
+
+### 1.3 `RootSet`（pub，字段私有；含私有构造函数与插入函数）
+
+```rust
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct RootSet {
+    blocks: Vec<u64>,
+    len: usize,
+}
+
+impl RootSet {
+    fn with_capacity(count: usize) -> Result<Self, StructureError>   // 私有
+    fn insert(&mut self, id: RootId)                                 // 私有
+    pub fn contains(&self, id: RootId) -> bool
+    pub fn len(&self) -> usize
+    pub fn is_empty(&self) -> bool
+    pub fn iter(&self) -> impl Iterator<Item = RootId> + '_
+}
+```
+
+### 1.4 `RootSystem`（pub，字段全部私有）
+
+```rust
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RootSystem {
+    datum: BasedRootDatum,
+    roots: Vec<Weight>,
+    coroots: Vec<Coweight>,
+    simple_coordinates: Vec<Vec<i32>>,
+    positive: Vec<bool>,
+    simple_ids: Vec<RootId>,
+    min_roots: Vec<RootSet>,
+    min_coroots: Vec<RootSet>,
+}
+
+impl RootSystem {
+    pub fn enumerate(datum: &BasedRootDatum, max_roots: usize)
+        -> Result<Self, StructureError>
+    pub fn enumerate_with_budget(datum: &BasedRootDatum, budget: &RootSystemBudget)
+        -> Result<Self, StructureError>
+    fn from_closure(datum: BasedRootDatum, closure: Closure)
+        -> Result<Self, StructureError>                              // 私有
+
+    pub fn lattice_rank(&self) -> usize
+    pub fn datum(&self) -> &BasedRootDatum
+    pub fn roots(&self) -> &[Weight]
+    pub fn root(&self, id: RootId) -> Option<&Weight>
+    pub fn coroot(&self, id: RootId) -> Option<&Coweight>
+    pub fn entries(&self)
+        -> impl ExactSizeIterator<Item = (RootId, &Weight, &Coweight)> + '_
+    pub fn bracket(&self, root: RootId, coroot: RootId) -> Result<i32, StructureError>
+    pub fn simple_coordinates(&self, id: RootId) -> Option<&[i32]>
+    pub fn action_permutation(&self, action: &WeylAction)
+        -> Result<Vec<RootId>, StructureError>
+    pub(crate) fn positivity(&self) -> &[bool]
+    pub fn is_positive(&self, id: RootId) -> Option<bool>
+    pub(crate) fn simple_root_ids(&self) -> &[RootId]
+    pub fn id_of(&self, root: &Weight) -> Option<RootId>
+    pub fn min_roots_for(&self, alpha: RootId) -> Option<&RootSet>
+    pub fn min_coroots_for(&self, alpha: RootId) -> Option<&RootSet>
+}
+```
+
+### 1.5 自由函数（pub(crate)）
+
+```rust
+pub(crate) fn combine_roots(
+    root_system: &RootSystem,
+    left: RootId,
+    right: RootId,
+    subtract: bool,
+) -> Result<Option<RootId>, StructureError>
+```
+
+### 1.6 私有项（列出以供核对不变量，非 API）
+
+```rust
+struct ClosureRecord { coroot: Vec<i32>, simple_coordinates: Vec<i32> }
+struct PendingRecord { root: Weight, coroot: Coweight, simple_coordinates: Vec<i32> }
+struct Closure {
+    max_roots: usize,
+    seen: BTreeMap<Vec<i32>, ClosureRecord>,
+    pending: VecDeque<PendingRecord>,
+}
+impl Closure {
+    fn new(max_roots: usize) -> Self
+    fn insert(&mut self, root: Weight, coroot: Coweight, simple_coordinates: Vec<i32>)
+        -> Result<(), StructureError>
+}
+
+fn build_ladder_bottoms(roots: &[Weight], coroots: &[Coweight])
+    -> Result<(Vec<RootSet>, Vec<RootSet>), StructureError>
+fn subtract_coordinates(left: &[i32], right: &[i32], out: &mut Vec<i32>)
+    -> Result<(), StructureError>
+fn check_budget_consistency(datum: &BasedRootDatum, budget: &RootSystemBudget)
+    -> Result<(), StructureError>
+fn effective_roots(datum: &BasedRootDatum, max_roots: usize) -> u128
+fn entry_bound(datum: &BasedRootDatum, max_roots: usize) -> u128
+fn step_bound(datum: &BasedRootDatum, max_roots: usize) -> u128
+fn widened(value: usize) -> u128
+fn saturated_to_usize(value: u128) -> usize
+fn try_zero_coordinates(rank: usize) -> Result<Vec<i32>, StructureError>
+fn try_negate(values: &[i32]) -> Result<Vec<i32>, StructureError>
+```
+
+## 2. `RootId` 的表示与不变量
+
+- 【实现】`RootId` 是对 `usize` 的 newtype，内部字段为 `pub(crate)`，因此 crate 内可直接 `RootId(6)` 构造（测试即如此），crate 外只能经 `from_usize` 构造、经 `index()` 读回。
+- 【实现】一个 ID 同时索引 `roots`、`coroots`、`simple_coordinates` 三张表（`RootSystem` 文档注释与所有访问器的 `id.0` 索引方式一致）。
+- 【实现】`RootId` 派生 `Ord`/`Hash`，可用作有序键；`RootSet` 以其数值作位图位索引。
+- 【实现】构造任意越界 ID 不会被 `from_usize` 拒绝；防护在使用点：所有 pub 访问器返回 `Option`/`Result`（见 §6），`RootSet::contains` 用 `blocks.get(...)` 对越界返回 `false`。
+- 【推断】稳定顺序 = `roots` 向量的下标顺序，即环境坐标的字典序升序（见 §3），与发现顺序无关。
+
+## 3. `RootSystem` 的存储布局与不变量
+
+字段不变量（【实现】，来自构造路径与文档注释）：
+
+1. `roots` / `coroots` / `simple_coordinates` 在 `RootId` 下逐索引对齐；`from_closure` 中有 `debug_assert_eq!(roots.len(), coroots.len())` 与 `debug_assert_eq!(roots.len(), simple_coordinates.len())`。
+2. `roots` 按环境坐标字典序升序：闭包状态 `Closure.seen` 是 `BTreeMap<Vec<i32>, ClosureRecord>`，`from_closure` 消费它时按键序输出；`id_of` 依赖该顺序做二分查找（`binary_search_by` 对 `as_slice()` 比较）。
+3. `positive` 与 `simple_ids` 为预计算：
+   - 【实现】`positive[i] = simple_coordinates[i].iter().any(|&v| v > 0)`。注释说明其原因：`roots` 按环境坐标排序，而正负性定义在简单坐标基上，故无“按半劈开”的捷径。【注释】“任意分量 > 0 即正根”的数学依据不在本文件验证。
+   - 【实现】`simple_ids` 通过对 `datum.simple_roots()` 逐个二分查找得到；找不到时返回
+     `StructureError::RootSystemInvariantViolation { invariant: "simple-root membership" }`。
+4. `min_roots` / `min_coroots` 是每根一张的预计算梯子底表（§7）。【注释】对应上游 `d_minRoots`/`d_minCoroots`（rootdata.h:154-157）。
+5. 【实现】预算不存进 `RootSystem`（文档注释明确“deliberately not stored”），且结构中确实无预算字段。
+6. 【实现】`RootSystem` 派生 `Eq`/`PartialEq`：`wrapper_behavior_is_preserved` 测试直接对两个枚举结果做 `assert_eq!`，即全字段逐表比较。
+
+## 4. 枚举：流程、顺序与预算
+
+### 4.1 两个入口
+
+- 【实现】`enumerate(datum, max_roots)` 是兼容包装：先用 `RootSystemBudget::complete_for(datum, max_roots)` 派生其余限额，再调用 `enumerate_with_budget`；并把
+  `StructureError::RootSystemResourceLimit { resource: "roots", limit }`
+  映射回历史错误 `StructureError::ResourceLimitExceeded { limit }`，其它错误原样透传。
+- 【推断】由于 `complete_for` 把 entry/step 限额设为饱和最坏值，包装路径下只有基数限额会触发（与文档注释一致）；若其它 resource 变体理论上出现，将不被映射、原样逃逸——本文件无测试覆盖该分支。
+
+### 4.2 `enumerate_with_budget` 流程【实现】
+
+1. `check_budget_consistency(datum, budget)?`（固定顺序，见 §5）。
+2. `datum.try_clone()?` 取自有快照（可失败的克隆）。
+3. 播种：对每个简单根（按 `simple_roots()` 的生成器顺序）插入两条记录——
+   - 正根：环境坐标复制自该简单根，简单坐标为单位向量 `e_i`；
+   - 负根：环境/余根坐标经 `try_negate`（`checked_neg`，溢出即 `ArithmeticOverflow`），简单坐标为 `-e_i`。
+4. BFS：`pending.pop_front()` 逐条弹出，对 `0..semisimple_rank` 的每个生成器：
+   - `coefficient = pair(&record.root, &snapshot.simple_coroots()[generator])?`；
+   - `reflected_coordinates[generator] = reflected_coordinates[generator].checked_sub(coefficient).ok_or(StructureError::ArithmeticOverflow)?`；
+   - 以 `snapshot.reflect_weight(generator, &record.root)?` / `snapshot.reflect_coweight(generator, &record.coroot)?` 生成候选，连同更新后的简单坐标 `closure.insert(...)`。
+5. `from_closure(snapshot, closure)` 收尾（其首行 `debug_assert!(closure.pending.is_empty())`）。
+
+### 4.3 `Closure::insert` 的检查顺序【实现】
+
+1. 自配对：候选数据原样送达、此处不重算，但要求 `pair_coordinates(root, coroot)? == 2`，否则
+   `RootSystemInvariantViolation { invariant: "self pairing" }`（对重复键也先执行此检查）。
+2. 重复根键：若 `seen` 已有该环境坐标键，要求已存记录的余根与简单坐标与候选完全一致，否则
+   `RootSystemInvariantViolation { invariant: "coroot agreement" }`；一致则 `Ok(())` 提前返回（不触发基数检查）。
+3. 基数：`seen.len() == max_roots` 时拒绝，报
+   `RootSystemResourceLimit { resource: "roots", limit: max_roots }`。
+4. 分配：`try_copy_coordinates` ×3 与 `pending.try_reserve(1)`，失败报 `AllocationFailed`。
+- 【注释】自配对与一致性两道检查“是防御性的，已知的公开 datum 构造路径不会触及”。
+
+### 4.4 顺序保证【实现】
+
+- 最终 `roots` 顺序仅由 `BTreeMap` 键序决定，与 BFS 发现顺序无关；
+- 测试锚点 `enumerates_a2_in_deterministic_coordinate_order` 钉住 A2 的 6 根顺序：
+  `[-1,-1], [-1,0], [0,-1], [0,1], [1,0], [1,1]`，并钉住 `[1,1]` 的简单坐标为 `Some(&[1, 1][..])`。
+
+## 5. 预算语义（`RootSystemBudget` 与一致性检查）
+
+- 【实现】`RootSystemBudget` 四字段语义（文档注释）：`max_lattice_rank` 限制全环面秩（随之限制半单秩）；`max_roots` 限制被接受的根基数；`max_coordinate_entries` 限制峰值存活坐标项数；`max_reflection_steps` 限制对偶反射访问次数。注释强调这是计算预算而非数学秩上限，且条目/步数限额是“对照 `max_roots` 隐含最坏值的一致性检查”，通过后只有基数限额会在运行中触发。
+- 【实现】`check_budget_consistency` 的检查顺序固定：lattice rank → roots → coordinate entries → reflection steps，全部用严格大于 `>` 比较（相等即通过），首个失败者决定错误：
+  - `datum.lattice_rank() > max_lattice_rank` → `resource: "lattice rank"`；
+  - `semisimple_rank > 0 && 2*semisimple_rank > max_roots`（经 `widened` 的 `u128` 饱和乘）→ `resource: "roots"`；纯环面（半单秩 0）跳过本检查；
+  - `saturated_to_usize(entry_bound(datum, max_roots)) > max_coordinate_entries` → `resource: "coordinate entries"`；
+  - `saturated_to_usize(step_bound(datum, max_roots)) > max_reflection_steps` → `resource: "reflection steps"`。
+- 【实现】派生公式（`u128` 饱和算术）：
+  - `effective_roots`：半单秩为 0 时取 0，否则取 `widened(max_roots)`；
+  - `entry_bound = 2*(r² + 2*r*n) + (R_eff + 1)*(4*n + 2*r)`，其中 `n = lattice_rank`、`r = semisimple_rank`（注释说明其覆盖：借来的调用方 datum、自有快照、map 与待处理队列、一个在途候选记录）；
+  - `step_bound = R_eff * r`（注释：每条被接受记录弹出一次、被每个生成器访问一次）。
+  - `widened = u128::try_from(value).unwrap_or(u128::MAX)`；【推断】在 usize ≤ 64 位的平台上该转换不会失败，`unwrap_or` 为防御写法。
+  - `saturated_to_usize = usize::try_from(value).unwrap_or(usize::MAX)`（钳制）。
+- 【实现】`complete_for(datum, max_roots)`：秩限额取 `datum.lattice_rank()`，条目/步数限额取上述饱和最坏值，使派生限额不可能先于 `max_roots` 绑定；文档注释声称此预算下枚举的接受/拒绝行为与兼容包装 `enumerate` 完全一致（测试 `wrapper_behavior_is_preserved` 以全结构相等钉住）。
+- 测试锚点：
+  - `each_budget_limit_rejects_with_its_named_resource`：A2 下四种命名拒绝（限额分别为 1、2、1、1）；其中坐标条目限额 108 通过、1 拒绝（【推断】按公式 `entry_bound(A2, 6) = 108`，恰为通过边界——此为对代码公式的算术求值，非独立测量）。
+  - `discovery_beyond_the_root_limit_is_the_named_runtime_rejection`：预算 `(2, 4, MAX, MAX)` 通过静态检查（`2r = 4` 不严格大于 4），运行时发现第 5 根时报 `resource: "roots", limit: 4`，区分了静态与运行时两条拒绝路径。
+  - `budget_is_an_explicit_resource_error`：A1、`max_roots = 1` 经包装映射为 `ResourceLimitExceeded { limit: 1 }`。
+  - `thirty_three_a1_factors_stay_dynamic_under_a_complete_budget`：秩 33 对角 Cartan（33 个 A1 因子）、`complete_for(datum, 66)` 预算下成功枚举 66 根，且每根 `bracket(id, id) == Ok(2)`。
+
+## 6. 访问器语义
+
+| 访问器 | 语义【实现】 |
+|---|---|
+| `roots()` | 全根切片，稳定升序。 |
+| `root(id)` / `coroot(id)` / `simple_coordinates(id)` | 越界返回 `None`（`Vec::get`）。 |
+| `entries()` | `(RootId, &Weight, &Coweight)` 三元组的 `ExactSizeIterator`，按稳定顺序。 |
+| `bracket(root, coroot)` | Atlas 的“根在左、余根在右”配对 `<root(root), coroot(coroot)>`；任一 ID 越界报 `IndexOutOfRange { index, upper_bound }`（两侧分别用自己的表长作 `upper_bound`），随后 `pair(root_value, coroot_value)?` 自身亦可失败。测试钉住 `bracket(id, id) == Ok(2)`（A2、B2）与越界错误值 `{ index: 6, upper_bound: 6 }`。 |
+| `id_of(&Weight)` | 对 `roots` 二分查找，未命中返回 `None`。 |
+| `is_positive(id)` | 预计算表查表，越界 `None`。`positivity()`（`pub(crate)`）返回整张 `&[bool]`。 |
+| `simple_root_ids()`（`pub(crate)`） | 简单根的稳定 ID，按生成器顺序，供下降查询免逐次二分（注释）。 |
+| `action_permutation(&WeylAction)` | 先检查 `action.datum() != self.datum()` → `DatumMismatch`；再对每根 `action.act(root)?` 并 `id_of` 反查，反查失败报 `InvalidRootAutomorphism`，收集为 `Vec<RootId>`。【注释】余根输送不在此复查，理由是 `WeylAction` 为简单反射之词、其余权生成器与闭包所用对偶反射相同。 |
+| `combine_roots(left, right, subtract)`（`pub(crate)`） | 逐坐标 `checked_add`/`checked_sub`（溢出 `ArithmeticOverflow`、分配失败 `AllocationFailed`、ID 越界 `IndexOutOfRange`），结果向量是根则 `Ok(Some(id))`，否则 `Ok(None)`。 |
+
+### `RootSet` 位集【实现】
+
+- `with_capacity(count)`：`block_count = count.div_ceil(64)`，`try_reserve_exact` 失败报 `AllocationFailed { requested: block_count }`。
+- `insert`（私有）：已置位则跳过，否则置位并 `len += 1`；直接索引 `self.blocks[block]`——【推断】越界 ID 会 panic，但仅在 `build_ladder_bottoms` 内以 `beta < count` 调用，不可达。
+- `contains` 对越界 ID 返回 `false`；`iter()` 按稳定根序升序产出成员。
+- 【推断】`RootSet` 构造后只读：无公开插入/构造途径（`Default` 得到空宇宙，仅 `contains == false` / 空迭代）。
+
+## 7. 梯子底表：`build_ladder_bottoms` 与溢出边界
+
+- 【实现】定义：`min_roots[alpha]` 标记所有使 `roots[beta] - roots[alpha]` 不是根的 `beta`；`min_coroots` 在配对的余根坐标上定义同一关系。【注释】`alpha` 自身总被包含（文档注释明示）；对应上游 `RootSystem::min_roots_for`/`min_coroots_for`（rootdata.h:270-273）。
+- 【实现】成员判定：根用对有序 `roots` 的二分查找；余根无序（跟随根序），故先建一次 `BTreeMap<&[i32], usize>` 坐标→下标映射。
+- 【实现】溢出即“非成员”：`subtract_coordinates` 的 `checked_sub` 溢出返回 `ArithmeticOverflow` 时，该成员查询按 `false` 处理（注释理由：所存坐标皆为 `i32`，精确差若出界则不可能等于任何所存根/余根）；分配等其它错误照常传播。
+- 【实现】`min_roots_for` / `min_coroots_for` 越界返回 `None`（测试 `ladder_bottoms_reject_an_out_of_range_id` 用 `RootId(6)` 钉住）。
+- 测试锚点：
+  - `b2_min_roots_match_the_oracle_ladder_bottoms`、`b2_min_coroots_match_the_oracle_ladder_bottoms`、`g2_min_roots_match_the_oracle_ladder_bottoms`：钉住具体成员坐标向量集合。【注释】期望值来自上游 `root_ladder_bottoms` 探针（“slice-B fixtures, HPC capture 3535636”），并给出 Atlas 有符号根号经上游正根序的换算约定（B2：`simply_connected(B2, prefer_coroots=true)`；G2：`adjoint(G2, prefer_coroots=false)`）——换算与出处本文件不可验证。
+  - `ladder_bottoms_match_brute_force_subtraction`：对 A2/B2/G3（`[[2,-1],[-3,2]]`）逐 `(alpha, beta)` 与 `combine_roots(..., subtract=true)` 及逐坐标余根差暴力对照；另断言 `min_roots.len() == min_roots.iter().count()`。
+  - `ladder_coordinate_boundary_roots` / `..._coroots`：以 `m ∈ {0, 1_073_741_823, 1_073_741_824, i32::MAX}` 构造单根 datum（根/余根各取一坐标置于极端），两符号两种配置下枚举均成功、两张梯子表均等于 `{RootId(0), RootId(1)}`。【注释】声称“原 Atlas3868832 接受全部十一个坐标边界用例”；【推断】本文件实际钉住的是 4 个取值 × 2 种配置共 8 组，与“十一”数字不完全对应，建议核对。
+  - `a_pure_torus_has_empty_ladder_tables`：秩 3 纯环面（空 Cartan）枚举成功、`min_roots_for(RootId(0)) == None`。
+
+## 8. 与其它层的接口
+
+- 【实现】对 `BasedRootDatum` 的使用面：`lattice_rank()`、`semisimple_rank()`、`try_clone()`、`simple_roots()`、`simple_coroots()`、`reflect_weight(generator, &Weight)`、`reflect_coweight(generator, &Coweight)`；测试中另用构造器 `BasedRootDatum::standard(cartan)` 与 `BasedRootDatum::from_simple_data(rank, cartan, roots, coroots)`。
+- 【实现】`Weight` / `Coweight`：`new(Vec<i32>)`、`as_slice()`；坐标一律 `i32`。
+- 【实现】`crate::pair(&Weight, &Coweight) -> Result<i32, StructureError>` 与 `crate::lattice::{pair_coordinates, try_copy_coordinates}` 被当作可失败原语使用（具体错误行为定义不在本文件）。
+- 【实现】`WeylAction`：`datum()`、`act(&Weight)`；测试中 `WeylGroup::new(datum).enumerate_actions(6)` 与 `act_on_coweight`。
+- 【实现】`positivity()`、`simple_root_ids()`、`combine_roots` 为 `pub(crate)` 出口；【推断】其 crate 内消费方不在本文件可见，本包无法指明调用点。
+- 【实现】本文件用到的 `StructureError` 变体清单：`AllocationFailed { requested }`、`ArithmeticOverflow`、`RootSystemResourceLimit { resource, limit }`（resource ∈ `"lattice rank" | "roots" | "coordinate entries" | "reflection steps"`）、`ResourceLimitExceeded { limit }`、`RootSystemInvariantViolation { invariant }`（invariant ∈ `"simple-root membership" | "self pairing" | "coroot agreement"`）、`IndexOutOfRange { index, upper_bound }`、`DatumMismatch`、`InvalidRootAutomorphism`（变体定义不在本文件）。
+
+## 9. panic / 断言与边界条件清单
+
+- 【实现】`debug_assert!` 四处：`from_closure` 的 `pending.is_empty()`、两根长一致断言；`subtract_coordinates` 的 `left.len() == right.len()`。
+- 【实现】非测试代码无 `unwrap()`/`panic!`/`expect()`；所有取反、加减、坐标反射更新均走 `checked_*` 并映射为 `ArithmeticOverflow`；所有向量预分配走 `try_reserve_exact`/`try_reserve` 并映射为 `AllocationFailed { requested }`。
+- 【推断】潜在索引 panic 点（正常路径不可达）：`RootSet::insert` 的直接块索引（调用方保证 `id < count`）；播种时 `simple_coordinates[simple_index]` 与反射时 `reflected_coordinates[generator]`（长度均等于 `semisimple_rank`）。
+- 【实现】边界：预算比较全部为严格 `>`（相等通过）；闭包基数检查在插入前以 `seen.len() == max_roots` 触发（容量恰为 `max_roots`）；重复候选不计入基数。
+- 【实现】纯环面：`enumerate(datum, 0)` 成功且 `roots()` 为空、`entries().len() == 0`（测试 `a_pure_torus_has_no_pairs`）。
+- 【实现】种子余根含 `i32::MIN` 时取反溢出，`enumerate` 报 `ArithmeticOverflow`（测试 `a_seed_coroot_at_the_negation_boundary_is_a_checked_overflow`）。
+
+## 10. 测试锚点索引（`#[cfg(test)] mod tests`，25 个测试 + 3 个辅助）
+
+辅助：`a2()`（标准 A2 datum）、`ladder_member_vectors(roots, set)`（成员坐标排序向量）、`ladder_coordinate_boundary_case(dual)`。
+
+| 测试 | 钉住的行为 |
+|---|---|
+| `enumerates_a2_in_deterministic_coordinate_order` | A2 六根的字典序与 `[1,1]` 的简单坐标 `[1,1]`。 |
+| `positivity_and_simple_ids_are_precomputed` | A2 正根数 3、简单 ID 数 2、简单根坐标为单位向量且 `is_positive == Some(true)`；全表 `is_positive` 与“任一分量 > 0”一致。 |
+| `budget_is_an_explicit_resource_error` | 包装器映射 `ResourceLimitExceeded { limit: 1 }`。 |
+| `pairs_a2_coroots_with_roots_in_stable_order` | A2 六根各自配对余根的具体坐标（含 `[-2,1]`、`[1,-2]` 等）。 |
+| `pairs_non_simply_laced_b2_coroots` | B2 非单系带：`[1,1]↦[2,0]`、`[1,2]↦[0,1]`。 |
+| `keeps_a_central_coweight_coordinate_for_both_signs` | 秩 2 / 半单秩 1 datum：中心余根坐标在两符号下保持（`[2,1]` 与 `[-2,-1]`）。 |
+| `b2_min_roots_...` / `b2_min_coroots_...` / `g2_min_roots_...` | oracle 梯子底成员集合（出处见 §7【注释】）。 |
+| `ladder_bottoms_match_brute_force_subtraction` | 与 `combine_roots` 暴力对照（A2/B2/G2）。 |
+| `ladder_bottoms_reject_an_out_of_range_id` | `RootId(6)` → `None` ×2。 |
+| `ladder_coordinate_boundary_roots` / `..._coroots` | 坐标极值下梯子成员判定不溢出、不拒绝。 |
+| `a_pure_torus_has_empty_ladder_tables` / `a_pure_torus_has_no_pairs` | 纯环面的空表与空枚举。 |
+| `every_stored_pair_has_self_bracket_two` | A2、B2 每根 `bracket(id, id) == Ok(2)`。 |
+| `bracket_rejects_an_out_of_range_id` | `IndexOutOfRange { index: 6, upper_bound: 6 }`。 |
+| `enumerated_weyl_actions_transport_roots_and_coroots_together` | A2 全部 6 个 Weyl 作用下 `action_permutation` 与 `act_on_coweight` 的一致性。 |
+| `rejects_an_injected_coroot_conflict` | 直接注入 `Closure`：同根异余根 → `"coroot agreement"`。 |
+| `rejects_a_candidate_without_self_pairing_two` | 自配对非 2 → `"self pairing"`。 |
+| `each_budget_limit_rejects_with_its_named_resource` | 四种命名资源拒绝及限额边界（见 §5）。 |
+| `discovery_beyond_the_root_limit_is_the_named_runtime_rejection` | 运行时基数拒绝路径。 |
+| `wrapper_behavior_is_preserved` | `enumerate(a1, usize::MAX)` 得 2 根；`complete_for` 与包装器结果全等。 |
+| `thirty_three_a1_factors_stay_dynamic_under_a_complete_budget` | 秩 33 的完整预算下动态枚举 66 根。 |
+| `a_seed_coroot_at_the_negation_boundary_is_a_checked_overflow` | 种子余根 `i32::MIN` 取反 → `ArithmeticOverflow`。 |
+
+## 11. 限制与未覆盖面（本文件视角）
+
+- 【实现】`RootSystemBudget` 无字段读取器、无校验；`RootSet` 无公开构造/修改入口；`RootSystem` 不暴露 `coroots` 整表切片（仅 `coroot(id)` 与 `entries()`）。
+- 【实现】`RootId::from_usize` / `RootId::index` 在本文件测试中未被直接使用（测试用 crate 内 `RootId(...)` 构造与 `.0` 访问）。
+- 【实现】以下错误路径在本文件测试中未见直接触发：`DatumMismatch`、`InvalidRootAutomorphism`、`AllocationFailed`、包装器映射中“其它 resource 原样透传”的分支。
+- 【实现】`combine_roots` 的 `Ok(Some(_))` 值本身未被断言，仅在暴力对照中以“是否存在”参与比较。
+- 【实现】梯子底表总是在构造时全量预计算（每对 `(alpha, beta)` 两次坐标差），无惰性选项；此处仅陈述结构，不作复杂度评价。
+- 【实现】`RootSystem`/`RootSet`/`RootSystemBudget` 未派生 `Hash` 或序列化相关 trait。
+- 【注释】多处上游对应关系（`RootNbrSet`、rootdata.h 行号、`root_ladder_bottoms`、HPC 捕获编号、Atlas3868832 的“十一个边界用例”、B2/G2 正根序约定）仅为注释声称，收录前需对照上游源码与捕获数据核对。
+- 【推断】文档注释称自配对/余根一致性检查“无公开 datum 构造路径可达”，而测试通过直接注入私有 `Closure` 覆盖之——两条不变量目前只能由防御性检查与注入测试保障。
+
+## 12. 建议维护者核对清单
+
+1. `entry_bound`/`step_bound` 公式中各加项与注释所述覆盖范围（借入 datum、快照、map、队列、在途候选）是否仍与实现一致。
+2. §7 中“十一 vs 八”的边界用例数量差异。
+3. `enumerate` 的错误映射是否应继续只 remap `"roots"`（其它 resource 在 `complete_for` 下是否真不可达）。
+4. 上游引用（rootdata.h:154-157、270-273；HPC capture 3535636；Atlas3868832）是否可改为带永久链接的引用。
+5. `widened` 的 `unwrap_or(u128::MAX)` 是否保留为防御写法或在文档中注明其在目标平台上不可达。
+```
+
+（以上为草案全文；请维护者按 §12 逐条核对后再收录进 `kb/sources/`。）

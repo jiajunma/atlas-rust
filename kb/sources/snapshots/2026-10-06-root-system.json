@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "bc188268",
+  "working_tree": true,
+  "scope": "First reading of the ordinary root system layer for the new root-system source packet: RootId/RootSet/RootSystemBudget, the BFS closure enumeration, accessor semantics, the ladder-bottom tables with the accepted overflow-answers-membership repair, and the 25-test anchor set.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/root_system.rs",
+      "sha256": "cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9",
+      "note": "dirty working tree (transition snapshot; these bytes equal the ladder-AFTER-v3-accepted final hash); hash identifies the inspected bytes only"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_f48b95e2-c617-4d8b-8dc7-ef02a755fe6b",
+    "prompt_sha256": "7ffe9c89a9c557a2eafabfca2f432389bb9d3cab2ff2a7d483ba5b9f7e203dea",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/root-system-probe",
+    "stdout_jsonl_sha256": "83b1262cd8be1f89651359dc1ceb649085cbce36f4bf8b438bcbd300f4274fb1",
+    "draft_sha256": "71ca673531e2a3f992bf9d24cbc1f143f71ddd186ff339b08c0686e4e8b4ce4d",
+    "result": "completed, exit 0, 342.7s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The draft independently flagged the eleven-vs-eight case-count gap between the 3868832 comment and the pinned unit tests — exactly the kind of cross-reference discrepancy the review step exists for."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream and capture references are transcribed from comments, not re-verified here."
+}

@@ -372,3 +372,12 @@ AdjointCartanFiber 的预算分层、绑定语义与 FiberToAdjoint 按需映射
 单文件，exit 0，253.7s），维护者对照源码逐条核对改写；草案正确捕捉到
 real_r/imaginary_r 交叉赋值与 simple_basis 外层终止怪癖。索引与
 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增普通根系来源包（Kimi probe 协助）
+
+新增 `sources/root-system.md` 与快照 `2026-10-06-root-system.json`：
+RootSystem 的三表对齐存储、BFS 闭包枚举、RootSystemBudget 语义、梯子底表
+与「溢出即非成员」修复形态、25 个测试锚点。同一 Kimi probe 路由起草
+（exit 0，342.7s），维护者对照源码逐条核对改写；草案独立发现注释
+「十一边界用例」与实测八组的数量差异，已记录待核。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。
