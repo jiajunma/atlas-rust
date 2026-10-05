@@ -426,6 +426,17 @@ ModTwoSubquotient 的补基与诱导映射双侧校验。对应
 probe 路由起草（1300s 期限，exit 0，458.1s——~24s/KB 规则成立），维护者
 对照源码逐条核对改写。该包是结构性阅读，不声称这两层的数学验收。
 
+[实投影像基与整数矩阵约化](real-projection-matreduc.md)记录
+`real_projection.rs` 与 `matreduc.rs`：(1−θ)X* 像基对的播种/运输/自校验、
+带符号 gcd_sweep 与 E6 involution-187 注释、幺模整数逆、IntMatrix 与
+operation-faithful diagonalise 的行列式符号簿记（含 row_minus 覆盖赋值
+怪癖）、has_solution/find_solution/in_*_image、inverse_upper_triangular、
+exp_i。对应
+[阅读快照](snapshots/2026-10-06-real-projection-matreduc.json)；草案由同一
+Kimi probe 路由起草（1200s 期限，exit 0，455.9s），维护者对照源码逐条
+核对改写（含符号簿记逐行追踪）。该包是结构性阅读，不声称这两层的数学
+验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

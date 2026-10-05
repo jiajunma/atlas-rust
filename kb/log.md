@@ -545,3 +545,13 @@ insert_action 死代码、as i32 截断、枚举序无锚定）均属实并保�
 probe 路由起草（1300s 期限，exit 0，458.1s；~24s/KB 超时规则成立），
 维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
 测试或 compiler 生成。
+
+## 2026年10月6日 新增实投影/矩阵约化来源包（Kimi probe 协助）
+
+新增 `sources/real-projection-matreduc.md` 与快照
+`2026-10-06-real-projection-matreduc.json`：(1−θ) 像基对、带符号
+gcd_sweep、幺模整数逆、diagonalise 符号簿记逐行追踪、
+has_solution/find_solution/in_*_image、inverse_upper_triangular、exp_i。
+同一 Kimi probe 路由起草（1200s，exit 0，455.9s），维护者对照源码逐条
+核对改写；草案的 row_minus 簿记追踪与非受检算术不对称观察均属实并保留。
+索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。

@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "9407fac6",
+  "working_tree": false,
+  "scope": "First reading of the per-involution (1-theta) image-basis pair and the exact integer matrix reduction layer for the new real-projection-matreduc source packet: RealProjection build/transported/check_against, the signed gcd_sweep with its E6 involution-187 sign note, invert_integer_matrix, IntMatrix and the operation-faithful diagonalise with determinant-sign bookkeeping, has_solution/find_solution/in_*_image, inverse_upper_triangular, exp_i.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/real_projection.rs",
+      "sha256": "bd76f5d1f170cb0ae27f5b5d9ee36a34b6a406448deb068b2d86a052edb3f5e3",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/matreduc.rs",
+      "sha256": "49897e12a2572dffa8d9ce34022308d871d2a9893836732d035563be6a97cb92",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_618bada1-0cfd-4d9e-af40-3bb4241bc4c1",
+    "prompt_sha256": "30e835a6c35b64ab2caf952135dda469c25583dd2b65059e9cb0b16c49cbb4f7",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/real-projection-matreduc-probe",
+    "stdout_jsonl_sha256": "e631c2a7960345856296dd97f94066c060350a9649a6c867e824f467dfa282da",
+    "draft_sha256": "4737b5af595e175eec2a5e3f281036f3f5ea1ee3d7feab6d383d0e747f4e4378",
+    "result": "completed, exit 0, 455.9s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The draft's trickiest claim (the row_minus overwrite vs final-xor bookkeeping in diagonalise) traced exactly against the source lines; its unchecked-arithmetic asymmetry observation in invert_integer_matrix and the untested-transported gap are retained in the packet."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}
