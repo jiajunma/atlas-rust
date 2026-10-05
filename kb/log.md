@@ -535,3 +535,13 @@ compose_fast 热路径、CompactWeyl+rayon 枚举管线、RootInvolutionData
 维护者对照源码逐条核对改写；草案的复核清单（datum 进 Eq 的张力、
 insert_action 死代码、as i32 截断、枚举序无锚定）均属实并保留。
 索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增分级/模二来源包（Kimi probe 协助）
+
+新增 `sources/grading-mod-two.md` 与快照
+`2026-10-06-grading-mod-two.json`：Grading 语义、CartanGradingData 构造与
+增广消元求逆、ModTwoSubspace RREF/低主元、CanonicalModTwoSection 64 列
+掩码与 2^12 穷举 oracle、ModTwoSubquotient 与诱导映射校验。同一 Kimi
+probe 路由起草（1300s 期限，exit 0，458.1s；~24s/KB 超时规则成立），
+维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
+测试或 compiler 生成。

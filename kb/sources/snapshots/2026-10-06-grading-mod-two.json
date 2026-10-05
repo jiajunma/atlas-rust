@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "3b521daa",
+  "working_tree": false,
+  "scope": "First reading of the compactness grading tables and the dynamic F2 linear-algebra layer for the new grading-mod-two source packet: Grading semantics, CartanGradingData build gates, the augmented-elimination inverse, ModTwoVector/ModTwoSubspace RREF discipline, CanonicalModTwoSection's 64-column mask, ModTwoSubquotient and induced-map validation.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/grading.rs",
+      "sha256": "a9fe00ba591079815895020e6a11f22ac4a2706a35cfd8592b827eaba6a5c654",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/mod_two.rs",
+      "sha256": "945e867e328cb8188a78f5148134c03159618318d4b122588ff0afe1b540cade",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_1a578087-45b9-4397-b254-02f172c45755",
+    "prompt_sha256": "73b2d8e4a1c9a0b02c8a5b36a358ec1ed8c5c088df3844ae87381c3ddbfa98c8",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/grading-mod-two-probe",
+    "stdout_jsonl_sha256": "d9af271594d9dbd0d5d7848cd8e22bc0e25f184bb19e5f82e62e220679269936",
+    "draft_sha256": "464d6f5d354ecfd085562f27390974b19e6a9ee1a0bb28b337bb61ae7ede5289",
+    "result": "completed, exit 0, 458.1s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The 54.8KB prompt completed in 458s under the revised ~24s/KB rule (1300s deadline was ample). The error-variant census with per-branch test anchors, the from_ones duplicate-toggle semantics, and the augmented-elimination description were all exact."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

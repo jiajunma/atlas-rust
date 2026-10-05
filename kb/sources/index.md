@@ -417,6 +417,15 @@ exit 0，326.1s；超时规则上修为 ~24s/KB），维护者对照源码逐条
 Kimi probe 路由起草（600s 期限，exit 0，327.7s），维护者对照源码逐条
 核对改写。该包是结构性阅读，不声称这两层的数学验收。
 
+[紧性分级与动态 F₂ 层](grading-mod-two.md)记录 `grading.rs` 与
+`mod_two.rs`：Grading 语义与类型区分动机、CartanGradingData 的构造门槛与
+增广消元求逆、ensure_faithful_shifts 的断言改拒绝、ModTwoSubspace 的
+RREF/低主元纪律、CanonicalModTwoSection 的 64 列掩码与依赖列丢弃、
+ModTwoSubquotient 的补基与诱导映射双侧校验。对应
+[阅读快照](snapshots/2026-10-06-grading-mod-two.json)；草案由同一 Kimi
+probe 路由起草（1300s 期限，exit 0，458.1s——~24s/KB 规则成立），维护者
+对照源码逐条核对改写。该包是结构性阅读，不声称这两层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
