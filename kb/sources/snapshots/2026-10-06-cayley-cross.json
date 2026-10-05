@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "356b5e13",
+  "working_tree": false,
+  "scope": "First reading of the Cayley/cross decomposition and the integral involution classification for the new cayley-cross source packet: the build provenance gate, the peeling loop with its budget placement, reverse-replay collection, long_orthogonalize, the replay verification, classify_involution's budget-first order, classify_plus_identity, and fiber_rank.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/cayley_cross.rs",
+      "sha256": "ef00afbb563330a581b44a185c340aa0ec8b2f30653a9ea61653d6043e00f2b0",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/involution_classification.rs",
+      "sha256": "0d5b44aa4e55267df2bb3472952d9ef44311843f9b759db21b5b9768f3b1557a",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_c697c021-7a8a-42b7-82ef-6be4449b32d2",
+    "prompt_sha256": "d464bb404b2e557b83b27374afa4baccf638c9c861a30d5ea5cc8278be991479",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/cayley-cross-probe",
+    "stdout_jsonl_sha256": "06bd3ed35b567d68d006c1b1ffc4992f9d17bd35d0538b96be392f08edcf59a8",
+    "draft_sha256": "1c2dd114a52d06fc9e3c85139ccaab1f9190b7367231361c66e2dd90f3dfc032",
+    "result": "completed, exit 0, 347.5s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "Two-file probe #4: accurate again, including the budget-check placement (after descent discovery, before stepping) and the saturating_sub asymmetry in fiber_rank."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; no upstream references are re-verified here."
+}

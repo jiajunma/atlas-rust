@@ -389,3 +389,12 @@ first-fresh-vertex 分量合并、秩二 B/C 给定序规则、各型起点选�
 交换、bourbaki_permutation、folded_cartan。同一 Kimi probe 路由起草（exit 0，
 375.2s），维护者对照源码逐条核对改写；草案的错误位点表与可达性标注加速了
 核对。索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增 Cayley/Cross 与整对合分类来源包（Kimi probe 协助）
+
+新增 `sources/cayley-cross.md` 与快照 `2026-10-06-cayley-cross.json`：
+CayleyCrossDecomposition 的 provenance 门、peeling 预算位置、逆序重放与
+重放验证；classify_involution 的预算先行、classify_plus_identity 公式、
+fiber_rank。同一 Kimi probe 路由起草（33KB 两文件，exit 0，347.5s），
+维护者对照源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、
+测试或 compiler 生成。

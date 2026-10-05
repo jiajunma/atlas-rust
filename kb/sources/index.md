@@ -286,6 +286,15 @@ first-fresh-vertex 分量合并、秩二 B/C 由给定顺序决定（历史编�
 （exit 0，375.2s），维护者对照源码逐条核对改写。该包是结构性阅读，不声称
 分类器的数学验收。
 
+[Cayley/Cross 分解与整对合分类](cayley-cross.md)记录 `cayley_cross.rs` 与
+`involution_classification.rs`：`CayleyCrossDecomposition::build` 的
+provenance 门、peeling 循环（预算检查在 descent 发现之后、步进之前）、
+逆序重放收集、长根化与重放验证；`classify_involution` 的预算先行顺序、
+`classify_plus_identity` 的三个秩公式与 `fiber_rank` 的 saturating_sub。
+对应[阅读快照](snapshots/2026-10-06-cayley-cross.json)；草案由同一 Kimi
+probe 路由起草（exit 0，347.5s），维护者对照源码逐条核对改写。该包是
+结构性阅读，不声称两条线的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
