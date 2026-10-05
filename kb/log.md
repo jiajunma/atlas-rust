@@ -503,3 +503,13 @@ Kimi probe 路由起草（620s 期限，exit 0，242.7s），维护者对照源�
 核对改写；20 个 BlockInvariantViolation 字面量普查精确，dual_position
 静默覆盖等阅读观察保留。索引与 sources/index.md 已同步；未运行编译、
 测试或 compiler 生成。
+
+## 2026年10月6日 新增扭对合/分类/反射字来源包（Kimi probe 协助）
+
+新增 `sources/twisted-involution-trio.md` 与快照
+`2026-10-06-twisted-involution-trio.json`：TwistedInvolution 构造门槛、
+compose_matrices 怪癖、compact/complex/split 秩核、fiber_rank、
+reflection_word 贪心扫描与无上限循环。同一 Kimi probe 路由起草
+（300s，exit 0，274.4s），维护者对照源码逐条核对改写；草案标记的四处
+防御策略不一致均属实并保留为复核备注。索引与 sources/index.md 已同步；
+未运行编译、测试或 compiler 生成。

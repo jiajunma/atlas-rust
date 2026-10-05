@@ -390,6 +390,16 @@ first 映射」规则）。对应[阅读快照](snapshots/2026-10-06-block.json)
 同一 Kimi probe 路由起草（620s 期限，exit 0，242.7s），维护者对照源码逐条
 核对改写。该包是结构性阅读，不声称块层的数学验收。
 
+[扭对合/对合分类/反射字三件套](twisted-involution-trio.md)记录
+`twisted_involution.rs`、`involution_classification.rs` 与
+`root_reflection.rs`：TwistedInvolution 的五重构造门槛与 compose_matrices
+的 actual 填报怪癖、compact/complex/split 秩核与 fiber_rank 的
+saturating/checked 策略并存、reflection_word 的贪心扫描与反转约定（无
+迭代上限）。对应
+[阅读快照](snapshots/2026-10-06-twisted-involution-trio.json)；草案由同一
+Kimi probe 路由起草（300s 期限，exit 0，274.4s），维护者对照源码逐条
+核对改写。该包是结构性阅读，不声称这三层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

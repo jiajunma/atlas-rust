@@ -1,0 +1,36 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "b4237ec7",
+  "working_tree": false,
+  "scope": "First reading of three small shared utility files for the new twisted-involution-trio source packet: TwistedInvolution's provenance gates and compose_matrices, InvolutionClassification's compact/complex/split rank kernel and fiber_rank, and reflection_word's greedy scan with its reversed-word convention.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/twisted_involution.rs",
+      "sha256": "0f50f8062132380e5cb4845f65c910e8fd29bd69c61760608a36549712aa43ac",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/involution_classification.rs",
+      "sha256": "0d5b44aa4e55267df2bb3472952d9ef44311843f9b759db21b5b9768f3b1557a",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/root_reflection.rs",
+      "sha256": "15740413ac78e7962fa1a25da22531473e2dde2e710134822072de634ead440b",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_d04f7d81-a81c-45e3-9f5d-bcd49d612979",
+    "prompt_sha256": "b3d1bf900c3fd0165975a48c0905e8d4caf1ee57f246c4b8facedb9bac2063fe",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/twisted-involution-trio-probe",
+    "stdout_jsonl_sha256": "06fcffa462924d165f2639bc034314adbdd47b03e660d97a9427b704c7c544f0",
+    "draft_sha256": "4bb0a3154af82e16457d252de2e42623a9f89b3ce990089c9b2a9d5476fec8de",
+    "result": "completed, exit 0, 274.4s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "Every gate order, error literal and test assertion was exact; the draft's flagged inconsistencies (compose_matrices' actual=right.len() quirk, saturating_sub vs checked_sub, wrapping vs checked arithmetic layering, reflection_word's missing iteration cap) are all real and retained in the packet as review notes."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}
