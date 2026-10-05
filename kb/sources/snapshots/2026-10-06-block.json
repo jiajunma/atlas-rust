@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "69ef89d1",
+  "working_tree": false,
+  "scope": "First reading of the block layer for the new block source packet: BlockDescent's Value order/dual/language-code tables, dual_involution, the fibred-product build with its empty-dual-packet semantics, the i1/i2 Cayley slot sharing, the access-time weak-descent forcing, the dual() data transform, and the 7 rank-1 test anchors.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/block.rs",
+      "sha256": "3d3a88fa0bfc3ab7cf45b055883f3a7e9c37e5c7928e39bbc981b723883c9d8e",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_afd10e19-cc8c-40ca-b11d-2826b2359fcf",
+    "prompt_sha256": "b7b91f6b20e20dbd4b35ab4f4e3ed689d24a0e38848273565f08b18db8b46b81",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/block-probe",
+    "stdout_jsonl_sha256": "47afb2b07bfef7b4cb44bae09cfad5319709ad1046ab4bfd96cfd18170c10458",
+    "draft_sha256": "8c40ebb06c43bf031cd3f898a66fcbdc834c8ec02dbee36784897ce09fd3e3ae",
+    "result": "completed, exit 0, 242.7s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "All 20 BlockInvariantViolation literals, the i2 fall-through into the i1 branch, the access-time (None,None) forcing at weak descents, and the dual_position silent-overwrite observation were exact; the draft's uncovered-branch list (multi-generator layouts, error paths, empty packets) is retained in the packet."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

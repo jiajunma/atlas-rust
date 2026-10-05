@@ -493,3 +493,13 @@ GlobalTorusElement 的约化纪律与算术历史、x_pack 指纹、基本纤维
 核对改写；草案的错误字面量普查、status/cross 参数序不对称、
 torus_label 吞错与 print_layout 传播的不一致、panic 面清单均精确并保留。
 索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增块图源码包（Kimi probe 协助）
+
+新增 `sources/block.md` 与快照 `2026-10-06-block.json`：BlockDescent 表、
+dual_involution、纤维积 build、i1/i2 Cayley 槽共享与 fall-through、
+访问器弱下降强制、dual() 变换、7 个秩1测试锚点与未覆盖面。同一
+Kimi probe 路由起草（620s 期限，exit 0，242.7s），维护者对照源码逐条
+核对改写；20 个 BlockInvariantViolation 字面量普查精确，dual_position
+静默覆盖等阅读观察保留。索引与 sources/index.md 已同步；未运行编译、
+测试或 compiler 生成。
