@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "64e21309",
+  "working_tree": false,
+  "scope": "First reading of the dual-component-group topology and the real-form naming layer for the new topology-form-name source packet: dual_pi0, CorootRestriction, the shared transport pipeline behind dual_component_group_trivial/rank; split/complex_name/factor_name rule tables and form_type_name's pull-back loop.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/topology.rs",
+      "sha256": "f58e25c9290d7a5e2c94139d6907fd6c8f2b8c97b502c48f203a949fcd9bf514",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/form_name.rs",
+      "sha256": "681a20e10fc305d0d17eae0868d61d52107aa77eb83989554bac0e8ed58d9fe7",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_4f3dccd3-8464-4b54-919f-516fc7c7abcf",
+    "prompt_sha256": "680b1838688df675fb8ba936c1f9198bdca39dba1c66d638c5baf690d1dbebea",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/topology-form-name-probe",
+    "stdout_jsonl_sha256": "ed044bd6c3c5d6421fba62244181e17fd3e5d66bb54c7aa22de1d29627a06d85",
+    "draft_sha256": "c451de192bae600fbfbee7e25ecdba6ca680e247f042cd6bd7be7889aaf769f6",
+    "result": "completed, exit 0, 264.2s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The draft's factor_name rule table was exact, including the D-branch parity conditions and the E8 0xCC mask comment; the duplicated-pipeline drift observation (trivial vs rank) is retained in the packet."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

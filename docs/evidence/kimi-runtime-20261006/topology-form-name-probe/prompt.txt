@@ -1,0 +1,785 @@
+你是 Atlas Rust 重实现项目的文档助理。任务：为两个同源 Rust 源文件起草一份中文知识来源包（source packet）草案，供维护者逐条核对后收录进 kb/sources/。
+
+严格规则：
+- 只依据下面给出的两个源文件字节；不要引用你没有读到的代码、文档或历史。
+- 区分「已实现行为」与「阅读推断」；不做任何数学验收、性能或正确性声明。
+- 保留精确的符号名、类型名、错误类型与边界条件（Result/错误分支、预算、顺序保证、panic/断言）。
+- 输出只是一份 Markdown 草案，开头必须是 frontmatter：
+  ---
+  title: <中文标题>
+  source: atlas-rust/topology-form-name
+  ingestedAt: 2026-10-06T00:00:00Z
+  ---
+- 先给出每个文件完整的「裸签名清单」（所有 pub/pub(crate) fn/struct/enum/trait 与可见 impl 块，含无注释项），再逐项解释：topology.rs 的对偶分量群平凡性判定（dual_component_group_trivial 及其辅助）；form_name.rs 的命名表/规则。两文件的接口关系（它们共同服务 presentation 层）；测试锚点；限制与未覆盖面。
+
+文件：crates/atlas-real-group/src/topology.rs（完整字节）：
+```rust
+//! Connectedness of a real form: the dual component group of its most split
+//! Cartan (`topology::dual_component_group_basis`, topology.cpp:165-192).
+//!
+//! With `B` the lattice basis whose columns are the simple coroots followed
+//! by a basis of the radical of the coweight lattice, `i_sw = B^t theta
+//! B^{-t}` is the involution transported to the simply-connected cover's
+//! weight lattice (upstream `theta.transposed().on_basis(basis).transposed()`).
+//! The dual component group is the kernel of the restriction map
+//! `dualPi0(theta) -> dualPi0(i_sw)` induced by `B_z^t mod 2`, where `B_z`
+//! is `B` with its radical columns zeroed; the real form is connected
+//! exactly when that kernel vanishes, i.e. when the induced map is injective.
+
+use malachite::base::num::arithmetic::traits::Floor;
+use malachite::base::num::basic::traits::Zero;
+use malachite::Rational;
+
+use crate::integer_lattice::{
+    reduce_basis_mod_two, saturated_kernel, IntegerLatticeBudget, IntegerMatrix, IntegralBasis,
+};
+use crate::mod_two::{ModTwoAmbientMap, ModTwoSubquotient, ModTwoSubspace, ModTwoVector};
+use crate::real_form_seed::invert_rational;
+use crate::{BasedRootDatum, StructureError};
+
+/// The `tori::dualPi0` subquotient of an involution: the mod-two kernel of
+/// `theta + 1` modulo the mod-two image of the saturated `+1` eigenlattice
+/// (tori.cpp:162-176, `eigen_lattice(theta, 1)`).
+fn dual_pi0(
+    theta: &[Vec<i32>],
+    budget: &IntegerLatticeBudget,
+) -> Result<ModTwoSubquotient, StructureError> {
+    let rank = theta.len();
+    let mut forms = ModTwoSubspace::new(rank)?;
+    for (row_index, row) in theta.iter().enumerate() {
+        if row.len() != rank {
+            return Err(StructureError::InvalidIntegerMatrixShape);
+        }
+        let ones: Vec<usize> = row
+            .iter()
+            .enumerate()
+            .filter(|(column, &value)| {
+                let diagonal = i32::from(*column == row_index);
+                (value + diagonal) % 2 != 0
+            })
+            .map(|(column, _)| column)
+            .collect();
+        forms.insert(ModTwoVector::from_ones(rank, ones)?)?;
+    }
+    let numerator = forms.right_kernel()?;
+
+    let mut minus_identity = Vec::with_capacity(rank);
+    for (row_index, row) in theta.iter().enumerate() {
+        let mut converted = Vec::with_capacity(rank);
+        for (column, &value) in row.iter().enumerate() {
+            converted.push(value - i32::from(column == row_index));
+        }
+        minus_identity.push(converted);
+    }
+    let eigen = saturated_kernel(
+        &IntegerMatrix::from_i32_rows(&minus_identity, budget)?,
+        budget,
+    )?;
+    let denominator = reduce_basis_mod_two(&eigen)?;
+    ModTwoSubquotient::new(numerator, denominator)
+}
+
+/// The restriction map `x -> B_z^t x mod 2` on ambient mod-two spaces.
+struct CorootRestriction {
+    /// `B` with the radical columns zeroed; columns index the map output.
+    zeroed: Vec<Vec<i32>>,
+}
+
+impl ModTwoAmbientMap for CorootRestriction {
+    fn source_dimension(&self) -> usize {
+        self.zeroed.len()
+    }
+
+    fn target_dimension(&self) -> usize {
+        self.zeroed.len()
+    }
+
+    fn apply(&self, source: &ModTwoVector) -> Result<ModTwoVector, StructureError> {
+        if source.dimension() != self.zeroed.len() {
+            return Err(StructureError::RankMismatch {
+                expected: self.zeroed.len(),
+                actual: source.dimension(),
+            });
+        }
+        let rank = self.zeroed.len();
+        let mut ones = Vec::new();
+        for column in 0..rank {
+            let mut parity = false;
+            for (row, source_row) in self.zeroed.iter().enumerate() {
+                if source_row[column] % 2 != 0 && source.bit(row) == Some(true) {
+                    parity = !parity;
+                }
+            }
+            if parity {
+                ones.push(column);
+            }
+        }
+        ModTwoVector::from_ones(rank, ones)
+    }
+}
+
+fn rational_matrix(matrix: &[Vec<i32>]) -> Vec<Vec<Rational>> {
+    matrix
+        .iter()
+        .map(|row| row.iter().map(|&value| Rational::from(value)).collect())
+        .collect()
+}
+
+fn rational_product(
+    left: &[Vec<Rational>],
+    right: &[Vec<Rational>],
+) -> Result<Vec<Vec<Rational>>, StructureError> {
+    let rank = left.len();
+    let mut product = vec![vec![Rational::ZERO; rank]; rank];
+    for (row, target_row) in product.iter_mut().enumerate() {
+        for (column, entry) in target_row.iter_mut().enumerate() {
+            let mut sum = Rational::ZERO;
+            for middle in 0..rank {
+                sum += left[row][middle].clone() * right[middle][column].clone();
+            }
+            *entry = sum;
+        }
+    }
+    Ok(product)
+}
+
+fn integral_entry(value: &Rational) -> Result<i32, StructureError> {
+    let floored = value.clone().floor();
+    if *value != floored {
+        return Err(StructureError::LayoutInvariantViolation {
+            invariant: "simply-connected involution integrality",
+        });
+    }
+    i32::try_from(&floored).map_err(|_| StructureError::ArithmeticOverflow)
+}
+
+/// Whether the dual component group of a Cartan involution is trivial
+/// (the `IsConnected` status bit of realredgp.cpp:73-75).
+///
+/// `theta` is the weight-lattice matrix of the Cartan involution of the
+/// form's most split Cartan; `budget` bounds the integer-lattice reductions.
+pub(crate) fn dual_component_group_trivial(
+    theta: &[Vec<i32>],
+    datum: &BasedRootDatum,
+    budget: &IntegerLatticeBudget,
+) -> Result<bool, StructureError> {
+    let rank = datum.lattice_rank();
+    let semisimple_rank = datum.semisimple_rank();
+    if theta.len() != rank || theta.iter().any(|row| row.len() != rank) {
+        return Err(StructureError::InvalidIntegerMatrixShape);
+    }
+
+    // The radical of the coweight lattice: kernel of the simple roots.
+    let root_rows: Vec<Vec<i32>> = datum
+        .simple_roots()
+        .iter()
+        .map(|root| root.as_slice().to_vec())
+        .collect();
+    let radical = if root_rows.is_empty() {
+        // Rootless datum (T_k): the radical is the whole lattice.
+        IntegralBasis::full_space(rank)
+    } else {
+        saturated_kernel(&IntegerMatrix::from_i32_rows(&root_rows, budget)?, budget)?
+    };
+    if radical.rank() != rank - semisimple_rank {
+        return Err(StructureError::LayoutInvariantViolation {
+            invariant: "radical rank",
+        });
+    }
+
+    // B: simple coroot columns, then radical columns.
+    let mut basis = vec![vec![0_i32; rank]; rank];
+    for (column, coroot) in datum.simple_coroots().iter().enumerate() {
+        for (row, &value) in coroot.as_slice().iter().enumerate() {
+            basis[row][column] = value;
+        }
+    }
+    for (offset, column) in radical.columns().iter().enumerate() {
+        for (row, value) in column.iter().enumerate() {
+            basis[row][semisimple_rank + offset] =
+                i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?;
+        }
+    }
+
+    // i_sw = B^t theta B^{-t}, computed over the rationals with an
+    // integrality check (upstream `on_basis` divides exactly).
+    let transposed: Vec<Vec<i32>> = (0..rank)
+        .map(|row| (0..rank).map(|column| basis[column][row]).collect())
+        .collect();
+    let transposed_rational = rational_matrix(&transposed);
+    let inverse_columns = invert_rational(&transposed_rational)?;
+    let inverse = (0..rank)
+        .map(|row| {
+            (0..rank)
+                .map(|column| inverse_columns[column][row].clone())
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let theta_rational = rational_matrix(theta);
+    let product = rational_product(
+        &rational_product(&transposed_rational, &theta_rational)?,
+        &inverse,
+    )?;
+    let mut transported = Vec::with_capacity(rank);
+    for row in &product {
+        let mut converted = Vec::with_capacity(rank);
+        for value in row {
+            converted.push(integral_entry(value)?);
+        }
+        transported.push(converted);
+    }
+
+    let source = dual_pi0(theta, budget)?;
+    let target = dual_pi0(&transported, budget)?;
+
+    // The induced map between the subquotients must descend; its
+    // injectivity is exactly the triviality of the dual component group.
+    let mut zeroed = basis;
+    for row in zeroed.iter_mut() {
+        for entry in row.iter_mut().take(rank).skip(semisimple_rank) {
+            *entry = 0;
+        }
+    }
+    let map = CorootRestriction { zeroed };
+    source.validate_induced_map_to(&target, &map)?;
+
+    let mut image = ModTwoSubspace::new(target.dimension())?;
+    for representative in source.basis_representatives() {
+        let mapped = map.apply(representative)?;
+        let coordinates = target.to_coordinates(mapped)?;
+        image.insert(coordinates)?;
+    }
+    Ok(image.rank() == source.dimension())
+}
+
+/// The rank of the dual component group of a Cartan involution: the
+/// dimension of the kernel of the induced restriction map, i.e. the size of
+/// the `dualComponentReps` basis (topology.cpp:165-192 `m2.kernel()`).
+/// `dual_component_group_trivial` is exactly `rank == 0`.
+pub fn dual_component_group_rank(
+    theta: &[Vec<i32>],
+    datum: &BasedRootDatum,
+    budget: &IntegerLatticeBudget,
+) -> Result<usize, StructureError> {
+    let rank = datum.lattice_rank();
+    let semisimple_rank = datum.semisimple_rank();
+    if theta.len() != rank || theta.iter().any(|row| row.len() != rank) {
+        return Err(StructureError::InvalidIntegerMatrixShape);
+    }
+
+    let root_rows: Vec<Vec<i32>> = datum
+        .simple_roots()
+        .iter()
+        .map(|root| root.as_slice().to_vec())
+        .collect();
+    let radical = if root_rows.is_empty() {
+        // Rootless datum (T_k): the radical is the whole lattice.
+        IntegralBasis::full_space(rank)
+    } else {
+        saturated_kernel(&IntegerMatrix::from_i32_rows(&root_rows, budget)?, budget)?
+    };
+    if radical.rank() != rank - semisimple_rank {
+        return Err(StructureError::LayoutInvariantViolation {
+            invariant: "radical rank",
+        });
+    }
+
+    let mut basis = vec![vec![0_i32; rank]; rank];
+    for (column, coroot) in datum.simple_coroots().iter().enumerate() {
+        for (row, &value) in coroot.as_slice().iter().enumerate() {
+            basis[row][column] = value;
+        }
+    }
+    for (offset, column) in radical.columns().iter().enumerate() {
+        for (row, value) in column.iter().enumerate() {
+            basis[row][semisimple_rank + offset] =
+                i32::try_from(value).map_err(|_| StructureError::ArithmeticOverflow)?;
+        }
+    }
+
+    let transposed: Vec<Vec<i32>> = (0..rank)
+        .map(|row| (0..rank).map(|column| basis[column][row]).collect())
+        .collect();
+    let transposed_rational = rational_matrix(&transposed);
+    let inverse_columns = invert_rational(&transposed_rational)?;
+    let inverse = (0..rank)
+        .map(|row| {
+            (0..rank)
+                .map(|column| inverse_columns[column][row].clone())
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    let theta_rational = rational_matrix(theta);
+    let product = rational_product(
+        &rational_product(&transposed_rational, &theta_rational)?,
+        &inverse,
+    )?;
+    let mut transported = Vec::with_capacity(rank);
+    for row in &product {
+        let mut converted = Vec::with_capacity(rank);
+        for value in row {
+            converted.push(integral_entry(value)?);
+        }
+        transported.push(converted);
+    }
+
+    let source = dual_pi0(theta, budget)?;
+    let target = dual_pi0(&transported, budget)?;
+
+    let mut zeroed = basis;
+    for row in zeroed.iter_mut() {
+        for entry in row.iter_mut().take(rank).skip(semisimple_rank) {
+            *entry = 0;
+        }
+    }
+    let map = CorootRestriction { zeroed };
+    source.validate_induced_map_to(&target, &map)?;
+
+    let mut image = ModTwoSubspace::new(target.dimension())?;
+    for representative in source.basis_representatives() {
+        let mapped = map.apply(representative)?;
+        let coordinates = target.to_coordinates(mapped)?;
+        image.insert(coordinates)?;
+    }
+    Ok(source.dimension() - image.rank())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::integer_lattice::IntegerLatticeBudget;
+    use crate::{BasedRootDatum, Coweight, Weight};
+
+    use super::*;
+
+    fn budget() -> IntegerLatticeBudget {
+        IntegerLatticeBudget::new(64, 100_000, 100_000, 128)
+    }
+
+    #[test]
+    fn split_simply_connected_a1_is_connected() {
+        // sc A1: coroot basis B = [[1]]; the restriction is the identity
+        // mod 2, hence injective.
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        assert!(dual_component_group_trivial(&[vec![-1]], &datum, &budget()).unwrap());
+    }
+
+    #[test]
+    fn split_adjoint_a1_is_disconnected() {
+        // Adjoint A1 (PSL(2,R)): B = [[2]] vanishes mod 2, so the map is
+        // zero on a rank-one subquotient: PGL(2,R) has two components.
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        assert!(!dual_component_group_trivial(&[vec![-1]], &datum, &budget()).unwrap());
+    }
+
+    #[test]
+    fn compact_simply_connected_a1_is_connected() {
+        // Compact SU(2): theta = +1. The numerator ker_F2(theta+1) is zero,
+        // so the subquotient is trivial and the map injective.
+        let datum = BasedRootDatum::from_simple_data(
+            1,
+            vec![vec![2]],
+            vec![Weight::new(vec![2])],
+            vec![Coweight::new(vec![1])],
+        )
+        .unwrap();
+        assert!(dual_component_group_trivial(&[vec![1]], &datum, &budget()).unwrap());
+    }
+
+    #[test]
+    fn compact_adjoint_b2_is_connected() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-2, 2]]).unwrap();
+        let theta = vec![vec![1, 0], vec![0, 1]];
+        assert!(dual_component_group_trivial(&theta, &datum, &budget()).unwrap());
+    }
+
+    #[test]
+    fn split_gl2_is_disconnected() {
+        // GL(2,R)-like datum: A1 plus a split central T1, theta = -1. The
+        // coroot-basis restriction kills the torus coordinate, leaving a
+        // rank-one dual component group: GL(2,R) has two components.
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![2, 0])],
+            vec![Coweight::new(vec![1, 0])],
+        )
+        .unwrap();
+        let theta = vec![vec![-1, 0], vec![0, -1]];
+        assert!(!dual_component_group_trivial(&theta, &datum, &budget()).unwrap());
+    }
+}
+
+```
+
+文件：crates/atlas-real-group/src/form_name.rs（完整字节）：
+```rust
+//! Lie-algebra names of real forms: a faithful port of upstream
+//! `output::printType` and its helpers `print_real_form_name`,
+//! `printComplexType`, and `split` (io/output.cpp:556-782).
+//!
+//! The input grading is the `specialGrading` partition overload: a bitset
+//! over the datum's simple roots with 1 = noncompact imaginary. It is
+//! adapted to the layout's Bourbaki ordering by the pull-back
+//! `pulled[k] = grading[perm[k]]` (permutations.cpp:66-76) and consumed one
+//! simple factor at a time, exactly like the upstream `gr >>= rank` loop.
+
+use crate::error::StructureError;
+use crate::layout::InnerClassLayout;
+
+/// The upstream `split` helper: `(n)` when `m == 0`, else `(n-m,m)` with
+/// the entries weakly decreasing.
+fn split(name: &str, n: usize, m: usize) -> String {
+    if m == 0 {
+        return format!("{name}({n})");
+    }
+    let minority = if 2 * m > n { n - m } else { m };
+    format!("{name}({},{})", n - minority, minority)
+}
+
+/// `printComplexType`: the complex Lie algebra of a `'C'` inner-class entry
+/// (covering two isomorphic factors, of which the first is passed).
+fn complex_name(letter: char, rank: usize) -> Result<String, StructureError> {
+    let name = match letter {
+        'A' => format!("sl({},C)", rank + 1),
+        'B' => format!("so({},C)", 2 * rank + 1),
+        'C' => format!("sp({},C)", 2 * rank),
+        'D' => format!("so({},C)", 2 * rank),
+        'E' => format!("e{rank}(C)"),
+        'F' => "f4(C)".to_string(),
+        'G' => "g2(C)".to_string(),
+        'T' => "gl(1,C)".to_string(),
+        _ => {
+            return Err(StructureError::LayoutInvariantViolation {
+                invariant: "complex factor letter",
+            })
+        }
+    };
+    Ok(name)
+}
+
+/// `print_real_form_name`: the real Lie algebra of one simple (or torus)
+/// factor from its special grading slice and inner-class letter.
+///
+/// The folded lowercase letters `'f'`/`'g'` occur only in dual-side naming
+/// of certain dual real forms; this port covers the non-dual letters that
+/// the crate's layout can produce.
+fn factor_name(bits: u32, letter: char, rank: usize, ic: char) -> Result<String, StructureError> {
+    let trivial = bits == 0;
+    // Upstream `m = gr.firstBit() + 1` (0 for a trivial grading).
+    let m = if trivial {
+        0
+    } else {
+        bits.trailing_zeros() as usize + 1
+    };
+    let name = match letter {
+        'A' => {
+            if rank == 1 {
+                if trivial {
+                    "su(2)".to_string()
+                } else {
+                    "sl(2,R)".to_string()
+                }
+            } else {
+                let n = rank + 1;
+                if ic == 'c' {
+                    split("su", n, m)
+                } else if !rank.is_multiple_of(2) && trivial {
+                    // Unequal-rank A: both conditions are needed upstream.
+                    format!("sl({},H)", n / 2)
+                } else {
+                    format!("sl({n},R)")
+                }
+            }
+        }
+        'B' => split("so", 2 * rank + 1, 2 * m),
+        'C' => {
+            if m == rank {
+                format!("sp({},R)", 2 * rank)
+            } else {
+                split("sp", rank, m)
+            }
+        }
+        'D' => {
+            let n = 2 * rank;
+            if ic == 'c' || (rank.is_multiple_of(2) && ic == 's') {
+                if m < rank - 1 {
+                    split("so", n, 2 * m)
+                } else if !rank.is_multiple_of(2) {
+                    format!("so*({n})")
+                } else if rank.is_multiple_of(4) == (m == rank) {
+                    format!("so*({n})[1,0]")
+                } else {
+                    format!("so*({n})[0,1]")
+                }
+            } else if rank > 4 {
+                split("so", n, 2 * m + 1)
+            } else if trivial {
+                // Unequal-rank D4: any nonzero grading means so(5,3).
+                "so(7,1)".to_string()
+            } else {
+                "so(5,3)".to_string()
+            }
+        }
+        'E' => {
+            let mut name = format!("e{rank}");
+            if trivial && (ic == 'c' || rank > 6) {
+                return Ok(name);
+            }
+            name.push('(');
+            if rank == 6 {
+                if ic == 'c' {
+                    name.push_str(if m == 1 || m == 6 {
+                        "so(10).u(1)"
+                    } else {
+                        "su(6).su(2)"
+                    });
+                } else {
+                    name.push_str(if trivial { "f4" } else { "R" });
+                }
+            } else if rank == 7 {
+                name.push_str(if m == 7 {
+                    "e6.u(1)"
+                } else if m == 2 || m == 5 {
+                    "R"
+                } else {
+                    "so(12).su(2)"
+                });
+            } else {
+                // E8: e8(e7.su(2)) has noncompact positions {2,3,6,7} (0xCC).
+                name.push_str(if bits & 0xCC != 0 { "e7.su(2)" } else { "R" });
+            }
+            name.push(')');
+            name
+        }
+        'F' => {
+            if trivial {
+                "f4".to_string()
+            } else if m >= 3 {
+                "f4(so(9))".to_string()
+            } else {
+                "f4(R)".to_string()
+            }
+        }
+        'G' => {
+            if trivial {
+                "g2".to_string()
+            } else {
+                "g2(R)".to_string()
+            }
+        }
+        'T' => {
+            if ic == 'c' {
+                "u(1)".to_string()
+            } else {
+                "gl(1,R)".to_string()
+            }
+        }
+        _ => {
+            return Err(StructureError::LayoutInvariantViolation {
+                invariant: "real form factor letter",
+            })
+        }
+    };
+    Ok(name)
+}
+
+/// `output::printType`: the dotted Lie-algebra name of the real form whose
+/// special grading is `grading` (bits indexed by datum simple roots).
+pub fn form_type_name(layout: &InnerClassLayout, grading: u128) -> Result<String, StructureError> {
+    let factors = layout.factors();
+    let letters = layout.letters();
+    let perm = layout.perm();
+    if perm.iter().any(|&position| position >= 128) {
+        return Err(StructureError::LayoutInvariantViolation {
+            invariant: "grading key width",
+        });
+    }
+
+    let mut name = String::new();
+    let mut factor = 0_usize;
+    let mut shift = 0_usize;
+    for (entry, &ic) in letters.iter().enumerate() {
+        if entry > 0 {
+            name.push('.');
+        }
+        let &(letter, rank) =
+            factors
+                .get(factor)
+                .ok_or(StructureError::LayoutInvariantViolation {
+                    invariant: "letter/factor alignment",
+                })?;
+        // Torus factors have semisimple rank zero: they consume no grading
+        // bits (upstream `gr >>= lt[i].semisimple_rank()`).
+        let slice_rank = if letter == 'T' { 0 } else { rank };
+        if ic == 'C' {
+            name.push_str(&complex_name(letter, rank)?);
+            // A Complex entry consumes two factors and two rank slices.
+            shift += slice_rank;
+            factor += 1;
+            let &(partner_letter, partner_rank) =
+                factors
+                    .get(factor)
+                    .ok_or(StructureError::LayoutInvariantViolation {
+                        invariant: "letter/factor alignment",
+                    })?;
+            shift += if partner_letter == 'T' {
+                0
+            } else {
+                partner_rank
+            };
+            factor += 1;
+        } else {
+            // Pull the grading back to Bourbaki order and slice this factor:
+            // bit t of the slice is grading bit `perm[shift + t]`.
+            let mut bits = 0_u32;
+            for t in 0..slice_rank {
+                let position =
+                    perm.get(shift + t)
+                        .ok_or(StructureError::LayoutInvariantViolation {
+                            invariant: "permutation width",
+                        })?;
+                if (grading >> position) & 1 != 0 {
+                    bits |= 1_u32 << t;
+                }
+            }
+            name.push_str(&factor_name(bits, letter, rank, ic)?);
+            shift += slice_rank;
+            factor += 1;
+        }
+    }
+    Ok(name)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::layout::InnerClassLayout;
+    use crate::{
+        BasedRootDatum, Coweight, InnerClass, IntegerLatticeBudget, LatticeInvolution, Weight,
+    };
+
+    use super::*;
+
+    fn budget() -> IntegerLatticeBudget {
+        IntegerLatticeBudget::new(64, 100_000, 100_000, 128)
+    }
+
+    fn layout_of(datum: &BasedRootDatum, involution: LatticeInvolution) -> InnerClassLayout {
+        let inner_class = InnerClass::new(datum.clone(), involution, 256).unwrap();
+        InnerClassLayout::build(&inner_class, &budget()).unwrap()
+    }
+
+    #[test]
+    fn a1_compact_and_split_names() {
+        let datum = BasedRootDatum::standard(vec![vec![2]]).unwrap();
+        let layout = layout_of(&datum, LatticeInvolution::identity(&datum).unwrap());
+        assert_eq!(form_type_name(&layout, 0).unwrap(), "su(2)");
+        assert_eq!(form_type_name(&layout, 1).unwrap(), "sl(2,R)");
+    }
+
+    #[test]
+    fn a2_names_follow_the_inner_class_letter() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1], vec![-1, 2]]).unwrap();
+        let compact = layout_of(&datum, LatticeInvolution::identity(&datum).unwrap());
+        assert_eq!(form_type_name(&compact, 0).unwrap(), "su(3)");
+        assert_eq!(form_type_name(&compact, 1).unwrap(), "su(2,1)");
+        // Weakly decreasing entries: su(1,2) prints as su(2,1).
+        assert_eq!(form_type_name(&compact, 2).unwrap(), "su(2,1)");
+
+        let twist = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let unequal = layout_of(&datum, twist);
+        // Unequal-rank A2 has only sl(3,R), regardless of the grading.
+        assert_eq!(form_type_name(&unequal, 0).unwrap(), "sl(3,R)");
+    }
+
+    #[test]
+    fn a3_unequal_rank_names_sl2h_and_sl4r() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -1, 0], vec![-1, 2, -1], vec![0, -1, 2]])
+            .unwrap();
+        let twist = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 0, 1], vec![0, 1, 0], vec![1, 0, 0]],
+            vec![vec![0, 0, 1], vec![0, 1, 0], vec![1, 0, 0]],
+        )
+        .unwrap();
+        let layout = layout_of(&datum, twist);
+        assert_eq!(form_type_name(&layout, 0).unwrap(), "sl(2,H)");
+        assert_eq!(form_type_name(&layout, 1).unwrap(), "sl(4,R)");
+    }
+
+    #[test]
+    fn complex_pair_name_consumes_two_factors() {
+        let datum = BasedRootDatum::standard(vec![vec![2, 0], vec![0, 2]]).unwrap();
+        let swap = LatticeInvolution::new(
+            &datum,
+            vec![vec![0, 1], vec![1, 0]],
+            vec![vec![0, 1], vec![1, 0]],
+        )
+        .unwrap();
+        let layout = layout_of(&datum, swap);
+        assert_eq!(form_type_name(&layout, 0).unwrap(), "sl(2,C)");
+    }
+
+    #[test]
+    fn b2_names_cover_sp11_and_sp4r() {
+        let datum = BasedRootDatum::standard(vec![vec![2, -2], vec![-1, 2]]).unwrap();
+        let layout = layout_of(&datum, LatticeInvolution::identity(&datum).unwrap());
+        assert_eq!(form_type_name(&layout, 0).unwrap(), "so(5)");
+        // B2: bit 0 (long root first in datum order) -> so(3,2).
+        assert_eq!(form_type_name(&layout, 1).unwrap(), "so(3,2)");
+        assert_eq!(form_type_name(&layout, 2).unwrap(), "so(4,1)");
+    }
+
+    #[test]
+    fn d4_unequal_rank_names() {
+        let cartan = vec![
+            vec![2, -1, 0, 0],
+            vec![-1, 2, -1, -1],
+            vec![0, -1, 2, 0],
+            vec![0, -1, 0, 2],
+        ];
+        let datum = BasedRootDatum::standard(cartan).unwrap();
+        let mut matrix = vec![vec![0; 4]; 4];
+        matrix[0][0] = 1;
+        matrix[1][1] = 1;
+        matrix[2][3] = 1;
+        matrix[3][2] = 1;
+        let twist = LatticeInvolution::new(&datum, matrix.clone(), matrix).unwrap();
+        let layout = layout_of(&datum, twist);
+        assert_eq!(form_type_name(&layout, 0).unwrap(), "so(7,1)");
+        assert_eq!(form_type_name(&layout, 4).unwrap(), "so(5,3)");
+    }
+
+    #[test]
+    fn torus_letters_name_u1_and_gl1r() {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2]],
+            vec![Weight::new(vec![2, 0])],
+            vec![Coweight::new(vec![1, 0])],
+        )
+        .unwrap();
+        let split_torus = LatticeInvolution::new(
+            &datum,
+            vec![vec![1, 0], vec![0, -1]],
+            vec![vec![1, 0], vec![0, -1]],
+        )
+        .unwrap();
+        let layout = layout_of(&datum, split_torus);
+        // 'c' on A1 with compact grading 0, 's' on T1: su(2).gl(1,R).
+        assert_eq!(form_type_name(&layout, 0).unwrap(), "su(2).gl(1,R)");
+        assert_eq!(form_type_name(&layout, 1).unwrap(), "sl(2,R).gl(1,R)");
+    }
+}
+
+```

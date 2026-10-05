@@ -356,6 +356,14 @@ TitsCoset 下降循环、基本纤维 grading 目标、轨道游走与最小选�
 Kimi probe 路由起草（exit 0，292.1s），维护者对照源码逐条核对改写。该包是
 结构性阅读，不声称这两层的数学验收。
 
+[对偶分量群平凡性与实形命名](topology-form-name.md)记录 `topology.rs` 与
+`form_name.rs`：`dual_pi0` 子商、CorootRestriction、对合转运管线
+（dual_component_group_trivial/rank 共享，仅末行不同——漂移风险已记录）；
+`split`/`complex_name`/`factor_name` 规则表与 `form_type_name` 的拉回循环。
+对应[阅读快照](snapshots/2026-10-06-topology-form-name.json)；草案由同一
+Kimi probe 路由起草（exit 0，264.2s），维护者对照源码逐条核对改写。该包是
+结构性阅读，不声称这两层的数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

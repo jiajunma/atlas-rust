@@ -462,3 +462,12 @@ Complex 对旋转、上游移位顺序怪癖、环面 Smith 商对合；Restrict
 Kimi probe 路由起草（exit 0，292.1s），维护者对照源码逐条核对改写；
 草案的两处阅读观察（秩检查落后于扫描、负边乘积计度数不提重数）均正确
 并保留。索引与 sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+
+## 2026年10月6日 新增拓扑/命名来源包（Kimi probe 协助）
+
+新增 `sources/topology-form-name.md` 与快照
+`2026-10-06-topology-form-name.json`：dual_pi0、CorootRestriction、
+对合转运管线（trivial/rank 复制的漂移风险已记录）；命名规则表与
+form_type_name。同一 Kimi probe 路由起草（exit 0，264.2s），维护者对照
+源码逐条核对改写。索引与 sources/index.md 已同步；未运行编译、测试或
+compiler 生成。
