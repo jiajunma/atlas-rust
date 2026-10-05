@@ -1,0 +1,31 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "a131a2e7",
+  "working_tree": false,
+  "scope": "First reading of the block topology boundary and the block modifier for the new block-access-modifier source packet: BlockTopology's sealed contract and two-layer None convention, bruhat_hasse, the BlockGraph/PartialBlock delegations (including PartialBlock's parameter swap and descent gating), BlockModifier constructors, and the RepContext extension methods (transform_srm, shift_srm, make_diff_integral_orthogonal, make_relative_to, sr_with_modifier).",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/block_access.rs",
+      "sha256": "581a7b5911d37821eeef69163f71e600af1a08a9ec99967139e87f15e7a944b8",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    },
+    {
+      "path": "crates/atlas-real-group/src/block_modifier.rs",
+      "sha256": "08699817957003f669b14c96b2f8ff4d34d272b0c2dad96267faf2f26fc98c06",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": null,
+    "prompt_sha256": "332cb93f145c344e9372cbdd5c06ff2b3856c3c45d3150c3aa9022be315449f5",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/block-access-modifier-probe",
+    "stdout_jsonl_sha256": "af346d4952f9bf1675a0f0c7dd3dc32d6b040c836741b17822effe911c5a723c",
+    "draft_sha256": "26f9acd283a856656d448b18b18fe8f20cb2001a017c1f2e09478b60485bb888",
+    "result": "TIMEOUT at the 480s deadline (wrapper exit 124, process SIGTERM'd after ~486s): the single assistant record was complete JSON but its content truncates mid-sentence in the simple_reflect_numerator section; no session.resume_hint was emitted.  The covered portion was verified claim-by-claim; the maintainer completed the test/limitations sections from his own full reads.",
+    "lesson": "Scale the probe timeout to at least ~13s/KB of prompt: this 38KB two-file prompt needed >486s (compare 53KB->488s); 480s was too tight.  A deadline-truncated draft can still be valid JSON whose content ends mid-sentence — check the tail, not just the record structure."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

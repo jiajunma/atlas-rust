@@ -323,6 +323,15 @@ prepare-first 前置条件链。对应
 起草（exit 0，321.1s），维护者对照源码逐条核对改写。该包是结构性阅读，
 不声称 KL 支撑层的数学验收。
 
+[只读块拓扑与块修正子](block-access-modifier.md)记录 `block_access.rs` 与
+`block_modifier.rs`：`BlockTopology` 的密封契约与两层 None 约定、
+`bruhat_hasse`、`PartialBlock` 的参数交换与下降门控；`BlockModifier` 构造器
+与 `RepContext` 扩展方法（transform_srm/shift_srm/
+make_diff_integral_orthogonal/make_relative_to/sr_with_modifier）。对应
+[阅读快照](snapshots/2026-10-06-block-access-modifier.json)；草案由同一 Kimi
+probe 路由起草但在 480s 期限处截断（2.9 节内），已覆盖部分核对无误，尾部由
+维护者按完整阅读补齐。该包是结构性阅读；两文件均未接线，不声称数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

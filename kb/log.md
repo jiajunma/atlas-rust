@@ -426,3 +426,13 @@ length-stop 表、懒填充本原索引及其 prepare-first 前置条件链。�
 Kimi probe 路由起草（16KB 单文件，exit 0，321.1s），维护者对照源码
 逐条核对改写。索引与 sources/index.md 已同步；未运行编译、测试或
 compiler 生成。
+
+## 2026年10月6日 新增块拓扑/修正子来源包（Kimi probe 部分协助）
+
+新增 `sources/block-access-modifier.md` 与快照
+`2026-10-06-block-access-modifier.json`：BlockTopology 密封契约、
+bruhat_hasse、PartialBlock 委托细节；BlockModifier 构造器与
+RepContext 扩展方法。Kimi probe 在 480s 期限截断（SIGTERM；单个 assistant
+记录是完整 JSON 但内容断在句中——教训：按 ~13s/KB 估期限）；已覆盖部分
+核对无误，测试/限制章节由维护者按完整阅读补齐。索引与 sources/index.md
+已同步；未运行编译、测试或 compiler 生成。
