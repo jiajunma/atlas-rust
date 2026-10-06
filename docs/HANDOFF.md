@@ -54,6 +54,29 @@ migration (stager/driver/sbatch labels, new `validate_after_v3_failure` gate
 binding job 3899303, checker label regression, payload build, static review,
 submit).
 
+UPDATE (same day, verification complete): the tree reconstruction was not
+needed — the v3 job's own report carries the full 1567-entry source manifest
+(sha `3f8cf475…` recomputed exactly with the stager's canonicalization).
+weyl_subgroup.rs is in the frozen source at
+`8d6d3ed5dcc667afae506167b0f6763576bc21e6a66290c13f9023917d062765`, and
+reverting my two-line fix locally reproduces that hash exactly, proving the
+archive file differs from the local fixed file at exactly those two lines.
+Final verified v4 constants:
+
+- `REPAIR_PATCH_BYTES` = **30047**, `REPAIR_PATCH_HASH` =
+  `1ad07e8fedf17162c8282c168d423b7f3dfcfb6e847b0d883b4fb8497dea59f7`
+- `REPAIRED_SOURCE_HASHES` gains
+  `crates/atlas-core/src/domain_builtins/weyl_subgroup.rs` =
+  `86d52b4f7228b300ad7ed0a38c526fd14f14003dfa034e4edf4f0e0102c63780`
+  (the frozen 8d6d3ed5… hash moves to the stale predecessor record)
+- `AFTER_SOURCE_FILES` stays **1567** (update replaces, not adds)
+- `AFTER_SOURCE_MANIFEST_SHA256` =
+  **`84a3fbfd977c61807fb9da5ef2295ed3057ab1e44c8466958f75e04d94ec78fd`**
+
+Remaining: the v3→v4 harness migration itself (stager/driver/sbatch labels,
+new `validate_after_v3_failure` gate binding job 3899303 and the failure
+evidence, checker label regression, payload build, static review, submit).
+
 Parallel local lane (no HPC needed): the KB source-packet sweep through
 `kb/sources/` continues via the verified Kimi probe route (full-bytes
 prompt, maintainer claim-by-claim verification, per-packet snapshot JSON
