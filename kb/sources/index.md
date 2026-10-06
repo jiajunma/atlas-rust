@@ -54,8 +54,11 @@ build 门控、分窗两相 BFS（Rayon 纯计算 + 顺序 intern）、上游一
 [完整块图：实形式与对偶实形式的纤维积](block-graph.md)记录 `block.rs`：
 两个 KGB 图经 `dual_involution` 配对的纤维积构造、`BlockDescent` 八值序与
 dual 映射、平铺布局、访问器的 `UndefBlock`/`None` 语义、`dual()` 纯数据变换
-与 Bruhat Hasse 图。对应[阅读快照](snapshots/2026-10-03-block-graph.json)；
-草案由同一 Kimi probe 路由起草（exit 0，83.1s），维护者对照源码逐条核对改写。
+与 Bruhat Hasse 图；重读补充 i1/i2 的 Cayley 槽共享与 fall-through、20 个
+`BlockInvariantViolation` 字面量与 7 个秩1测试锚点。对应阅读快照
+[2026-10-03](snapshots/2026-10-03-block-graph.json)（初读）与
+[2026-10-06](snapshots/2026-10-06-block.json)（重读，字节未变）；
+两份草案均由同一 Kimi probe 路由起草、维护者对照源码逐条核对合并改写。
 该包是结构性阅读，不声称块枚举的数学验收。
 
 [形变驱动：twisted 与 block 形变](deformation-drivers.md)记录 `deform.rs`：
@@ -374,14 +377,6 @@ GlobalTorusElement 的「构造约化、反射不再约化」纪律（负分子 
 [阅读快照](snapshots/2026-10-06-global-kgb.json)；草案由同一 Kimi probe
 路由起草（800s 期限，exit 0，520.9s——13s/KB 规则成立），维护者对照源码
 逐条核对改写。该包是结构性阅读，不声称全局 KGB 的数学验收。
-
-[块图：两 KGB 的纤维积与对偶变换](block.md)记录 `block.rs`：BlockDescent
-的 Value 序/对偶表/语言码重编号、`dual_involution`、纤维积构建（空对偶包
-= 上游 `(0,0)` tauPacket 的隐式限制）、i1/i2 的 Cayley 槽共享与
-fall-through、访问时的弱下降强制、`dual()` 纯数据变换（含「second 仅随
-first 映射」规则）。对应[阅读快照](snapshots/2026-10-06-block.json)；草案由
-同一 Kimi probe 路由起草（620s 期限，exit 0，242.7s），维护者对照源码逐条
-核对改写。该包是结构性阅读，不声称块层的数学验收。
 
 [扭对合/对合分类/反射字三件套](twisted-involution-trio.md)记录
 `twisted_involution.rs`、`involution_classification.rs` 与

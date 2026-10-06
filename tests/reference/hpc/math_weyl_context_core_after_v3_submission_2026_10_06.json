@@ -1,0 +1,58 @@
+{
+  "schema": "atlas-weyl-context-core-after-submission-v1",
+  "date": "2026-10-06",
+  "status": "SUBMITTED_NOT_VERIFIED",
+  "job": "3899303",
+  "job_name": "atlas-weyl-core-after-v3",
+  "script": "hpc/math_weyl_context_core_after.sbatch",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v3",
+  "pin_sha256": "b7f683d27b21fa1f8b98d22f54445e7d8edb82b22ff78a7c89d8420dcc70b52c",
+  "stage_creation_sha256": "387ecb1f71635488d9dd59d10f8d685120941807e9df768268d340d14b42a2bc",
+  "queue_before": [],
+  "campaign_ledger": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+    "records": 22,
+    "sha256": "97acd045285aea78cd081c525529d9b0a44b64270b38a11ffac3d480c86b3014",
+    "last_record": {
+      "job": "3899303",
+      "status": "SUBMITTED",
+      "pin_sha256": "b7f683d27b21fa1f8b98d22f54445e7d8edb82b22ff78a7c89d8420dcc70b52c",
+      "stage_creation_sha256": "387ecb1f71635488d9dd59d10f8d685120941807e9df768268d340d14b42a2bc",
+      "queue_before": []
+    }
+  },
+  "payload": {
+    "overrides_sha256": "0d554771c461e058430aba8b432bbb9391101367e57ce8f25cb97adb147860ad",
+    "overrides_entries": 60,
+    "tar_sha256": "1452b3db6db792111e7af970311554bedc9e04f531222f9ab8f33f6138d2348a",
+    "source_commit": "93abd29b",
+    "remote_verification": "all 60 files present with matching sha256, mode 0444, single link, no extras; remote tar sha matched before extraction",
+    "transports_retired": [
+      "/public/home/majj/.weyl-core-after-v3-payload (contained only overrides/; removed 2026-10-06)",
+      "/tmp/weyl-after-v3-payload-ykbps2aw (removed 2026-10-06)"
+    ]
+  },
+  "predecessor": {
+    "stage": "weyl-context-core-after-v2",
+    "job": "3890580",
+    "note": "immutable harness failure (sbatch labels); preserved, never resubmitted"
+  },
+  "reconcile_at_submission": {
+    "queue": "squeue -u majj empty",
+    "ledger_before": "21 records, sha256 c43f55dbe28cbdcee4ae35d0490842c282a4f6554f8a9973468ed8dfe53a79bd",
+    "stage_path": "absent",
+    "sacct_v3_rows_since_2026_10_03": 0,
+    "remote_payload_path": "absent"
+  },
+  "post_submit": {
+    "squeue": "3899303 RUNNING on cu002 (job name atlas-wey+)",
+    "stage_inputs": "126 durable payload files all 0444 and single-link; the two non-0444 files are the stage lock (0600) and the live SLURM .out (0644), both expected runtime artifacts",
+    "incoming": "empty",
+    "note": "a find(1) walk into the running job's results/ scratch hit NFS stale file handles (bind-mounted ephemeral workspace); durable-input checks were rerun with results/ excluded and pass"
+  },
+  "operations_lessons": [
+    "This cluster's sacct (slurm 21.08.8) does not accept -h: it prints the 166-line usage text. A count of 166 'rows' was a false alarm, not 166 jobs; use `sacct -u majj -S <date> | tail -n +3 | wc -l`.",
+    "sacct -o/--format also trips usage on this build when combined with other flags in some orders; plain default-column output works."
+  ],
+  "scope": "Submission receipt only. The job's FINAL status, the 125-checker / 632-test / two-regression / four-golden independent inspection, and any acceptance are NOT established here; collect before any claim. Never resubmit after-v1 job 3890328 or after-v2 job 3890580; never create a sibling stage."
+}

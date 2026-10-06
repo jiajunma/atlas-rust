@@ -584,3 +584,12 @@ gap 清单漏列了它）；新包在未变字节上写成后覆盖了旧包。�
 sources/index.md 中的旧重复条目，在新条目与包正文中注明 supersession。
 **教训：启动一个包之前先在 `kb/sources/` 与 `sources/index.md` 里 grep
 模块名，确认没有既有包；间隙清单必须以 index.md 为准而不是凭会话记忆。**
+
+
+## 2026年10月6日 block 重复包并入 block-graph（重读合并）
+
+`block.rs` 的 2026-10-06 重读包并入 `block-graph.md`（字节未变，两次阅读
+SHA-256 相同）：补充 i1/i2 Cayley 槽共享与 fall-through、descents() 判定
+逻辑、20 个 BlockInvariantViolation 字面量普查、7 个秩1测试锚点、
+dual_position 静默覆盖与 cross 预填 0 两处阅读观察。重复文件 block.md
+删除，索引改为单条目并链接 2026-10-03 与 2026-10-06 两份快照。
