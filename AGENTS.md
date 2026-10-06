@@ -528,6 +528,20 @@ ceiling and default one focused job; do not trade correctness for speed.
 
 ### Predecessor transitions: rebind every historical validator before launch
 
+- UPDATE Weyl AFTER-v3 failure2026-10-06: job3899303 FINAL `FAILED 1:0` at
+  `release-build` (E0609) after all125 checkers passed.  The repair patch
+  `hpc/patches/weyl_context_core_repair.patch` migrated session.rs call
+  sites to `context.kernel.system` but omitted
+  `crates/atlas-core/src/domain_builtins/weyl_subgroup.rs` — a file that
+  exists only in the frozen campaign source archive, untracked in git, in
+  no patch and no history.  The local untracked copy already had the
+  correct two lines; it was never committed.  Failure evidence
+  `tests/reference/hpc/math_weyl_context_core_after_v3_failure_2026_10_06.json`,
+  report SHA `195cc4fca…`.  Lesson: a migration patch must enumerate its
+  own blast radius — grep the whole source archive for the old field/API
+  shape, including untracked and archive-only files, before freezing;
+  a build gate one stage later is the only thing that catches it.
+  The AFTER-v4 successor completes the migration; never resubmit3899303.
 - UPDATE Weyl AFTER-v1 preparation2026-10-03: advancing a campaign stager's
   direct `PREDECESSOR` silently breaks every inherited validator that still
   compares a frozen historical evidence record against bare
