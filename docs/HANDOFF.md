@@ -36,6 +36,22 @@ B2/C2, reverse operand orders, inner-class-dual and no-value cases, each
 with its own original-backed gate, before any cache work-count BEFORE or
 production cache edit.
 
+## G2 WITNESS ARC (started) — 2026-10-06
+
+First case: G2, the asymmetric interface-order witness.  Provisional
+fixture `tests/math/generics/weyl_context_g2_dual_draft.atlas` mirrors the
+A1 cold_dual structure for G2's two-generator presentation and adds the
+noncommuting word checks A1 could not provide (`WG_NONCOMMUTE` — G2's
+Weyl group is the nonabelian D6): same-owner/alias/equal relations, dual
+construction in both directions (SC→adjoint and adjoint→SC), the
+`wg_dual=adjoint(Lie_type("G2"),false)` value-equality witness for the
+dual datum's generator order, rebound-lifetime checks and a recovery
+marker.  Status: **PROVISIONAL — never truth until the original's complete
+behavior is captured on HPC** (the A1 rule).  Next: a new capture stage
+for the original-backed G2 capture, then regressions, then its own
+BEFORE/AFTER chain.  B2/C2, reverse operand orders, inner-class-dual and
+no-value follow the same shape after G2's gate is accepted.
+
 ## V5 PREPARATION (in progress) — 2026-10-06
 
 The classifier change is committed (`80eaf6d3`):
