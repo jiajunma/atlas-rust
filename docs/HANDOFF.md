@@ -57,6 +57,25 @@ after-v5, contract/predecessor schemas v14, and gains the retired after-v3
 scoped campaign files.  Remaining: payload build (62 inputs), local
 pre-flight, reconcile, submit once, post-checks, record.
 
+UPDATE (same day): **AFTER-v5 SUBMITTED** as job **3900050** (pin
+`d13190716f1996cc71c068bbf9589beec0553749c4d805fb3e02894cb83ff4d2`,
+stage_creation `c968e621…`, `queue_before=[]`, ledger now 24 records at
+`6bdf33d7…`).  One correction along the way: the first payload's stager run
+failed at create_fixed_stage because the harvested after-v4 stage inode in
+the predecessor binding was written from memory instead of the harvest
+output — it created no stage, no ledger record and no job; corrected to
+the live stat value and rebuilt (`3d5f7bfa`).  **Lesson: never write a
+PREDECESSOR_STATE field from memory; every field must come from the same
+harvest output.**  Reconcile was green (empty queue, 23-record ledger
+`02b5cb97…`, stage absent, zero v5 sacct rows); all 62 remote payload
+files verified; the stager was invoked exactly once after the correction;
+both transports are removed; the job was RUNNING on cu006 when observed.
+Submission record:
+`tests/reference/hpc/math_weyl_context_core_after_v5_submission_2026_10_06.json`
+(status SUBMITTED_NOT_VERIFIED).  Next: collect FINAL and run the
+independent inspection before any acceptance claim.  Never resubmit
+3890328/3890580/3899303/3899885; no sibling stage.
+
 Parallel local lane (no HPC needed): the KB source-packet sweep through
 `kb/sources/` continues via the verified Kimi probe route (full-bytes
 prompt, maintainer claim-by-claim verification, per-packet snapshot JSON

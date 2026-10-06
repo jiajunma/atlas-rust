@@ -1,0 +1,57 @@
+{
+  "schema": "atlas-weyl-context-core-after-submission-v1",
+  "date": "2026-10-06",
+  "status": "SUBMITTED_NOT_VERIFIED",
+  "job": "3900050",
+  "job_name": "atlas-weyl-core-after-v5",
+  "script": "hpc/math_weyl_context_core_after.sbatch",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v5",
+  "pin_sha256": "d13190716f1996cc71c068bbf9589beec0553749c4d805fb3e02894cb83ff4d2",
+  "stage_creation_sha256": "c968e621a0265026999c0962b321e5c253f0fa68a5cf8fb6191a10de42e4cc98",
+  "queue_before": [],
+  "campaign_ledger": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+    "records": 24,
+    "sha256": "6bdf33d7c1e4dcad1515632000a966223bed50537f25ebb7cdc672bc02401f99",
+    "last_record": {
+      "job": "3900050",
+      "status": "SUBMITTED",
+      "pin_sha256": "d13190716f1996cc71c068bbf9589beec0553749c4d805fb3e02894cb83ff4d2",
+      "stage_creation_sha256": "c968e621a0265026999c0962b321e5c253f0fa68a5cf8fb6191a10de42e4cc98",
+      "queue_before": []
+    }
+  },
+  "payload": {
+    "overrides_sha256": "6051719529b7ca26ea50a2bfab2e77733fd27f58e76385012a84b1fda9ab40c4",
+    "overrides_entries": 62,
+    "tar_sha256": "c713cd9486e99091dae16b2c5f177de8e93e6109e45dbd4edfec0250b2496845",
+    "source_commit": "3d5f7bfa",
+    "remote_verification": "all 62 files present with matching sha256, mode 0444, single link, no extras; remote tar sha matched before extraction",
+    "local_pre_flight": "GREEN: every payload-local validator passed up to the HPC-only validate_parent_objects boundary (sentinel method)",
+    "transports_retired": [
+      "/public/home/majj/.weyl-core-after-v5-payload (contained only overrides/; removed 2026-10-06)",
+      "/tmp/weyl-after-v5-payload-lu6YFE14 (removed 2026-10-06)",
+      "note: an earlier transport built from 8761bdd4 was retired before any submission after its stager run failed at create_fixed_stage (wrong harvested stage inode in the predecessor binding); it created no stage, no ledger record and no job"
+    ]
+  },
+  "predecessor": {
+    "stage": "weyl-context-core-after-v4",
+    "job": "3899885",
+    "note": "immutable gate over-assertion on prewarmed stderr presentation (mathematics passed); preserved, never resubmitted"
+  },
+  "changed_input": "The capture classifier compares the reject-intent case's stderr by ordered error summaries (envelope-free per-engine extraction) instead of raw bytes; accept intents keep byte equality",
+  "reconcile_at_submission": {
+    "queue": "squeue -u majj empty",
+    "ledger_before": "23 records, sha256 02b5cb975a1fe15c9b5dd57ec3f0b424282f7b075dbf00967024505e8424e91e",
+    "stage_path": "absent",
+    "sacct_v5_rows_since_2026_10_03": 0,
+    "remote_payload_path": "absent"
+  },
+  "post_submit": {
+    "squeue": "3900050 RUNNING on cu006",
+    "stage_inputs": "durable payload files all 0444 and single-link; the two non-0444 files are the stage lock (0600) and the live SLURM .out (0644), both expected runtime artifacts",
+    "incoming": "empty"
+  },
+  "static_review": "Every bound value was harvested from HPC (after-v4 stage tree/pins/campaign files via the stage's own staged progressive_submit helpers, and the live stage device+inode via stat) or recomputed from earlier reports. 127 local harness tests green under umask 0022 with only the known 0444-environment evidence-mode error (green on HPC). Lesson recorded: never write a PREDECESSOR_STATE field from memory; every field must come from the same harvest output.",
+  "scope": "Submission receipt only. The job's FINAL status, the 127-checker / 632-test / two-regression / four-golden independent inspection, and any acceptance are NOT established here; collect before any claim. Never resubmit after-v1 3890328, after-v2 3890580, after-v3 3899303 or after-v4 3899885; never create a sibling stage."
+}
