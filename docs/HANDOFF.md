@@ -1,6 +1,6 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
-## CURRENT: AFTER-v5 job 3900050 COMPLETED — Weyl context core repair VALIDATED — 2026-10-06
+## CURRENT: Weyl repair landed as production commit 690c2b92 — 2026-10-06
 
 Job 3900050 is FINAL `COMPLETED 0:0` on cu006 with report status
 `WEYL_CONTEXT_AFTER_REGRESSIONS_PASS`.  The independent inspection accepts
@@ -23,11 +23,18 @@ report SHA `3288480d…`):
   releases nothing either.  This is a bounded A1 semantic acceptance only —
   no cache, performance, memory, rank or broader mathematical release.
 
-Next (per the frozen plan): a focused production commit of the completed
-repair, then the progressive semantic AFTER gates — G2, B2/C2, reverse
-operand orders, inner-class-dual and no-value cases, each with its own
-original-backed gate, before any cache work-count BEFORE or production
-cache edit.
+The validated state is now committed: **production commit `690c2b92`**
+("feat: land the HPC-validated Weyl owner/dual semantic repair and
+companion work", 41 files).  Landing rule used: the whole tree was hashed
+against the v5 source manifest `84a3fbfd…` — every `.rs` file matched, so
+all `crates/**` changes were committed as one build-consistent unit;
+docs/meta edits (AGENTS.md, README, docs/*, .gitignore) were deliberately
+left uncommitted as the owner's separate work.
+
+Next (per the frozen plan): the progressive semantic AFTER gates — G2,
+B2/C2, reverse operand orders, inner-class-dual and no-value cases, each
+with its own original-backed gate, before any cache work-count BEFORE or
+production cache edit.
 
 ## V5 PREPARATION (in progress) — 2026-10-06
 

@@ -562,6 +562,19 @@ ceiling and default one focused job; do not trade correctness for speed.
   the completed repair, then the progressive semantic AFTER gates (G2,
   B2/C2, reverse operands, inner-class-dual, no-value) before any cache
   work-count BEFORE or production cache edit.
+
+- UPDATE Weyl production commit2026-10-06: the validated state is landed
+  as production commit `690c2b92` (41 files).  Landing rule: the whole
+  tree was hashed against the v5 gate's source manifest `84a3fbfd…` —
+  every `.rs` file matched (0 missing, 0 mismatched, 0 extra), so all
+  `crates/**` changes were committed as ONE build-consistent unit rather
+  than cherry-picking the 5 repair files (the repair interacts with the
+  rest of the tree; the gate validated the tree as a unit).  Docs/meta
+  edits (AGENTS.md, README, docs/*, .gitignore) were deliberately left
+  uncommitted as the owner's separate work.  Lesson: when a gate validates
+  a whole-tree manifest, the faithful production landing is the whole
+  validated tree after a byte-level manifest comparison — never a subset
+  that was not itself build-validated.
 - UPDATE Weyl AFTER-v1 preparation2026-10-03: advancing a campaign stager's
   direct `PREDECESSOR` silently breaks every inherited validator that still
   compares a frozen historical evidence record against bare
