@@ -572,6 +572,75 @@ class WeylContextCoreContractTests(unittest.TestCase):
             self.assertFalse(result["arms"]["oracle"]["diagnostic_stream"]["complete"])
             self.assert_nonaccepting(result)
 
+    def test_reject_case_compares_stderr_by_ordered_error_messages(self):
+        # The AFTER-v4 failure: both engines rejected the same commands with
+        # the same ordered messages in different envelopes.  Byte equality
+        # across two diagnostic renderers is unattainable, so the reject
+        # intent compares the ordered error-summary contents instead.
+        baseline = list(EXPECTED["weyl_context_core_prewarmed_dual"]["oracle"]["causes"])
+        changed = runs("weyl_context_core_prewarmed_dual")
+        rust = next(item for item in changed if item["engine"] == "rust")
+        rust["stderr"] = stderr("rust", baseline)
+        self.assertNotEqual(
+            next(item for item in changed if item["engine"] == "oracle")["stderr"],
+            rust["stderr"],
+        )
+        result = contract.classify_capture(
+            case("weyl_context_core_prewarmed_dual"), changed
+        )
+        self.assertTrue(result["full_stderr_equal"])
+        self.assert_nonaccepting(result)
+
+        for observed in (baseline[1:], baseline[:-1], list(reversed(baseline))):
+            changed = runs("weyl_context_core_prewarmed_dual")
+            rust = next(item for item in changed if item["engine"] == "rust")
+            rust["stderr"] = stderr("rust", observed)
+            result = contract.classify_capture(
+                case("weyl_context_core_prewarmed_dual"), changed
+            )
+            self.assertFalse(result["full_stderr_equal"])
+            self.assert_nonaccepting(result)
+
+        for mutation in (
+            lambda value: value + b"trailing text\n",
+            lambda value: value.replace(
+                b"Runtime error at <stdin>:1:1:", b"Runtime error at <stdin>:1", 1),
+        ):
+            changed = runs("weyl_context_core_prewarmed_dual")
+            rust = next(item for item in changed if item["engine"] == "rust")
+            rust["stderr"] = mutation(stderr("rust", baseline))
+            result = contract.classify_capture(
+                case("weyl_context_core_prewarmed_dual"), changed
+            )
+            self.assertFalse(result["full_stderr_equal"])
+            self.assert_nonaccepting(result)
+
+        changed = runs("weyl_context_core_prewarmed_dual")
+        oracle = next(item for item in changed if item["engine"] == "oracle")
+        oracle["stderr"] = oracle["stderr"].replace(
+            b"Evaluation aborted.\n", b"", 1)
+        rust = next(item for item in changed if item["engine"] == "rust")
+        rust["stderr"] = stderr("rust", baseline)
+        result = contract.classify_capture(
+            case("weyl_context_core_prewarmed_dual"), changed
+        )
+        self.assertFalse(result["full_stderr_equal"])
+        self.assert_nonaccepting(result)
+
+    def test_accept_case_keeps_stderr_byte_equality(self):
+        # The cold_dual (accept intent) keeps byte equality: an empty oracle
+        # stream and a nonempty rust stream differ even if the rust stream's
+        # messages would extract cleanly.
+        changed = runs("weyl_context_core_cold_dual")
+        oracle = next(item for item in changed if item["engine"] == "oracle")
+        rust = next(item for item in changed if item["engine"] == "rust")
+        rust["stderr"] = oracle["stderr"]
+        result = contract.classify_capture(
+            case("weyl_context_core_cold_dual"), changed
+        )
+        self.assertTrue(result["full_stderr_equal"])
+        self.assert_nonaccepting(result)
+
     def test_raw_hashes_lengths_lines_and_equality_are_preserved(self):
         captured = runs()
         result = contract.classify_capture(case(), captured)

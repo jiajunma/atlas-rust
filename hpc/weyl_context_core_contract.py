@@ -703,6 +703,56 @@ def _arm_result(case_id, engine, run):
     }
 
 
+def _error_summaries(text):
+    """Ordered error messages of one engine's stderr, envelope-free.
+
+    The oracle renders each error as `Runtime error:` + indented message +
+    `Evaluation aborted.`; the Rust CLI renders it as
+    `Runtime error at <stdin>:LINE:COL: message` + a source line and a
+    caret line.  Byte-equality across the two renderers is unattainable for
+    reject cases, so only the ordered message contents are compared.
+    Returns None when any block deviates from its engine's envelope.
+    """
+    summaries = []
+    lines = text.splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        if line == "Runtime error:":
+            if (index + 2 >= len(lines)
+                    or not lines[index + 1].startswith("  ")
+                    or lines[index + 2] != "Evaluation aborted."):
+                return None
+            summaries.append(lines[index + 1].strip())
+            index += 3
+            continue
+        match = re.fullmatch(
+            r"Runtime error at <stdin>:\d+:\d+: (\S.*)", line)
+        if match is not None:
+            if (index + 2 >= len(lines)
+                    or not lines[index + 1].startswith("  | ")
+                    or not lines[index + 2].startswith("  | ")):
+                return None
+            summaries.append(match.group(1))
+            index += 3
+            continue
+        return None
+    return summaries
+
+
+def _stderr_equal(intent, oracle_raw, rust_raw):
+    """Reject cases compare ordered error messages; accept stays byte-exact."""
+    if intent != "reject":
+        return oracle_raw == rust_raw
+    oracle_summaries = _error_summaries(
+        oracle_raw.decode("utf-8", errors="replace"))
+    rust_summaries = _error_summaries(
+        rust_raw.decode("utf-8", errors="replace"))
+    return (oracle_summaries is not None
+            and rust_summaries is not None
+            and oracle_summaries == rust_summaries)
+
+
 def classify_capture(case, runs):
     """Classify one two-process capture without ever releasing a gate."""
     expected_case = _validated_case(case)
@@ -765,7 +815,8 @@ def classify_capture(case, runs):
         "prediction_shape_matches": prediction_shapes,
         "source_predictions_observed": predictions,
         "full_stdout_equal": oracle["stdout"] == rust["stdout"],
-        "full_stderr_equal": oracle["stderr"] == rust["stderr"],
+        "full_stderr_equal": _stderr_equal(
+            expected_case["intent"], oracle["stderr"], rust["stderr"]),
         "exit_status_equal": (
             oracle["observation"].get("exit_status")
             == rust["observation"].get("exit_status")
