@@ -95,6 +95,24 @@ same known local-only state as the v3 migration).  Remaining: build the
 v4 payload from HEAD bytes, local pre-flight, static review, then submit
 exactly one job.
 
+UPDATE (same day): two latent validator couplings were found and fixed by
+the pre-flight — the after-v1 validator's reconstruction check compared the
+frozen v1 record against the CURRENT manifest (correct while the source was
+unchanged at v1–v3, broken by the v4 source change; now bound to the frozen
+`AFTER_V1_ERA_SOURCE_MANIFEST_SHA256` = `3f8cf475…`), and the after-v2
+validator read the stray-out binding from the advanced PREDECESSOR_STATE
+(now bound to a frozen `AFTER_V2_PREDECESSOR_OUT`).  Payload built from
+`34cdd09f`: 61 files all 0444, overrides.json sha
+`efcd05c46c28fc1778125eb673841318cb3dae1835982a60854f903956c23cf6`,
+payload.tar sha
+`164ec422191311b0749e10d791074e31f5694808e5503a98f69b0b1fd2d08bf9`, at
+`/tmp/weyl-after-v4-payload-xH1sm72y`.  Local pre-flight **GREEN**: every
+payload-local validator passes up to the HPC-only validate_parent_objects
+boundary.  Static review: every bound value was harvested from HPC or
+recomputed from the v3 job's own report; 125 local tests green (same one
+known 0444 env error as v3).  Remaining: reconcile, transport, submit once,
+post-checks, record.
+
 Parallel local lane (no HPC needed): the KB source-packet sweep through
 `kb/sources/` continues via the verified Kimi probe route (full-bytes
 prompt, maintainer claim-by-claim verification, per-packet snapshot JSON
