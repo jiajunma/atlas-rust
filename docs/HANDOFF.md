@@ -1,131 +1,37 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
-## CURRENT: AFTER-v3 job 3899303 FINAL FAILED — repair patch misses weyl_subgroup.rs migration — 2026-10-06
+## CURRENT: AFTER-v4 job 3899885 FINAL FAILED — math PASSES, gate over-asserts on stderr presentation — 2026-10-06
 
-The SecureLink tunnel recovered on 2026-10-06 after ~16 hours down and the
-prepared after-v3 payload was submitted exactly once (receipt: job 3899303,
-pin `b7f683d2…`, ledger 22 records).  The job is now FINAL `FAILED 1:0` on
-cu002, status `WEYL_CONTEXT_AFTER_HARNESS_FAILURE`:
+The completed kernel-system migration was submitted as job 3899885 and is
+now FINAL `FAILED 1:0` — but the failure is a **harness gate over-assertion,
+not mathematics**:
 
-- All six checker suites, the toolchain records and source reconstruction
-  passed; `cargo build --offline --locked --release -p atlas-cli` then
-  failed at 260.9s with E0609: `no field system on type Arc<WeylEltContext>`
-  at `crates/atlas-core/src/domain_builtins/weyl_subgroup.rs:255` and `:258`.
-- Diagnosis: **source defect in the repair candidate, not a harness bug and
-  not mathematics.**  `hpc/patches/weyl_context_core_repair.patch` migrates
-  session.rs call sites to `context.kernel.system` but omits
-  weyl_subgroup.rs, which exists only in the frozen campaign source archive
-  (still untracked locally, in no patch and no git history).  The local
-  untracked copy already has the correct `context.kernel.system` at both
-  lines — it was never committed.  The 632-test inventory, both regressions,
-  four goldens, the ladder control and final integrity were never reached.
+- All 13 commands exit 0: the six checker suites, toolchain records,
+  source reconstruction, **release-build (now passes with weyl_subgroup.rs
+  migrated)**, the 632-test inventory, both weyl-context regressions and
+  the retained ladder control.
+- The report's own classification is `WEYL_CONTEXT_AFTER_REGRESSIONS_PASS`:
+  expected_regressions_passed, original_goldens_matched,
+  retained_control_passed, inventory_complete — all true.  cold_dual is
+  fully byte-equal (stdout+stderr+exit).
+- The only failing check is `full_stderr_equal` on the prewarmed_dual
+  REJECT case: both engines reject at exactly the same 8 commands with the
+  same ordered error summaries (6x `Weyl group mismatch`, `Illegal Weyl
+  word entry 1 (should be <1)`, `Negative integer where unsigned is
+  required`), but the oracle's envelope (`Runtime error:\n  …\nEvaluation
+  aborted.`) and the Rust CLI's (`Runtime error at <stdin>:L:C: …` +
+  source line + caret) are presentationally different — byte-equality of
+  stderr between two runtimes is unattainable for error cases (the
+  documented negative-diagnostic-presentation boundary).
 - Failure evidence:
-  `tests/reference/hpc/math_weyl_context_core_after_v3_failure_2026_10_06.json`;
-  report SHA `195cc4fca1d8848bd1617e71591518499dfaf0f951c8a232696f3f26ea776506`.
-  The stage is immutable; job 3899303 is never resubmitted, as are v1
-  3890328 and v2 3890580; no sibling stage.
+  `tests/reference/hpc/math_weyl_context_core_after_v4_failure_2026_10_06.json`;
+  report SHA `479ddd84…`.
 
-Next gate: an AFTER-v4 changed-input successor that completes the migration —
-commit weyl_subgroup.rs with the two `context.kernel.system` lines into the
-production repair, bind this failure as predecessor, rerun the full gate.
-(Operational lesson recorded: this cluster's sacct 21.08.8 rejects `-h` and
-prints a 166-line usage page; never count usage text as jobs.)
-
-## V4 PREPARATION (in progress) — 2026-10-06
-
-Completed locally (no builds run): `hpc/patches/weyl_context_core_repair.patch`
-gained a third hunk migrating `domain_builtins/weyl_subgroup.rs`'s two stale
-`context.system` accesses to `context.kernel.system` (the file exists only in
-the frozen archive, still untracked in git).  Validated by reverting the two
-lines and re-applying: result is byte-identical to the local fixed file.
-New constants for the v4 harness:
-
-- `REPAIR_PATCH_BYTES` 29430 → **30047**
-- `REPAIR_PATCH_HASH` 246cd2d0… →
-  **`1ad07e8fedf17162c8282c168d423b7f3dfcfb6e847b0d883b4fb8497dea59f7`**
-- `REPAIRED_SOURCE_HASHES` gains
-  `crates/atlas-core/src/domain_builtins/weyl_subgroup.rs` =
-  **`86d52b4f7228b300ad7ed0a38c526fd14f14003dfa034e4edf4f0e0102c63780`**
-
-Still to do: reconstruct the full v3 source tree from the campaign CAS base
-object + both patches locally, recompute `AFTER_SOURCE_MANIFEST_SHA256` (this
-also verifies the hunk against the real archive bytes), then the v3→v4 harness
-migration (stager/driver/sbatch labels, new `validate_after_v3_failure` gate
-binding job 3899303, checker label regression, payload build, static review,
-submit).
-
-UPDATE (same day, verification complete): the tree reconstruction was not
-needed — the v3 job's own report carries the full 1567-entry source manifest
-(sha `3f8cf475…` recomputed exactly with the stager's canonicalization).
-weyl_subgroup.rs is in the frozen source at
-`8d6d3ed5dcc667afae506167b0f6763576bc21e6a66290c13f9023917d062765`, and
-reverting my two-line fix locally reproduces that hash exactly, proving the
-archive file differs from the local fixed file at exactly those two lines.
-Final verified v4 constants:
-
-- `REPAIR_PATCH_BYTES` = **30047**, `REPAIR_PATCH_HASH` =
-  `1ad07e8fedf17162c8282c168d423b7f3dfcfb6e847b0d883b4fb8497dea59f7`
-- `REPAIRED_SOURCE_HASHES` gains
-  `crates/atlas-core/src/domain_builtins/weyl_subgroup.rs` =
-  `86d52b4f7228b300ad7ed0a38c526fd14f14003dfa034e4edf4f0e0102c63780`
-  (the frozen 8d6d3ed5… hash moves to the stale predecessor record)
-- `AFTER_SOURCE_FILES` stays **1567** (update replaces, not adds)
-- `AFTER_SOURCE_MANIFEST_SHA256` =
-  **`84a3fbfd977c61807fb9da5ef2295ed3057ab1e44c8466958f75e04d94ec78fd`**
-
-Remaining: the v3→v4 harness migration itself (stager/driver/sbatch labels,
-new `validate_after_v3_failure` gate binding job 3899303 and the failure
-evidence, checker label regression, payload build, static review, submit).
-
-UPDATE (same day, migration complete and locally green): the v3→v4 harness
-migration is committed.  PREDECESSOR = after-v3 (job 3899303, ledger
-`97acd045…`/22, tree `0ab62cd0…` 169/18/4997261, report
-`195cc4fca…`/261764 present this time); new `AFTER_V3_FAILURE_EVIDENCE`
-(schema -v3 record, sha `45c8b709…`) and `validate_after_v3_failure` are
-wired into both stager run paths and the driver gates;
-`validate_after_v2_failure` rebinds to a frozen `AFTER_V2_PREDECESSOR`
-identity (same pattern as v1); sbatch labels are v4 with the existing
-label checker regression; the driver's repair scope check gains
-`WEYL_SUBGROUP`; progressive_submit migrates to ACTIVE_STAGE_NAME after-v4,
-contract/predecessor schemas v13, and gains the retired after-v2 scoped
-campaign files.  Local suites under umask 0022: 7+32+17+30+18+21 = 125,
-all pass except the known 0444-environment evidence-mode error in
-`test_stager_pin_counts_predecessor_and_source_are_exact` (green on HPC —
-same known local-only state as the v3 migration).  Remaining: build the
-v4 payload from HEAD bytes, local pre-flight, static review, then submit
-exactly one job.
-
-UPDATE (same day): two latent validator couplings were found and fixed by
-the pre-flight — the after-v1 validator's reconstruction check compared the
-frozen v1 record against the CURRENT manifest (correct while the source was
-unchanged at v1–v3, broken by the v4 source change; now bound to the frozen
-`AFTER_V1_ERA_SOURCE_MANIFEST_SHA256` = `3f8cf475…`), and the after-v2
-validator read the stray-out binding from the advanced PREDECESSOR_STATE
-(now bound to a frozen `AFTER_V2_PREDECESSOR_OUT`).  Payload built from
-`34cdd09f`: 61 files all 0444, overrides.json sha
-`efcd05c46c28fc1778125eb673841318cb3dae1835982a60854f903956c23cf6`,
-payload.tar sha
-`164ec422191311b0749e10d791074e31f5694808e5503a98f69b0b1fd2d08bf9`.  Local
-pre-flight **GREEN**: every payload-local validator passes up to the
-HPC-only validate_parent_objects boundary.  Static review: every bound
-value was harvested from HPC or recomputed from the v3 job's own report;
-125 local tests green (same one known 0444 env error as v3).
-
-UPDATE (same day): **AFTER-v4 SUBMITTED** as job **3899885** (pin
-`b1855bcab3c70cfb2a83943bd484de4c58e4b5266442b6c61b6a05bd0b825f25`,
-stage_creation `1b3e32a1…`, `queue_before=[]`, ledger now 23 records at
-`02b5cb97…`).  Reconcile was green (empty queue, 22-record ledger
-`97acd045…`, stage absent, zero v4 sacct rows); all 61 remote payload files
-verified (sha256/0444/single-link); the stager was invoked exactly once;
-both transports are removed; the job was RUNNING on cu103 when observed.
-Submission record:
-`tests/reference/hpc/math_weyl_context_core_after_v4_submission_2026_10_06.json`
-(status SUBMITTED_NOT_VERIFIED).  Next: collect FINAL and run the
-independent inspection (125 checkers, the 632-test inventory, both
-regressions PASS on the completed repair, all four goldens byte-equal, the
-retained ladder control, integrity, ephemeral workspace absent) before any
-acceptance claim.  Never resubmit 3890328/3890580/3899303; no sibling
-stage.
+Next gate: an AFTER-v5 changed-input successor that compares the prewarmed
+reject case's stderr by ordered error-summary content (messages +
+positions) rather than raw bytes (or binds per-engine presentations for
+the reject intent), keeping byte-equality for accept cases.  Never
+resubmit 3890328/3890580/3899303/3899885; no sibling stage.
 
 Parallel local lane (no HPC needed): the KB source-packet sweep through
 `kb/sources/` continues via the verified Kimi probe route (full-bytes

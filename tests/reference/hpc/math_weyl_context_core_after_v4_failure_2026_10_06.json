@@ -1,0 +1,35 @@
+{
+  "schema": "atlas-weyl-context-core-after-failure-v4",
+  "date": "2026-10-06",
+  "status": "FINAL_FAILED_HARNESS_GATE_OVERASSERTION_PREWARMED_STDERR_PRESENTATION",
+  "job": "3899885",
+  "final_state": "FAILED 1:0 (batch)",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v4",
+  "report": {
+    "path": "results/3899885/report.json",
+    "sha256": "479ddd84b1ddefc16a1f51e5d6fae5feda20405a84ae8b12feb6f418287f4467",
+    "status_field": "WEYL_CONTEXT_AFTER_HARNESS_FAILURE",
+    "node": "cu103",
+    "ephemeral_workspace_removed": true,
+    "commands": "13 commands, all exit 0 (6 checker suites, rustc/cargo versions, source-reconstruction, release-build, atlas-core-test-inventory, weyl-context-regressions, root-ladder-control)"
+  },
+  "slurm_out_sha256": "3d23a0683925f8ee96733b89916d230b18292f83d99ab33994f2790754e13659",
+  "mathematical_outcome_validated_by_the_report": {
+    "expected_regressions_passed": true,
+    "original_goldens_matched": true,
+    "retained_control_passed": true,
+    "inventory_complete": true,
+    "classification_status": "WEYL_CONTEXT_AFTER_REGRESSIONS_PASS",
+    "cold_dual": "full_stdout_equal + full_stderr_equal + exit_status_equal (all true)",
+    "prewarmed_dual": "full_stdout_equal + exit_status_equal true; full_stderr_equal FALSE"
+  },
+  "failed_gate": {
+    "check": "validate_report: capture full_stderr_equal on the prewarmed_dual (reject) case",
+    "rust_stderr_sha256": "89bf86ae1eac3e48cccba65e49c69e57b4c3dc3e8fc0845d4e6faf2b371f4f64",
+    "oracle_golden_stderr_sha256": "ef4404d85f7252a611f9f4e4a5205fe6bbac2c66f48b7378a30a8053f986e157",
+    "analysis": "Both engines reject at exactly the same 8 commands with exactly the same ordered error summaries: 6x \"Weyl group mismatch\" (positions 11, 13, 15, 21, 23, 25), \"Illegal Weyl word entry 1 (should be <1)\" (17), \"Negative integer where unsigned is required\" (19). The difference is purely the diagnostic envelope: the oracle prints \"Runtime error:\\n  <message>\\nEvaluation aborted.\" while the Rust CLI prints \"Runtime error at <stdin>:LINE:COL: <message>\" with a source line and caret. Byte-equality of stderr between the two runtimes is unattainable for error cases; this is the documented negative-diagnostic-presentation boundary.",
+    "class": "HARNESS gate over-assertion (full_stderr_equal applied to a reject case), NOT mathematics and NOT a production defect"
+  },
+  "successor_guidance": "An AFTER-v5 changed-input successor should compare the prewarmed reject case's stderr by ordered error-summary content (the 6+2 messages and their positions) rather than raw bytes, or bind the per-engine stderr presentations explicitly for the reject intent while keeping byte-equality for accept cases. Do not resubmit job 3899885, or after-v1 3890328 / after-v2 3890580 / after-v3 3899303; never create a sibling stage.",
+  "preserved": "The stage, report, .out and all command artifacts are immutable; no file was modified."
+}
