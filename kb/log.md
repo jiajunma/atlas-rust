@@ -612,3 +612,14 @@ strong_real.rs 的 probe 草稿（exit 0，200.9s，session 见证据目录
 docs/evidence/kimi-runtime-20261006/strong-real-probe/）**不收录**：
 `strong-real.md`（2026-10-03）已存在且字节未变，重读未产生新内容；证据
 目录仅作调用记录保留。
+
+
+## 2026年10月6日 wiki 编译首次运行受阻：codex-agent 未登录
+
+首次 `./kb/llmwiki compile --review --instructions AGENTS.md --verbose`
+在 47 个来源包完成抓取后失败：`Codex CLI authentication failed: it is
+not authenticated or its login was rejected`（本机 codex-cli 0.154.0 的
+登录已过期）。编译器不做任何页面变更（review.hold 下无候选写入）。
+**恢复条件：用户交互式 `codex login` 后重跑同一命令**；备选提供方
+（anthropic/openai/ollama）本机均未配置。源码包维护（Kimi probe 路由）
+不受此影响，照常进行。
