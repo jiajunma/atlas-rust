@@ -1,39 +1,35 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
-## CURRENT: AFTER-v3 SUBMITTED as job 3899303 (SUBMITTED_NOT_VERIFIED) — 2026-10-06
+## CURRENT: AFTER-v3 job 3899303 FINAL FAILED — repair patch misses weyl_subgroup.rs migration — 2026-10-06
 
-The SecureLink tunnel recovered on 2026-10-06 after ~16 hours down.  The
-prepared after-v3 payload was submitted exactly once:
+The SecureLink tunnel recovered on 2026-10-06 after ~16 hours down and the
+prepared after-v3 payload was submitted exactly once (receipt: job 3899303,
+pin `b7f683d2…`, ledger 22 records).  The job is now FINAL `FAILED 1:0` on
+cu002, status `WEYL_CONTEXT_AFTER_HARNESS_FAILURE`:
 
-- Reconcile: empty queue, 21-record ledger at
-  `c43f55dbe28cbdcee4ae35d0490842c282a4f6554f8a9973468ed8dfe53a79bd`, stage
-  absent, zero sacct rows for the v3 job name since 2026-10-03, remote
-  payload path absent.  (Lesson: this cluster's sacct 21.08.8 rejects `-h`
-  and prints a 166-line usage page — a "166 rows" count was that usage text,
-  not jobs; use `sacct -u majj -S <date> | tail -n +3 | wc -l`.)
-- Transport: payload.tar sha `1452b3db…` scp'd, extracted at
-  `/public/home/majj/.weyl-core-after-v3-payload`, all 60 files verified
-  (sha256, 0444, single-link, no extras), then invoked ONCE and both
-  transports removed.
-- Receipt: job **3899303**, pin
-  `b7f683d27b21fa1f8b98d22f54445e7d8edb82b22ff78a7c89d8420dcc70b52c`,
-  stage_creation
-  `387ecb1f71635488d9dd59d10f8d685120941807e9df768268d340d14b42a2bc`,
-  `queue_before=[]`, ledger now 22 records
-  (`97acd045285aea78cd081c525529d9b0a44b64270b38a11ffac3d480c86b3014`).
-  Job was RUNNING on cu002 when observed.  Post-submit: 126 durable inputs
-  0444/single-link (lock 0600 + live .out 0644 are expected runtime
-  artifacts), `.incoming` empty.
-- Record:
-  `tests/reference/hpc/math_weyl_context_core_after_v3_submission_2026_10_06.json`
-  (status SUBMITTED_NOT_VERIFIED).
+- All six checker suites, the toolchain records and source reconstruction
+  passed; `cargo build --offline --locked --release -p atlas-cli` then
+  failed at 260.9s with E0609: `no field system on type Arc<WeylEltContext>`
+  at `crates/atlas-core/src/domain_builtins/weyl_subgroup.rs:255` and `:258`.
+- Diagnosis: **source defect in the repair candidate, not a harness bug and
+  not mathematics.**  `hpc/patches/weyl_context_core_repair.patch` migrates
+  session.rs call sites to `context.kernel.system` but omits
+  weyl_subgroup.rs, which exists only in the frozen campaign source archive
+  (still untracked locally, in no patch and no git history).  The local
+  untracked copy already has the correct `context.kernel.system` at both
+  lines — it was never committed.  The 632-test inventory, both regressions,
+  four goldens, the ladder control and final integrity were never reached.
+- Failure evidence:
+  `tests/reference/hpc/math_weyl_context_core_after_v3_failure_2026_10_06.json`;
+  report SHA `195cc4fca1d8848bd1617e71591518499dfaf0f951c8a232696f3f26ea776506`.
+  The stage is immutable; job 3899303 is never resubmitted, as are v1
+  3890328 and v2 3890580; no sibling stage.
 
-Next: collect FINAL and run the independent inspection (125 checkers, the
-632-test inventory, both regressions PASS on the repaired source, all four
-goldens byte-equal, the retained ladder control, integrity, ephemeral
-workspace absent) before considering the repaired production source for a
-focused commit.  Never resubmit after-v1 job 3890328 or after-v2 job
-3890580; never create a sibling stage.
+Next gate: an AFTER-v4 changed-input successor that completes the migration —
+commit weyl_subgroup.rs with the two `context.kernel.system` lines into the
+production repair, bind this failure as predecessor, rerun the full gate.
+(Operational lesson recorded: this cluster's sacct 21.08.8 rejects `-h` and
+prints a 166-line usage page; never count usage text as jobs.)
 
 Parallel local lane (no HPC needed): the KB source-packet sweep through
 `kb/sources/` continues via the verified Kimi probe route (full-bytes

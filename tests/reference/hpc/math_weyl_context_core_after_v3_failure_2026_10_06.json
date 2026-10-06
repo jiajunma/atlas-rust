@@ -1,0 +1,40 @@
+{
+  "schema": "atlas-weyl-context-core-after-failure-v1",
+  "date": "2026-10-06",
+  "status": "FINAL_FAILED_HARNESS_BUILD_E0609_REPAIR_INCOMPLETE",
+  "job": "3899303",
+  "final_state": "FAILED 1:0 (batch); extern COMPLETED 0:0",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v3",
+  "report": {
+    "path": "results/3899303/report.json",
+    "sha256": "195cc4fca1d8848bd1617e71591518499dfaf0f951c8a232696f3f26ea776506",
+    "status_field": "WEYL_CONTEXT_AFTER_HARNESS_FAILURE",
+    "node": "cu002",
+    "ephemeral_workspace_removed": true
+  },
+  "slurm_out_sha256": "509eb46e2dd6be6987203005e5eecec729529c388ce0c47366a602565f826289",
+  "passed_before_failure": [
+    "all 6 checker suites (test-campaign-stage-creation, test-progressive-submit, test-weyl-context-core-contract, test-weyl-context-core-regression, test-math-weyl-context-core-after, test-stager-allowlist) exit 0",
+    "rustc/cargo version records exit 0",
+    "source reconstruction exit 0"
+  ],
+  "failed_command": {
+    "name": "release-build",
+    "argv": "cargo build --offline --locked --release -p atlas-cli",
+    "exit_status": 101,
+    "seconds": 260.86,
+    "stderr_sha256": "97dfe74b3ee14d21e5f68a9bbddb4dbfb607205aec858046d6691f3a00cda1a8",
+    "time_sha256": "7f951fbb5795259cd59c911763f1e64b48eb8e034ff192b9b5338ed0b9f9b416",
+    "diagnostic": "error[E0609]: no field `system` on type `Arc<WeylEltContext>` at crates/atlas-core/src/domain_builtins/weyl_subgroup.rs:255 and :258"
+  },
+  "diagnosis": {
+    "class": "SOURCE_DEFECT_IN_REPAIR_CANDIDATE (incomplete migration), not a harness bug and not mathematics",
+    "detail": "The weyl_context_core_repair.patch migrates session.rs call sites to `context.kernel.system` (the WeylEltContext.kernel restructure) but omits crates/atlas-core/src/domain_builtins/weyl_subgroup.rs. That file exists only in the frozen campaign source archive (it is still untracked in the local repository, `??`, and appears in no patch and no git history). The AFTER gate therefore correctly proved the frozen repair does not compile.",
+    "local_state": "The local untracked weyl_subgroup.rs already carries the correct `context.kernel.system` at the two failing lines, matching the repair patch's own migration pattern; it was simply never committed and never included in the repair patch.",
+    "never_reached": [
+      "632-test inventory", "both regressions", "four goldens", "retained ladder control", "final integrity"
+    ]
+  },
+  "successor_guidance": "An AFTER-v4 changed-input successor must complete the migration: include weyl_subgroup.rs's two `context.kernel.system` lines in the production repair (commit the file first), bind this failure evidence as predecessor, and rerun the full gate. Do not resubmit job 3899303, after-v1 3890328 or after-v2 3890580; never create a sibling stage.",
+  "preserved": "The stage, report, .out and all command artifacts are immutable; no file was modified."
+}
