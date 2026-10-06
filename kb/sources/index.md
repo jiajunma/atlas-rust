@@ -388,6 +388,14 @@ Kimi probe 路由起草（exit 0，292.1s），维护者对照源码逐条核对
 Kimi probe 路由起草（exit 0，264.2s），维护者对照源码逐条核对改写。该包是
 结构性阅读，不声称这两层的数学验收。
 
+[伴随 Cartan 纤维](adjoint-fiber.md)记录 `adjoint_fiber.rs`：Arc 出处绑定
+模型（ptr_eq + 坐标相等，跨投影互拒）、九步构建链（root_basis_action +
+转置余权作用）、map_coweight/apply_mod_two 两种投影（可含中心核）、三条
+预算线的精确公式与「每次调用独立计费」观察、9 个测试锚点（含逐坐标基
+交织关系）。对应[阅读快照](snapshots/2026-10-06-adjoint-fiber.json)；草案由
+同一 Kimi probe 路由起草（800s 期限，exit 0，312.4s），维护者对照源码
+逐条核对改写。该包是结构性阅读，不声称伴随纤维层的数学验收。
+
 [StructureError 分类学与全局 Tits 传输](error-global-tits.md)记录
 `error.rs` 与 `global_tits.rs`：53 个错误变体的字段形态家族（invariant /
 resource-limit 两大带名家族及其例外）、`GlobalTitsElement` 的三重来源门槛、

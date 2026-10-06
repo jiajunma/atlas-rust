@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "86fd6eb3",
+  "working_tree": false,
+  "scope": "First reading of the adjoint Cartan fiber layer for the new adjoint-fiber source packet: the Arc-provenance binding model, the nine-step build chain with the root-basis action and its transpose coweight action, the two projection forms, the three budget lines with their exact formulas, and the 9 test anchors.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/adjoint_fiber.rs",
+      "sha256": "96b6dce9d23caf49d82cad7b7957c054d49b7209eb578504af7ed0f27d74f0e4",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_2a86b5e4-83b8-440b-9f62-74cdad5d55ef",
+    "prompt_sha256": "1fc9eb72a9dc11fc4c43a6052c87ed3d355ad38979e76006a79d6f76f91a702b",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/adjoint-fiber-probe",
+    "stdout_jsonl_sha256": "dfb8fe8d47343ecf0e2faa09dd01bf4ba71939f5c685c164ecaa2067fa0146d0",
+    "draft_sha256": "421ad80246a7138383f99b5a5480ace666b48edbe40b7441a07b2742814a7599",
+    "result": "completed, exit 0, 312.4s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The budget formulas (16*ss^2 + ss*lr, lr^2*ss*2, lr*target*count), the transpose-vs-inverse-transpose comment, the ptr_eq provenance model, and all 9 test anchors were exact; the per-call (not cumulative) projection-work observation is retained in the packet."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

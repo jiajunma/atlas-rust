@@ -623,3 +623,15 @@ not authenticated or its login was rejected`（本机 codex-cli 0.154.0 的
 **恢复条件：用户交互式 `codex login` 后重跑同一命令**；备选提供方
 （anthropic/openai/ollama）本机均未配置。源码包维护（Kimi probe 路由）
 不受此影响，照常进行。
+
+
+## 2026年10月6日 新增伴随纤维来源包（Kimi probe 协助）
+
+新增 `sources/adjoint-fiber.md` 与快照 `2026-10-06-adjoint-fiber.json`：
+Arc 出处绑定模型、九步构建链、两种投影形态、三条预算线公式、
+「每次调用独立计费」观察与 9 个测试锚点。同一 Kimi probe 路由起草
+（800s 期限，exit 0，312.4s），维护者对照源码逐条核对改写。索引与
+sources/index.md 已同步；未运行编译、测试或 compiler 生成。
+atlas-real-group 剩余未覆盖：`lib.rs`（crate 根）与 `dual.rs`
+（root-datum-dual 已含 dual 内类构造的主要面，待核）；atlas-core
+语言层仍是最大缺口。
