@@ -3025,6 +3025,13 @@ AFTER_V2_PREDECESSOR = {
         "c43f55dbe28cbdcee4ae35d0490842c282a4f6554f8a9973468ed8dfe53a79bd",
     "campaign_ledger_records": 21,
 }
+# The frozen after-v2 stray sbatch output binding, retained for
+# validate_after_v2_failure after PREDECESSOR_STATE advanced to after-v3.
+AFTER_V2_PREDECESSOR_OUT = {
+    "sha256":
+        "c50e274a20b95e488f8f7d03fd42f1d969ce8993aa6f5a8f87d6d0bf5e211f5d",
+    "bytes": 847,
+}
 BEFORE_V3_PREDECESSOR_STAGE = (
     "/public/home/majj/atlas-rust-campaign-20260930/"
     "stages/weyl-context-core-before-v3"
@@ -7100,10 +7107,8 @@ def validate_after_v2_failure(root, inputs):
             or value.get("stage_creation_sha256")
                != PREDECESSOR["stage_creation_sha256"]
             or value.get("report") is not None
-            or value.get("out_sha256") != PREDECESSOR_STATE["stage_files"][
-                "weyl-context-core-after-v1-3890580.out"]["sha256"]
-            or value.get("out_bytes") != PREDECESSOR_STATE["stage_files"][
-                "weyl-context-core-after-v1-3890580.out"]["bytes"]
+            or value.get("out_sha256") != AFTER_V2_PREDECESSOR_OUT["sha256"]
+            or value.get("out_bytes") != AFTER_V2_PREDECESSOR_OUT["bytes"]
             or value.get("mathematical_regression_required") is not False):
         raise ValueError("Weyl core after-v2 failure evidence changed")
     return copy.deepcopy(value)
