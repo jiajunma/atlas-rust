@@ -40,9 +40,12 @@ build 门控、分窗两相 BFS（Rayon 纯计算 + 顺序 intern）、上游一
 集、`KlHashTable` 去重池（`zero`/`one` 固定索引 0/1），以及 `kl_table.rs`
 按列存储（primitive-index 位置索引的池索引列、非零 μ-对列、`holes`）与
 `fill` 的两条递归分派（`recursion_column` 与 `new_recursion_column` 的
-"nice and real"/"endgame" 情形）。对应[阅读快照](snapshots/2026-10-03-kl-polynomial-table.json)；
-草案由同一 Kimi probe 路由起草（300 秒期限，exit 0，90.7s），维护者对照源码
-逐条核对改写。该包是结构性阅读，不声称 KLV 计算的数学验收。
+"nice and real"/"endgame" 情形）；重读补充四条复核备注（coefficient 过期
+文档、Default 空池隐患、quotient 恒 Ok、不检查算术）与 4 个测试锚点。
+对应阅读快照 [2026-10-03](snapshots/2026-10-03-kl-polynomial-table.json)（初读）
+与 [2026-10-06](snapshots/2026-10-06-lattice-kl-polynomial.json)（重读，字节未变，
+仅 `kl_polynomial.rs`）；两份草案均由同一 Kimi probe 路由起草、维护者对照
+源码逐条核对合并改写。该包是结构性阅读，不声称 KLV 计算的数学验收。
 
 [部分公共块：Bruhat 区间上的块构造](partial-common-block.md)记录
 `partial_block.rs` 的五个构件：`StandardReprMod`、`IntegralSubsystem`、
@@ -117,9 +120,12 @@ canonicalize 行走与 EVEN-integer grading 规则、`TwistedConjugacyClass` 与
 `weyl_element.rs`：WeylAction/WeylElement 双层分工与互查桥、descent 读取
 方向（左读逆向量、右读正向置换）、`canonical_word` 的不变量检查、
 `WeylInterface` 的内部生成子重编号（A/E/F/G 直取、B/C/D 反转）与
-`ParabolicPieces` 的 piece 索引。对应[阅读快照](snapshots/2026-10-03-weyl-layer.json)；
-草案由同一 Kimi probe 路由起草（exit 0，151.4s，420 秒期限），维护者对照
-源码逐条核对改写。该包是结构性阅读，不声称 Weyl 层的数学验收。
+`ParabolicPieces` 的 piece 索引；重读补充等值语义张力、compose/apply 检查
+层级、enumerate 的 CompactWeyl+rayon 管线、死代码观察与 7 个测试锚点。
+对应阅读快照 [2026-10-03](snapshots/2026-10-03-weyl-layer.json)（初读）与
+[2026-10-06](snapshots/2026-10-06-weyl-root-involution.json)（重读，字节未变，
+仅 `weyl.rs`）；两份草案均由同一 Kimi probe 路由起草、维护者对照源码逐条
+核对合并改写。该包是结构性阅读，不声称 Weyl 层的数学验收。
 
 [Compact Weyl 群的 transducer 表示](weyl-transducer.md)记录
 `weyl_transducer.rs`：parabolic-subquotient 表示（`[u8; WEYL_MAX_RANK]`）、
@@ -131,9 +137,12 @@ canonicalize 行走与 EVEN-integer grading 规则、`TwistedConjugacyClass` 与
 [Twisted involution 表（KGB stage b）](involution-table.md)记录
 `involution_table.rs`：记录格式（含 image-basis 对的播种/传送）、编号纪律、
 `new`/`add_cartan` 构建与 `lookup`/`cross`/`cayley`/`simple_root_kind`
-访问器。对应[阅读快照](snapshots/2026-10-03-involution-table.json)；草案由
-同一 Kimi probe 路由起草（exit 0，115.5s，420 秒期限），维护者对照源码逐条
-核对改写。该包是结构性阅读，不声称 involution 表的数学验收。
+访问器；重读补充外序 BFS 细节（stepped_length、普通生成元传送）、
+push_record 的奇偶不变量与边数学对账、种子插入静默覆盖观察与 7 个测试
+锚点。对应阅读快照 [2026-10-03](snapshots/2026-10-03-involution-table.json)（初读）
+与 [2026-10-06](snapshots/2026-10-06-weak-real-form-involution-table.json)（重读，
+字节未变）；两份草案均由同一 Kimi probe 路由起草、维护者对照源码逐条核对
+合并改写。该包是结构性阅读，不声称 involution 表的数学验收。
 
 [Tits 元素：torus 部分与 Tits 群操作（KGB stage c）](tits-element.md)记录
 `tits_element.rs`：`TitsElement` 二元组形状、`TitsCoset` 的 full-inner-class
@@ -166,9 +175,13 @@ finalisation 驱动、两个 `StarOracle` 实现。对应[阅读快照](snapshot
 [弱实形式划分：adjoint fiber 的 W_im 轨道](weak-real-form.md)记录
 `weak_real_form.rs`：`WeakRealFormId` 的编号约定（与上游 RealFormNbr 一致）、
 `WeakRealFormPartition` 的构建与查询、`weak_real_form_at_representative` 的
-代表元级归因与 provenance 门控。对应[阅读快照](snapshots/2026-10-03-weak-real-form.json)；
-草案由同一 Kimi probe 路由起草（exit 0，164.6s，420 秒期限），维护者对照
-源码逐条核对改写。该包是结构性阅读，不声称弱实形式层的数学验收。
+代表元级归因与 provenance 门控；重读补充 walk_mask_orbits 的转移规则与
+不饱和比较、seeded_class 哨兵守卫、九道闸门顺序（整性门先于虚 grading）
+与 11 个测试锚点。对应阅读快照
+[2026-10-03](snapshots/2026-10-03-weak-real-form.json)（初读）与
+[2026-10-06](snapshots/2026-10-06-weak-real-form-involution-table.json)（重读，
+字节未变）；两份草案均由同一 Kimi probe 路由起草、维护者对照源码逐条核对
+合并改写。该包是结构性阅读，不声称弱实形式层的数学验收。
 
 [精确整数格线性代数：预算、饱和核与可观测基](integer-lattice.md)记录
 `integer_lattice.rs`：`IntegerLatticeBudget` 的预算分层、`IntegerMatrix`、
@@ -180,36 +193,51 @@ finalisation 驱动、两个 `StarOracle` 实现。对应[阅读快照](snapshot
 [紧致 grading：simple-imaginary 根的紧致性位向量](grading.md)记录
 `grading.rs`：`Grading` 的位向量纪律（与 ambient coweight 坐标的类型区分）、
 `CartanGradingData` 的两道门控与全一 base、`grading`/`element_from_grading`
-的增广消元互转。对应[阅读快照](snapshots/2026-10-03-grading.json)；草案由
-同一 Kimi probe 路由起草（exit 0，147.9s，420 秒期限），维护者对照源码逐条
-核对改写。该包是结构性阅读，不声称 grading 层的数学验收。
+的增广消元互转；重读补充逐虚根收集流程、faithful 门（断言改拒绝）与 9 个
+测试锚点。对应阅读快照 [2026-10-03](snapshots/2026-10-03-grading.json)（初读）
+与 [2026-10-06](snapshots/2026-10-06-grading-mod-two.json)（重读，字节未变）；
+两份草案均由同一 Kimi probe 路由起草、维护者对照源码逐条核对合并改写。
+该包是结构性阅读，不声称 grading 层的数学验收。
 
 [权格类型层：Weight、Coweight 与有理权](lattice-types.md)记录 `lattice.rs`：
 `Weight`/`Coweight` 的 newtype 纪律（同表示不可互换）、`pair` 配对、
-`RationalWeight` 的公共分母与 gcd 归一化、`RationalCoweight` 的逐坐标表示。
-对应[阅读快照](snapshots/2026-10-03-lattice-types.json)；草案由同一 Kimi
-probe 路由起草（exit 0，215.9s，420 秒期限），维护者对照源码逐条核对改写。
+`RationalWeight` 的公共分母与 gcd 归一化、`RationalCoweight` 的逐坐标表示；
+重读补充 apply_matrix/halve/integral_coordinates/scale/dot_coroot 细节、
+预算纪律与四条复核备注（dot_coroot 字段反序、actual 填报怪癖、不可达
+防御分支、gcd_u64 跨文件漂移）。对应阅读快照
+[2026-10-03](snapshots/2026-10-03-lattice-types.json)（初读）与
+[2026-10-06](snapshots/2026-10-06-lattice-kl-polynomial.json)（重读，字节未变）；
+两份草案均由同一 Kimi probe 路由起草、维护者对照源码逐条核对合并改写。
 该包是结构性阅读，不声称格类型层的数学验收。
 
 [per-involution (1-θ)X* 图像基对](real-projection.md)记录
 `real_projection.rs`：`lift_mat`/`M_real` 基对、播种/传送纪律、
-`transported` 的两个矩阵方向与分解不变式、`coordinates`/`lift` 接口。
-对应[阅读快照](snapshots/2026-10-03-real-projection.json)；草案由同一 Kimi
-probe 路由起草（exit 0，74.5s，420 秒期限），维护者对照源码逐条核对改写。
+`transported` 的两个矩阵方向与分解不变式、`coordinates`/`lift` 接口；重读
+补充 gcd_sweep 的符号纪律（E6 involution-187 注释）、幺模整数逆与 4 个
+测试锚点、transported 的形状检查缺口等阅读观察。对应阅读快照
+[2026-10-03](snapshots/2026-10-03-real-projection.json)（初读）与
+[2026-10-06](snapshots/2026-10-06-real-projection-matreduc.json)（重读，字节未变）；
+两份草案均由同一 Kimi probe 路由起草、维护者对照源码逐条核对合并改写。
 该包是结构性阅读，不声称投影层的数学验收。
 
 [精确整数矩阵约化：matreduc 的逐操作移植](matreduc.md)记录 `matreduc.rs`：
 逐操作保真的动机（被选解下游可观测）、`IntMatrix`、`diagonalise` 的符号簿记、
 `has_solution`/`find_solution`、`in_left/right_image`、
-`inverse_upper_triangular` 与 `exp_i`。对应[阅读快照](snapshots/2026-10-03-matreduc.json)；
-草案由同一 Kimi probe 路由起草（exit 0，75.6s，420 秒期限），维护者对照源码
-逐条核对改写。该包是结构性阅读，不声称 matreduc 移植的数学验收。
+`inverse_upper_triangular` 与 `exp_i`；重读补充 divide/gcd 细节、row_minus
+覆盖赋值怪癖的逐行追踪、panic 面与 oracle_reference_cases 锚点。对应阅读
+快照 [2026-10-03](snapshots/2026-10-03-matreduc.json)（初读）与
+[2026-10-06](snapshots/2026-10-06-real-projection-matreduc.json)（重读，字节未变）；
+两份草案均由同一 Kimi probe 路由起草、维护者对照源码逐条核对合并改写。
+该包是结构性阅读，不声称 matreduc 移植的数学验收。
 
 [mod-2 线性代数：位打包向量与子空间](mod-two.md)记录 `mod_two.rs`：
-`ModTwoVector` 位打包、`ModTwoSubspace` 的 pivot 索引 RREF、crate 私有
-`ModTwoSubquotient`。对应[阅读快照](snapshots/2026-10-03-mod-two.json)；
-Kimi probe 草案因摘录漏掉未注释方法而偏薄，由维护者直接读源补齐。该包是
-结构性阅读，不声称 mod-2 层的数学验收。
+`ModTwoVector` 位打包（from_ones 重复下标抵消）、`ModTwoSubspace` 的低主元
+RREF 与 right_kernel/pivot_rows、`CanonicalModTwoSection` 的 64 列掩码与依赖
+列丢弃（2¹² 穷举 oracle）、crate 私有 `ModTwoSubquotient` 与诱导映射双侧校验。
+对应阅读快照 [2026-10-03](snapshots/2026-10-03-mod-two.json)（初读）与
+[2026-10-06](snapshots/2026-10-06-grading-mod-two.json)（重读，字节未变）；
+初读由维护者直接读源补齐，重读草案由同一 Kimi probe 路由起草、维护者对照
+源码逐条核对合并改写。该包是结构性阅读，不声称 mod-2 层的数学验收。
 
 [BasedRootDatum 与对偶内类构造](root-datum-dual.md)记录 `root_datum.rs` 与
 `dual.rs`：`BasedRootDatum` 的两秩区分与构造门控、radical/coradical 饱和核、
@@ -387,52 +415,6 @@ saturating/checked 策略并存、reflection_word 的贪心扫描与反转约定
 [阅读快照](snapshots/2026-10-06-twisted-involution-trio.json)；草案由同一
 Kimi probe 路由起草（300s 期限，exit 0，274.4s），维护者对照源码逐条
 核对改写。该包是结构性阅读，不声称这三层的数学验收。
-
-[格值类型与 KLV 多项式引擎](lattice-kl-polynomial.md)记录 `lattice.rs` 与
-`kl_polynomial.rs`：Weight/Coweight 的类型区分、RationalWeight 单公分母
-纪律与 halve 不归一约定、KlPol 的 trim 不变量与递归操作集、KlHashTable
-种子池（及 `Default` 空池隐患）。对应
-[阅读快照](snapshots/2026-10-06-lattice-kl-polynomial.json)；草案由同一
-Kimi probe 路由起草（r1 在 360s 超时留有草稿残片，r2 以 600s 期限
-exit 0，326.1s；超时规则上修为 ~24s/KB），维护者对照源码逐条核对改写。
-该包是结构性阅读，不声称这两层的数学验收。
-
-[Weyl 矩阵作用与根对合分类](weyl-root-involution.md)记录 `weyl.rs` 与
-`root_involution.rs`：WeylAction 的 Arc 溯源与双矩阵、compose/apply 的
-检查层级与 compose_fast 热路径、enumerate_actions 的 CompactWeyl+rayon
-管线、RootInvolutionData 的五步校验与子系单根选举。对应
-[阅读快照](snapshots/2026-10-06-weyl-root-involution.json)；草案由同一
-Kimi probe 路由起草（600s 期限，exit 0，327.7s），维护者对照源码逐条
-核对改写。该包是结构性阅读，不声称这两层的数学验收。
-
-[紧性分级与动态 F₂ 层](grading-mod-two.md)记录 `grading.rs` 与
-`mod_two.rs`：Grading 语义与类型区分动机、CartanGradingData 的构造门槛与
-增广消元求逆、ensure_faithful_shifts 的断言改拒绝、ModTwoSubspace 的
-RREF/低主元纪律、CanonicalModTwoSection 的 64 列掩码与依赖列丢弃、
-ModTwoSubquotient 的补基与诱导映射双侧校验。对应
-[阅读快照](snapshots/2026-10-06-grading-mod-two.json)；草案由同一 Kimi
-probe 路由起草（1300s 期限，exit 0，458.1s——~24s/KB 规则成立），维护者
-对照源码逐条核对改写。该包是结构性阅读，不声称这两层的数学验收。
-
-[实投影像基与整数矩阵约化](real-projection-matreduc.md)记录
-`real_projection.rs` 与 `matreduc.rs`：(1−θ)X* 像基对的播种/运输/自校验、
-带符号 gcd_sweep 与 E6 involution-187 注释、幺模整数逆、IntMatrix 与
-operation-faithful diagonalise 的行列式符号簿记（含 row_minus 覆盖赋值
-怪癖）、has_solution/find_solution/in_*_image、inverse_upper_triangular、
-exp_i。对应
-[阅读快照](snapshots/2026-10-06-real-projection-matreduc.json)；草案由同一
-Kimi probe 路由起草（1200s 期限，exit 0，455.9s），维护者对照源码逐条
-核对改写（含符号簿记逐行追踪）。该包是结构性阅读，不声称这两层的数学
-验收。
-
-[弱实形划分与扭对合表](weak-real-form-involution-table.md)记录
-`weak_real_form.rs` 与 `involution_table.rs`：掩码轨道游走与升序最小编号、
-weak_real_form_at_representative 的九道闸门（含出处闸门与整性闸门先于虚
-grading）、记录字段的典范推导纪律与像基对的播种+搬运（B2 x=4 锚点）、
-add_cartan 的种子/外序 BFS/闭轨不变量与查询面。对应
-[阅读快照](snapshots/2026-10-06-weak-real-form-involution-table.json)；草案由
-同一 Kimi probe 路由起草（1600s 期限，exit 0，658.1s），维护者对照源码
-逐条核对改写。该包是结构性阅读，不声称这两层的数学验收。
 
 [K 型值与谓词/变形链](ktype.md)记录 `ktype.rs`：KType 的当选代表不变量与
 sr_k 规范化、六个谓词（含 is_nonzero/is_normal 的不检查前提）、

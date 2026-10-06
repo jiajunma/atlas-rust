@@ -6,13 +6,14 @@ ingestedAt: 2026-10-03T10:32:42Z
 
 # 精确整数矩阵约化：matreduc 的逐操作移植
 
-编辑状态：**结构性阅读，草稿经 Kimi probe 起草、维护者逐条对照源码核对后改写**。
-本包解释 `matreduc.rs` 的移植策略与操作面；其逐位保真证据属于它自己的
+编辑状态：**结构性阅读（两次：2026-10-03 初读、2026-10-06 重读，字节未变，
+SHA-256 相同）；两份草案均经 Kimi probe 起草、维护者逐条对照源码核对后改写合并**。
+本包解释 `matreduc.rs`（755 行）的移植策略与操作面；其逐位保真证据属于它自己的
 HPC 证据链（模块文档记载已与编译版 oracle 逐位验证，本包不重跑）。所读字节见
 [`snapshots/2026-10-03-matreduc.json`](snapshots/2026-10-03-matreduc.json)
-（`matreduc.rs` SHA-256
-`49897e12a2572dffa8d9ce34022308d871d2a9893836732d035563be6a97cb92`，dirty
-工作区）。
+（初读）与
+[`snapshots/2026-10-06-real-projection-matreduc.json`](snapshots/2026-10-06-real-projection-matreduc.json)
+（重读，同一 SHA-256 `49897e12…`，与 real_projection.rs 同包进行）。
 
 ## 移植策略：为什么逐操作复现
 
@@ -29,7 +30,26 @@ HPC 证据链（模块文档记载已与编译版 oracle 逐位验证，本包�
 `IntMatrix`（crate 内部）：行主序矩形整数矩阵。`diagonalise(m)` 返回
 `(row, col, diagonal)`：幺模的 `row`、`col` 使 `row * m * col` 对角；对角
 元素除第一个外均为正——这是对 `matreduc::diagonalise` 的 operation-faithful
-移植，含其精确符号簿记。
+移植，含其精确符号簿记。空形状（0×n 或 n×0）提前返回。
+
+细节（2026-10-06 重读补充，含逐行追踪）：
+
+- `divide(a, b)`：正除数下取整除法（`a >= 0` 直除，否则
+  `-1 - ((-1 - a) / b)`，避开 `i32::MIN` 取负）；
+- `gcd(row, &mut flip, dest)`：最小绝对值主元（`wrapping_abs`）；负主元取正
+  时翻转 `flip` 并在记录矩阵置 `col.set(mindex, mindex, -1)`；`divide` 消元；
+  末尾列交换到 `dest` 也翻 `flip`；
+- `diagonalise` 的簿记怪癖：每列首个 gcd 的 `flip` 对 `row_minus` 是**覆盖**
+  赋值；内层循环交替行/列 gcd，`flip` 分别 `^=` 进 `col_minus`/`row_minus`；
+  退出后再 `row_minus ^= flip`（从行 gcd 的 break 退出时该 `flip` 计入两侧；
+  从列 gcd 的 break 退出时净效果抵消）；主元列未左对齐时用稳定排列
+  `pull_back_columns` 并异或置换符号（逆序对奇偶）；最后
+  `row_minus != col_minus` 时 `diagonal[0]` 取负，`row_minus`/`col_minus`
+  分别经第 0 行/列乘 −1 归一（注释口径不一致：一处说 "ensure det(row)=1"，
+  测试注释说上游只强制 `det(col)==1`、`det(row)` 可为 −1——以测试为准）；
+- panic 面：`from_entries` 形状、`apply_to`/`right_prod` 长度、`transpose`
+  方阵、`row_apply`/`column_apply` 边界全部 `assert`——故 `has_solution`
+  等对长度不匹配的 `b` 是 panic 而非 `Err`。
 
 ## 求解与像判定
 
@@ -44,19 +64,30 @@ HPC 证据链（模块文档记载已与编译版 oracle 逐位验证，本包�
   或某对角元不为 1 时报错。
 - `exp_i(n)`（上游 `arithmetic::exp_i`，arithmetic.h:49-51）：对**偶数** $n$
   给出 $i^n$（即 $\pm 1$）；奇数前置条件在上游是 `assert`，此处为
-  `debug_assert!`。
+  `debug_assert!`（release 下奇数输入落 `-1` 分支，无防护）。
+
+测试锚点（2026-10-06 重读补充，6 个）：11 用例重构（`|det(row)| == 1`、
+`det(col) == 1`、逐对角核对、首项外为正）；`find_solution` 三形态（满秩、
+秩亏、矩形）；像判定一维例；**oracle_reference_cases**——取自 C++ oracle
+的逐字节锚定（`[[0,5],[0,0]]` → `diagonal [−5]` 与精确 `row`/`col`；
+`[[−4]]` → `[−4]`；6×6 秩亏且主元列未左对齐的完整 `row`/`col` 字面量与解
+`[6,14,5,−37,−421,345]`）；单位上三角逆两例 + 两拒绝；`exp_i` 五点。未测：
+wrapping 溢出域（文档声明可观测）、`in_*_image` 的矩形/秩亏、空形状
+`diagonalise`、`from_entries`/`apply_to` 的 panic 路径。
 
 ## 来源与限制
 
 - 源码：[matreduc.rs](../../../crates/atlas-real-group/src/matreduc.rs)；
-  阅读快照 [`2026-10-03-matreduc.json`](snapshots/2026-10-03-matreduc.json)。
+  阅读快照 [`2026-10-03-matreduc.json`](snapshots/2026-10-03-matreduc.json)
+  （初读）与
+  [`2026-10-06-real-projection-matreduc.json`](snapshots/2026-10-06-real-projection-matreduc.json)
+  （重读，同一 SHA-256 `49897e12…`）。
 - 上游行号均转述自源码注释（matreduc.cpp/matrix.cpp/arithmetic.h/
   ext_block.cpp），未独立重读上游，随版本演进可能漂移。
 - 关联：[整数格](integer-lattice.md)、[ext_param/star 层](ext-param.md)、
   [图像基对](real-projection.md)。
 - 本包未执行任何构建、测试或原版运行，不含数学验收、性能或并行结论。
-- 起草经由本地 Kimi probe（无工具 profile，`kimi-code/k3-256k`；exit 0，
-  75.6s，420 秒期限）。草案由维护者对照源码逐条核对改写；其「待源码核对」
-  项中涉及 `diagonalise` 返回值、`find_solution` 的 None-vs-异常、
-  `exp_i` 的 debug_assert 前置的内容均已按源码落实，其余骨架内容未采用。
-  调用记录见快照的 `kimi_assist`。
+- 初读起草经由本地 Kimi probe（exit 0，75.6s）；重读同样经 Kimi probe
+  （1200s 期限，exit 0，455.9s），其 `diagonalise` 符号簿记逐行追踪与
+  oracle_reference_cases 普查均精确，已并入正文。调用记录见两份快照的
+  `kimi_assist`。

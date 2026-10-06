@@ -593,3 +593,22 @@ SHA-256 相同）：补充 i1/i2 Cayley 槽共享与 fall-through、descents() �
 逻辑、20 个 BlockInvariantViolation 字面量普查、7 个秩1测试锚点、
 dual_position 静默覆盖与 cross 预填 0 两处阅读观察。重复文件 block.md
 删除，索引改为单条目并链接 2026-10-03 与 2026-10-06 两份快照。
+
+
+## 2026年10月6日 KB 重读包合并完成（6 处重复）+ strong-real 草稿不收录
+
+本次会话在 2026-10-03 既有包之外又起草了 7 个包，经逐字节核对确认全部为
+**未变字节**上的重读。已按「保留旧名、合并新细节、双快照链接」原则合并：
+block → block-graph；grading-mod-two → grading + mod-two；
+lattice-kl-polynomial → lattice-types + kl-polynomial-table；
+real-projection-matreduc → real-projection + matreduc；
+weak-real-form-involution-table → weak-real-form + involution-table；
+weyl-root-involution → weyl-layer（involution-types 仅加一行交叉引用，
+其 root_involution.rs 内容已完整）。ktype 此前已单独修复（a1837fa7）。
+重读新贡献均已并入对应包：错误分支普查、测试锚点、阅读观察
+（静默覆盖、死代码、填报怪癖、策略不对称、过期文档等）。
+
+strong_real.rs 的 probe 草稿（exit 0，200.9s，session 见证据目录
+docs/evidence/kimi-runtime-20261006/strong-real-probe/）**不收录**：
+`strong-real.md`（2026-10-03）已存在且字节未变，重读未产生新内容；证据
+目录仅作调用记录保留。

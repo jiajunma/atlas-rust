@@ -6,13 +6,14 @@ ingestedAt: 2026-10-03T10:32:42Z
 
 # Twisted involution 表（KGB stage b）
 
-编辑状态：**结构性阅读，草稿经 Kimi probe 起草、维护者逐条对照源码核对后改写**。
-本包解释 `involution_table.rs` 的记录格式、播种/传送与访问语义；其正确性属于
+编辑状态：**结构性阅读（两次：2026-10-03 初读、2026-10-06 重读，字节未变，
+SHA-256 相同）；两份草案均经 Kimi probe 起草、维护者逐条对照源码核对后改写合并**。
+本包解释 `involution_table.rs`（840 行）的记录格式、播种/传送与访问语义；其正确性属于
 它自己的 HPC 证据链（KGB/capacity gate 等），本包不重述也不扩展。所读字节见
 [`snapshots/2026-10-03-involution-table.json`](snapshots/2026-10-03-involution-table.json)
-（`involution_table.rs` SHA-256
-`aab8c87ba1244ea022a35c4539185606d52316821cdc00b2b80f61524b89d8bf`，dirty
-工作区）。
+（初读）与
+[`snapshots/2026-10-06-weak-real-form-involution-table.json`](snapshots/2026-10-06-weak-real-form-involution-table.json)
+（重读，同一 SHA-256 `aab8c87b…`，与 weak_real_form.rs 同包进行）。
 
 ## 定位
 
@@ -42,9 +43,24 @@ datum、root system 与 distinguished involution，无需 cross-input gate），
 
 `add_cartan(classification, cartan)` 把一个 Cartan 类的轨道生成为连续切片；
 **幂等**（重复添加返回已有切片）；种子与期望大小均来自 classification，生成
-的轨道必须恰好填满期望大小。种子经 `WeylElement::from_action` 从矩阵级代表元
-转换一次，再应用 (W_length + #Cayley)/2 公式；`CayleyCrossDecomposition`
-是 per-class 工具——绝不在每个条目上重建。
+的轨道必须恰好填满期望大小（`InvolutionTableInvariantViolation { invariant:
+"orbit size" }`）。种子经 `WeylElement::from_action` 从矩阵级代表元转换一次，
+再应用 (W_length + #Cayley)/2 公式（奇数报 `"length parity"`）；
+`CayleyCrossDecomposition` 是 per-class 工具——绝不在每个条目上重建。
+
+外序 BFS（2026-10-06 重读补充）：邻居 = `s_g · current · s_{twist(g)}`（词级
+两次 `multiply`，作用级两次 `compose`）；去重键 = 前向根置换；新长度
+`stepped_length`——Weyl 长度差恰 ±2 则对合长度 ∓1，否则
+`"twisted length step"`（差 0 意味着边固定该对合，去重命中已先行消费）；
+投影用**普通生成元 s 而非 twist(s)** 的矩阵传送（δ 已并入 θ，
+involutions.cpp:242-243）；每访问一个节点推入一条 `cross_links`（此后
+`cross` 是存储直查）。`push_record` 里，`(1+θ)ρ` 以 `(2ρ + θ·2ρ)/2` 计算
+（奇坐标报 `"theta rho parity"`）；传送的投影先 `check_against` 本记录新鲜
+推导的 θ 再采用（边数学对账），种子处则 `RealProjection::build`。
+**种子插入 `index_by_permutation` 无碰撞检查**——`BTreeMap::insert` 同键
+静默覆盖，依赖不同 Cartan 轨道键不重叠的调用纪律（阅读观察）。
+条目上限是包含式（`records.len() == max_involutions` 即拒，
+`InvolutionTableResourceLimit { resource: "involutions" }`）。
 
 ## 访问器
 
@@ -60,18 +76,31 @@ datum、root system 与 distinguished involution，无需 cross-input gate），
 - `simple_root_kind(id, generator)`：一个访问器覆盖上游的三个
   `is_*_simple` 测试。
 
+测试锚点（2026-10-06 重读补充，7 个）：A1 分裂两单元轨道 + 幂等 + 逐字段
+锚定（fundamental 的 `theta_plus_one_rho = [1]`、`mod_space` 秩 0；分裂的
+`[0]`、秩 1）；B2 全表与分类对账且两次独立建表逐切片相等（可复现性）；
+B2 每条记录的 θ 典范性（像 = `weyl.image(δ.image(root))`、(W+Cayley)/2
+公式、`(2ρ+θ·2ρ)/2`）；Cayley 边在其 Cartan 加入前后（`None` → `Some`）；
+扭转 A2 轨道大小排序后 `[1, 3]`；**B2 投影传送锚点**（arm64 oracle：
+θ=`[[-1,0],[2,1]]` 的记录其 `lift_mat == [[2],[-2]]`，而现场重算得
+`[[-2],[2]]`，`assert_ne`）；预算/越界守卫（上限 1 时第二 Cartan 拒、
+`CartanId(9)` 越界、外来系统 `lookup` 为 `None`）。未触分支：四个不变量
+错误字面量、`AllocationFailed`、`lookup` 的 `Some` 命中直断。
+
 ## 来源与限制
 
 - 源码：[involution_table.rs](../../../crates/atlas-real-group/src/involution_table.rs)；
   阅读快照
-  [`2026-10-03-involution-table.json`](snapshots/2026-10-03-involution-table.json)。
+  [`2026-10-03-involution-table.json`](snapshots/2026-10-03-involution-table.json)
+  （初读）与
+  [`2026-10-06-weak-real-form-involution-table.json`](snapshots/2026-10-06-weak-real-form-involution-table.json)
+  （重读，同一 SHA-256 `aab8c87b…`）。
 - 上游行号均转述自源码注释（involutions.h/involutions.cpp），未独立重读
   上游，随版本演进可能漂移。
 - 关联：[KGB 图结构](kgb-graph-structure.md)、[Weyl 群层](weyl-layer.md)、
   [Cartan 分类](cartan-classification.md)；`ModTwoSubspace`、
   `RealProjection`、`CayleyCrossDecomposition` 的展开属于后续来源包。
 - 本包未执行任何构建、测试或原版运行，不含数学验收、性能或并行结论。
-- 起草经由本地 Kimi probe（无工具 profile，`kimi-code/k3-256k`；exit 0，
-  115.5s，420 秒期限）。草案由维护者对照源码逐条核对改写；其「待源码核对」
-  项中涉及 `cross`/`cayley` 签名、`add_cartan` 幂等性、`cartan_of` 语义的
-  内容均已按源码落实，其余骨架内容未采用。调用记录见快照的 `kimi_assist`。
+- 初读起草经由本地 Kimi probe（exit 0，115.5s）；重读同样经 Kimi probe
+  （1600s 期限，exit 0，658.1s），其 BFS 细节、push_record 不变量与 7 个测试
+  锚点均精确，已并入正文。调用记录见两份快照的 `kimi_assist`。

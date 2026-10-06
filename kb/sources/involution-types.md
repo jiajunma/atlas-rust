@@ -149,5 +149,8 @@ pub(crate) fn compose_matrices(left, right) -> Result<Vec<Vec<i32>>, _>
 精确读取身份见
 [`2026-10-06-involution-types.json`](snapshots/2026-10-06-involution-types.json)：
 绑定 Git base、三文件字节 SHA-256 与 Kimi 调用记录。草案由 Kimi probe
-（无工具档案）以三文件完整字节起草，维护者对照源码逐条核对改写。本次
+（无工具档案）以三文件完整字节起草，维护者对照源码逐条核对改写。
+`root_involution.rs` 另有 2026-10-06 的同字节重读（快照
+[`2026-10-06-weyl-root-involution.json`](snapshots/2026-10-06-weyl-root-involution.json)，
+与 weyl.rs 同包进行），结论与本包一致，未产生新内容。本次
 知识维护未执行 Atlas、Cargo、测试或 benchmark。

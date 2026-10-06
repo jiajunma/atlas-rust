@@ -6,12 +6,15 @@ ingestedAt: 2026-10-03T10:32:42Z
 
 # KLV 多项式的存储与逐列计算
 
-编辑状态：**结构性阅读，草稿经 Kimi probe 起草、维护者逐条对照源码核对后改写**。
+编辑状态：**结构性阅读（两次：2026-10-03 初读、2026-10-06 重读，字节未变，
+SHA-256 相同）；两份草案均经 Kimi probe 起草、维护者逐条对照源码核对后改写合并**。
 本包解释 `kl_polynomial.rs`（多项式引擎）与 `kl_table.rs`（按块存储与填充）
 的代码结构；KLV 计算的正确性属于它自己的 HPC 证据链（F4/E6 修复、rank6
 inventory 等），本包不重述也不扩展。所读字节见
 [`snapshots/2026-10-03-kl-polynomial-table.json`](snapshots/2026-10-03-kl-polynomial-table.json)
-（两个文件均为 dirty 工作区字节）。
+（初读）与
+[`snapshots/2026-10-06-lattice-kl-polynomial.json`](snapshots/2026-10-06-lattice-kl-polynomial.json)
+（重读，仅覆盖 `kl_polynomial.rs`，与 lattice.rs 同包进行）。
 
 ## 多项式表示
 
@@ -46,6 +49,19 @@ KLV 多项式 $P_{x,y}$ 是变量 $q$ 上的多项式；上游约定整系数、
 
 只有 `divide_by_2`/`quotient_by_1_plus_q` 之外的运算永不失败；
 `StructureError` 只从整性检查进入。
+
+复核备注（2026-10-06 重读标记，均属实并保留）：
+
+- `coefficient()` 的文档写「panics if out of range」，但实现越界返回 0——
+  且 `add`/`sub` 的正确性依赖此行为：文档过期，以实现为准；
+- `quotient_by_1_plus_q` 的函数体**恒 `Ok`**，返回 `Result` 仅为签名形态
+  （与上游 `safe_quotient_by_1_plus_q` 调用形态对齐）；
+- `KlHashTable` derive 了 `Default`：`KlHashTable::default()` 得到**空池**
+  （无 0/1 号种子），与 `new()` 语义不同——若存在 `default()` 调用点，池
+  索引约定（0=零、1=一）将被破坏；
+- 算术全部是不检查的 `i32` 普通运算（含 `index + d` 的下标计算），没有
+  `ArithmeticOverflow` 通道——与 `lattice.rs` 的全检查风格对立；是否可接受
+  取决于系数上界，本包不断言。
 
 ## 去重池
 
@@ -99,17 +115,24 @@ tests-first 证据链，见 [项目交接记录](../../../docs/HANDOFF.md) 的�
 
 ## 来源与限制
 
+- 测试锚点（2026-10-06 重读补充）：kl_polynomial.rs 的 4 个测试——池种子
+  序号（`get(0)` 为零、`get(1).as_slice() == &[1]`）、`shift` 展开
+  （`(1+2q)(1+q) = 1+3q+2q²`）、`q=−1` 交错和（`[1,−1,2] → 4`；
+  `(1+q)² → 0`）、`sub_shifted` 单项（`(1+q) − q·1 = 1`）。未测面广：
+  `add`/`sub`、`add_shifted`、`scaled`、`divide_by_2` 错误分支、
+  `quotient_by_1_plus_q`、`match_pol` 去重路径、`get` 越界等。
 - 源码：[kl_polynomial.rs](../../../crates/atlas-real-group/src/kl_polynomial.rs)、
   [kl_table.rs](../../../crates/atlas-real-group/src/kl_table.rs)；阅读快照
-  [`2026-10-03-kl-polynomial-table.json`](snapshots/2026-10-03-kl-polynomial-table.json)。
+  [`2026-10-03-kl-polynomial-table.json`](snapshots/2026-10-03-kl-polynomial-table.json)
+  （初读）与
+  [`2026-10-06-lattice-kl-polynomial.json`](snapshots/2026-10-06-lattice-kl-polynomial.json)
+  （重读，仅 `kl_polynomial.rs`，同一 SHA-256 `de27bf1e…`）。
 - 上游行号均转述自源码注释（kl.cpp/kl.h/polynomials.h/repr.cpp），未独立
   重读上游，随版本演进可能漂移。
 - 关联：[KGB 图结构](kgb-graph-structure.md)（块与链接的底层来源）、
   [根坐标与格坐标](../wiki/math/root-coordinates.md)；`KlSupport`、
   `BlockTopology`、`PartialBlock` 的展开属于后续来源包。
 - 本包未执行任何构建、测试或原版运行，不含数学验收、性能或并行结论。
-- 起草经由本地 Kimi probe（无工具 profile，`kimi-code/k3-256k`），300 秒
-  期限内正常完成（exit 0，90.7s）——第一次 KGB probe 的 180 秒超时只是期限
-  太短，该 profile 的草拟需要约 90 秒以上。草案由维护者对照源码逐条核对
-  改写；其「待源码核对」项已全部按源码落实或剔除。调用记录见快照的
-  `kimi_assist`。
+- 初读起草经由本地 Kimi probe（exit 0，90.7s）；重读同样经 Kimi probe
+  （600s 期限，exit 0，326.1s），其四条复核备注与测试锚点普查均精确，已
+  并入正文。调用记录见两份快照的 `kimi_assist`。
