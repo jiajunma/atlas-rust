@@ -21,10 +21,10 @@ import campaign_workspace
 from campaign_workspace import submission_scope
 
 
-ACTIVE_STAGE_NAME = "weyl-context-core-after-v4"
-STAGE_CREATION_CONTRACT_SCHEMA = "atlas-stage-creation-contract-v13"
+ACTIVE_STAGE_NAME = "weyl-context-core-after-v5"
+STAGE_CREATION_CONTRACT_SCHEMA = "atlas-stage-creation-contract-v14"
 STAGE_CREATION_PREDECESSOR_SCHEMA = \
-    "atlas-stage-creation-predecessor-v13"
+    "atlas-stage-creation-predecessor-v14"
 STAGE_TREE_INVENTORY_SCHEMA = "atlas-stage-tree-inventory-v1"
 STAGE_CREATION_EVENT_SCHEMA = "atlas-stage-creation-event-v1"
 STAGE_CREATION_RECEIPT_SCHEMA = "atlas-stage-creation-receipt-v1"
@@ -68,6 +68,7 @@ EXPECTED_PREDECESSOR_LINEAGE = (
     ("weyl-context-core-after-v1", "3890328"),
     ("weyl-context-core-after-v2", "3890580"),
     ("weyl-context-core-after-v3", "3899303"),
+    ("weyl-context-core-after-v4", "3899885"),
 )
 
 
@@ -942,6 +943,11 @@ def _validate_predecessor_state_descriptor(value, campaign):
         + status + ".json"
         for status in ("prepared", "sealed", "published")
     }
+    after_v3_scoped_campaign_files = {
+        ".atlas-stage-creation-weyl-context-core-after-v3-"
+        + status + ".json"
+        for status in ("prepared", "sealed", "published")
+    }
     required_campaign_files = (
         legacy_campaign_files | v2_scoped_campaign_files
         | v3_scoped_campaign_files | v4_scoped_campaign_files
@@ -950,6 +956,7 @@ def _validate_predecessor_state_descriptor(value, campaign):
         | before_v1_scoped_campaign_files | before_v2_scoped_campaign_files
         | before_v3_scoped_campaign_files | before_v4_scoped_campaign_files
         | after_v1_scoped_campaign_files | after_v2_scoped_campaign_files
+        | after_v3_scoped_campaign_files
         | predecessor_scoped_campaign_files
     )
     failure_pattern = re.compile(
@@ -1020,7 +1027,7 @@ def _validate_creation_contract(contract, campaign):
             or set(pin) != {"path", "schema", "stage_creation_key"}
             or pin.get("path") != ACTIVE_STAGE_NAME + "-pin.json"
             or pin.get("schema")
-               != "atlas-weyl-context-core-after-pin-v4"
+               != "atlas-weyl-context-core-after-pin-v5"
             or pin.get("stage_creation_key") != "stage_creation"):
         raise ValueError("stage-creation pin descriptor changed")
     _safe_relative(pin["path"])

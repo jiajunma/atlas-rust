@@ -33,6 +33,30 @@ positions) rather than raw bytes (or binds per-engine presentations for
 the reject intent), keeping byte-equality for accept cases.  Never
 resubmit 3890328/3890580/3899303/3899885; no sibling stage.
 
+## V5 PREPARATION (in progress) — 2026-10-06
+
+The classifier change is committed (`80eaf6d3`):
+`hpc/weyl_context_core_contract.py` gains `_error_summaries` (envelope-free
+extraction for both the oracle's `Runtime error:` + indented message +
+`Evaluation aborted.` blocks and the Rust CLI's `Runtime error at
+<stdin>:L:C: message` + source + caret blocks) and `_stderr_equal`, which
+compares ordered message contents for the reject intent while keeping byte
+equality for accept; two new contract tests (20 total) pin the behavior on
+the AFTER-v4 shape and on order/multiplicity/envelope deviations.
+
+The v4→v5 harness migration is complete and locally green (127 tests,
+same one known 0444 env error as v3/v4, green on HPC): PREDECESSOR =
+after-v4 (job 3899885, ledger `02b5cb97…`/23, tree `4d8b6518…`
+196/18/5186847, report `479ddd84…`/352080); new `AFTER_V4_FAILURE_EVIDENCE`
+(record sha `6347708e…`) and `validate_after_v4_failure` wired into both
+stager run paths and the driver gates; `validate_after_v3_failure` rebinds
+to a frozen `AFTER_V3_PREDECESSOR` + `AFTER_V3_PREDECESSOR_OUT`; sbatch
+labels v5 with the label checker regression; EXPECTED_TEST_COUNTS contract
+18→20, CHECKER_TESTS 125→127; progressive_submit migrates to ACTIVE stage
+after-v5, contract/predecessor schemas v14, and gains the retired after-v3
+scoped campaign files.  Remaining: payload build (62 inputs), local
+pre-flight, reconcile, submit once, post-checks, record.
+
 Parallel local lane (no HPC needed): the KB source-packet sweep through
 `kb/sources/` continues via the verified Kimi probe route (full-bytes
 prompt, maintainer claim-by-claim verification, per-packet snapshot JSON

@@ -205,10 +205,10 @@ WEYL_CAPTURE_STAGER_SHA256 = (
     "639b5c20d1a1efc68eebb3a240d9d2aa717c1c90757321c6b3445652fad649a6"
 )
 WEYL_AFTER_STAGER_SHA256 = (
-    "72dceee70df328fd8d863b6c0737bd4e2d046c7b176bb5201a16b11baadc2522"
+    "a8b77e6e763897409973e9620c5836cc808443c7905ba814f0c7b0a01b866927"
 )
 WEYL_AFTER_DRIVER_SHA256 = (
-    "4a51c4b804cd238ae5e333b657761facc8539eecd5b41d00c9925d94085da9d6"
+    "ab99c7a62b8c24dcba74cca2531f00f568cee17cb04702f602d59dbbabec0c3a"
 )
 WEYL_AFTER_EXECUTION_SOURCE_SHA256 = {
     **WEYL_EXECUTION_SOURCE_SHA256,
@@ -323,7 +323,7 @@ WEYL_AFTER_DRIVER_IMPORTS = {
     "from campaign_source import digest,file_manifest,materialize_source_archive",
     "from campaign_workspace import ACTIVE_CAMPAIGN,campaign_stage,create_result_folder,ephemeral_job_workspace",
     "from progressive_submit import read_json_file,validate_stage_creation",
-    "from stage_weyl_context_core_after import ACCEPTED_SOURCE,CATALOG_CASES,CATALOG_PATH,CATALOG_SHA256,EXPECTED_TEST_COUNTS,FINAL_HASHES,PATCH_HASHES,PIN_NAME,PIN_SCHEMA,PARENT_SEAL_REFERENCE,PARENT_SOURCE_OBJECT,RETIRED_STAGER_BUNDLE_REFERENCE,SBATCH,SEALED_FIXTURE_HASHES,STAGE_LOCK,STAGE_NAME,SUBMISSION_ENABLED as STAGER_SUBMISSION_ENABLED,TESTS_ONLY_HASHES,REPAIR_PATCH_HASHES,REPAIR_PATCH_PATH,REPAIRED_SOURCE_HASHES,AFTER_SOURCE_FILES,AFTER_SOURCE_MANIFEST_SHA256,REGRESSION_CATALOG_BYTES,REGRESSION_CATALOG_PATH,REGRESSION_CATALOG_SHA256,REGRESSION_FIXTURE_HASHES,REGRESSION_INSPECTION_BYTES,REGRESSION_INSPECTION_PATH,REGRESSION_INSPECTION_SHA256,REGRESSION_PATCH_HASHES,REGRESSION_PATCH_PATH,REGRESSION_SOURCE,REGRESSION_SOURCE_HASHES,confirmed_record,existing_lock,frozen_stage_inputs,saved_json_sha,submission_receipt,validate_catalog as validate_staged_catalog,validate_capture_v1_failure,validate_capture_v2_failure,validate_capture_v3_failure,validate_capture_v4_failure,validate_capture_v5_failure,validate_capture_v6_failure,validate_capture_v7_failure,validate_capture_v8,validate_before_v1_failure,validate_before_v2_failure,validate_before_v3_failure,validate_after_v1_failure,validate_after_v2_failure,validate_after_v3_failure,validate_before_v4_result,validate_parent_objects,validate_pin as validate_stage_pin,validate_predecessor,validate_prior_creation_failure,validate_regression_inputs,validate_stage_topology",
+    "from stage_weyl_context_core_after import ACCEPTED_SOURCE,CATALOG_CASES,CATALOG_PATH,CATALOG_SHA256,EXPECTED_TEST_COUNTS,FINAL_HASHES,PATCH_HASHES,PIN_NAME,PIN_SCHEMA,PARENT_SEAL_REFERENCE,PARENT_SOURCE_OBJECT,RETIRED_STAGER_BUNDLE_REFERENCE,SBATCH,SEALED_FIXTURE_HASHES,STAGE_LOCK,STAGE_NAME,SUBMISSION_ENABLED as STAGER_SUBMISSION_ENABLED,TESTS_ONLY_HASHES,REPAIR_PATCH_HASHES,REPAIR_PATCH_PATH,REPAIRED_SOURCE_HASHES,AFTER_SOURCE_FILES,AFTER_SOURCE_MANIFEST_SHA256,REGRESSION_CATALOG_BYTES,REGRESSION_CATALOG_PATH,REGRESSION_CATALOG_SHA256,REGRESSION_FIXTURE_HASHES,REGRESSION_INSPECTION_BYTES,REGRESSION_INSPECTION_PATH,REGRESSION_INSPECTION_SHA256,REGRESSION_PATCH_HASHES,REGRESSION_PATCH_PATH,REGRESSION_SOURCE,REGRESSION_SOURCE_HASHES,confirmed_record,existing_lock,frozen_stage_inputs,saved_json_sha,submission_receipt,validate_catalog as validate_staged_catalog,validate_capture_v1_failure,validate_capture_v2_failure,validate_capture_v3_failure,validate_capture_v4_failure,validate_capture_v5_failure,validate_capture_v6_failure,validate_capture_v7_failure,validate_capture_v8,validate_before_v1_failure,validate_before_v2_failure,validate_before_v3_failure,validate_after_v1_failure,validate_after_v2_failure,validate_after_v3_failure,validate_after_v4_failure,validate_before_v4_result,validate_parent_objects,validate_pin as validate_stage_pin,validate_predecessor,validate_prior_creation_failure,validate_regression_inputs,validate_stage_topology",
     "from weyl_context_core_contract import CAPTURE_MATURITY,NONACCEPTING_STATUSES,classify_capture,decode_catalog as decode_discovery_catalog,validate_catalog as validate_contract_catalog",
     "from weyl_context_core_regression import AFTER_HARNESS_FAILURE,AFTER_PROVENANCE_FAILURE,AFTER_REPRODUCED,AFTER_STILL_FAILING,AFTER_OBSERVATION_SCHEMA,classify_after,decode_catalog as decode_regression_catalog,decode_inspection as decode_regression_inspection,expected_provenance as expected_regression_provenance,validate_artifacts as validate_regression_artifacts",
     "from weyl_parent_seal import boundary_bytes,load_parent_seal",
@@ -488,7 +488,9 @@ WEYL_AFTER_STAGER_ASSIGNMENTS = {
     "AFTER_V1_ERA_SOURCE_MANIFEST_SHA256",
     "AFTER_V2_FAILURE_EVIDENCE",
     "AFTER_V2_PREDECESSOR_STAGE", "AFTER_V2_PREDECESSOR",
-    "AFTER_V2_PREDECESSOR_OUT",
+    "AFTER_V2_PREDECESSOR_OUT", "AFTER_V3_PREDECESSOR_STAGE",
+    "AFTER_V3_PREDECESSOR", "AFTER_V3_PREDECESSOR_OUT",
+    "AFTER_V4_FAILURE_EVIDENCE",
     "AFTER_V3_FAILURE_EVIDENCE",
     "V8_SUBMISSION_EVIDENCE_BYTES", "V8_SUBMISSION_EVIDENCE_PATH",
     "V8_SUBMISSION_EVIDENCE_SHA256",
@@ -1162,22 +1164,22 @@ def exact_weyl_core_contract(tree, filename):
                 getattr(tree, "_source_text", "").encode("utf-8")
             ).hexdigest() == WEYL_AFTER_STAGER_SHA256
             and literal_assignment(tree, "STAGE_NAME")
-            == "weyl-context-core-after-v4"
+            == "weyl-context-core-after-v5"
             and literal_assignment(tree, "PIN_NAME")
-            == "weyl-context-core-after-v4-pin.json"
+            == "weyl-context-core-after-v5-pin.json"
             and literal_assignment(tree, "PIN_SCHEMA")
-            == "atlas-weyl-context-core-after-pin-v4"
+            == "atlas-weyl-context-core-after-pin-v5"
             and literal_assignment(tree, "SBATCH")
             == "hpc/math_weyl_context_core_after.sbatch"
             and literal_assignment(tree, "EXPECTED_TEST_COUNTS") == {
                 "test-campaign-stage-creation": 32,
                 "test-progressive-submit": 17,
-                "test-weyl-context-core-contract": 18,
+                "test-weyl-context-core-contract": 20,
                 "test-weyl-context-core-regression-contract": 21,
                 "test-math-weyl-context-core-after": 30,
                 "test-stager-allowlist": 7,
             }
-            and literal_assignment(tree, "CHECKER_TESTS") == 125
+            and literal_assignment(tree, "CHECKER_TESTS") == 127
             and literal_assignment(tree, "SHA256_PATTERN")
             == r"[0-9a-f]{64}\Z"
             and literal_assignment(tree, "FORBIDDEN_DURABLE_STAGE_NAMES")
@@ -1213,7 +1215,7 @@ def exact_weyl_core_contract(tree, filename):
                     "31f5aef26e14ca669ee9306efc70cc2c4f8f22fd19af11dab5e979a0296966d7"
                 ),
                 "hpc/math_weyl_context_core_after.py": (
-                    "4a51c4b804cd238ae5e333b657761facc8539eecd5b41d00c9925d94085da9d6"
+                    "ab99c7a62b8c24dcba74cca2531f00f568cee17cb04702f602d59dbbabec0c3a"
                 ),
             }
             and literal_assignment(tree, "FROZEN_LAUNCHER_STATES") == {
@@ -1247,10 +1249,10 @@ def exact_weyl_core_contract(tree, filename):
             and literal_assignment(tree, "EXPECTED_STAGE")
             == (
                 "/public/home/majj/atlas-rust-campaign-20260930/stages/"
-                "weyl-context-core-after-v4"
+                "weyl-context-core-after-v5"
             )
             and literal_assignment(tree, "REPORT_SCHEMA")
-            == "atlas-weyl-context-core-after-v4"
+            == "atlas-weyl-context-core-after-v5"
             and literal_assignment(tree, "CHECKER_PYTHON")
             == "/public/software/anaconda/anaconda3-2022.5/bin/python3.9"
             and literal_assignment(tree, "SUCCESS_STATUS")
@@ -1420,6 +1422,9 @@ def exact_weyl_after_creation_gate(tree):
     expected_after_v3 = ast.parse(
         "validate_after_v3_failure(root, inputs)\n"
     ).body[0].value
+    expected_after_v4 = ast.parse(
+        "validate_after_v4_failure(root, inputs)\n"
+    ).body[0].value
     expected_catalog = ast.parse(
         "validate_staged_catalog(root, inputs)\n"
     ).body[0].value
@@ -1451,6 +1456,7 @@ def exact_weyl_after_creation_gate(tree):
     before_v4 = exact_calls(expected_before_v4)
     after_v2 = exact_calls(expected_after_v2)
     after_v3 = exact_calls(expected_after_v3)
+    after_v4 = exact_calls(expected_after_v4)
     catalog = exact_calls(expected_catalog)
     regression = exact_calls(expected_regression)
     repaired = exact_calls(expected_repaired)
@@ -1458,7 +1464,7 @@ def exact_weyl_after_creation_gate(tree):
             and len(v5_failure) == len(v6_failure) == len(v7_failure) == 1
             and len(v8) == len(before_v1) == len(before_v2) == len(before_v3) == 1
             and len(before_v4) == 1
-            and len(after_v2) == len(after_v3) == 1
+            and len(after_v2) == len(after_v3) == len(after_v4) == 1
             and len(catalog) == len(regression) == len(repaired) == 1
             and confirmed[0].lineno < creation[0].lineno < receipt[0].lineno
             and receipt[0].lineno < v5_failure[0].lineno
@@ -1471,7 +1477,8 @@ def exact_weyl_after_creation_gate(tree):
             and before_v3[0].lineno < before_v4[0].lineno
             and before_v4[0].lineno < after_v2[0].lineno
             and after_v2[0].lineno < after_v3[0].lineno
-            and after_v3[0].lineno < catalog[0].lineno
+            and after_v3[0].lineno < after_v4[0].lineno
+            and after_v4[0].lineno < catalog[0].lineno
             and catalog[0].lineno < regression[0].lineno
             and regression[0].lineno < repaired[0].lineno)
 
@@ -1916,7 +1923,7 @@ def exact_weyl_after_stager_flow(tree):
             "validate_before_v1_failure", "validate_before_v2_failure",
             "validate_before_v3_failure", "validate_before_v4_result",
             "validate_after_v2_failure", "validate_after_v3_failure",
-            "validate_regression_inputs",
+            "validate_after_v4_failure", "validate_regression_inputs",
         )
     }
     ordered_pairs = (
@@ -1929,7 +1936,8 @@ def exact_weyl_after_stager_flow(tree):
         ("validate_before_v3_failure", "validate_before_v4_result"),
         ("validate_before_v4_result", "validate_after_v2_failure"),
         ("validate_after_v2_failure", "validate_after_v3_failure"),
-        ("validate_after_v3_failure", "validate_regression_inputs"),
+        ("validate_after_v3_failure", "validate_after_v4_failure"),
+        ("validate_after_v4_failure", "validate_regression_inputs"),
     )
     return (len(verifies) == 1 and len(validations) == 1
             and len(failure_validations) == 2
