@@ -1,0 +1,56 @@
+{
+  "schema": "atlas-weyl-context-core-after-submission-v1",
+  "date": "2026-10-06",
+  "status": "SUBMITTED_NOT_VERIFIED",
+  "job": "3899885",
+  "job_name": "atlas-weyl-core-after-v4",
+  "script": "hpc/math_weyl_context_core_after.sbatch",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-core-after-v4",
+  "pin_sha256": "b1855bcab3c70cfb2a83943bd484de4c58e4b5266442b6c61b6a05bd0b825f25",
+  "stage_creation_sha256": "1b3e32a192c6e2e7136d7ee7bc04f5aeb7c0b9d2df06077933832fa3c4829508",
+  "queue_before": [],
+  "campaign_ledger": {
+    "path": "/public/home/majj/atlas-rust-campaign-20260930/.atlas-progressive-submit.json",
+    "records": 23,
+    "sha256": "02b5cb975a1fe15c9b5dd57ec3f0b424282f7b075dbf00967024505e8424e91e",
+    "last_record": {
+      "job": "3899885",
+      "status": "SUBMITTED",
+      "pin_sha256": "b1855bcab3c70cfb2a83943bd484de4c58e4b5266442b6c61b6a05bd0b825f25",
+      "stage_creation_sha256": "1b3e32a192c6e2e7136d7ee7bc04f5aeb7c0b9d2df06077933832fa3c4829508",
+      "queue_before": []
+    }
+  },
+  "payload": {
+    "overrides_sha256": "efcd05c46c28fc1778125eb673841318cb3dae1835982a60854f903956c23cf6",
+    "overrides_entries": 61,
+    "tar_sha256": "164ec422191311b0749e10d791074e31f5694808e5503a98f69b0b1fd2d08bf9",
+    "source_commit": "34cdd09f",
+    "remote_verification": "all 61 files present with matching sha256, mode 0444, single link, no extras; remote tar sha matched before extraction",
+    "local_pre_flight": "GREEN: every payload-local validator passed up to the HPC-only validate_parent_objects boundary (sentinel method)",
+    "transports_retired": [
+      "/public/home/majj/.weyl-core-after-v4-payload (contained only overrides/; removed 2026-10-06)",
+      "/tmp/weyl-after-v4-payload-xH1sm72y (removed 2026-10-06)"
+    ]
+  },
+  "predecessor": {
+    "stage": "weyl-context-core-after-v3",
+    "job": "3899303",
+    "note": "immutable E0609 build failure (incomplete kernel-system migration); preserved, never resubmitted"
+  },
+  "changed_input": "Repair patch completes the kernel-system migration with domain_builtins/weyl_subgroup.rs (patch sha 1ad07e8f, 30047 bytes; REPAIRED_SOURCE_HASHES +weyl_subgroup 86d52b4f; AFTER_SOURCE_MANIFEST_SHA256 84a3fbfd, recomputed from the v3 job's own report manifest)",
+  "reconcile_at_submission": {
+    "queue": "squeue -u majj empty",
+    "ledger_before": "22 records, sha256 97acd045285aea78cd081c525529d9b0a44b64270b38a11ffac3d480c86b3014",
+    "stage_path": "absent",
+    "sacct_v4_rows_since_2026_10_03": 0,
+    "remote_payload_path": "absent"
+  },
+  "post_submit": {
+    "squeue": "3899885 RUNNING on cu103",
+    "stage_inputs": "durable payload files all 0444 and single-link; the two non-0444 files are the stage lock (0600) and the live SLURM .out (0644), both expected runtime artifacts",
+    "incoming": "empty"
+  },
+  "static_review": "Every bound value was harvested from HPC (after-v3 stage tree/pins/campaign files via the stage's own staged progressive_submit helpers) or recomputed from the v3 job's own report (repaired manifest sha; frozen stale weyl_subgroup hash reproduced by reverting the fix). 125 local harness tests green under umask 0022 with only the known 0444-environment evidence-mode error (green on HPC).",
+  "scope": "Submission receipt only. The job's FINAL status, the 125-checker / 632-test / two-regression / four-golden independent inspection, and any acceptance are NOT established here; collect before any claim. Never resubmit after-v1 3890328, after-v2 3890580 or after-v3 3899303; never create a sibling stage."
+}

@@ -105,13 +105,27 @@ validator read the stray-out binding from the advanced PREDECESSOR_STATE
 `34cdd09f`: 61 files all 0444, overrides.json sha
 `efcd05c46c28fc1778125eb673841318cb3dae1835982a60854f903956c23cf6`,
 payload.tar sha
-`164ec422191311b0749e10d791074e31f5694808e5503a98f69b0b1fd2d08bf9`, at
-`/tmp/weyl-after-v4-payload-xH1sm72y`.  Local pre-flight **GREEN**: every
-payload-local validator passes up to the HPC-only validate_parent_objects
-boundary.  Static review: every bound value was harvested from HPC or
-recomputed from the v3 job's own report; 125 local tests green (same one
-known 0444 env error as v3).  Remaining: reconcile, transport, submit once,
-post-checks, record.
+`164ec422191311b0749e10d791074e31f5694808e5503a98f69b0b1fd2d08bf9`.  Local
+pre-flight **GREEN**: every payload-local validator passes up to the
+HPC-only validate_parent_objects boundary.  Static review: every bound
+value was harvested from HPC or recomputed from the v3 job's own report;
+125 local tests green (same one known 0444 env error as v3).
+
+UPDATE (same day): **AFTER-v4 SUBMITTED** as job **3899885** (pin
+`b1855bcab3c70cfb2a83943bd484de4c58e4b5266442b6c61b6a05bd0b825f25`,
+stage_creation `1b3e32a1…`, `queue_before=[]`, ledger now 23 records at
+`02b5cb97…`).  Reconcile was green (empty queue, 22-record ledger
+`97acd045…`, stage absent, zero v4 sacct rows); all 61 remote payload files
+verified (sha256/0444/single-link); the stager was invoked exactly once;
+both transports are removed; the job was RUNNING on cu103 when observed.
+Submission record:
+`tests/reference/hpc/math_weyl_context_core_after_v4_submission_2026_10_06.json`
+(status SUBMITTED_NOT_VERIFIED).  Next: collect FINAL and run the
+independent inspection (125 checkers, the 632-test inventory, both
+regressions PASS on the completed repair, all four goldens byte-equal, the
+retained ladder control, integrity, ephemeral workspace absent) before any
+acceptance claim.  Never resubmit 3890328/3890580/3899303; no sibling
+stage.
 
 Parallel local lane (no HPC needed): the KB source-packet sweep through
 `kb/sources/` continues via the verified Kimi probe route (full-bytes
