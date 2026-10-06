@@ -511,6 +511,18 @@ ceiling and default one focused job; do not trade correctness for speed.
    not silently drop it or call the backlog tested. Historical 100/510-case
    dispatchers must not be reused without adapting and verifying the 10-job
    cap and inspected, rank-by-rank release gates.
+9. **When the HPC tunnel is down, do documentation and small local-only jobs.**
+   The user's 2026-10-06 directive: while HPC is unreachable, keep producing
+   useful work that does not need it — KB/wiki source packets and page
+   maintenance, documentation updates, code reading, hashing and JSON evidence
+   records, the read-only worktree guard, and Kimi probe drafting. Prefer
+   writing documents over writing code: do NOT queue speculative production
+   edits without their HPC gate, and never run local Atlas builds/tests to
+   substitute for them. Queue the blocked HPC work behind a retry cron with a
+   complete self-contained runbook instead of polling, and resume it the
+   moment the tunnel answers (reconcile first: queue, ledger, stage,
+   accounting — this cluster's sacct 21.08.8 rejects `-h` and prints a
+   166-line usage page; never count usage text as jobs).
 
 ## Verified repair guard
 
