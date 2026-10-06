@@ -542,6 +542,29 @@ ceiling and default one focused job; do not trade correctness for speed.
   shape, including untracked and archive-only files, before freezing;
   a build gate one stage later is the only thing that catches it.
   The AFTER-v4 successor completes the migration; never resubmit3899303.
+
+- UPDATE Weyl AFTER-v4 preparation2026-10-06: the repair patch now also
+  migrates weyl_subgroup.rs (patch sha `1ad07e8f…`, 30047 bytes;
+  `REPAIRED_SOURCE_HASHES` gains weyl_subgroup.rs `86d52b4f…`;
+  `AFTER_SOURCE_MANIFEST_SHA256` `84a3fbfd…` — every value recomputed from
+  the v3 job's own report manifest, whose canonicalization was verified by
+  reproducing the v3 manifest sha exactly, and the frozen file's stale hash
+  `8d6d3ed5…` reproduced by reverting the two-line fix).  The v3→v4 harness
+  migration follows the v3 pattern: PREDECESSOR = after-v3 (job3899303,
+  ledger 97acd045/22, tree `0ab62cd0…`169/18/4997261, report this time),
+  new `AFTER_V3_FAILURE_EVIDENCE` + `validate_after_v3_failure` wired into
+  both run paths and the driver, `validate_after_v2_failure` rebinds to a
+  frozen `AFTER_V2_PREDECESSOR`, sbatch labels v4 with the checker
+  regression, driver repair scope gains `WEYL_SUBGROUP`, progressive_submit
+  gains the retired after-v2 scoped campaign files and
+  contract/predecessor schemas v13.  Local suites (umask0022):
+  allowlist7/creation32/submit17/math-after30/contract18/regression21 = 125,
+  all pass except the known 0444-environment evidence-mode error in
+  `test_stager_pin_counts_predecessor_and_source_are_exact` (green on HPC).
+  Payload build, static review and submission are still pending.
+  Lesson: the stage-creation suite's synthetic fixtures inherit the local
+  umask — with umask0002 every fixture is group-writable and the no-shared-
+  write guards fire; run the harness Python suites under `umask 0022`.
 - UPDATE Weyl AFTER-v1 preparation2026-10-03: advancing a campaign stager's
   direct `PREDECESSOR` silently breaks every inherited validator that still
   compares a frozen historical evidence record against bare

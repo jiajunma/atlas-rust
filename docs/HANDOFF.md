@@ -77,6 +77,24 @@ Remaining: the v3→v4 harness migration itself (stager/driver/sbatch labels,
 new `validate_after_v3_failure` gate binding job 3899303 and the failure
 evidence, checker label regression, payload build, static review, submit).
 
+UPDATE (same day, migration complete and locally green): the v3→v4 harness
+migration is committed.  PREDECESSOR = after-v3 (job 3899303, ledger
+`97acd045…`/22, tree `0ab62cd0…` 169/18/4997261, report
+`195cc4fca…`/261764 present this time); new `AFTER_V3_FAILURE_EVIDENCE`
+(schema -v3 record, sha `45c8b709…`) and `validate_after_v3_failure` are
+wired into both stager run paths and the driver gates;
+`validate_after_v2_failure` rebinds to a frozen `AFTER_V2_PREDECESSOR`
+identity (same pattern as v1); sbatch labels are v4 with the existing
+label checker regression; the driver's repair scope check gains
+`WEYL_SUBGROUP`; progressive_submit migrates to ACTIVE_STAGE_NAME after-v4,
+contract/predecessor schemas v13, and gains the retired after-v2 scoped
+campaign files.  Local suites under umask 0022: 7+32+17+30+18+21 = 125,
+all pass except the known 0444-environment evidence-mode error in
+`test_stager_pin_counts_predecessor_and_source_are_exact` (green on HPC —
+same known local-only state as the v3 migration).  Remaining: build the
+v4 payload from HEAD bytes, local pre-flight, static review, then submit
+exactly one job.
+
 Parallel local lane (no HPC needed): the KB source-packet sweep through
 `kb/sources/` continues via the verified Kimi probe route (full-bytes
 prompt, maintainer claim-by-claim verification, per-packet snapshot JSON

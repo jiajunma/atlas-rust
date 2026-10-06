@@ -114,6 +114,7 @@ from stage_weyl_context_core_after import (
     validate_before_v3_failure,
     validate_after_v1_failure,
     validate_after_v2_failure,
+    validate_after_v3_failure,
     validate_before_v4_result,
     validate_parent_objects,
     validate_pin as validate_stage_pin,
@@ -153,10 +154,10 @@ if ACTIVE_CAMPAIGN != _ACTIVE_CAMPAIGN:
 SUBMISSION_ENABLED = True
 EXPECTED_STAGE = (
     "/public/home/majj/atlas-rust-campaign-20260930/stages/"
-    "weyl-context-core-after-v3"
+    "weyl-context-core-after-v4"
 )
 
-REPORT_SCHEMA = "atlas-weyl-context-core-after-v3"
+REPORT_SCHEMA = "atlas-weyl-context-core-after-v4"
 SUCCESS_STATUS = "WEYL_CONTEXT_AFTER_REGRESSIONS_PASS"
 INCOMPLETE_STATUS = "WEYL_CONTEXT_CORE_AFTER_INCOMPLETE"
 REPORT_SCOPE = (
@@ -332,6 +333,7 @@ ROOT_SYSTEM = "crates/atlas-real-group/src/root_system.rs"
 SESSION = "crates/atlas-core/src/session.rs"
 DOMAIN_BUILTINS = "crates/atlas-core/src/domain_builtins.rs"
 TYPED = "crates/atlas-core/src/typed.rs"
+WEYL_SUBGROUP = "crates/atlas-core/src/domain_builtins/weyl_subgroup.rs"
 TEST_PATCH = "hpc/patches/ladder_boundary_tests.patch"
 PRODUCTION_PATCH = "hpc/patches/ladder_boundary_fix.patch"
 BOUNDARY_FIXTURE = "tests/math/generics/root_ladder_coordinate_boundary.atlas"
@@ -1315,6 +1317,7 @@ def gates(root):
     validate_before_v4_result(root, inputs)
     validate_after_v1_failure(root, inputs)
     validate_after_v2_failure(root, inputs)
+    validate_after_v3_failure(root, inputs)
     catalog = validate_staged_catalog(root, inputs)
     regression_source_manifest = validate_regression_inputs(
         root, inputs, accepted_source_manifest,
@@ -2177,7 +2180,7 @@ def main():
             if _sha(repair_patch) != REPAIR_PATCH_HASHES[REPAIR_PATCH_PATH]:
                 raise ValueError("Weyl repair patch changed")
             changed = _apply_unified_patch(source, root / REPAIR_PATCH_PATH)
-            if set(changed) != {DOMAIN_BUILTINS, TYPED}:
+            if set(changed) != {DOMAIN_BUILTINS, TYPED, WEYL_SUBGROUP}:
                 raise ValueError("Weyl repair patch scope changed")
             if any(digest(source / name) != wanted
                    for name, wanted in REPAIRED_SOURCE_HASHES.items()):

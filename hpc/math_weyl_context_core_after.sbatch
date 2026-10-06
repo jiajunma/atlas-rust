@@ -1,5 +1,5 @@
 #!/bin/bash -p
-#SBATCH --job-name=atlas-weyl-core-after-v3
+#SBATCH --job-name=atlas-weyl-core-after-v4
 #SBATCH --partition=cpu
 #SBATCH --account=yushilingroup
 #SBATCH --qos=normal
@@ -9,7 +9,7 @@
 #SBATCH --mem=8G
 #SBATCH --time=02:00:00
 #SBATCH --signal=B:TERM@300
-#SBATCH --output=weyl-context-core-after-v3-%j.out
+#SBATCH --output=weyl-context-core-after-v4-%j.out
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:?}"
 export PATH="/public/software/gcc/gcc-12.1/bin:${HOME:?}/.cargo/bin:${PATH:?}"
