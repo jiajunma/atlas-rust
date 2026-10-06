@@ -1,0 +1,26 @@
+{
+  "schema": "atlas-kb-reading-snapshot-v1",
+  "date": "2026-10-06",
+  "git_base": "0401936b",
+  "working_tree": false,
+  "scope": "First reading of the crate root for the new lib-root source packet: the 60-module organization with 52 re-export lines, the 5 unexported modules, the error-type convergence point, and the pub(crate) A1 prototype layer (LatticeVector/RootDatum/PrototypeWeyl*/CartanInvolution/RealReductiveGroup) with its validation orders, limits and 3 test anchors.",
+  "files": [
+    {
+      "path": "crates/atlas-real-group/src/lib.rs",
+      "sha256": "9ee97e8199f33d77b3fdcfce450a005f0c29257859da8779299dcb8a64068069",
+      "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+    }
+  ],
+  "kimi_assist": {
+    "route": "tools/kimi_subagent.py with .agents/kimi/probe.md (no tools)",
+    "model": "kimi-code/k3-256k",
+    "session": "session_c2b8ca6e-74a5-47b0-9109-88799530e84a",
+    "prompt_sha256": "1b7681bca330be9e7a25f85805055c53557b59b1e615217de68e5508e86f85a2",
+    "evidence_dir": "docs/evidence/kimi-runtime-20261006/lib-root-probe",
+    "stdout_jsonl_sha256": "043ad81753d4be518f0024c9cfe9f21e0f59b151a3cef41dfc1800a6a87f34a6",
+    "draft_sha256": "e5e3e43944b9b43937b8edcbd43d556c2e190982b4e4fe0a3954ca8c98121b16",
+    "result": "completed, exit 0, 590.5s; draft reviewed claim-by-claim against source and rewritten by the maintainer",
+    "lesson": "The counts were exactly right (60 module declarations, 52 re-export lines including the out-of-place topology line, 5 unexported modules, 10 referenced error variants); the BasedRootDatum::standard-before-shape-check order and the 65_536 order bound were captured correctly."
+  },
+  "limits": "Structural reading only.  No local build/test and no mathematical acceptance; upstream references are transcribed from comments, not re-verified here."
+}

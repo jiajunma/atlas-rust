@@ -396,6 +396,16 @@ Kimi probe 路由起草（exit 0，264.2s），维护者对照源码逐条核对
 同一 Kimi probe 路由起草（800s 期限，exit 0，312.4s），维护者对照源码
 逐条核对改写。该包是结构性阅读，不声称伴随纤维层的数学验收。
 
+[crate 根与 A1 原型层](lib-root.md)记录 `lib.rs`：60 模块组织与 52 条
+再导出（含 topology 位置怪点、integer_lattice 两条、deform 双重暴露、
+matreduc/real_projection/root_reflection/global_tits/weyl_size 零导出）、
+错误类型汇聚点，以及 pub(crate) 原型层（RootDatum 的校验顺序、4096 根
+闭包上限、65536 Weyl 阶上限、CartanInvolution 的 Grading 取代声明）。
+对应[阅读快照](snapshots/2026-10-06-lib-root.json)；草案由同一 Kimi probe
+路由起草（600s 期限，exit 0，590.5s），维护者对照源码逐条核对改写。该包
+是结构性阅读，不声称 crate 门面的数学验收。至此 `atlas-real-group` 全部
+60 个模块均有来源包或明确交叉引用。
+
 [StructureError 分类学与全局 Tits 传输](error-global-tits.md)记录
 `error.rs` 与 `global_tits.rs`：53 个错误变体的字段形态家族（invariant /
 resource-limit 两大带名家族及其例外）、`GlobalTitsElement` 的三重来源门槛、

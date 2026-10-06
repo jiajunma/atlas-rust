@@ -635,3 +635,15 @@ sources/index.md 已同步；未运行编译、测试或 compiler 生成。
 atlas-real-group 剩余未覆盖：`lib.rs`（crate 根）与 `dual.rs`
 （root-datum-dual 已含 dual 内类构造的主要面，待核）；atlas-core
 语言层仍是最大缺口。
+
+
+## 2026年10月6日 新增 crate 根来源包（Kimi probe 协助）—— atlas-real-group 全覆盖
+
+新增 `sources/lib-root.md` 与快照 `2026-10-06-lib-root.json`：60 模块
+组织与 52 条再导出（topology 怪点、integer_lattice 两条、deform 双重
+暴露、5 个零导出模块）、错误汇聚点、A1 原型层校验顺序与双上限。同一
+Kimi probe 路由起草（600s 期限，exit 0，590.5s），维护者对照源码逐条
+核对改写；草案的 60/52/5/10 四处计数全部精确。索引与 sources/index.md
+已同步；未运行编译、测试或 compiler 生成。**至此 `atlas-real-group`
+全部 60 个模块均有来源包或明确交叉引用；剩余最大缺口是 `atlas-core`
+语言层（session/typed/domain_builtins/value/types/lex/syntax 等）。**
