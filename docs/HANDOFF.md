@@ -1,37 +1,33 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
-## CURRENT: AFTER-v4 job 3899885 FINAL FAILED — math PASSES, gate over-asserts on stderr presentation — 2026-10-06
+## CURRENT: AFTER-v5 job 3900050 COMPLETED — Weyl context core repair VALIDATED — 2026-10-06
 
-The completed kernel-system migration was submitted as job 3899885 and is
-now FINAL `FAILED 1:0` — but the failure is a **harness gate over-assertion,
-not mathematics**:
+Job 3900050 is FINAL `COMPLETED 0:0` on cu006 with report status
+`WEYL_CONTEXT_AFTER_REGRESSIONS_PASS`.  The independent inspection accepts
+the exact bounded gate (evidence:
+`tests/reference/hpc/math_weyl_context_core_after_v5_acceptance_2026_10_06.json`,
+report SHA `3288480d…`):
 
-- All 13 commands exit 0: the six checker suites, toolchain records,
-  source reconstruction, **release-build (now passes with weyl_subgroup.rs
-  migrated)**, the 632-test inventory, both weyl-context regressions and
-  the retained ladder control.
-- The report's own classification is `WEYL_CONTEXT_AFTER_REGRESSIONS_PASS`:
-  expected_regressions_passed, original_goldens_matched,
-  retained_control_passed, inventory_complete — all true.  cold_dual is
-  fully byte-equal (stdout+stderr+exit).
-- The only failing check is `full_stderr_equal` on the prewarmed_dual
-  REJECT case: both engines reject at exactly the same 8 commands with the
-  same ordered error summaries (6x `Weyl group mismatch`, `Illegal Weyl
-  word entry 1 (should be <1)`, `Negative integer where unsigned is
-  required`), but the oracle's envelope (`Runtime error:\n  …\nEvaluation
-  aborted.`) and the Rust CLI's (`Runtime error at <stdin>:L:C: …` +
-  source line + caret) are presentationally different — byte-equality of
-  stderr between two runtimes is unattainable for error cases (the
-  documented negative-diagnostic-presentation boundary).
-- Failure evidence:
-  `tests/reference/hpc/math_weyl_context_core_after_v4_failure_2026_10_06.json`;
-  report SHA `479ddd84…`.
+- All 13 commands exit 0: the six checker suites (127 tests), toolchain
+  records, source reconstruction, release-build, the **632-test inventory**
+  (`632 tests, 0 benchmarks`), both weyl-context regressions and the
+  retained ladder control.
+- The source manifest is exactly `84a3fbfd…` (1567 files) — the build and
+  every test ran on the completed kernel-system migration (session.rs +
+  domain_builtins/weyl_subgroup.rs).
+- cold_dual is fully byte-equal; prewarmed_dual matches on stdout, exit
+  codes and **ordered error summaries** (the v5 classifier change resolved
+  the after-v4 over-assertion at the contract level).
+- The report's own classification keeps every release flag FALSE
+  (acceptance_eligible, math/cache/performance/rank gates); the review
+  releases nothing either.  This is a bounded A1 semantic acceptance only —
+  no cache, performance, memory, rank or broader mathematical release.
 
-Next gate: an AFTER-v5 changed-input successor that compares the prewarmed
-reject case's stderr by ordered error-summary content (messages +
-positions) rather than raw bytes (or binds per-engine presentations for
-the reject intent), keeping byte-equality for accept cases.  Never
-resubmit 3890328/3890580/3899303/3899885; no sibling stage.
+Next (per the frozen plan): a focused production commit of the completed
+repair, then the progressive semantic AFTER gates — G2, B2/C2, reverse
+operand orders, inner-class-dual and no-value cases, each with its own
+original-backed gate, before any cache work-count BEFORE or production
+cache edit.
 
 ## V5 PREPARATION (in progress) — 2026-10-06
 
