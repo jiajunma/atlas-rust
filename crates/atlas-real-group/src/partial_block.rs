@@ -398,11 +398,10 @@ fn simple_basis(
 /// simple root itself maps out) and toggle the simple root's membership.
 fn pos_to_neg(system: &RootSystem, word: &[usize]) -> Result<Vec<RootId>, StructureError> {
     let datum = system.datum();
-    let mut current: BTreeSet<RootId> = system
-        .entries()
-        .filter(|(id, _, _)| system.is_positive(*id) == Some(true))
-        .map(|(id, _, _)| id)
-        .collect();
+    // Identity has no inversions. Starting from every positive root
+    // computes the complement and corrupts real-root corrections in the
+    // common-block cross and Cayley operations (original rootdata.cpp:1499).
+    let mut current: BTreeSet<RootId> = BTreeSet::new();
     for &s in word {
         let simple =
             system
@@ -1998,6 +1997,100 @@ mod tests {
         .unwrap();
         let involution = LatticeInvolution::identity(&datum).unwrap();
         fixture(datum, involution, 8, 11)
+    }
+
+    // Original3846724 PSp(4,R): roots are the ambient basis, and the
+    // simple-coroot columns are [2,-2] and [-1,2]. Split KGB has 7 points.
+    fn psp4_pos_neg_fixture() -> ContextFixture {
+        let datum = BasedRootDatum::from_simple_data(
+            2,
+            vec![vec![2, -1], vec![-2, 2]],
+            vec![Weight::new(vec![1, 0]), Weight::new(vec![0, 1])],
+            vec![Coweight::new(vec![2, -2]), Coweight::new(vec![-1, 2])],
+        ).unwrap();
+        let involution = LatticeInvolution::identity(&datum).unwrap();
+        fixture(datum, involution, 8, 7)
+    }
+
+    #[test]
+    fn pos_neg_identity_and_simple_reflections() {
+        for fixture in [a1_fixture(), b2_fixture(), psp4_pos_neg_fixture()] {
+            let system = fixture.inner_class.root_system();
+            assert_eq!(pos_to_neg(system, &[]).unwrap(), Vec::<RootId>::new(),
+                "identity sends no positive root to a negative root");
+            for (s, &alpha) in system.simple_root_ids().iter().enumerate() {
+                assert_eq!(pos_to_neg(system, &[s]).unwrap(), vec![alpha],
+                    "a simple reflection changes only its own positive root's sign");
+                assert!(pos_to_neg(system, &[s, s]).unwrap().is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn pos_neg_words_match_independent_root_images() {
+        // Directly reflect EACH positive root, independently of the set
+        // update recurrence. Include nonreduced words and both C2 isogenies.
+        for fixture in [a1_fixture(), b2_fixture(), psp4_pos_neg_fixture()] {
+            let system = fixture.inner_class.root_system();
+            let rank = system.simple_root_ids().len();
+            for length in 0..=6_u32 {
+                for mut code in 0..rank.pow(length) {
+                    let word: Vec<_> = (0..length).map(|_| {
+                        let s = code % rank;
+                        code /= rank;
+                        s
+                    }).collect();
+                    let mut expected = BTreeSet::new();
+                    for (id, root, _) in system.entries() {
+                        if system.is_positive(id) != Some(true) { continue; }
+                        let mut image = root.clone();
+                        for &s in word.iter().rev() {
+                            image = system.datum().reflect_weight(s, &image).unwrap();
+                        }
+                        if system.is_positive(system.id_of(&image).unwrap()) == Some(false) {
+                            expected.insert(id);
+                        }
+                    }
+                    assert_eq!(pos_to_neg(system, &word).unwrap(),
+                        expected.into_iter().collect::<Vec<_>>(), "word {word:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn pos_neg_psp4_original_partial_and_full_links() {
+        // Full accepted original3846724 cold output, not Rust-generated
+        // expectations. Row counts alone miss wrong cross links after a
+        // full promotion; retain those links and gamma-lambda representatives.
+        let fixture = psp4_pos_neg_fixture();
+        let rc = fixture.rc();
+        let gamma = rw(&[4, 3], 2);
+        let (seed, ctxt) = seed_and_context(&rc, 6, &[0, 0], &gamma);
+        let interval = bruhat_below(&ctxt, &seed).unwrap();
+        let block = PartialBlock::build(&ctxt, &interval).unwrap();
+        assert_eq!(block.size(), 8, "PSp4R original direct partial block");
+        assert_eq!((0..8).map(|z| block.x(z).unwrap().index()).collect::<Vec<_>>(),
+            vec![0, 1, 2, 2, 3, 4, 5, 6]);
+        assert_eq!((0..8).map(|z| block.length(z).unwrap()).collect::<Vec<_>>(),
+            vec![0, 0, 1, 1, 1, 2, 2, 3]);
+        for z in 0..8 {
+            assert_eq!(block.gamma_lambda(z), Some(&rw(if z == 3 { &[1, 0] } else { &[0, 0] }, 1)));
+        }
+        for (s, expected) in [
+            vec![Some(0), Some(1), Some(3), Some(2), Some(5), Some(4), Some(6), None],
+            vec![Some(1), Some(0), Some(6), None, Some(4), Some(5), Some(2), None],
+        ].into_iter().enumerate() {
+            assert_eq!((0..8).map(|z| block.cross(s, z)).collect::<Vec<_>>(), expected);
+        }
+        let (full, start) = PartialBlock::build_full(&ctxt, &seed).unwrap();
+        assert_eq!((full.size(), start), (12, 8));
+        for (s, expected) in [
+            vec![0, 1, 3, 2, 5, 4, 6, 7, 10, 11, 8, 9],
+            vec![1, 0, 6, 7, 4, 5, 2, 3, 9, 8, 10, 11],
+        ].into_iter().enumerate() {
+            assert_eq!((0..12).map(|z| full.cross(s, z).unwrap()).collect::<Vec<_>>(), expected);
+        }
     }
 
     /// The wrapper's seed path (atlas-types.w:6703-6705):

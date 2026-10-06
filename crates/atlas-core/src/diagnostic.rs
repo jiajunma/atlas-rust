@@ -2,6 +2,7 @@
 
 use std::fmt;
 use std::ops::Range;
+use crate::value::AtlasString;
 
 /// Stable identity assigned to a source buffer by its owner.
 ///
@@ -85,6 +86,8 @@ pub enum ErrorKind {
     Syntax,
     Name,
     Type,
+    /// An expression-analysis failure distinct from type unification.
+    Program,
     Runtime,
     Io,
 }
@@ -94,6 +97,9 @@ pub enum ErrorKind {
 pub struct Diagnostic {
     pub kind: ErrorKind,
     pub message: String,
+    /// Exact runtime message when Atlas data is not valid UTF-8. `message`
+    /// remains an escaped editor preview, never the byte-output authority.
+    raw_message: Option<AtlasString>,
     pub span: Option<SourceSpan>,
     /// A warning is reported to the user but does not make the session
     /// unclean (upstream lexical recovery prints to stderr without setting
@@ -103,7 +109,7 @@ pub struct Diagnostic {
     /// (upstream `error_base::back_trace`, axis-types.h:301-305), outermost
     /// call first. The command layer copies a non-empty trace into the
     /// `back_trace` system variable (global.w:1135-1148).
-    pub back_trace: Vec<String>,
+    pub back_trace: Vec<AtlasString>,
 }
 
 impl Diagnostic {
@@ -111,6 +117,7 @@ impl Diagnostic {
         Self {
             kind,
             message: message.into(),
+            raw_message: None,
             span,
             warning: false,
             back_trace: Vec::new(),
@@ -121,6 +128,7 @@ impl Diagnostic {
         Self {
             kind,
             message: message.into(),
+            raw_message: None,
             span,
             warning: true,
             back_trace: Vec::new(),
@@ -134,8 +142,23 @@ impl Diagnostic {
     /// Prepend one trace line (upstream `error_base::trace` push_front,
     /// axis-types.h:305): callers add lines innermost-first as the error
     /// unwinds, so the finished trace reads outermost-first.
-    pub fn trace(&mut self, line: String) {
-        self.back_trace.insert(0, line);
+    pub fn trace(&mut self, line: impl Into<AtlasString>) {
+        self.back_trace.insert(0, line.into());
+    }
+
+    pub fn new_bytes(kind: ErrorKind, message: AtlasString, span: Option<SourceSpan>) -> Self {
+        match message.as_utf8() {
+            Ok(text) => Self::new(kind, text, span),
+            Err(_) => {
+                let mut diagnostic = Self::new(kind, message.to_string(), span);
+                diagnostic.raw_message = Some(message);
+                diagnostic
+            }
+        }
+    }
+
+    pub fn message_bytes(&self) -> &[u8] {
+        self.raw_message.as_ref().map_or(self.message.as_bytes(), AtlasString::as_bytes)
     }
 }
 

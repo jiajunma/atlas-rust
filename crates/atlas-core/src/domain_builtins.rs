@@ -1,8 +1,8 @@
 //! Domain builtins: the language bridge to `atlas-real-group` (phase 1).
 //!
 //! Named-function application dispatches here. Handles are Arc-backed
-//! context bundles built EAGERLY (build-then-freeze — the KGB pipeline
-//! needs `&mut` state that an immutable `Value` cannot carry) and compare
+//! context bundles with eagerly validated seeds and fallible lazy KGB/rep
+//! owners (each private mutable pipeline is frozen before publication), and compare
 //! STRUCTURALLY on (inner-class value, internal form number, element id),
 //! matching upstream's memoized-handle observable equality. Construction
 //! budgets are session constants, revisited when the language exposes
@@ -14,11 +14,11 @@
 //! `atlas-real-group`.
 
 use std::cmp::Ordering;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::fmt::Write as _;
 use std::num::{NonZeroI32, NonZeroU64};
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex, OnceLock, Weak};
 use std::time::{Duration, Instant};
 
 use malachite::{Integer as BigInt, Rational as BigRational};
@@ -57,6 +57,8 @@ use atlas_real_group::{
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceSpan};
 use crate::value::{Matrix, RatVec, Value, Vec32};
 
+mod weyl_subgroup;
+
 /// Upstream Lie-type letter bounds (atlas-types.w:165-211) and RANK_MAX.
 const RANK_MAX: usize = 32;
 
@@ -64,6 +66,9 @@ const INTEGER_BUDGET: IntegerLatticeBudget =
     IntegerLatticeBudget::new(64, 1_000_000, 1_000_000, 256);
 /// Covers |W| up to E6 (51,840); larger groups need budget control first.
 const WEYL_BUDGET: usize = 4_000_000; // E7's Weyl group has 2,903,040 elements
+// A separate count limit for direct twisted-involution generation; this
+// does not increase or reinterpret the legacy full-Weyl enumeration limit.
+const TWISTED_INVOLUTION_BUDGET: usize = 1_000_000;
 const FIBER_BUDGET: usize = 1 << 20;
 const ROOT_BUDGET: usize = 4_096;
 
@@ -85,8 +90,45 @@ impl LieTypeValue {
             .filter(|&(letter, _)| letter != 'T')
     }
 
-    fn add_simple_factor(&mut self, letter: char, rank: usize) {
-        self.factors.push((letter, rank));
+    fn add_simple_factor(
+        &mut self,
+        letter: char,
+        rank: usize,
+        span: SourceSpan,
+    ) -> Result<(), Diagnostic> {
+        // atlas-types.w::add_simple_factor validates before changing the
+        // owned Lie type. A torus is stored as rank separate T1 factors.
+        let (lower, upper) = match letter {
+            'A' => (1, RANK_MAX),
+            'B' | 'C' => (2, RANK_MAX),
+            'D' => (4, RANK_MAX),
+            'E' => (6, 8),
+            'F' => (4, 4),
+            'G' => (2, 2),
+            'T' => (0, RANK_MAX),
+            _ => return Err(runtime(span, format!("Invalid type letter '{letter}'"))),
+        };
+        if rank < lower {
+            return Err(runtime(span, format!("Too small rank {rank} for Lie type {letter}")));
+        }
+        if rank > upper {
+            return Err(runtime(span, if upper == RANK_MAX {
+                format!("Rank {rank} exceeds implementation limit {RANK_MAX}")
+            } else {
+                format!("Too large rank {rank} for Lie type {letter}")
+            }));
+        }
+        let total = self.total_rank() + rank;
+        if total > RANK_MAX {
+            return Err(runtime(span,
+                format!("Total rank {total} exceeds implementation limit {RANK_MAX}")));
+        }
+        if letter == 'T' {
+            self.factors.extend(std::iter::repeat(('T', 1)).take(rank));
+        } else {
+            self.factors.push((letter, rank));
+        }
+        Ok(())
     }
 
     fn render(&self) -> String {
@@ -101,16 +143,208 @@ impl LieTypeValue {
     }
 }
 
-/// A root datum handle with its construction provenance.
-#[derive(Clone, Debug, Eq, PartialEq)]
+/// Publish only a complete successful initialization; a failure is
+/// retryable and never poisons later calls. The lock serializes only the
+/// first construction of this cell.
+#[derive(Debug)]
+struct WeylIdentityCell<T> {
+    value: OnceLock<T>,
+    initialization: Mutex<()>,
+}
+
+impl<T> Default for WeylIdentityCell<T> {
+    fn default() -> Self {
+        Self { value: OnceLock::new(), initialization: Mutex::new(()) }
+    }
+}
+
+impl<T> WeylIdentityCell<T> {
+    fn get_or_try_init(
+        &self,
+        build: impl FnOnce() -> Result<T, StructureError>,
+    ) -> Result<&T, StructureError> {
+        if let Some(value) = self.value.get() {
+            return Ok(value);
+        }
+        let _guard = self.initialization.lock().map_err(|_| {
+            StructureError::RepInvariantViolation {
+                invariant: "Weyl identity initialization mutex poisoned",
+            }
+        })?;
+        if let Some(value) = self.value.get() {
+            return Ok(value);
+        }
+        let value = build()?;
+        self.value.set(value).map_err(|_| StructureError::RepInvariantViolation {
+            invariant: "Weyl identity initialized twice",
+        })?;
+        self.value.get().ok_or(StructureError::RepInvariantViolation {
+            invariant: "Weyl identity missing after initialization",
+        })
+    }
+}
+
+/// This datum's enumerated root system: owner-local, shared by every
+/// clone, alias and `root_datum(WeylElt)` round trip of the same owner.
+#[derive(Debug)]
+struct DatumWeylKernel {
+    system: RootSystem,
+}
+
+/// The abstract Weyl group: the canonical-word interface shared exactly
+/// when the original shares its `WeylGroup` pointer.
+#[derive(Debug)]
+struct AbstractWeylGroup {
+    interface: WeylInterface,
+}
+
+/// The owner-level Weyl identity of a root datum: a success-only lazy
+/// coordinate kernel (this datum's enumerated root system) and the
+/// abstract Weyl-group identity (the canonical-word interface) that a
+/// cold-target `dual` link shares from its source
+/// (atlas-types.w:1021-1045,1140-1152). Neither cell points back to a
+/// handle, so there is no ownership cycle.
+#[derive(Debug, Default)]
+struct DatumWeylIdentity {
+    kernel: WeylIdentityCell<Arc<DatumWeylKernel>>,
+    group: WeylIdentityCell<Arc<AbstractWeylGroup>>,
+}
+
+impl DatumWeylIdentity {
+    /// This owner's enumerated root system, built once on first need.
+    fn weyl_kernel(
+        &self,
+        datum: &BasedRootDatum,
+        span: SourceSpan,
+    ) -> Result<Arc<DatumWeylKernel>, Diagnostic> {
+        self.kernel
+            .get_or_try_init(|| {
+                RootSystem::enumerate(datum, ROOT_BUDGET)
+                    .map(|system| Arc::new(DatumWeylKernel { system }))
+            })
+            .map(Arc::clone)
+            .map_err(|error| structure_diagnostic(error, span))
+    }
+
+    /// This owner's abstract Weyl group, built once on first need.
+    fn weyl_group(
+        &self,
+        datum: &BasedRootDatum,
+        span: SourceSpan,
+    ) -> Result<Arc<AbstractWeylGroup>, Diagnostic> {
+        self.group
+            .get_or_try_init(|| {
+                WeylInterface::new(datum.cartan_matrix())
+                    .map(|interface| Arc::new(AbstractWeylGroup { interface }))
+            })
+            .map(Arc::clone)
+            .map_err(|error| structure_diagnostic(error, span))
+    }
+
+    /// `root_datum_value::dual` sharing (atlas-types.w:1146-1152): install
+    /// the source's abstract group into the canonical target only while
+    /// the target is still cold; a prewarmed target is never overwritten
+    /// and stays incompatible with the source.
+    fn share_group_into_if_cold(
+        &self,
+        target: &Self,
+        source_datum: &BasedRootDatum,
+        span: SourceSpan,
+    ) -> Result<(), Diagnostic> {
+        if target.group.value.get().is_some() {
+            return Ok(());
+        }
+        let group = self.weyl_group(source_datum, span)?;
+        let _guard = target.group.initialization.lock().map_err(|_| {
+            structure_diagnostic(
+                StructureError::RepInvariantViolation {
+                    invariant: "Weyl identity initialization mutex poisoned",
+                },
+                span,
+            )
+        })?;
+        if target.group.value.get().is_none() {
+            // A racing share may have installed a group first; the stored
+            // value wins and this one is dropped unpublished.
+            let _ = target.group.value.set(group);
+        }
+        Ok(())
+    }
+}
+
+/// Canonical live identity for equal root-datum content: the original's
+/// weak `root_datum_value` interning by complete content
+/// (atlas-types.w:977-991). While an equal owner is alive, a new
+/// construction reuses its cells; once every strong reference is gone the
+/// slot expires and a later equal construction starts fresh. The retained
+/// key is only the lightweight datum content, as in the original's pool.
+static DATUM_WEYL_IDENTITIES: OnceLock<
+    Mutex<HashMap<(BasedRootDatum, bool), Weak<DatumWeylIdentity>>>,
+> = OnceLock::new();
+
+fn datum_weyl_identity(
+    datum: &BasedRootDatum,
+    prefers_coroots: bool,
+) -> Arc<DatumWeylIdentity> {
+    let key = (datum.clone(), prefers_coroots);
+    let mut registry = DATUM_WEYL_IDENTITIES
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .expect("Weyl identity registry poisoned");
+    if let Some(existing) = registry.get(&key).and_then(Weak::upgrade) {
+        return existing;
+    }
+    // Sweep dead slots only when the table grows past a bound.
+    if registry.len() >= 4096 {
+        registry.retain(|_, weak| weak.strong_count() > 0);
+    }
+    let identity = Arc::new(DatumWeylIdentity::default());
+    registry.insert(key, Arc::downgrade(&identity));
+    identity
+}
+
+/// A root datum handle with its construction provenance. Structural
+/// equality and Debug deliberately ignore the Weyl identity cache.
+#[derive(Clone, Debug)]
 pub struct RootDatumHandle {
     datum: Arc<BasedRootDatum>,
     lie_type: LieTypeValue,
     isogeny: DatumIsogeny,
     prefers_coroots: bool,
+    identity: Arc<DatumWeylIdentity>,
 }
 
+impl PartialEq for RootDatumHandle {
+    fn eq(&self, other: &Self) -> bool {
+        self.datum == other.datum
+            && self.lie_type == other.lie_type
+            && self.isogeny == other.isogeny
+            && self.prefers_coroots == other.prefers_coroots
+    }
+}
+
+impl Eq for RootDatumHandle {}
+
 impl RootDatumHandle {
+    /// The single construction entry point: every handle is interned so
+    /// equal live data share one Weyl identity, like the original's weak
+    /// `root_datum_value` table.
+    fn interned(
+        datum: BasedRootDatum,
+        lie_type: LieTypeValue,
+        isogeny: DatumIsogeny,
+        prefers_coroots: bool,
+    ) -> Self {
+        let identity = datum_weyl_identity(&datum, prefers_coroots);
+        Self {
+            datum: Arc::new(datum),
+            lie_type,
+            isogeny,
+            prefers_coroots,
+            identity,
+        }
+    }
+
     pub(crate) fn lie_type(&self) -> &LieTypeValue {
         &self.lie_type
     }
@@ -225,11 +459,102 @@ pub struct RealFormContext {
     parent: Arc<InnerClassContext>,
     external: usize,
     internal: WeakRealFormId,
-    table: Arc<InvolutionTable>,
-    graph: Arc<KgbGraph>,
-    rep: Arc<RepTableOwner>,
+    seed: RealFormSeed,
+    initial_table: InvolutionTable,
+    kgb: FallibleOnce<RealFormKgb>,
+    rep: FallibleOnce<Arc<RepTableOwner>>,
     full_deform_cache: Mutex<DeformationCache>,
     twisted_full_deform_cache: Mutex<DeformationCache>,
+}
+
+/// Publish only a complete successful initialization. A failed allocation or
+/// construction is retryable, like upstream's initially null owning pointer.
+/// The lock serializes only first use of this particular owner, not unrelated
+/// real forms or subsequent read-only access.
+#[derive(Debug)]
+struct FallibleOnce<T> {
+    value: OnceLock<T>,
+    initialization: Mutex<()>,
+}
+
+impl<T> Default for FallibleOnce<T> {
+    fn default() -> Self {
+        Self { value: OnceLock::new(), initialization: Mutex::new(()) }
+    }
+}
+
+impl<T> FallibleOnce<T> {
+    fn get_or_try_init(
+        &self,
+        build: impl FnOnce() -> Result<T, StructureError>,
+    ) -> Result<&T, StructureError> {
+        if let Some(value) = self.value.get() {
+            return Ok(value);
+        }
+        let _guard = self.initialization.lock().map_err(|_| {
+            StructureError::RepInvariantViolation {
+                invariant: "lazy real-form initialization mutex poisoned",
+            }
+        })?;
+        if let Some(value) = self.value.get() {
+            return Ok(value);
+        }
+        let value = build()?;
+        self.value.set(value).map_err(|_| StructureError::RepInvariantViolation {
+            invariant: "lazy real-form owner initialized twice",
+        })?;
+        self.value.get().ok_or(StructureError::RepInvariantViolation {
+            invariant: "lazy real-form owner missing after initialization",
+        })
+    }
+}
+
+#[derive(Debug)]
+struct RealFormKgb {
+    table: Arc<InvolutionTable>,
+    graph: Arc<KgbGraph>,
+}
+
+impl RealFormContext {
+    fn kgb_size(&self, span: SourceSpan) -> Result<usize, Diagnostic> {
+        self.parent.strong.kgb_size(self.internal)
+            .ok_or_else(|| runtime(span, "missing real-form KGB count"))
+    }
+
+    fn kgb_result(&self) -> Result<&RealFormKgb, StructureError> {
+        self.kgb.get_or_try_init(|| {
+            let mut table = self.initial_table.clone();
+            let graph = KgbGraph::build(
+                &self.parent.inner_class,
+                &self.parent.classification,
+                &self.parent.strong,
+                &mut table,
+                &self.seed,
+            )?;
+            Ok(RealFormKgb { table: Arc::new(table), graph: Arc::new(graph) })
+        })
+    }
+
+    fn graph(&self, span: SourceSpan) -> Result<&Arc<KgbGraph>, Diagnostic> {
+        Ok(&self.kgb_result().map_err(|error| structure_diagnostic(error, span))?.graph)
+    }
+
+    fn table(&self, span: SourceSpan) -> Result<&Arc<InvolutionTable>, Diagnostic> {
+        Ok(&self.kgb_result().map_err(|error| structure_diagnostic(error, span))?.table)
+    }
+
+    fn rep_result(&self) -> Result<&Arc<RepTableOwner>, StructureError> {
+        self.rep.get_or_try_init(|| {
+            let kgb = self.kgb_result()?;
+            Ok(Arc::new(RepTableOwner::from_shared(
+                Arc::clone(&kgb.table), Arc::clone(&kgb.graph),
+            )?))
+        })
+    }
+
+    fn rep(&self, span: SourceSpan) -> Result<&Arc<RepTableOwner>, Diagnostic> {
+        self.rep_result().map_err(|error| structure_diagnostic(error, span))
+    }
 }
 
 /// A Block value: the owning real form and dual real form contexts with
@@ -243,14 +568,16 @@ pub struct BlockValue {
     graph: Box<BlockGraph>,
 }
 
-/// The Weyl side of one root datum: the enumerated semisimple root system
-/// the word-level kernel operates on, plus the internal generator
-/// renumbering that fixes the upstream canonical-word choice.
+/// The Weyl side of one root datum: the owner-local coordinate kernel
+/// (its enumerated root system) plus the abstract-group identity carrying
+/// the internal generator renumbering that fixes the upstream
+/// canonical-word choice. Weyl compatibility is the abstract-group `Arc`
+/// identity, never the structural handle or the coordinate kernel.
 #[derive(Debug)]
 pub struct WeylEltContext {
     handle: RootDatumHandle,
-    system: RootSystem,
-    interface: WeylInterface,
+    kernel: Arc<DatumWeylKernel>,
+    group: Arc<AbstractWeylGroup>,
 }
 
 /// A WeylElt value: the element with its construction context and its
@@ -401,6 +728,104 @@ pub enum DomainValue {
     ParamPol(ParamPolValue),
 }
 
+impl DomainValue {
+    /// Replace one exact final key's coefficient (atlas-types.w::assign_coef),
+    /// never add to it or expand a nonfinal key. Even zero/discarded writes
+    /// validate. Unlike the original's unchecked foreign-owner insertion,
+    /// reject incompatible owners before touching the destination's terms.
+    pub(crate) fn assign_polynomial_coefficient(
+        &mut self,
+        index: &Self,
+        coefficient: SplitValue,
+        span: SourceSpan,
+    ) -> Result<(), Diagnostic> {
+        match (self, index) {
+            (Self::KTypePol(pol), Self::KType(key)) => {
+                require_same_form_value(&pol.rf, &key.context,
+                    "Real form mismatch when assigning coefficient of KTypePol value", span)?;
+                test_final_ktype(key, "In coefficient assignment for KTypePol value", span)?;
+                if set_pol_term(&mut pol.terms, coefficient, &key.ktype) {
+                    sort_ktypepol_terms(&mut pol.terms);
+                }
+            }
+            (Self::ParamPol(pol), Self::Param(key)) => {
+                require_same_form_value(&pol.rf, &key.context,
+                    "Real form mismatch when assigning coefficient of ParamPol value", span)?;
+                test_final(key, "In coefficient assignment for ParamPol value", span)?;
+                if set_pol_term(&mut pol.terms, coefficient, &key.repr) {
+                    sort_parampol_terms(&mut pol.terms);
+                }
+            }
+            _ => unreachable!("analysis guarantees a matching polynomial/index pair"),
+        }
+        Ok(())
+    }
+
+    /// Coefficient subscription has its own validation contract, distinct
+    /// from adding/assigning terms. Validate even when the result is discarded.
+    pub(crate) fn polynomial_coefficient(
+        &self,
+        index: &Self,
+        want_value: bool,
+        span: SourceSpan,
+    ) -> Result<Option<Self>, Diagnostic> {
+        let coefficient = match (self, index) {
+            (Self::KTypePol(pol), Self::KType(key)) => {
+                require_same_form_value(&pol.rf, &key.context,
+                    "Real form mismatch when subscripting KTypePol value", span)?;
+                test_final_ktype(key, "In subscription of KTypePol value", span)?;
+                if !want_value {
+                    return Ok(None);
+                }
+                pol.terms.iter().find(|(_, term)| term == &key.ktype).map(|(c, _)| *c)
+            }
+            (Self::ParamPol(pol), Self::Param(key)) => {
+                require_same_form_value(&pol.rf, &key.context,
+                    "Real form mismatch when subscripting ParamPol value", span)?;
+                test_standard(key, "In subscription of ParamPol value", span)?;
+                // Original accepts standard non-dominant parameters. Change
+                // only a copy of the key, never the caller's stored parameter.
+                let dominant = key.repr.made_dominant(&rep_context(&key.context, span)?)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                if !want_value {
+                    return Ok(None);
+                }
+                pol.terms.iter().find(|(_, term)| term == &dominant).map(|(c, _)| *c)
+            }
+            _ => unreachable!("analysis guarantees a matching polynomial/index pair"),
+        };
+        Ok(Some(Self::Split(coefficient.unwrap_or_else(|| SplitValue::new(0, 0)))))
+    }
+
+    /// Borrow the canonical nonzero term order; each yielded key retains
+    /// its real-form owner. No polynomial copying or integer-key substitute.
+    pub(crate) fn loop_terms(&self) -> Option<Box<dyn DoubleEndedIterator<Item = (Value, Value)> + '_>> {
+        match self {
+            Self::KTypePol(pol) => Some(Box::new(pol.terms.iter()
+                .filter(|(coefficient, _)| !coefficient.is_zero())
+                .map(|(coefficient, ktype)| (
+                    Value::Domain(Self::KType(KTypeValue { context: Arc::clone(&pol.rf), ktype: ktype.clone() })),
+                    Value::Domain(Self::Split(*coefficient)),
+                )))),
+            Self::ParamPol(pol) => Some(Box::new(pol.terms.iter()
+                .filter(|(coefficient, _)| !coefficient.is_zero())
+                .map(|(coefficient, repr)| (
+                    Value::Domain(Self::Param(ParamValue { context: Arc::clone(&pol.rf), repr: repr.clone() })),
+                    Value::Domain(Self::Split(*coefficient)),
+                )))),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn loop_term_count(&self) -> Option<usize> {
+        match self {
+            Self::KTypePol(pol) => Some(pol.terms.iter().filter(|(c, _)| !c.is_zero()).count()),
+            Self::ParamPol(pol) => Some(pol.terms.iter().filter(|(c, _)| !c.is_zero()).count()),
+            _ => None,
+        }
+    }
+}
+
 impl PartialEq for DomainValue {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -423,10 +848,11 @@ impl PartialEq for DomainValue {
                     && left.dual_rf.parent.inner_class == right.dual_rf.parent.inner_class
                     && left.dual_rf.internal == right.dual_rf.internal
             }
-            // Group equality on the canonical root-permutation
-            // representation: braid-equivalent words compare equal.
+            // Group equality is the abstract-group Arc identity; the
+            // right element is replayed in the left system so
+            // braid-equivalent words compare equal across coordinates.
             (Self::WeylElement(left), Self::WeylElement(right)) => {
-                left.context.handle == right.context.handle && left.element == right.element
+                weyl_elements_equal(left, right)
             }
             (Self::CartanClass(left, left_id), Self::CartanClass(right, right_id)) => {
                 left.inner_class == right.inner_class && left_id == right_id
@@ -465,16 +891,16 @@ impl Eq for DomainValue {}
 fn same_real_form(left: &RealFormContext, right: &RealFormContext) -> bool {
     left.parent.inner_class == right.parent.inner_class
         && left.internal == right.internal
-        && left.graph.cocharacter() == right.graph.cocharacter()
-        && left.graph.seed_element().torus_bits() == right.graph.seed_element().torus_bits()
+        && left.seed.square_class_cocharacter() == right.seed.square_class_cocharacter()
+        && left.seed.element().torus_bits() == right.seed.element().torus_bits()
 }
 
 /// Pointer-owner equality used by wrappers that compare their
 /// `shared_real_form` fields directly. Canonical construction shares one
-/// `RepTableOwner` through the parent weak cache; custom construction always
+/// context through the parent weak cache; custom construction always
 /// creates a fresh owner even when the mathematical real forms are equal.
 fn same_real_form_owner(left: &RealFormContext, right: &RealFormContext) -> bool {
-    Arc::ptr_eq(&left.rep, &right.rep)
+    std::ptr::eq(left, right)
 }
 
 impl fmt::Display for DomainValue {
@@ -578,7 +1004,7 @@ impl fmt::Display for DomainValue {
             // chain, ` K-type`, then print_K_type (basic_io.cpp:158-163)
             // whose own leading space gives `final K-type K_type(...)`.
             Self::KType(value) => {
-                let rc = rep_context(&value.context);
+                let rc = value.context.rep.value.get().ok_or(fmt::Error)?.context();
                 let adjectives = ktype_adjective(&rc, &value.ktype);
                 write!(
                     formatter,
@@ -610,7 +1036,7 @@ impl fmt::Display for DomainValue {
                         ),
                     };
                 }
-                let rc = rep_context(&value.context);
+                let rc = value.context.rep.value.get().ok_or(fmt::Error)?.context();
                 let adjectives = repr_adjective(&rc, &value.repr);
                 write!(
                     formatter,
@@ -625,8 +1051,8 @@ impl fmt::Display for DomainValue {
                     ),
                 )
             }
-            Self::KTypePol(value) => write!(formatter, "{}", ktype_pol_display(value)),
-            Self::ParamPol(value) => write!(formatter, "{}", param_pol_display(value)),
+            Self::KTypePol(value) => write!(formatter, "{}", ktype_pol_display(value)?),
+            Self::ParamPol(value) => write!(formatter, "{}", param_pol_display(value)?),
         }
     }
 }
@@ -634,8 +1060,16 @@ impl fmt::Display for DomainValue {
 /// Borrow the representation context of a real form's frozen pipeline from
 /// its shared owner. The owner keeps the table, graph, derived invariants, and
 /// future common-block cache on the same lifetime boundary.
-fn rep_context(context: &RealFormContext) -> RepContext<'_> {
-    context.rep.context()
+fn rep_context(context: &RealFormContext, span: SourceSpan) -> Result<RepContext<'_>, Diagnostic> {
+    Ok(context.rep(span)?.context())
+}
+
+fn ktype_formula_bound(value: &Value, span: SourceSpan) -> Result<u32, Diagnostic> {
+    // int_value::int_val is signed32, including at no-value level. Only
+    // after narrowing does a negative bound acquire its unbounded meaning.
+    let bound = i32::try_from(&as_integer(value, span)?)
+        .map_err(|_| runtime(span, "Integer value too big for conversion"))?;
+    Ok(if bound < 0 { u32::MAX } else { bound as u32 })
 }
 
 /// The 6-way adjective chain for a K-type (atlas-types.w:5228-5235).
@@ -719,9 +1153,9 @@ fn rational_weight_display(weight: &RationalWeight) -> String {
 /// coefficient embellishment (full `(e+fs)` only when both components occur
 /// somewhere across the terms), then `*` + print_K_type (whose own leading
 /// space follows the `*`) + ` [height]`.
-fn ktype_pol_display(value: &KTypePolValue) -> String {
+fn ktype_pol_display(value: &KTypePolValue) -> Result<String, fmt::Error> {
     if value.terms.is_empty() {
-        return "Empty sum of K-types".to_string();
+        return Ok("Empty sum of K-types".to_string());
     }
     let has_one = value
         .terms
@@ -731,7 +1165,7 @@ fn ktype_pol_display(value: &KTypePolValue) -> String {
         .terms
         .iter()
         .any(|(coefficient, _)| coefficient.f() != 0);
-    let rc = rep_context(&value.rf);
+    let rc = value.rf.rep.value.get().ok_or(fmt::Error)?.context();
     let mut out = String::new();
     for (coefficient, ktype) in &value.terms {
         out.push('\n');
@@ -758,15 +1192,15 @@ fn ktype_pol_display(value: &KTypePolValue) -> String {
         ));
         out.push_str(&format!(" [{}]", ktype.height()));
     }
-    out
+    Ok(out)
 }
 
 /// print_SR_poly (basic_io.cpp:214-244): like print_K_type_pol, but the
 /// parameter text (`parameter(...)`, no leading space) follows the `*`
 /// directly, and the empty text is `Empty sum of standard modules`.
-fn param_pol_display(value: &ParamPolValue) -> String {
+fn param_pol_display(value: &ParamPolValue) -> Result<String, fmt::Error> {
     if value.terms.is_empty() {
-        return "Empty sum of standard modules".to_string();
+        return Ok("Empty sum of standard modules".to_string());
     }
     let has_one = value
         .terms
@@ -776,7 +1210,7 @@ fn param_pol_display(value: &ParamPolValue) -> String {
         .terms
         .iter()
         .any(|(coefficient, _)| coefficient.f() != 0);
-    let rc = rep_context(&value.rf);
+    let rc = value.rf.rep.value.get().ok_or(fmt::Error)?.context();
     let mut out = String::new();
     for (coefficient, repr) in &value.terms {
         out.push('\n');
@@ -801,7 +1235,7 @@ fn param_pol_display(value: &ParamPolValue) -> String {
         ));
         out.push_str(&format!(" [{}]", repr.height()));
     }
-    out
+    Ok(out)
 }
 
 /// The language-facing kind name, used by diagnostics and type printing.
@@ -834,17 +1268,17 @@ fn type_error(span: SourceSpan, message: impl Into<String>) -> Diagnostic {
 /// Upstream Lie-type string parser (atlas-types.w:222-247): repeat
 /// { skip punctuation/whitespace; one letter of "ABCDEFGT"; unsigned
 /// decimal }; per-letter rank bounds; `Tr` becomes r copies of `T1`.
-fn parse_lie_type(text: &str, span: SourceSpan) -> Result<LieTypeValue, Diagnostic> {
+fn parse_lie_type(text: &crate::value::AtlasString, span: SourceSpan) -> Result<LieTypeValue, Diagnostic> {
     let bad = || {
-        runtime(
-            span,
-            format!("Error in string '{text}' that should specify a Lie type"),
-        )
+        let mut message = crate::value::AtlasString::from("Error in string '");
+        message.push_bytes(text.as_bytes());
+        message.push_str("' that should specify a Lie type");
+        Diagnostic::new_bytes(ErrorKind::Runtime, message, Some(span))
     };
     let mut factors = Vec::new();
-    let mut characters = text.chars().peekable();
+    let mut characters = text.as_bytes().iter().copied().map(char::from).peekable();
     loop {
-        while matches!(characters.peek(), Some(c) if c.is_ascii_punctuation() || c.is_whitespace())
+        while matches!(characters.peek(), Some(c) if c.is_ascii_punctuation() || c.is_ascii_whitespace())
         {
             characters.next();
         }
@@ -1232,12 +1666,17 @@ fn build_datum(
     } else {
         classify_isogeny(&datum)
     };
-    Ok(RootDatumHandle {
-        datum: Arc::new(datum),
-        lie_type: lie_type.clone(),
-        isogeny,
-        prefers_coroots,
-    })
+    // RootDatum::type (rootdata.cpp:1016) appends the radical's T1
+    // factors after the semisimple type. The constructed simple data above
+    // already use this order; do not preserve interspersed input tori in
+    // the datum's type/description or mutate the caller's LieType value.
+    let datum_type = LieTypeValue {
+        factors: lie_type
+            .semisimple_factors()
+            .chain(std::iter::repeat_n(('T', 1), lattice_rank - semisimple))
+            .collect(),
+    };
+    Ok(RootDatumHandle::interned(datum, datum_type, isogeny, prefers_coroots))
 }
 
 fn build_quotient_datum(
@@ -1329,19 +1768,24 @@ fn build_quotient_from_handle(
     )
     .map_err(|error| runtime(span, error.to_string()))?;
     let isogeny = classify_isogeny(&datum);
-    Ok(RootDatumHandle {
-        datum: Arc::new(datum),
-        lie_type: source.lie_type.clone(),
+    Ok(RootDatumHandle::interned(
+        datum,
+        source.lie_type.clone(),
         isogeny,
-        prefers_coroots: source.prefers_coroots,
-    })
+        source.prefers_coroots,
+    ))
 }
 
 /// The based root datum dual to `handle`'s: transposed Cartan matrix,
 /// simple roots and simple coroots interchanged, and the coroot preference
-/// switched — the upstream `RootSystem(rs,DualTag)` (`prefer_co(not
-/// rs.prefer_co)`, rootdata.cpp:341) behind `root_datum_value::dual`
-/// (atlas-types.w:1147-1155). The stored Lie type dualizes letter-wise
+/// switched — upstream `root_datum_value::dual` copies to `PreRootDatum`,
+/// calls `dualise`, interns it, and constructs a fresh `RootDatum` when needed
+/// (atlas-types.w:1146-1152; rootdata.cpp:1275-1282; prerootdata.h:101-102).
+/// The datum-specific coordinate kernel is never shared, but the abstract
+/// Weyl-group identity is installed into the canonical dual while that
+/// target is still cold, exactly like the original's `W_ptr` sharing; a
+/// prewarmed target keeps its own group. The stored Lie type
+/// dualizes letter-wise
 /// (B<->C per factor, every other factor unchanged), which keeps torus
 /// factors and factor order exactly as constructed; `Lie_type` of the dual
 /// datum computes the same letters from the transposed Cartan matrix.
@@ -1367,12 +1811,15 @@ fn dual_root_datum(
         dual_coroots,
     )
     .map_err(|error| runtime(span, error.to_string()))?;
-    Ok(RootDatumHandle {
-        isogeny: classify_isogeny(&dual),
-        datum: Arc::new(dual),
-        lie_type: dual_lie_type(&handle.lie_type),
-        prefers_coroots: !handle.prefers_coroots,
-    })
+    let isogeny = classify_isogeny(&dual);
+    let dual_handle = RootDatumHandle::interned(
+        dual,
+        dual_lie_type(&handle.lie_type),
+        isogeny,
+        !handle.prefers_coroots,
+    );
+    handle.identity.share_group_into_if_cold(&dual_handle.identity, &handle.datum, span)?;
+    Ok(dual_handle)
 }
 
 /// The Lie type of the dual datum: every B factor becomes the C factor of
@@ -1397,30 +1844,23 @@ fn dual_lie_type(lie_type: &LieTypeValue) -> LieTypeValue {
 /// Build a root datum from explicit simple-root and simple-coroot matrices.
 /// Matrix columns are the basis vectors, matching Atlas's `mat` convention.
 fn build_explicit_datum(
-    simple_roots: &[Vec<i32>],
-    simple_coroots: &[Vec<i32>],
+    simple_roots: &Matrix,
+    simple_coroots: &Matrix,
     prefers_coroots: bool,
     span: SourceSpan,
 ) -> Result<RootDatumHandle, Diagnostic> {
-    let lattice_rank = simple_roots.len();
-    let semisimple_rank = simple_roots.first().map_or(0, Vec::len);
-    if lattice_rank == 0 || semisimple_rank == 0 {
-        return Err(runtime(
-            span,
-            "Implicit conversion to matrix for an empty set of vectors",
-        ));
-    }
-    if simple_roots.iter().any(|row| row.len() != semisimple_rank)
-        || simple_coroots.len() != lattice_rank
-        || simple_coroots
-            .iter()
-            .any(|row| row.len() != semisimple_rank)
+    // Explicit Nx0 matrices define tori, including the trivial 0x0 datum.
+    // Keep both dimensions: the legacy row adapter turns 0xN into Nx0.
+    let lattice_rank = simple_roots.rows();
+    let semisimple_rank = simple_roots.cols();
+    if simple_coroots.rows() != lattice_rank
+        || simple_coroots.cols() != semisimple_rank
     {
         let root_shape = format!("{},{}", lattice_rank, semisimple_rank);
         let coroot_shape = format!(
             "{},{}",
-            simple_coroots.len(),
-            simple_coroots.first().map_or(0, Vec::len)
+            simple_coroots.rows(),
+            simple_coroots.cols()
         );
         return Err(runtime(
             span,
@@ -1429,24 +1869,10 @@ fn build_explicit_datum(
     }
 
     let roots = (0..semisimple_rank)
-        .map(|column| {
-            Weight::new(
-                simple_roots
-                    .iter()
-                    .map(|row| row[column])
-                    .collect::<Vec<_>>(),
-            )
-        })
+        .map(|column| Weight::new(simple_roots.column(column).0))
         .collect::<Vec<_>>();
     let coroots = (0..semisimple_rank)
-        .map(|column| {
-            Coweight::new(
-                simple_coroots
-                    .iter()
-                    .map(|row| row[column])
-                    .collect::<Vec<_>>(),
-            )
-        })
+        .map(|column| Coweight::new(simple_coroots.column(column).0))
         .collect::<Vec<_>>();
     let mut cartan = Vec::with_capacity(semisimple_rank);
     for root in &roots {
@@ -1467,15 +1893,14 @@ fn build_explicit_datum(
         }
         cartan.push(row);
     }
-    let lie_type = infer_lie_type(&cartan, lattice_rank, span)?;
+    // atlas-types.w root_datum_wrapper translates Cartan validation failure
+    // here, including a 0xN pair whose NxN Cartan matrix is all zero.
+    let lie_type = infer_lie_type(&cartan, lattice_rank, span)
+        .map_err(|_| runtime(span, "Matrices of (co)roots give invalid Cartan matrix"))?;
     let datum = BasedRootDatum::from_simple_data(lattice_rank, cartan, roots, coroots)
         .map_err(|error| runtime(span, error.to_string()))?;
-    Ok(RootDatumHandle {
-        isogeny: classify_isogeny(&datum),
-        datum: Arc::new(datum),
-        lie_type,
-        prefers_coroots,
-    })
+    let isogeny = classify_isogeny(&datum);
+    Ok(RootDatumHandle::interned(datum, lie_type, isogeny, prefers_coroots))
 }
 
 fn infer_lie_type(
@@ -1698,6 +2123,7 @@ type ClassificationFingerprint = (
     Vec<Vec<i32>>,
     Vec<Vec<i32>>,
     usize,
+    Option<usize>,
     usize,
     usize,
 );
@@ -1732,6 +2158,7 @@ fn classification_cached(
             .coweight_matrix()
             .to_vec(),
         class_budget.weyl_budget(),
+        class_budget.involution_budget(),
         class_budget.max_fiber_elements(),
         class_budget.max_peeling_steps(),
     );
@@ -1764,6 +2191,7 @@ fn cartan_classification_budget() -> CartanClassificationBudget {
         4_096,
         4_096,
     )
+    .with_generated_involutions(TWISTED_INVOLUTION_BUDGET)
 }
 
 fn build_inner_class_context(
@@ -1856,12 +2284,13 @@ fn build_dual_inner_class(
     // atlas-types.w:3152-3156): its coroot preference is switched
     // (RootSystem DualTag, rootdata.cpp:341) and its Lie type is the
     // letter-wise dual of the parent's.
-    let handle = RootDatumHandle {
-        isogeny: classify_isogeny(&datum),
-        datum: Arc::new(datum),
-        lie_type: dual_lie_type(&parent.root_datum.lie_type),
-        prefers_coroots: !parent.root_datum.prefers_coroots,
-    };
+    let isogeny = classify_isogeny(&datum);
+    let handle = RootDatumHandle::interned(
+        datum,
+        dual_lie_type(&parent.root_datum.lie_type),
+        isogeny,
+        !parent.root_datum.prefers_coroots,
+    );
     build_inner_class_context(&handle, inner_class, span)
 }
 
@@ -1927,7 +2356,7 @@ pub(crate) fn coerce(tag: &str, value: Value, span: SourceSpan) -> Result<Value,
         // them in canonical K_type_pol term order.
         "KpolK" => match value {
             Value::Domain(DomainValue::KType(ktype_value)) => {
-                let rc = rep_context(&ktype_value.context);
+                let rc = rep_context(&ktype_value.context, span)?;
                 let mut terms: Vec<(SplitValue, KType)> = Vec::new();
                 for (ktype, coefficient) in ktype_value
                     .ktype
@@ -1949,7 +2378,7 @@ pub(crate) fn coerce(tag: &str, value: Value, span: SourceSpan) -> Result<Value,
         // expand_final) and collect them in SR_poly term order.
         "PolP" => match value {
             Value::Domain(DomainValue::Param(parameter)) => {
-                let rc = rep_context(&parameter.context);
+                let rc = rep_context(&parameter.context, span)?;
                 let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
                 for (repr, coefficient) in rc
                     .expand_final(&parameter.repr)
@@ -1991,8 +2420,8 @@ fn build_real_form(
         }
     }
 
-    // Construct outside the cache lock. KGB completion can be expensive, and
-    // concurrent callers must not serialize unrelated real forms behind it.
+    // Validate/elect the seed outside the cache lock. KGB and Rep_table are
+    // separate lazy owners, like real_form_value::build in the original.
     let mut table =
         InnerClassContext::fresh_table(parent).map_err(|error| runtime(span, error.to_string()))?;
     let fundamental = parent
@@ -2013,27 +2442,14 @@ fn build_real_form(
         FIBER_BUDGET,
     )
     .map_err(|error| runtime(span, error.to_string()))?;
-    let graph = KgbGraph::build(
-        &parent.inner_class,
-        &parent.classification,
-        &parent.strong,
-        &mut table,
-        &seed,
-    )
-    .map_err(|error| runtime(span, error.to_string()))?;
-    let table = Arc::new(table);
-    let graph = Arc::new(graph);
-    let rep = Arc::new(
-        RepTableOwner::from_shared(Arc::clone(&table), Arc::clone(&graph))
-            .map_err(|error| runtime(span, error.to_string()))?,
-    );
     let candidate = Arc::new(RealFormContext {
         parent: Arc::clone(parent),
         external,
         internal,
-        table,
-        graph,
-        rep,
+        seed,
+        initial_table: table,
+        kgb: FallibleOnce::default(),
+        rep: FallibleOnce::default(),
         full_deform_cache: Mutex::new(DeformationCache::default()),
         twisted_full_deform_cache: Mutex::new(DeformationCache::default()),
     });
@@ -2050,8 +2466,8 @@ fn build_real_form(
         }
     }
 
-    // A concurrent builder may have installed the same form while this KGB
-    // graph was being completed. Preserve the first live canonical owner.
+    // A concurrent builder may have installed the same form while its seed
+    // was being computed. Preserve the first live canonical owner.
     let mut canonical_forms = parent
         .canonical_forms
         .lock()
@@ -2067,7 +2483,7 @@ fn build_real_form(
 }
 
 /// The custom-seed construction of `real_form_value::build`
-/// (atlas-types.w:3543-3544): a fresh KGB pipeline seeded with the
+/// (atlas-types.w:3543-3544): a fresh lazy KGB owner seeded with the
 /// caller's (cocharacter, torus part) pair rather than the form's elected
 /// seed. Only `synthetic_real_form` plans that failed the default test
 /// reach here.
@@ -2095,27 +2511,14 @@ fn build_custom_real_form(
         plan.torus_part.clone(),
     )
     .map_err(|error| runtime(span, error.to_string()))?;
-    let graph = KgbGraph::build(
-        &parent.inner_class,
-        &parent.classification,
-        &parent.strong,
-        &mut table,
-        &seed,
-    )
-    .map_err(|error| runtime(span, error.to_string()))?;
-    let table = Arc::new(table);
-    let graph = Arc::new(graph);
-    let rep = Arc::new(
-        RepTableOwner::from_shared(Arc::clone(&table), Arc::clone(&graph))
-            .map_err(|error| runtime(span, error.to_string()))?,
-    );
     Ok(Arc::new(RealFormContext {
         parent: Arc::clone(parent),
         external: plan.external,
         internal: plan.internal,
-        table,
-        graph,
-        rep,
+        seed,
+        initial_table: table,
+        kgb: FallibleOnce::default(),
+        rep: FallibleOnce::default(),
         full_deform_cache: Mutex::new(DeformationCache::default()),
         twisted_full_deform_cache: Mutex::new(DeformationCache::default()),
     }))
@@ -2170,6 +2573,32 @@ fn as_matrix(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diagnosti
         return Err(type_error(span, "expected a square mat"));
     }
     Ok(rows)
+}
+
+/// Borrow the typed matrix without losing empty dimensions. Retain the old
+/// nested-list adapter for the pre-typed evaluator, without cloning matrices.
+fn explicit_datum_matrix(
+    value: &Value,
+    span: SourceSpan,
+) -> Result<std::borrow::Cow<'_, Matrix>, Diagnostic> {
+    if let Value::Matrix(matrix) = value {
+        return Ok(std::borrow::Cow::Borrowed(matrix));
+    }
+    let rows = as_matrix_rows(value, span)?;
+    let Some(first) = rows.first() else {
+        return Err(runtime(
+            span,
+            "Implicit conversion to matrix for an empty set of vectors",
+        ));
+    };
+    let column_count = first.len();
+    let entries = (0..column_count)
+        .flat_map(|column| rows.iter().map(move |row| row[column]))
+        .collect();
+    Ok(std::borrow::Cow::Owned(
+        Matrix::from_columns(rows.len(), column_count, entries)
+            .expect("validated rectangular nested-list matrix"),
+    ))
 }
 
 fn as_matrix_rows(value: &Value, span: SourceSpan) -> Result<Vec<Vec<i32>>, Diagnostic> {
@@ -2266,18 +2695,20 @@ fn store_deformation(
     Ok(())
 }
 
-/// The full deformation of one final standard parameter (repr.cpp:
-/// 2251-2290): the finals of the scale-0 parameter contribute their
-/// K-types, then each reducibility point's scaled parameter is deformed
-/// via the block's deformation terms, scaled back to its previous
-/// reducibility point.
+/// Full deformation of a final standard parameter (repr.cpp:
+/// Rep_table::deformation/full_deformation). With L the scale-zero finals,
+/// F(z) = L(z) + sum_t c_t (1-s) F(t), over every reducibility point.
+/// This equals the original integer recurrence D(z) += c_t L(t) + 2 c_t D(t)
+/// because (1-s)^2 = 2(1-s). Cache only complete, canonically ordered results;
+/// neither the cache nor the block owner is locked across recursive calls.
 fn full_deformation_terms(
     rc: &RepContext<'_>,
     z: &StandardRepr,
     context: &Arc<RealFormContext>,
     span: SourceSpan,
     deadline: Option<Instant>,
-) -> Result<Option<Vec<(KType, SplitValue)>>, Diagnostic> {
+    active: &mut HashSet<FullDeformKey>,
+) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
     if deadline_expired(deadline) {
         return Ok(None);
     }
@@ -2290,8 +2721,39 @@ fn full_deformation_terms(
         return Ok(None);
     }
     let z = centered.as_ref().unwrap_or(z);
-    let mut result: Vec<(KType, SplitValue)> = Vec::new();
-    // Scale-0 base (repr.cpp:2257-2266).
+    let key = full_deform_key(z);
+    if let Some(terms) = cached_deformation(&context.full_deform_cache, &key, span)? {
+        return Ok(Some(terms));
+    }
+    if !active.insert(key.clone()) {
+        return Err(runtime(
+            span,
+            "full deformation recursion revisited an active parameter",
+        ));
+    }
+    let result = full_deformation_uncached(rc, z, context, span, deadline, active);
+    active.remove(&key);
+    let Some(mut terms) = result? else {
+        return Ok(None);
+    };
+    sort_ktypepol_terms(&mut terms);
+    if deadline_expired(deadline) {
+        return Ok(None);
+    }
+    store_deformation(&context.full_deform_cache, key, terms.clone(), span)?;
+    Ok(Some(terms))
+}
+
+fn full_deformation_uncached(
+    rc: &RepContext<'_>,
+    z: &StandardRepr,
+    context: &Arc<RealFormContext>,
+    span: SourceSpan,
+    deadline: Option<Instant>,
+    active: &mut HashSet<FullDeformKey>,
+) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
+    let mut result = Vec::new();
+    // Scale-zero base: deformation_unit::set_LKTs retains ALL final terms.
     let z0 = rc
         .scale(z, 0, 1)
         .map_err(|error| structure_diagnostic(error, span))?;
@@ -2310,12 +2772,13 @@ fn full_deformation_terms(
             .map_err(|error| structure_diagnostic(error, span))?;
         let ktype = KType::sr_k(rc, final_sr.x(), &lambda_rho)
             .map_err(|error| structure_diagnostic(error, span))?;
-        result.push((ktype, SplitValue::new(*coef, 0)));
+        merge_ktype_term(&mut result, ktype, SplitValue::new(*coef, 0));
         if deadline_expired(deadline) {
             return Ok(None);
         }
     }
-    // Reducibility-point recursion (repr.cpp:2268-2289).
+    // Recursively deform each child; stopping at a previous point and turning
+    // it into a single K-type discards both its Split factor and descendants.
     let rp = rc
         .reducibility_points(z)
         .map_err(|error| structure_diagnostic(error, span))?;
@@ -2335,8 +2798,7 @@ fn full_deformation_terms(
         if deadline_expired(deadline) {
             return Ok(None);
         }
-        let located = context
-            .rep
+        let located = context.rep(span)?
             .lookup(&zi)
             .map_err(|error| structure_diagnostic(error, span))?;
         let block = located.block();
@@ -2355,30 +2817,16 @@ fn full_deformation_terms(
             if deadline_expired(deadline) {
                 return Ok(None);
             }
-            let term_rp = rc
-                .reducibility_points(&term)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let index = if term_rp.last() == Some(&(1, 1)) {
-                term_rp.len().saturating_sub(1)
-            } else {
-                term_rp.len()
-            };
-            let point = if index > 0 {
-                term_rp[index - 1]
-            } else {
-                (0, 1)
-            };
-            let scaled = rc
-                .scale(&term, point.0, point.1)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let scaled_lambda = rc
-                .lambda_rho(&scaled)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let ktype = KType::sr_k(rc, scaled.x(), &scaled_lambda)
-                .map_err(|error| structure_diagnostic(error, span))?;
-            result.push((ktype, SplitValue::new(coef, 0)));
-            if deadline_expired(deadline) {
+            let Some(child) = full_deformation_terms(rc, &term, context, span, deadline, active)?
+            else {
                 return Ok(None);
+            };
+            let factor = SplitValue::new(coef, 0).mul(SplitValue::new(1, -1));
+            for (split, ktype) in child {
+                merge_ktype_term(&mut result, ktype, split.mul(factor));
+                if deadline_expired(deadline) {
+                    return Ok(None);
+                }
             }
         }
     }
@@ -2393,7 +2841,7 @@ fn compute_full_deform(
     span: SourceSpan,
     deadline: Option<Instant>,
 ) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let finals = rc
         .finals_for(&parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
@@ -2401,17 +2849,18 @@ fn compute_full_deform(
         return Ok(None);
     }
     let mut terms: Vec<(SplitValue, KType)> = Vec::new();
+    let mut active = HashSet::new();
     for (final_sr, coef) in &finals {
         if deadline_expired(deadline) {
             return Ok(None);
         }
         let Some(deformed) =
-            full_deformation_terms(&rc, final_sr, &parameter.context, span, deadline)?
+            full_deformation_terms(&rc, final_sr, &parameter.context, span, deadline, &mut active)?
         else {
             return Ok(None);
         };
-        for (ktype, split) in deformed {
-            let scaled_split = SplitValue::new(split.e() * *coef, split.f() * *coef);
+        for (split, ktype) in deformed {
+            let scaled_split = split.mul(SplitValue::new(*coef, 0));
             merge_ktype_term(&mut terms, ktype, scaled_split);
             if deadline_expired(deadline) {
                 return Ok(None);
@@ -2430,7 +2879,7 @@ fn compute_twisted_full_deform(
     span: SourceSpan,
     timer_ms: Option<i32>,
 ) -> Result<Option<Vec<(SplitValue, KType)>>, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let (delta, twist) = distinguished_twist(parameter, span)?;
     let context = ExtRepContext::new(&rc, delta.clone())
         .map_err(|error| structure_diagnostic(error, span))?;
@@ -2842,7 +3291,7 @@ fn located_row_parameter(
     located: &LocatedBlock,
     row: usize,
 ) -> Result<StandardRepr, StructureError> {
-    let rc = rep_context(context);
+    let rc = context.rep_result()?.context();
     let block = located.block();
     let stored = block.element(row).ok_or(StructureError::IndexOutOfRange {
         index: row,
@@ -2871,7 +3320,7 @@ fn located_singular_flags(
     context: &Arc<RealFormContext>,
     located: &LocatedBlock,
 ) -> Result<Vec<bool>, StructureError> {
-    let rc = rep_context(context);
+    let rc = context.rep_result()?.context();
     let system = rc.root_system();
     let gamma = located.prepared_query().gamma();
     let modifier = located.block_modifier();
@@ -2933,14 +3382,13 @@ fn kl_sum_at_s_terms(
 ) -> Result<Vec<(SplitValue, StandardRepr)>, Diagnostic> {
     test_standard(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
     test_final(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let normalised = parameter
         .repr
         .normalised(&rc)
         .map_err(|error| structure_diagnostic(error, span))?;
     let located = parameter
-        .context
-        .rep
+        .context.rep(span)?
         .lookup(&normalised)
         .map_err(|error| structure_diagnostic(error, span))?;
     let block = located.block();
@@ -3235,7 +3683,7 @@ fn common_block_members(
 /// parameter with the oracle's two-line diagnostic; `descr` is
 /// "Cannot generate block" or "Cannot generate extended block".
 fn test_standard(parameter: &ParamValue, descr: &str, span: SourceSpan) -> Result<(), Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let standard = parameter
         .repr
         .is_standard(&rc)
@@ -3250,12 +3698,35 @@ fn test_standard(parameter: &ParamValue, descr: &str, span: SourceSpan) -> Resul
     ))
 }
 
+/// atlas-types.w::test_final(K_type_value): the obstruction order differs
+/// from the parameter predicate and from the printed adjective chain.
+fn test_final_ktype(key: &KTypeValue, descr: &str, span: SourceSpan) -> Result<(), Diagnostic> {
+    let rc = rep_context(&key.context, span)?;
+    let ktype = &key.ktype;
+    if ktype.is_final(&rc).map_err(|error| structure_diagnostic(error, span))? {
+        return Ok(());
+    }
+    let reason = if !ktype.is_dominant(&rc).map_err(|error| structure_diagnostic(error, span))? {
+        "not dominant"
+    } else if !ktype.is_nonzero(&rc).map_err(|error| structure_diagnostic(error, span))? {
+        "zero"
+    } else if !ktype.is_semifinal(&rc).map_err(|error| structure_diagnostic(error, span))? {
+        "not semifinal"
+    } else if !ktype.is_normal(&rc).map_err(|error| structure_diagnostic(error, span))? {
+        "not normal"
+    } else {
+        return Err(runtime(span, "Unknown obstruction to K-type finality"));
+    };
+    Err(runtime(span, format!("{descr}:\n  {}\n  K-type is {reason}",
+        DomainValue::KType(key.clone()))))
+}
+
 /// `test_final` for module parameters (atlas-types.w:6632-6647): reject a
 /// non-final parameter with the oracle's two-line diagnostic. Unlike
 /// `test_standard` there is no "not standard" case — the reason chain is
 /// dominant, then normal, then nonzero, then semifinal.
 fn test_final(parameter: &ParamValue, descr: &str, span: SourceSpan) -> Result<(), Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let repr = &parameter.repr;
     let reason = if !repr
         .is_dominant(&rc)
@@ -3291,7 +3762,7 @@ fn parameter_integrality_rank(
     parameter: &ParamValue,
     span: SourceSpan,
 ) -> Result<usize, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     IntegralSubsystem::integral(rc.root_system(), parameter.repr.gamma())
         .map(|subsystem| subsystem.rank())
         .map_err(|error| structure_diagnostic(error, span))
@@ -3413,8 +3884,7 @@ fn common_block_gamma_lambdas(
         let x = block.graph.x(z).expect("in-range block element");
         let y = block.graph.y(z).expect("in-range block element");
         let dual_bits = block
-            .dual_rf
-            .graph
+            .dual_rf.graph(span)?
             .element(y)
             .ok_or_else(|| runtime(span, "dual KGB element out of range"))?
             .torus_bits();
@@ -3830,10 +4300,10 @@ fn build_ext_block(
     let cartan = parameter.context.parent.root_datum.datum.cartan_matrix();
     ExtBlock::build(
         &block.graph,
-        &block.rf.graph,
-        &block.rf.table,
-        &block.dual_rf.graph,
-        &block.dual_rf.table,
+        block.rf.graph(span)?,
+        block.rf.table(span)?,
+        block.dual_rf.graph(span)?,
+        block.dual_rf.table(span)?,
         delta,
         twist,
         &dual_delta,
@@ -3931,7 +4401,7 @@ fn partial_block_param(
     z: usize,
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let gl = block.gamma_lambda(z).expect("in-range parent row");
     let lambda_rho = integer_diff_weight(gamma_rho, gl, span)?;
     let repr = rc
@@ -3952,7 +4422,7 @@ fn extended_block_partial(
     gamma: &RationalWeight,
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let seed = StandardReprMod::mod_reduce(&rc, &parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
@@ -4037,7 +4507,7 @@ fn raw_ext_kl_partial(
     twist: &[usize],
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let seed = StandardReprMod::mod_reduce(&rc, &parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
@@ -4127,7 +4597,7 @@ fn partial_extended_kl_block_partial(
     twist: &[usize],
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let seed = StandardReprMod::mod_reduce(&rc, &parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
@@ -4379,9 +4849,20 @@ fn weight_orthogonal(root_system: &RootSystem, weight: &Weight, root: RootId) ->
     pair(weight, coroot).is_ok_and(|pair| pair == 0)
 }
 
-/// `RootSystem::simpleBasis` (rootdata.cpp:621-652), implemented by the
-/// positivity test: a positive root is simple in the subsystem spanned by
-/// `rs` iff no other positive root of `rs` has strictly smaller coordinates.
+fn check_integrality_dimension(
+    handle: &RootDatumHandle,
+    gamma: &RatVec,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    if gamma.numerators().len() != handle.datum.lattice_rank() {
+        return Err(runtime(span, format!(
+            "Length {} of rational vector differs from rank {}",
+            gamma.numerators().len(), handle.datum.lattice_rank()
+        )));
+    }
+    Ok(())
+}
+
 /// The simple roots of the integrality subsystem of `gamma`
 /// (rootdata.cpp:1483-1501): positive coroots with integral pairing, then
 /// the minimal positive roots spanning them.
@@ -4390,6 +4871,7 @@ fn integrality_simples_roots(
     gamma: &RatVec,
     span: SourceSpan,
 ) -> Result<Vec<RootId>, Diagnostic> {
+    check_integrality_dimension(handle, gamma, span)?;
     let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
         .map_err(|error| runtime(span, error.to_string()))?;
     let denominator = gamma.denominator() as i64;
@@ -4411,7 +4893,11 @@ fn integrality_simples_roots(
             }
         }
     }
-    simple_basis(&root_system, &integral).map_err(|error| runtime(span, error.to_string()))
+    let mut simples = simple_basis(&root_system, &integral)
+        .map_err(|error| runtime(span, error.to_string()))?;
+    let numbering = RootNumbering::new(&root_system, handle.prefers_coroots());
+    simples.sort_unstable_by_key(|&id| numbering.nbr(id));
+    Ok(simples)
 }
 
 /// <gamma, alpha^vee> for a positive coroot (rootdata.cpp `posCoroot(i).dot`).
@@ -4488,7 +4974,9 @@ fn simple_coroot_coordinates(root_system: &RootSystem, id: RootId) -> Option<Vec
         if denominator != 1 {
             return None;
         }
-        *entry = i32::try_from(value.numerator_ref()).ok()?;
+        // Convert the integral Rational itself: numerator_ref is unsigned
+        // and would reflect every negative coroot into positive coordinates.
+        *entry = i32::try_from(value).ok()?;
     }
     Some(coordinates)
 }
@@ -4685,9 +5173,11 @@ fn wall_set(
     (walls, integrals)
 }
 
-/// rootdata::components (rootdata.cpp:1443-1467): the connected components
-/// of a root subset under non-orthogonality, each in RootNbr-ascending
-/// order. Component order does not affect the alcove consumers below.
+/// rootdata::components (rootdata.cpp:1514-1537): connected components of
+/// a root subset under non-orthogonality, each in RootNbr-ascending order.
+/// The original appends a component whenever a new root touches it, so
+/// final component order follows the largest RootNbr, not the smallest.
+/// This order is observable in FPP product vectors and their Weyl witnesses.
 fn root_components(
     root_system: &RootSystem,
     numbering: &RootNumbering,
@@ -4735,6 +5225,7 @@ fn root_components(
             }
         }
     }
+    components.sort_unstable_by_key(|component| *component.last().expect("nonempty root component"));
     components
 }
 
@@ -5391,6 +5882,11 @@ fn mat_mul_i32(left: &[Vec<i32>], right: &[Vec<i32>]) -> Result<Vec<Vec<i32>>, S
     Ok(out)
 }
 
+/// Reflection criterion used by upstream RootSystem::simpleBasis: a simple
+/// root's reflection preserves every OTHER positive root of the subsystem.
+/// Ambient-coordinate minimality is insufficient (B2 integral A1 x A1).
+/// Test the full criterion directly, retaining the input's deterministic
+/// order; callers exporting root numbers impose their own RootNbr order.
 fn simple_basis(root_system: &RootSystem, rs: &[RootId]) -> Result<Vec<RootId>, StructureError> {
     let mut result = Vec::new();
     for &alpha in rs {
@@ -5408,10 +5904,11 @@ fn simple_basis(root_system: &RootSystem, rs: &[RootId]) -> Result<Vec<RootId>, 
             }
             let beta_coords = root_system.simple_coordinates(beta);
             if let Some(beta_coords) = beta_coords {
-                if beta_coords.len() == coords.len()
-                    && beta_coords != coords
-                    && beta_coords.iter().zip(coords).all(|(b, a)| b <= a)
-                {
+                let pairing = root_system.bracket(beta, alpha)?;
+                // s_alpha(beta) = beta - <beta, alpha^vee> alpha.
+                // A root is negative iff its simple coordinates are negative.
+                if beta_coords.iter().zip(coords).any(|(&b, &a)|
+                    i64::from(b) - i64::from(pairing) * i64::from(a) < 0) {
                     is_simple = false;
                     break;
                 }
@@ -6186,11 +6683,11 @@ fn weyl_word_values(
     let context = build_weyl_context(handle, span)?;
     let mut result = Vec::with_capacity(words.len());
     for word in words {
-        let mut element = WeylElement::identity(&context.system)
+        let mut element = WeylElement::identity(&context.kernel.system)
             .map_err(|error| runtime(span, error.to_string()))?;
         for generator in word {
             let (next, _) = element
-                .right_multiply_simple(&context.system, generator)
+                .right_multiply_simple(&context.kernel.system, generator)
                 .map_err(|error| runtime(span, error.to_string()))?;
             element = next;
         }
@@ -6572,25 +7069,18 @@ fn make_simple_complex(
 /// `RootSystem::subsystem_type` (rootdata.cpp:537-540): the Lie type of
 /// the root subsystem spanned by `roots`, from its Cartan matrix.
 fn subsystem_type_value(
-    inner: &InnerClass,
+    context: &InnerClassContext,
     roots: &[RootId],
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let root_system = inner.root_system();
-    // The subsystem simple roots arrive in ambient-coordinate order; the
-    // upstream `simpleBasis` returns datum root-number order (the long root
-    // first for B2), so order by the first nonzero datum-simple coordinate.
+    let root_system = context.inner_class.root_system();
+    // Original simple bases use RootNbr order, which depends on the datum's
+    // root/coroot preference. In rank two dynkin::Lie_type intentionally
+    // distinguishes B2 from C2 by the ordered Cartan entries. Ambient first
+    // nonzero coordinates cannot recover this order (F4 Cartan3).
+    let numbering = RootNumbering::new(root_system, context.root_datum.prefers_coroots());
     let mut ordered = roots.to_vec();
-    ordered.sort_by_key(|&root| {
-        let coordinates = root_system.simple_coordinates(root).unwrap_or_default();
-        (
-            coordinates
-                .iter()
-                .position(|&coordinate| coordinate != 0)
-                .unwrap_or(usize::MAX),
-            root.index(),
-        )
-    });
+    ordered.sort_unstable_by_key(|&root| numbering.nbr(root));
     let cartan: Vec<Vec<i32>> = ordered
         .iter()
         .map(|&root| {
@@ -6714,6 +7204,51 @@ fn ratvec_from_rationals(
         .ok_or_else(|| runtime(span, "ratvec denominator must be nonzero"))
 }
 
+/// atlas-types.w:1605-1628: signed machine-int extraction and the
+/// semisimple-rank bound both precede the no-value gate. The current
+/// original3846359 spells its narrowing diagnostic with "too", not "to".
+fn fundamental_index(
+    value: &Value,
+    semisimple_rank: usize,
+    span: SourceSpan,
+) -> Result<usize, Diagnostic> {
+    let integer = as_integer(value, span)?;
+    let index = i32::try_from(&integer)
+        .map_err(|_| runtime(span, "Integer value too big for conversion"))?;
+    usize::try_from(index)
+        .ok()
+        .filter(|&index| index < semisimple_rank)
+        .ok_or_else(|| runtime(span, format!("Invalid index {index}")))
+}
+
+/// Fundamental (co)weights lie in the actual root/coroot spans, including
+/// embedded Levi data and reductive lattices with central directions.
+/// With root/coroot columns R,V and C[i,j]=<root_i,coroot_j>, original
+/// rootdata.cpp:845-849 uses R*(C^-1)^T and V*C^-1, respectively.
+fn fundamental_lattice_vector(
+    datum: &BasedRootDatum,
+    index: usize,
+    coweight: bool,
+    span: SourceSpan,
+) -> Result<RatVec, Diagnostic> {
+    let inverse = invert_integer_matrix(datum.cartan_matrix())
+        .ok_or_else(|| runtime(span, "singular Cartan matrix"))?;
+    let mut coordinates = vec![BigRational::from(0); datum.lattice_rank()];
+    for basis in 0..datum.semisimple_rank() {
+        let (column, coefficient) = if coweight {
+            (datum.simple_coroots()[basis].as_slice(), &inverse[basis][index])
+        } else {
+            (datum.simple_roots()[basis].as_slice(), &inverse[index][basis])
+        };
+        for (entry, &coordinate) in coordinates.iter_mut().zip(column) {
+            *entry = entry.clone() + coefficient.clone() * BigRational::from(coordinate);
+        }
+    }
+    // Keep exact intermediates, then narrow only the normalized language
+    // coordinates. Avoid determinant products and padded basis coefficients.
+    ratvec_from_rationals(coordinates, span)
+}
+
 fn gcd_big(mut left: BigInt, mut right: BigInt) -> BigInt {
     while right != 0 {
         let remainder = left % right.clone();
@@ -6830,7 +7365,12 @@ fn ratvec_from_rational_weight(
 /// The `(numerator, denominator)` of an Atlas rational, narrowed to i64
 /// (the parameter/polynomial scaling factors, repr.cpp:701-709).
 fn rational_pair(value: &BigRational, span: SourceSpan) -> Result<(i64, i64), Diagnostic> {
-    let numerator = i64::try_from(value.numerator_ref())
+    // Malachite returns an UNSIGNED magnitude here, unlike num-rational.
+    // Restore the sign before narrowing (including the i64::MIN boundary).
+    // Otherwise Param*(-1) incorrectly retains positive nu (original3840100).
+    let signed_numerator = BigInt::from_sign_and_abs_ref(
+        value >= &BigRational::from(0), value.numerator_ref());
+    let numerator = i64::try_from(&signed_numerator)
         .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
     let denominator = i64::try_from(value.denominator_ref())
         .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
@@ -6930,6 +7470,28 @@ fn merge_pol_term<T: Clone + PartialEq>(
     }
 }
 
+/// Coefficient assignment is replacement, not accumulation. Return whether
+/// a new term needs sorting; updates and deletions retain canonical order.
+fn set_pol_term<T: Clone + PartialEq>(
+    terms: &mut Vec<(SplitValue, T)>,
+    coefficient: SplitValue,
+    term: &T,
+) -> bool {
+    if let Some(index) = terms.iter().position(|(_, existing)| existing == term) {
+        if coefficient.is_zero() {
+            terms.remove(index);
+        } else {
+            terms[index].0 = coefficient;
+        }
+        false
+    } else if coefficient.is_zero() {
+        false
+    } else {
+        terms.push((coefficient, term.clone()));
+        true
+    }
+}
+
 /// The upstream `K_type_pol` term order (K_repr.h:59-70): increasing
 /// height, then increasing KGB element, then lambda-rho lexicographic.
 fn sort_ktypepol_terms(terms: &mut [(SplitValue, KType)]) {
@@ -6945,16 +7507,18 @@ fn sort_ktypepol_terms(terms: &mut [(SplitValue, KType)]) {
     });
 }
 
-/// The upstream `SR_poly` term order (repr.cpp:41-54): increasing height,
-/// then DECREASING KGB element, then the packed torsion part, then the
-/// infinitesimal character cross-multiplied.
+/// The upstream `SR_poly` term order (repr.cpp:1161-1176): increasing height,
+/// then DECREASING KGB element, increasing numeric packed torsion, then
+/// DECREASING infinitesimal character, compared by exact cross products.
 fn sort_parampol_terms(terms: &mut [(SplitValue, StandardRepr)]) {
     terms.sort_by(|(_, left), (_, right)| {
         left.height()
             .cmp(&right.height())
             .then_with(|| right.x().index().cmp(&left.x().index()))
             .then_with(|| {
-                for index in 0..left.y_bits().dimension().max(right.y_bits().dimension()) {
+                // BitVector delegates to its unsigned packed bitset: the
+                // most significant differing bit determines numeric order.
+                for index in (0..left.y_bits().dimension().max(right.y_bits().dimension())).rev() {
                     let l = left.y_bits().bit(index).unwrap_or(false);
                     let r = right.y_bits().bit(index).unwrap_or(false);
                     if l != r {
@@ -6964,13 +7528,15 @@ fn sort_parampol_terms(terms: &mut [(SplitValue, StandardRepr)]) {
                 std::cmp::Ordering::Equal
             })
             .then_with(|| {
-                let left_den = left.gamma().denominator();
-                let right_den = right.gamma().denominator();
+                let left_den = i128::from(left.gamma().denominator());
+                let right_den = i128::from(right.gamma().denominator());
                 left.gamma()
                     .numerator()
                     .iter()
                     .zip(right.gamma().numerator())
-                    .map(|(&l, &r)| (l * right_den).cmp(&(r * left_den)))
+                    // repr.cpp compares RIGHT * left_den with LEFT *
+                    // right_den. Both i64 products fit exactly in i128.
+                    .map(|(&l, &r)| (i128::from(r) * left_den).cmp(&(i128::from(l) * right_den)))
                     .find(|ordering| *ordering != std::cmp::Ordering::Equal)
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
@@ -7060,10 +7626,10 @@ fn build_block(
     span: SourceSpan,
 ) -> Result<BlockValue, Diagnostic> {
     let graph = BlockGraph::build(
-        &rf.graph,
-        &rf.table,
-        &df.graph,
-        &df.table,
+        rf.graph(span)?,
+        rf.table(span)?,
+        df.graph(span)?,
+        df.table(span)?,
         &df.parent.inner_class,
         WEYL_BUDGET,
     )
@@ -7095,7 +7661,7 @@ fn block_generator_check(
     span: SourceSpan,
 ) -> Result<usize, Diagnostic> {
     let generator = as_wrapped_u32(value, span)?;
-    let rank = block.rf.graph.semisimple_rank();
+    let rank = block.rf.graph(span)?.semisimple_rank();
     if generator as usize >= rank {
         return Err(runtime(
             span,
@@ -7134,15 +7700,16 @@ fn block_fiber_check(
     span: SourceSpan,
 ) -> Result<(), Diagnostic> {
     let mismatch = || runtime(span, "Fiber mismatch KGB and dual KGB elements");
+    let primal_table = block.rf.table(span)?;
+    let dual_table = block.dual_rf.table(span)?;
     let x_involution = block
-        .rf
-        .graph
+        .rf.graph(span)?
         .involution_of(x)
-        .and_then(|involution| block.rf.table.record(involution))
+        .and_then(|involution| primal_table.record(involution))
         .ok_or_else(mismatch)?;
     let word = x_involution
         .weyl_element()
-        .reduced_word(block.rf.table.root_system())
+        .reduced_word(block.rf.table(span)?.root_system())
         .map_err(|error| runtime(span, error.to_string()))?;
     let dual_class = &block.dual_rf.parent.inner_class;
     let dual_twist = dual_class
@@ -7155,10 +7722,9 @@ fn block_fiber_check(
     let dual_w = block_dual_involution(&word, dual_class.root_system(), &dual_twist, &dual_longest)
         .map_err(|error| runtime(span, error.to_string()))?;
     let y_involution = block
-        .dual_rf
-        .graph
+        .dual_rf.graph(span)?
         .involution_of(y)
-        .and_then(|involution| block.dual_rf.table.record(involution))
+        .and_then(|involution| dual_table.record(involution))
         .ok_or_else(mismatch)?;
     if dual_w != *y_involution.weyl_element() {
         return Err(mismatch());
@@ -7360,8 +7926,7 @@ fn torus_bits_value(
     id: KgbId,
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
-    let element = context
-        .graph
+    let element = context.graph(span)?
         .element(id)
         .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
     let bits = element.torus_bits();
@@ -7380,7 +7945,7 @@ fn any_cayley(
     id: KgbId,
     span: SourceSpan,
 ) -> Result<KgbId, Diagnostic> {
-    let graph = &context.graph;
+    let graph = context.graph(span)?;
     match graph
         .status(id, generator)
         .ok_or_else(|| runtime(span, "Inexistent KGB element"))?
@@ -7399,20 +7964,22 @@ fn any_cayley(
 }
 
 /// Upstream status coding: 0=C- 1=ic 2=r 3=nc 4=C+.
-fn status_code(context: &Arc<RealFormContext>, generator: usize, id: KgbId) -> Option<i32> {
-    let graph = &context.graph;
-    Some(match graph.status(id, generator)? {
+fn status_code(context: &Arc<RealFormContext>, generator: usize, id: KgbId, span: SourceSpan) -> Result<Option<i32>, Diagnostic> {
+    let graph = context.graph(span)?;
+    let Some(status) = graph.status(id, generator) else { return Ok(None); };
+    Ok(Some(match status {
         KgbStatus::ImaginaryCompact => 1,
         KgbStatus::Real => 2,
         KgbStatus::ImaginaryNoncompact => 3,
         KgbStatus::Complex => {
-            if graph.is_descent(id, generator)? {
+            let Some(descent) = graph.is_descent(id, generator) else { return Ok(None); };
+            if descent {
                 0
             } else {
                 4
             }
         }
-    })
+    }))
 }
 
 /// C++ `RootSystem::root_compare` (rootdata.cpp:117-129): lexicographic with
@@ -7543,9 +8110,21 @@ fn checked_permutation(entries: &[Value], span: SourceSpan) -> Result<Vec<usize>
 }
 
 /// The inner-class string argument of the primitive involution wrappers.
-fn as_inner_class_symbols(value: &Value, span: SourceSpan) -> Result<&str, Diagnostic> {
+fn inner_class_byte_error(error: atlas_real_group::InnerClassLetterError, span: SourceSpan) -> Diagnostic {
+    if let atlas_real_group::InnerClassLetterError::UnknownSymbol(symbol) = error {
+        let mut message = crate::value::AtlasString::from("Unknown inner class symbol `");
+        message.push_bytes(&[u8::try_from(u32::from(symbol)).expect("parser returns one byte")]);
+        message.push_str("'");
+        Diagnostic::new_bytes(ErrorKind::Runtime, message, Some(span))
+    } else {
+        runtime(span, error.to_string())
+    }
+}
+
+/// Return bytes directly: an Atlas string need not be a Unicode string.
+fn as_inner_class_symbols(value: &Value, span: SourceSpan) -> Result<&[u8], Diagnostic> {
     match value {
-        Value::String(symbols) => Ok(symbols),
+        Value::String(symbols) => Ok(symbols.as_bytes()),
         other => Err(type_error(
             span,
             format!("expected a string of inner class symbols, found {other}"),
@@ -7561,7 +8140,7 @@ fn as_inner_class_symbols(value: &Value, span: SourceSpan) -> Result<&str, Diagn
 fn basic_primitive_involution(
     lie_type: &LieTypeValue,
     entries: &[Value],
-    symbols: &str,
+    symbols: &[u8],
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
     let rank = lie_type.total_rank();
@@ -7575,7 +8154,7 @@ fn basic_primitive_involution(
         ));
     }
     let letters = checked_inner_class_letters(symbols, &lie_type.factors)
-        .map_err(|error| runtime(span, error.to_string()))?;
+        .map_err(|error| inner_class_byte_error(error, span))?;
     let perm = checked_permutation(entries, span)?;
     matrix_value(&layout_involution(&lie_type.factors, &letters, &perm), span)
 }
@@ -7590,7 +8169,7 @@ fn basic_primitive_involution(
 fn based_primitive_involution(
     lie_type: &LieTypeValue,
     basis: &[Vec<i32>],
-    symbols: &str,
+    symbols: &[u8],
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
     let rank = lie_type.total_rank();
@@ -7601,7 +8180,7 @@ fn based_primitive_involution(
         ));
     }
     let letters = checked_inner_class_letters(symbols, &lie_type.factors)
-        .map_err(|error| runtime(span, error.to_string()))?;
+        .map_err(|error| inner_class_byte_error(error, span))?;
     let identity: Vec<usize> = (0..rank).collect();
     let involution = layout_involution(&lie_type.factors, &letters, &identity);
     let transported = lattice_on_basis(&involution, basis)
@@ -7837,15 +8416,14 @@ fn ext_is_fixed(
     twist: &[usize],
     span: SourceSpan,
 ) -> Result<bool, Diagnostic> {
-    let rc = rep_context(context);
+    let rc = rep_context(context, span)?;
     let z = parameter
         .normalised(&rc)
         .map_err(|error| structure_diagnostic(error, span))?;
     // x: the twisted element must be z's own; `None` is upstream's
     // UndefKGB, which never equals a real element number.
-    let Some(twisted_x) = context
-        .graph
-        .twisted(z.x(), &context.table, delta, twist)
+    let Some(twisted_x) = context.graph(span)?
+        .twisted(z.x(), context.table(span)?, delta, twist)
         .map_err(|error| structure_diagnostic(error, span))?
     else {
         return Ok(false);
@@ -7954,7 +8532,7 @@ fn finalize_extended_gates(
         return Err(runtime(span, "Parameter not fixed by given involution"));
     }
     // atlas-types.w:8528-8532: theta = i_tab.matrix(kgb.involution(x)).
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let theta = rc
         .theta(&parameter.repr)
         .map_err(|error| structure_diagnostic(error, span))?;
@@ -7976,7 +8554,7 @@ fn finalize_extended_gates(
 /// run them.
 fn twisted_deform_gates(parameter: &ParamValue, span: SourceSpan) -> Result<(), Diagnostic> {
     test_standard(parameter, "Cannot compute twisted deformation terms", span)?;
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     if !rc.is_delta_fixed(&parameter.repr) {
         return Err(runtime(
             span,
@@ -7997,7 +8575,7 @@ fn twisted_deform_gates(parameter: &ParamValue, span: SourceSpan) -> Result<(), 
 /// fix check. No `test_final` (unlike `twisted_deform`).
 fn twisted_full_deform_gates(parameter: &ParamValue, span: SourceSpan) -> Result<(), Diagnostic> {
     test_standard(parameter, "Cannot compute full twisted deformation", span)?;
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     if !rc.is_delta_fixed(&parameter.repr) {
         return Err(runtime(
             span,
@@ -8018,7 +8596,7 @@ fn twisted_kl_sum_gates(
 ) -> Result<StandardRepr, Diagnostic> {
     test_standard(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
     test_final(parameter, "Cannot compute Kazhdan-Lusztig sum", span)?;
-    let rc = rep_context(&parameter.context);
+    let rc = rep_context(&parameter.context, span)?;
     let sr = parameter
         .repr
         .made_dominant(&rc)
@@ -8098,7 +8676,7 @@ fn twisted_reducibility_lookup(
     zi: &StandardRepr,
     span: SourceSpan,
 ) -> Result<(DeformParent, ExtBlock, usize, RankFlags), StructureError> {
-    let located = context.rep.lookup(zi)?;
+    let located = context.rep_result()?.lookup(zi)?;
     let prepared = located.prepared_query();
     let seed = StandardReprMod::mod_reduce(rc, prepared)?;
     let ctxt = CommonContext::integral(rc, seed.gamma_lambda())?;
@@ -8125,7 +8703,65 @@ fn twisted_reducibility_lookup(
     ))
 }
 
-/// Shared tail of the three twisted wrappers after their gates: run
+/// Distinguished `Rep_table::twisted_KL_column_at_s` (repr.cpp:2499-2553).
+/// Even at full integral gamma, query the actual common block and retain its
+/// row/modifier. An x-coordinate alone does not identify a representation.
+fn distinguished_twisted_kl_terms(
+    parameter: &ParamValue,
+    rc: &RepContext<'_>,
+    sr: &StandardRepr,
+    delta: &LatticeInvolution,
+    twist: &[usize],
+    span: SourceSpan,
+) -> Result<Vec<(StandardRepr, SplitInteger)>, Diagnostic> {
+    let located = parameter
+        .context.rep(span)?
+        .lookup(sr)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let prepared = located.prepared_query();
+    let seed = StandardReprMod::mod_reduce(rc, prepared)
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let ctxt = CommonContext::integral(rc, seed.gamma_lambda())
+        .map_err(|error| structure_diagnostic(error, span))?;
+    let block = located.block();
+    let modifier = located.block_modifier();
+    let eblock = tuned_partial_ext_block_with_modifier(
+        &ctxt, &block, modifier, delta, twist, span,
+    )?;
+
+    // The extended orbits index the cofolded bm.simp_int POSITION, not
+    // parent generator order. In particular, located_singular_flags applies
+    // simple_pi and therefore cannot supply this order (repr.cpp:2508-2520).
+    let mut singular_flags = RankFlags::empty();
+    for (s, &root) in modifier.simp_int().iter().enumerate() {
+        let coroot = rc.root_system().coroot(root).ok_or_else(|| {
+            structure_diagnostic(StructureError::IndexOutOfRange {
+                index: root.index(),
+                upper_bound: rc.root_system().roots().len(),
+            }, span)
+        })?;
+        let pairing: i128 = coroot
+            .as_slice()
+            .iter()
+            .zip(prepared.gamma().numerator().iter())
+            .map(|(&c, &g)| i128::from(c) * i128::from(g))
+            .sum();
+        if pairing == 0 {
+            singular_flags.set(s);
+        }
+    }
+    let singular_orbits = eblock.singular_orbits(&singular_flags);
+    twisted_kl_column_at_s(
+        rc,
+        &eblock,
+        &KlSumParent::Partial { block: &block, modifier: Some(modifier) },
+        located.raw_row(),
+        prepared.gamma(),
+        &singular_orbits,
+    ).map_err(|error| structure_diagnostic(error, span))
+}
+
+/// Shared tail of the other twisted wrappers after their gates: run
 /// `compute` on the parameter's common block plus the extended block over
 /// `delta`, or short-circuit the rank-0 integral subsystem (the common
 /// block is the singleton `{p}` of length 0 — empty deformation terms, and
@@ -8169,8 +8805,7 @@ fn with_integral_block<T>(
             // interval block, so later prints observe the same pool state
             // as the oracle.
             let located = parameter
-                .context
-                .rep
+                .context.rep(span)?
                 .lookup(sr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let prepared = located.prepared_query();
@@ -8247,9 +8882,8 @@ fn twist_element(
     if id.is_undefined() {
         return Err(runtime(span, "Inexistent KGB element"));
     }
-    let target = context
-        .graph
-        .twisted(id, &context.table, delta, twist)
+    let target = context.graph(span)?
+        .twisted(id, context.table(span)?, delta, twist)
         .map_err(|error| runtime(span, error.to_string()))?
         .unwrap_or(KgbId::UNDEFINED);
     Ok(Value::Domain(DomainValue::KgbElement(
@@ -8326,8 +8960,7 @@ fn build_kgb_element(
         .iter()
         .map(|&numerator| BigRational::from(numerator) / BigRational::from(factor.denominator()))
         .collect();
-    let Some(bits) = context
-        .graph
+    let Some(bits) = context.graph(span)?
         .seed_torus_part(&matrix, &factor)
         .map_err(|error| runtime(span, error.to_string()))?
     else {
@@ -8357,12 +8990,11 @@ fn build_kgb_element(
         })?;
     // A twisted involution whose Cartan the form does not meet is upstream's
     // empty tau packet: UndefKGB either way.
-    let Some(involution_id) = context.table.lookup(&element) else {
+    let Some(involution_id) = context.table(span)?.lookup(&element) else {
         return Err(runtime(span, "KGB element not present"));
     };
-    context
-        .graph
-        .lookup(&context.table, involution_id, bits)
+    context.graph(span)?
+        .lookup(context.table(span)?, involution_id, bits)
         .map_err(|error| runtime(span, error.to_string()))?
         .ok_or_else(|| runtime(span, "KGB element not present"))
 }
@@ -8946,21 +9578,63 @@ fn as_weyl_elt(value: &Value, span: SourceSpan) -> Result<&WeylEltValue, Diagnos
     }
 }
 
-/// The datum's Weyl side, built on demand: every finite root system fits
-/// the shared root budget (E8 needs 240 of the 4096 slots).
+/// The datum's Weyl side: the owner's lazy coordinate kernel and abstract
+/// group, built once each. Every finite root system fits the shared root
+/// budget (E8 needs 240 of the 4096 slots).
 fn build_weyl_context(
     handle: &RootDatumHandle,
     span: SourceSpan,
 ) -> Result<Arc<WeylEltContext>, Diagnostic> {
-    let system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
-        .map_err(|error| runtime(span, error.to_string()))?;
-    let interface = WeylInterface::new(handle.datum.cartan_matrix())
-        .map_err(|error| runtime(span, error.to_string()))?;
+    let kernel = handle.identity.weyl_kernel(&handle.datum, span)?;
+    let group = handle.identity.weyl_group(&handle.datum, span)?;
     Ok(Arc::new(WeylEltContext {
         handle: handle.clone(),
-        system,
-        interface,
+        kernel,
+        group,
     }))
+}
+
+/// Weyl compatibility is the abstract-group `Arc` identity, never the
+/// structural handle or the coordinate kernel (the original compares the
+/// `WeylGroup` pointer, atlas-types.w:2459-2465).
+fn weyl_group_compatible(left: &WeylEltValue, right: &WeylEltValue) -> bool {
+    Arc::ptr_eq(&left.context.group, &right.context.group)
+}
+
+/// Binary Weyl relations and products compare the abstract-group identity
+/// before the no-value gate, like the original.
+pub(crate) fn require_weyl_compatible(
+    left: &WeylEltValue,
+    right: &WeylEltValue,
+    span: SourceSpan,
+) -> Result<(), Diagnostic> {
+    if !weyl_group_compatible(left, right) {
+        return Err(runtime(span, "Weyl group mismatch"));
+    }
+    Ok(())
+}
+
+/// Express the right element in the left owner's coordinates by replaying
+/// its canonical external-generator word; foreign root permutations are
+/// never compared or composed directly.
+fn weyl_replayed_in_left(
+    left: &WeylEltValue,
+    right: &WeylEltValue,
+) -> Result<WeylElement, StructureError> {
+    let system = &left.context.kernel.system;
+    let mut replayed = WeylElement::identity(system)?;
+    for &generator in &right.word {
+        replayed = replayed.right_multiply_simple(system, generator)?.0;
+    }
+    Ok(replayed)
+}
+
+/// Equality of compatible Weyl elements: the right element replayed in the
+/// left system must equal the left element.
+fn weyl_elements_equal(left: &WeylEltValue, right: &WeylEltValue) -> bool {
+    weyl_group_compatible(left, right)
+        && weyl_replayed_in_left(left, right)
+            .is_ok_and(|replayed| left.element == replayed)
 }
 
 /// Freeze an element into a language value, computing its canonical
@@ -8971,7 +9645,7 @@ fn weyl_elt_value(
     span: SourceSpan,
 ) -> Result<Value, Diagnostic> {
     let word = element
-        .canonical_word(&context.system, &context.interface)
+        .canonical_word(&context.kernel.system, &context.group.interface)
         .map_err(|error| runtime(span, error.to_string()))?;
     Ok(Value::Domain(DomainValue::WeylElement(WeylEltValue {
         context,
@@ -9038,7 +9712,7 @@ fn check_generator(
     generator: usize,
     span: SourceSpan,
 ) -> Result<(), Diagnostic> {
-    let rank = context.graph.semisimple_rank();
+    let rank = context.parent.inner_class.datum().semisimple_rank();
     if generator >= rank {
         // Posroot and negative indices are a documented phase-1 deferral;
         // the message echoes the user index like upstream
@@ -9059,6 +9733,34 @@ pub(crate) fn validate(
     span: SourceSpan,
 ) -> Result<(), Diagnostic> {
     match name {
+        "fundamental_weight" | "fundamental_coweight" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            fundamental_index(&arguments[1], handle.datum.semisimple_rank(), span)?;
+        }
+        "Weyl_orbit" | "Weyl_orbit_ws" if arguments.len() == 3 => {
+            weyl_subgroup::validate(arguments, span)?;
+        }
+        "integrality_simples" | "integrality_rank" | "is_integrally_dominant"
+        | "integrality_datum" => {
+            arity(name, arguments, 2, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let Value::RatVector(gamma) = &arguments[1] else {
+                return Err(type_error(span, "expected a rational vector"));
+            };
+            // atlas-types.w:1766: validation precedes the no-value gate.
+            check_integrality_dimension(handle, gamma, span)?;
+        }
+        "W_refl" => {
+            arity(name, arguments, 2, span)?;
+            // int_val narrowing is observable before index validation.
+            let index = as_integer(&arguments[1], span)?;
+            i32::try_from(&index)
+                .map_err(|_| runtime(span, "Integer value too big for conversion"))?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let (_, numbering) = signed_roots(handle, span)?;
+            internal_root_nbr(&index, &numbering, false, span)?;
+        }
         // Both real_form wrappers: real_form_wrapper (InnerClass,int) and
         // synthetic_real_form_wrapper (InnerClass,mat,ratvec), dispatched
         // by argument count like the other overloaded names.
@@ -9088,7 +9790,7 @@ pub(crate) fn validate(
             arity(name, arguments, 2, span)?;
             let context = as_real_form(&arguments[0], span)?;
             let index = as_integer(&arguments[1], span)?;
-            let size = BigInt::from(context.graph.size());
+            let size = BigInt::from(context.kgb_size(span)?);
             if index < 0 || index >= size {
                 return Err(runtime(span, format!("Inexistent KGB element: {index}")));
             }
@@ -9179,7 +9881,7 @@ pub(crate) fn validate(
                 let generator = as_usize(&arguments[0], span)?;
                 let (context, id) = as_kgb_element(&arguments[1], span)?;
                 check_generator(context, generator, span)?;
-                if context.graph.element(id).is_none() {
+                if context.graph(span)?.element(id).is_none() {
                     return Err(runtime(span, "Inexistent KGB element"));
                 }
             }
@@ -9576,7 +10278,7 @@ pub(crate) fn validate(
         "KGP_sum" => {
             arity(name, arguments, 1, span)?;
             let ktype = as_ktype(&arguments[0], span)?;
-            let rc = rep_context(&ktype.context);
+            let rc = rep_context(&ktype.context, span)?;
             if !ktype
                 .ktype
                 .is_semifinal(&rc)
@@ -9588,12 +10290,13 @@ pub(crate) fn validate(
                 ));
             }
         }
-        // K_type_formula_wrapper's semifinal precondition precedes its
-        // no-value gate (atlas-types.w:6035-6039).
-        "K_type_formula" => {
+        // Both wrappers narrow the bound and check semifinality before
+        // their no-value gate (current atlas-types.w:6216-6240).
+        "K_type_formula" | "K_type_formula_raw" => {
             arity(name, arguments, 2, span)?;
+            ktype_formula_bound(&arguments[1], span)?;
             let ktype = as_ktype(&arguments[0], span)?;
-            let rc = rep_context(&ktype.context);
+            let rc = rep_context(&ktype.context, span)?;
             if !ktype
                 .ktype
                 .is_semifinal(&rc)
@@ -9748,10 +10451,13 @@ struct CommonBlockRow {
 /// printInvolution of the KGB involution at `x` (prettyprint.cpp:219-232):
 /// one-based generator digits, '^' for crosses, 'x' for conjugations, `e`
 /// closing.
-fn involution_expression(context: &RealFormContext, x: KgbId) -> String {
-    let record = context
-        .table
-        .record(context.graph.involution_of(x).expect("in-range"))
+fn involution_expression(
+    context: &RealFormContext,
+    x: KgbId,
+    span: SourceSpan,
+) -> Result<String, Diagnostic> {
+    let record = context.table(span)?
+        .record(context.graph(span)?.involution_of(x).expect("in-range"))
         .expect("in-range");
     let word = context
         .parent
@@ -9773,7 +10479,7 @@ fn involution_expression(context: &RealFormContext, x: KgbId) -> String {
         }
     }
     text.push('e');
-    text
+    Ok(text)
 }
 
 /// The shared engine of print_param_block_wrapper and print_c_block_wrapper
@@ -9790,7 +10496,7 @@ fn common_block_rows(
     sr: &StandardRepr,
     span: SourceSpan,
 ) -> Result<(Vec<CommonBlockRow>, usize), Diagnostic> {
-    let rc = rep_context(context);
+    let rc = rep_context(context, span)?;
     let datum = context.parent.root_datum.datum.clone();
     let gamma = sr.gamma().clone();
     let (seed_x, seed_gamma_lambda) = rc
@@ -9920,7 +10626,7 @@ fn located_common_block_rows(
     transport_full_attitude: bool,
 ) -> Result<Vec<CommonBlockRow>, Diagnostic> {
     let block = located.block();
-    let rc = rep_context(context);
+    let rc = rep_context(context, span)?;
     let singular = located_singular_flags(context, located)
         .map_err(|error| structure_diagnostic(error, span))?;
     let mut rows = Vec::with_capacity(block.size());
@@ -10001,7 +10707,7 @@ fn partial_block_rows(
     gamma: &RationalWeight,
     span: SourceSpan,
 ) -> Result<(Vec<CommonBlockRow>, usize), Diagnostic> {
-    let rc = rep_context(context);
+    let rc = rep_context(context, span)?;
     let seed = StandardReprMod::mod_reduce(&rc, seed_repr)
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
@@ -10074,7 +10780,7 @@ fn fresh_common_block_rows(
     seed_repr: &StandardRepr,
     span: SourceSpan,
 ) -> Result<(Vec<CommonBlockRow>, usize), Diagnostic> {
-    let rc = rep_context(context);
+    let rc = rep_context(context, span)?;
     let seed = StandardReprMod::mod_reduce(&rc, seed_repr)
         .map_err(|error| structure_diagnostic(error, span))?;
     let ctxt = CommonContext::integral(&rc, seed.gamma_lambda())
@@ -10131,7 +10837,11 @@ fn fresh_common_block_rows(
 /// FULL datum's semisimple rank (common_block::print uses
 /// root_datum().semisimple_rank(), not the block rank), which shows on
 /// rank-0 integral subsystems.
-fn render_common_block(context: &RealFormContext, rows: &[CommonBlockRow]) -> String {
+fn render_common_block(
+    context: &RealFormContext,
+    rows: &[CommonBlockRow],
+    span: SourceSpan,
+) -> Result<String, Diagnostic> {
     let datum_rank = context.parent.root_datum.datum.semisimple_rank();
     let size = rows.len();
     let width = digits(size - 1);
@@ -10196,10 +10906,10 @@ fn render_common_block(context: &RealFormContext, rows: &[CommonBlockRow]) -> St
         ));
         text.push(')');
         text.push_str(&" ".repeat(2));
-        text.push_str(&involution_expression(context, row.x));
+        text.push_str(&involution_expression(context, row.x, span)?);
         text.push('\n');
     }
-    text
+    Ok(text)
 }
 
 /// Printer wrappers (atlas-types.w:8944-8957, 8850-8859): the report text
@@ -10215,7 +10925,7 @@ pub(crate) fn print_text(
         "print_KGB" => {
             let context = as_real_form(&arguments[0], span)?;
             if arguments.len() == 1 {
-                return Ok(print_kgb(context, None));
+                return print_kgb(context, None, span);
             }
             // print_KGB_selection_wrapper (atlas-types.w:8958-8973): the
             // listed elements must belong to the SAME real form.
@@ -10236,7 +10946,7 @@ pub(crate) fn print_text(
                 }
                 which.push(id);
             }
-            Ok(print_kgb(context, Some(&which)))
+            print_kgb(context, Some(&which), span)
         }
         "print_strong_real" => {
             arity(name, arguments, 1, span)?;
@@ -10283,7 +10993,7 @@ pub(crate) fn print_text(
         "print_KGB_order" | "print_KGB_graph" => {
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
-            let graph = &context.graph;
+            let graph = context.graph(span)?;
             let hasse = graph.bruhat_hasse();
             if name == "print_KGB_order" {
                 let mut text = format!("kgbsize: {}\n", graph.size());
@@ -10371,7 +11081,7 @@ pub(crate) fn print_text(
             if name == "print_block" {
                 if let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] {
                     test_standard(parameter, "Cannot generate block", span)?;
-                    let rc = rep_context(&parameter.context);
+                    let rc = rep_context(&parameter.context, span)?;
                     if matches!(
                         integral_block_scope(&rc, parameter.repr.gamma())
                             .map_err(|error| structure_diagnostic(error, span))?,
@@ -10390,14 +11100,14 @@ pub(crate) fn print_text(
                             fresh_common_block_rows(&parameter.context, &parameter.repr, span)?;
                         let mut text =
                             format!("Parameter defines element {init} of the following block:\n");
-                        text.push_str(&render_common_block(&parameter.context, &rows));
+                        text.push_str(&render_common_block(&parameter.context, &rows, span)?);
                         return Ok(text);
                     }
                     let (rows, init) =
                         common_block_rows(&parameter.context, &parameter.repr, span)?;
                     let mut text =
                         format!("Parameter defines element {init} of the following block:\n");
-                    text.push_str(&render_common_block(&parameter.context, &rows));
+                    text.push_str(&render_common_block(&parameter.context, &rows, span)?);
                     return Ok(text);
                 }
             }
@@ -10405,7 +11115,7 @@ pub(crate) fn print_text(
                 return Err(type_error(span, "expected a Block"));
             };
             let graph = &block.graph;
-            let primal = &block.rf.graph;
+            let primal = block.rf.graph(span)?;
             let size = graph.size();
             let width = digits(size - 1);
             let mut max_x = 0;
@@ -10521,8 +11231,7 @@ pub(crate) fn print_text(
                 // Weyl word (prettyprint::printWeylElt, basic_io.cpp:100-118):
                 // one-based generators comma-separated, `e` for the identity.
                 let record = block
-                    .rf
-                    .table
+                    .rf.table(span)?
                     .record(primal.involution_of(id).expect("in-range"))
                     .expect("in-range");
                 if name == "print_block" {
@@ -10597,14 +11306,13 @@ pub(crate) fn print_text(
                 ));
             };
             test_standard(parameter, "Cannot generate block", span)?;
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let dominant = parameter
                 .repr
                 .made_dominant(&rc)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let located = parameter
-                .context
-                .rep
+                .context.rep(span)?
                 .lookup_full_block(&dominant)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let modifier = located.block_modifier();
@@ -10636,7 +11344,7 @@ pub(crate) fn print_text(
             }
             text.push_str(":\n");
             let rows = located_common_block_rows(&parameter.context, &located, span, false)?;
-            text.push_str(&render_common_block(&parameter.context, &rows));
+            text.push_str(&render_common_block(&parameter.context, &rows, span)?);
             Ok(text)
         }
         // print_part_param_block_wrapper (atlas-types.w:6700-6711): the
@@ -10660,7 +11368,7 @@ pub(crate) fn print_text(
                 parameter.repr.gamma(),
                 span,
             )?;
-            Ok(render_common_block(&parameter.context, &rows))
+            render_common_block(&parameter.context, &rows, span)
         }
         // print_pc_block_wrapper (atlas-types.w:6713-6735): `Rep_table::
         // lookup` (repr.cpp:1796-1824) normalises the parameter and, on a
@@ -10686,8 +11394,7 @@ pub(crate) fn print_text(
             };
             test_standard(parameter, "Cannot generate block", span)?;
             let located = parameter
-                .context
-                .rep
+                .context.rep(span)?
                 .lookup(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let block = located.block();
@@ -10721,7 +11428,7 @@ pub(crate) fn print_text(
                 text.push_str(&format!("{init}}} in the following common block:\n"));
             }
             let rows = located_common_block_rows(&parameter.context, &located, span, true)?;
-            text.push_str(&render_common_block(&parameter.context, &rows));
+            text.push_str(&render_common_block(&parameter.context, &rows, span)?);
             Ok(text)
         }
         // only the unitary block elements (the involution support is
@@ -10737,7 +11444,7 @@ pub(crate) fn print_text(
                 return Err(type_error(span, "expected a Block"));
             };
             let graph = &block.graph;
-            let primal = &block.rf.graph;
+            let primal = block.rf.graph(span)?;
             let size = graph.size();
             let width = digits(size - 1);
             let mut max_x = 0;
@@ -10771,8 +11478,7 @@ pub(crate) fn print_text(
                 let support = {
                     let id = graph.x(z).expect("in-range");
                     let record = block
-                        .rf
-                        .table
+                        .rf.table(span)?
                         .record(primal.involution_of(id).expect("in-range"))
                         .expect("in-range");
                     let word =
@@ -10811,8 +11517,7 @@ pub(crate) fn print_text(
                 text.push_str(&block_descent_set(graph, z, rank, &support));
                 text.push_str(&" ".repeat(pad));
                 let record = block
-                    .rf
-                    .table
+                    .rf.table(span)?
                     .record(primal.involution_of(id).expect("in-range"))
                     .expect("in-range");
                 let word = block
@@ -11113,8 +11818,12 @@ fn digits(mut value: usize) -> usize {
 /// the wrapper's `kgbsize` line and the `Base grading` header print first.
 /// `Some` is the selection variant: no header lines, the listed rows in
 /// list order; the `#` flag's inner class is present in BOTH variants.
-fn print_kgb(context: &Arc<RealFormContext>, which: Option<&[KgbId]>) -> String {
-    let graph = &context.graph;
+fn print_kgb(
+    context: &Arc<RealFormContext>,
+    which: Option<&[KgbId]>,
+    span: SourceSpan,
+) -> Result<String, Diagnostic> {
+    let graph = context.graph(span)?;
     let parent = &context.parent;
     let rank = graph.semisimple_rank();
     let size = graph.size();
@@ -11160,10 +11869,9 @@ fn print_kgb(context: &Arc<RealFormContext>, which: Option<&[KgbId]>) -> String 
                 representative.weyl_action(),
             )
             .expect("the Cartan representative realizes in the root system");
-            context.table.lookup(&canonical) == graph.involution_of(id)
+            context.table(span)?.lookup(&canonical) == graph.involution_of(id)
         };
-        let record = context
-            .table
+        let record = context.table(span)?
             .record(graph.involution_of(id).expect("in-range element"))
             .expect("the graph's involutions are table records");
         let word = parent
@@ -11241,7 +11949,7 @@ fn print_kgb(context: &Arc<RealFormContext>, which: Option<&[KgbId]>) -> String 
         text.push('e');
         text.push('\n');
     }
-    text
+    Ok(text)
 }
 
 /// output::printStrongReal (output.cpp:490-540) behind
@@ -11675,9 +12383,13 @@ pub(crate) fn call_with_printed(
             let Value::String(type_string) = &arguments[1] else {
                 return Err(type_error(span, "extend requires a string"));
             };
-            let rank = as_usize(&arguments[2], span)?;
-            let letter = type_string.chars().next().unwrap_or('T');
-            lie_type.add_simple_factor(letter, rank);
+            // int_val narrows to signed32 first; add_simple_factor then
+            // receives its unsigned32 image (including negative inputs).
+            let rank = i32::try_from(&as_integer(&arguments[2], span)?)
+                .map_err(|_| runtime(span, "Integer value too big for conversion"))?
+                as u32 as usize;
+            let letter = type_string.as_bytes().first().copied().map(char::from).unwrap_or('T');
+            lie_type.add_simple_factor(letter, rank, span)?;
             Ok(Value::Domain(DomainValue::LieType(lie_type)))
         }
         "Lie_type" => {
@@ -11741,14 +12453,6 @@ pub(crate) fn call_with_printed(
         "simply_connected" | "adjoint" => {
             let prefers_coroots = datum_preference(name, arguments, span)?;
             let lie_type = as_lie_type(&arguments[0], span)?;
-            let semisimple_rank: usize = lie_type.semisimple_factors().map(|(_, rank)| rank).sum();
-            if name == "adjoint" && semisimple_rank != lie_type.total_rank() {
-                let rank = lie_type.total_rank();
-                return Err(runtime(
-                    span,
-                    format!("Sub-lattice matrix should have size {rank}x{rank}"),
-                ));
-            }
             let handle = build_datum(&lie_type, name == "simply_connected", prefers_coroots, span)?;
             Ok(Value::Domain(DomainValue::RootDatum(handle)))
         }
@@ -11760,8 +12464,8 @@ pub(crate) fn call_with_printed(
                 Ok(Value::Domain(DomainValue::RootDatum(handle)))
             }
             [simple_roots, simple_coroots, Value::Boolean(prefers_coroots)] => {
-                let simple_roots = as_matrix_rows(simple_roots, span)?;
-                let simple_coroots = as_matrix_rows(simple_coroots, span)?;
+                let simple_roots = explicit_datum_matrix(simple_roots, span)?;
+                let simple_coroots = explicit_datum_matrix(simple_coroots, span)?;
                 let handle =
                     build_explicit_datum(&simple_roots, &simple_coroots, *prefers_coroots, span)?;
                 Ok(Value::Domain(DomainValue::RootDatum(handle)))
@@ -11850,12 +12554,13 @@ pub(crate) fn call_with_printed(
                     .map(|weight| weight.as_slice().to_vec())
                     .collect()
             };
-            matrix_value(&transpose_matrix(&columns), span)
+            // An empty simple system still has lattice_rank rows (a torus).
+            columns_matrix_value(&columns, handle.datum.lattice_rank(), span)
         }
-        // root_coradical / coroot_radical (atlas-types.w:2254-2255): the
+        // root_coradical / coroot_radical (atlas-types.w:1679-1703): the
         // simple roots/coroots followed by a basis of the kernel of the
-        // coroots/roots (the coradical/radical). root_coradical prints its
-        // vectors as matrix rows; coroot_radical as matrix columns.
+        // coroots/roots (the coradical/radical). Both export basis vectors
+        // as matrix columns, including the full basis of a root-free torus.
         "root_coradical" | "coroot_radical" => {
             arity(name, arguments, 1, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
@@ -11876,7 +12581,7 @@ pub(crate) fn call_with_printed(
                 columns.extend(extra);
                 columns_matrix_value(&columns, handle.datum.lattice_rank(), span)
             } else {
-                let mut rows: Vec<Vec<i32>> = handle
+                let mut columns: Vec<Vec<i32>> = handle
                     .datum
                     .simple_roots()
                     .iter()
@@ -11889,8 +12594,8 @@ pub(crate) fn call_with_printed(
                     .iter()
                     .map(|weight| weight.as_slice().to_vec())
                     .collect();
-                rows.extend(extra);
-                matrix_value(&rows, span)
+                columns.extend(extra);
+                columns_matrix_value(&columns, handle.datum.lattice_rank(), span)
             }
         }
         // is_Cartan_matrix (atlas-types.w:368-375): the matrix is a Cartan
@@ -12044,8 +12749,8 @@ pub(crate) fn call_with_printed(
                     .compose(&reflection)
                     .map_err(|error| runtime(span, error.to_string()))?;
             }
-            let numbering = RootNumbering::new(&context.system, context.handle.prefers_coroots());
-            weyl_root_permutation(&context.system, &numbering, &action, span)
+            let numbering = RootNumbering::new(&context.kernel.system, context.handle.prefers_coroots());
+            weyl_root_permutation(&context.kernel.system, &numbering, &action, span)
         }
         "inner_class" => match arguments {
             [Value::Domain(DomainValue::RealForm(context))] => Ok(Value::Domain(
@@ -12127,7 +12832,7 @@ pub(crate) fn call_with_printed(
                 context
                     .forms
                     .iter()
-                    .map(|form| Value::String(form.name.clone()))
+                    .map(|form| Value::String(form.name.clone().into()))
                     .collect(),
             ))
         }
@@ -12140,7 +12845,7 @@ pub(crate) fn call_with_printed(
             Ok(Value::List(
                 dual.forms
                     .iter()
-                    .map(|form| Value::String(form.name.clone()))
+                    .map(|form| Value::String(form.name.clone().into()))
                     .collect(),
             ))
         }
@@ -12219,39 +12924,16 @@ pub(crate) fn call_with_printed(
                 )),
             }
         }
-        // dual_datum_of_inner_class_wrapper (atlas-types.w:3247-3251,
-        // 3412-3413): the dual inner class's own root datum.
-        // two_rho / two_rho_check (atlas-types.w:1409-1421): the sum of
-        // the positive roots (respectively positive coroots).
-        "fundamental_weight" => {
+        "fundamental_weight" | "fundamental_coweight" => {
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
-            let index = as_usize(&arguments[1], span)?;
-            if index >= handle.datum.semisimple_rank() {
-                return Err(runtime(span, "index out of range"));
-            }
-            let mut numerator = vec![0_i64; handle.datum.lattice_rank()];
-            numerator[index] = 1;
-            let value = RatVec::new(numerator, 1)
-                .ok_or_else(|| runtime(span, "invalid fundamental weight"))?;
-            Ok(Value::RatVector(value))
-        }
-        "fundamental_coweight" => {
-            arity(name, arguments, 2, span)?;
-            let handle = as_root_datum(&arguments[0], span)?;
-            let index = as_usize(&arguments[1], span)?;
-            if index >= handle.datum.semisimple_rank() {
-                return Err(runtime(span, "index out of range"));
-            }
-            // C^{-1} column i via Cramer: solve C x = e_i.
-            let cartan = handle.datum.cartan_matrix();
-            let mut rhs = vec![0_i32; cartan.len()];
-            rhs[index] = 1;
-            let (mut numerator, denominator) = cramer_solution(cartan, &rhs)
-                .ok_or_else(|| runtime(span, "singular Cartan matrix"))?;
-            numerator.resize(handle.datum.lattice_rank(), 0);
-            let value = RatVec::new(numerator, denominator.unsigned_abs())
-                .ok_or_else(|| runtime(span, "invalid fundamental coweight"))?;
+            let index = fundamental_index(&arguments[1], handle.datum.semisimple_rank(), span)?;
+            let value = fundamental_lattice_vector(
+                &handle.datum,
+                index,
+                name == "fundamental_coweight",
+                span,
+            )?;
             Ok(Value::RatVector(value))
         }
         "simple_factors" => {
@@ -12260,9 +12942,12 @@ pub(crate) fn call_with_printed(
             let factors = lie
                 .factors
                 .into_iter()
+                // atlas-types.w::simple_factors_wrapper excludes central
+                // tori. Weyl/character tables must not treat T1 as simple.
+                .filter(|&(letter, _)| letter != 'T')
                 .map(|(letter, rank)| {
                     Value::Tuple(vec![
-                        Value::String(letter.to_string()),
+                        Value::String(letter.to_string().into()),
                         Value::Integer(rank.into()),
                     ])
                 })
@@ -12273,7 +12958,11 @@ pub(crate) fn call_with_printed(
             arity(name, arguments, 1, span)?;
             let matrix = as_matrix(&arguments[0], span)?;
             let lie_type = infer_lie_type(&matrix, matrix.len(), span)?;
-            let permutation: Vec<i64> = (0..matrix.len()).map(|index| index as i64).collect();
+            // atlas-types.w::type_of_Cartan_matrix_wrapper returns the map
+            // from Bourbaki positions to the INPUT vertices. Type recognition
+            // alone loses this map on relabelled Levi diagrams (e.g. F4's C3).
+            let permutation =
+                bourbaki_permutation(&matrix).map_err(|error| runtime(span, error.to_string()))?;
             Ok(Value::Tuple(vec![
                 Value::Domain(DomainValue::LieType(lie_type)),
                 Value::List(
@@ -12377,11 +13066,11 @@ pub(crate) fn call_with_printed(
             let word = from_fundamental_alcove(&root_system, &numbering, &walls)
                 .map_err(|error| runtime(span, error))?;
             let context = build_weyl_context(handle, span)?;
-            let mut element = WeylElement::identity(&context.system)
+            let mut element = WeylElement::identity(&context.kernel.system)
                 .map_err(|error| runtime(span, error.to_string()))?;
             for generator in word {
                 let (next, _) = element
-                    .right_multiply_simple(&context.system, generator)
+                    .right_multiply_simple(&context.kernel.system, generator)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 element = next;
             }
@@ -12392,6 +13081,9 @@ pub(crate) fn call_with_printed(
         // coweights. Upstream performs no size validation; coordinates
         // past the end read as zero and extras are dropped.
         "Weyl_orbit" | "Weyl_orbit_ws" => {
+            if arguments.len() == 3 {
+                return weyl_subgroup::call(name, arguments, span);
+            }
             arity(name, arguments, 2, span)?;
             let dual = !matches!(&arguments[0], Value::Domain(DomainValue::RootDatum(_)));
             let (handle, coordinates) = if dual {
@@ -12451,11 +13143,11 @@ pub(crate) fn call_with_printed(
                 let context = build_weyl_context(handle, span)?;
                 let mut result = Vec::with_capacity(orbit.len());
                 for word in orbit {
-                    let mut element = WeylElement::identity(&context.system)
+                    let mut element = WeylElement::identity(&context.kernel.system)
                         .map_err(|error| runtime(span, error.to_string()))?;
                     for generator in word {
                         let (next, _) = element
-                            .right_multiply_simple(&context.system, generator)
+                            .right_multiply_simple(&context.kernel.system, generator)
                             .map_err(|error| runtime(span, error.to_string()))?;
                         element = next;
                     }
@@ -12715,11 +13407,11 @@ pub(crate) fn call_with_printed(
                     if shifts.is_empty() {
                         continue;
                     }
-                    let mut element = WeylElement::identity(&context.system)
+                    let mut element = WeylElement::identity(&context.kernel.system)
                         .map_err(|error| runtime(span, error.to_string()))?;
                     for &generator in word {
                         let (next, _) = element
-                            .right_multiply_simple(&context.system, generator)
+                            .right_multiply_simple(&context.kernel.system, generator)
                             .map_err(|error| runtime(span, error.to_string()))?;
                         element = next;
                     }
@@ -12747,7 +13439,7 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let centered = domain_alcove_center(&rc, &parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             Ok(Value::Domain(DomainValue::Param(ParamValue {
@@ -12836,12 +13528,9 @@ pub(crate) fn call_with_printed(
             // simple (co)roots span (adjoint B2 stays adjoint), so classify
             // from the datum rather than assuming simply connected.
             let isogeny = classify_isogeny(&derived);
-            let derived_value = Value::Domain(DomainValue::RootDatum(RootDatumHandle {
-                datum: std::sync::Arc::new(derived),
-                lie_type,
-                isogeny,
-                prefers_coroots: false,
-            }));
+            let derived_value = Value::Domain(DomainValue::RootDatum(
+                RootDatumHandle::interned(derived, lie_type, isogeny, false),
+            ));
             // `projector` is stored row-major; `Matrix::from_columns` wants
             // column-major data, so flatten the transpose (prerootdata.cpp
             // pushes the projector/injector int_Matrix with its own layout).
@@ -12859,6 +13548,20 @@ pub(crate) fn call_with_printed(
                 .expect("derived projector is rectangular"),
             );
             Ok(Value::Tuple(vec![derived_value, matrix_value]))
+        }
+        "integrality_simples" => {
+            validate(name, arguments, span)?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let Value::RatVector(gamma) = &arguments[1] else {
+                return Err(type_error(span, "expected a rational vector"));
+            };
+            let (_, numbering) = signed_roots(handle, span)?;
+            let mut simples: Vec<_> = integrality_simples_roots(handle, gamma, span)?
+                .into_iter().map(|id| numbering.signed(numbering.nbr(id))).collect();
+            // Upstream simpleBasis returns ascending RootNbr, not Rust RootId.
+            simples.sort_unstable();
+            Ok(Value::List(simples.into_iter()
+                .map(|index| Value::Integer(index.into())).collect()))
         }
         "integrality_rank" => {
             arity(name, arguments, 2, span)?;
@@ -12945,20 +13648,8 @@ pub(crate) fn call_with_printed(
             let simple = integrality_simples_roots(handle, gamma, span)?;
             let root_system = RootSystem::enumerate(&handle.datum, ROOT_BUDGET)
                 .map_err(|error| runtime(span, error.to_string()))?;
-            // Order the simple roots by their first nonzero datum-simple
-            // coordinate (the oracle's simpleBasis RootNbr order), so the
-            // subsystem Cartan classifies with the oracle's B/C convention.
-            let mut ordered = simple.clone();
-            ordered.sort_by_key(|&root| {
-                let coordinates = root_system.simple_coordinates(root).unwrap_or_default();
-                (
-                    coordinates
-                        .iter()
-                        .position(|&coordinate| coordinate != 0)
-                        .unwrap_or(usize::MAX),
-                    root.index(),
-                )
-            });
+            // integrality_predatum preserves simpleBasis's RootNbr order.
+            let ordered = simple;
             let cartan: Vec<Vec<i32>> = ordered
                 .iter()
                 .map(|&alpha| {
@@ -12991,21 +13682,12 @@ pub(crate) fn call_with_printed(
             )
             .map_err(|error| runtime(span, error.to_string()))?;
             let lie_type = infer_lie_type(datum.cartan_matrix(), datum.lattice_rank(), span)?;
-            // The integrality datum keeps the full lattice. With no torus
-            // factor it is simply connected (oracle prints "simply
-            // connected root datum ..."); with a torus (e.g. 'A1.T1' for
-            // A2 at a half-integral character) it is neither.
-            let isogeny = if datum.lattice_rank() == datum.semisimple_rank() {
-                DatumIsogeny::SimplyConnected
-            } else {
-                DatumIsogeny::Other
-            };
-            Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
-                datum: std::sync::Arc::new(datum),
-                lie_type,
-                isogeny,
-                prefers_coroots: false,
-            })))
+            // A full-rank subsystem need not span the ambient coroot lattice:
+            // original3839528's B2 integral A1 x A1 is NOT simply connected.
+            let isogeny = classify_isogeny(&datum);
+            Ok(Value::Domain(DomainValue::RootDatum(
+                RootDatumHandle::interned(datum, lie_type, isogeny, false),
+            )))
         }
         "two_rho" | "two_rho_check" => {
             arity(name, arguments, 1, span)?;
@@ -13059,7 +13741,7 @@ pub(crate) fn call_with_printed(
                     return Err(type_error(span, "expected a Param"));
                 };
                 test_standard(parameter, "Cannot generate block", span)?;
-                let rc = rep_context(&parameter.context);
+                let rc = rep_context(&parameter.context, span)?;
                 let dominant = parameter
                     .repr
                     .made_dominant(&rc)
@@ -13079,8 +13761,7 @@ pub(crate) fn call_with_printed(
                     IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
                 }
                 let located = parameter
-                    .context
-                    .rep
+                    .context.rep(span)?
                     .lookup_full_block(&dominant)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 let block = located.block();
@@ -13212,8 +13893,7 @@ pub(crate) fn call_with_printed(
         // set into the inner-class numbering (`Cartan_set().n_th(i)`).
         "Cartan_class" => {
             if let [Value::Domain(DomainValue::KgbElement(form, id))] = arguments {
-                let cartan = form
-                    .graph
+                let cartan = form.graph(span)?
                     .cartan_of(*id)
                     .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
                 return Ok(cartan_class_value(&form.parent, cartan));
@@ -13292,7 +13972,7 @@ pub(crate) fn call_with_printed(
         "KGB_Hasse" => {
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
-            let graph = &context.graph;
+            let graph = context.graph(span)?;
             let n = graph.size();
             let hasse = graph.bruhat_hasse();
             let mut columns = vec![vec![0_i32; n]; n];
@@ -13619,7 +14299,8 @@ pub(crate) fn call_with_printed(
         "KGB_size" => {
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
-            Ok(Value::Integer(BigInt::from(context.graph.size())))
+            let size = context.kgb_size(span)?;
+            Ok(Value::Integer(BigInt::from(size)))
         }
         // central_fiber_wrapper (atlas-types.w:3915-3929): the fundamental
         // fiber's stabilizer torus parts, wrapped as a row of vec.
@@ -13650,14 +14331,13 @@ pub(crate) fn call_with_printed(
             let index = as_integer(&arguments[1], span)?;
             // Upstream rejects negative and oversized numbers alike with the
             // value echoed (atlas-types.w:4412 `KGB_elt_wrapper`).
-            let size = BigInt::from(context.graph.size());
+            let size = BigInt::from(context.kgb_size(span)?);
             if index < 0 || index >= size {
                 return Err(runtime(span, format!("Inexistent KGB element: {index}")));
             }
             let index =
                 usize::try_from(&index).map_err(|_| runtime(span, "Inexistent KGB element"))?;
-            let id = context
-                .graph
+            let id = context.graph(span)?
                 .ids()
                 .nth(index)
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
@@ -13724,7 +14404,7 @@ pub(crate) fn call_with_printed(
                         // (atlas-types.w:6474-6483): unlike the int overload,
                         // this does not make the parameter dominant first.
                         let coordinates = as_weight_vec(&arguments[0], span)?;
-                        let rc = rep_context(&parameter.context);
+                        let rc = rep_context(&parameter.context, span)?;
                         let root = rc
                             .root_system()
                             .id_of(&Weight::new(coordinates))
@@ -13744,7 +14424,7 @@ pub(crate) fn call_with_printed(
                         })));
                     }
                     let s = parameter_generator(parameter, &arguments[0], span)?;
-                    let rc = rep_context(&parameter.context);
+                    let rc = rep_context(&parameter.context, span)?;
                     let z = parameter
                         .repr
                         .made_dominant(&rc)
@@ -13778,8 +14458,7 @@ pub(crate) fn call_with_printed(
             let generator = as_usize(&arguments[0], span)?;
             let (context, id) = as_kgb_element(&arguments[1], span)?;
             check_generator(context, generator, span)?;
-            let target = context
-                .graph
+            let target = context.graph(span)?
                 .cross(id, generator)
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
             Ok(Value::Domain(DomainValue::KgbElement(
@@ -13800,7 +14479,7 @@ pub(crate) fn call_with_printed(
                         // and a nonintegral one deliberately share the same
                         // diagnostic; an undefined transform returns input.
                         let coordinates = as_weight_vec(&arguments[0], span)?;
-                        let rc = rep_context(&parameter.context);
+                        let rc = rep_context(&parameter.context, span)?;
                         let root = Weight::new(coordinates);
                         let Some(result) = rc.any_cayley_root(&root, &parameter.repr).map_err(
                             |error| match error {
@@ -13825,7 +14504,7 @@ pub(crate) fn call_with_printed(
                         })));
                     }
                     let s = parameter_generator(parameter, &arguments[0], span)?;
-                    let rc = rep_context(&parameter.context);
+                    let rc = rep_context(&parameter.context, span)?;
                     let z = parameter
                         .repr
                         .made_dominant(&rc)
@@ -13927,7 +14606,7 @@ pub(crate) fn call_with_printed(
             let generator = as_usize(&arguments[0], span)?;
             let (context, id) = as_kgb_element(&arguments[1], span)?;
             check_generator(context, generator, span)?;
-            let code = status_code(context, generator, id)
+            let code = status_code(context, generator, id, span)?
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
             Ok(Value::Integer(BigInt::from(code)))
         }
@@ -13943,14 +14622,13 @@ pub(crate) fn call_with_printed(
                 // then the shared partial-block lookup on the integral
                 // subsystem; the length is the representative's height
                 // inside that located block (never the full-rank block).
-                let rc = rep_context(&parameter.context);
+                let rc = rep_context(&parameter.context, span)?;
                 let z = parameter
                     .repr
                     .made_dominant(&rc)
                     .map_err(|e| runtime(span, e.to_string()))?;
                 let located = parameter
-                    .context
-                    .rep
+                    .context.rep(span)?
                     .lookup(&z)
                     .map_err(|error| structure_diagnostic(error, span))?;
                 let length = located
@@ -13960,8 +14638,7 @@ pub(crate) fn call_with_printed(
                 return Ok(Value::Integer(length.into()));
             }
             let (context, id) = as_kgb_element(&arguments[0], span)?;
-            let length = context
-                .graph
+            let length = context.graph(span)?
                 .length(id)
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
             Ok(Value::Integer(BigInt::from(length)))
@@ -13991,20 +14668,19 @@ pub(crate) fn call_with_printed(
                 );
             }
             let (context, id) = as_kgb_element(&arguments[0], span)?;
-            let involution = context
-                .graph
+            let table = context.table(span)?;
+            let involution = context.graph(span)?
                 .involution_of(id)
-                .and_then(|involution| context.table.record(involution))
+                .and_then(|involution| table.record(involution))
                 .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
             matrix_value(involution.theta().weight_matrix(), span)
         }
         // Cartan_info (atlas-types.w:4102-4160): the classify triple, the
         // Cartan involution's Weyl word, the orbit/fiber sizes, and the
         // subsystem types of the imaginary, real and complex simple roots.
-        // orientation_nr (atlas-types.w:6546-6552, repr.cpp:455-493): the
-        // orientation number of a standard parameter — the count of
-        // non-integral real roots whose coroot pairing with gamma is
-        // mis-oriented, plus one per conjugate complex pair.
+        // orientation_nr uses the shared RepContext implementation of
+        // current repr.cpp:504-532, including dominant normalization and
+        // complex descents with negative images.
         // reducibility_points (atlas-types.w:6561-6568, repr.cpp:825-925):
         // the reducibility fractions of a standard parameter, ascending.
         "reducibility_points" => {
@@ -14018,7 +14694,7 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let points = rc
                 .reducibility_points(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -14042,110 +14718,17 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
-            let root_system = rc.inner_class().root_system();
-            let z = &parameter.repr;
-            let involution_id = parameter
-                .context
-                .graph
-                .involution_of(z.x())
-                .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
-            let record = rc
-                .table()
-                .record(involution_id)
-                .ok_or_else(|| runtime(span, "Inexistent involution"))?;
-            let root_involution = record.twisted_involution().root_involution();
-            let real: std::collections::HashSet<usize> = root_involution
-                .roots_of_kind(RootKind::Real)
-                .map(|root| root.index())
-                .collect();
-            let all_roots: Vec<RootId> = (0..root_system.roots().len())
-                .map(RootId::from_usize)
-                .collect();
-            let two_rho_sum = two_rho(root_system, &all_roots);
-            let real_roots: Vec<RootId> = root_involution.roots_of_kind(RootKind::Real).collect();
-            let two_rho_real = two_rho(root_system, &real_roots);
-            let lifted = rc
-                .y_lift(involution_id, z.y_bits())
-                .map_err(|error| structure_diagnostic(error, span))?;
-            let test_wt: Vec<i32> = lifted
-                .as_slice()
-                .iter()
-                .zip(two_rho_sum.as_slice())
-                .zip(two_rho_real.as_slice())
-                .map(|((&a, &b), &c)| a + b - c)
-                .collect();
-            let numer = z.gamma().numerator();
-            let denom = z.gamma().denominator();
-            // Positive-root indices in the root system's ambient order.
-            let mut positive_indices: Vec<usize> = (0..root_system.roots().len())
-                .filter(|&index| {
-                    root_system
-                        .is_positive(RootId::from_usize(index))
-                        .unwrap_or(false)
-                })
-                .collect();
-            positive_indices.sort_by_key(|&index| {
-                // rt_abs ordering: coroot coordinates, ascending.
-                root_system
-                    .coroot(RootId::from_usize(index))
-                    .map(|coroot| coroot.as_slice().to_vec())
-                    .unwrap_or_default()
-            });
-            let mut count = 0_usize;
-            for &alpha_index in positive_indices.iter() {
-                let Some(coroot_alpha) = root_system.coroot(RootId::from_usize(alpha_index)) else {
-                    continue;
-                };
-                let num: i64 = coroot_alpha
-                    .as_slice()
-                    .iter()
-                    .zip(numer)
-                    .map(|(&c, &n)| i64::from(c) * n)
-                    .sum();
-                if num.rem_euclid(denom) != 0 {
-                    if real.contains(&alpha_index) {
-                        let test_pair: i64 = coroot_alpha
-                            .as_slice()
-                            .iter()
-                            .zip(&test_wt)
-                            .map(|(&c, &t)| i64::from(c) * i64::from(t))
-                            .sum();
-                        let eps = if test_pair.rem_euclid(4) == 0 {
-                            0
-                        } else {
-                            denom
-                        };
-                        let oriented = (num > 0) == ((num + eps).rem_euclid(2 * denom) < denom);
-                        if oriented {
-                            count += 1;
-                        }
-                    } else {
-                        let beta = root_involution
-                            .image(RootId::from_usize(alpha_index))
-                            .ok_or_else(|| runtime(span, "Inexistent root"))?;
-                        let beta_index = beta.index();
-                        let beta_coroot = root_system
-                            .coroot(beta)
-                            .ok_or_else(|| runtime(span, "Inexistent root"))?;
-                        let beta_pair: i64 = beta_coroot
-                            .as_slice()
-                            .iter()
-                            .zip(numer)
-                            .map(|(&c, &n)| i64::from(c) * n)
-                            .sum();
-                        // Consider only the first of the conjugate pair:
-                        // compare the positive-root order of alpha and beta.
-                        let alpha_order = positive_indices.iter().position(|&r| r == alpha_index);
-                        let beta_order = positive_indices.iter().position(|&r| r == beta_index);
-                        if let (Some(a), Some(b)) = (alpha_order, beta_order) {
-                            if a < b && (num > 0) != (beta_pair > 0) {
-                                count += 1;
-                            }
-                        }
-                    }
-                }
-            }
+            let rc = rep_context(&parameter.context, span)?;
+            let count = rc.orientation_number(&parameter.repr)
+                .map_err(|error| match error {
+                    // The domain retains a stable invariant key; expose
+                    // make_dominant's original exception at this boundary,
+                    // as parameter twist does for the same failure.
+                    StructureError::RepInvariantViolation {
+                        invariant: "standard parameter in make_dominant",
+                    } => runtime(span, "Non standard parameter in make_dominant"),
+                    other => structure_diagnostic(other, span),
+                })?;
             Ok(Value::Integer(BigInt::from(count)))
         }
         // block_Hasse (atlas-types.w:6825-6852): the full block of a
@@ -14310,7 +14893,7 @@ pub(crate) fn call_with_printed(
                 ));
             };
             validate_kl_column(parameter, span)?;
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let normalised = parameter
                 .repr
                 .normalised(&rc)
@@ -14331,8 +14914,7 @@ pub(crate) fn call_with_printed(
                 IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
             }
             let located = parameter
-                .context
-                .rep
+                .context.rep(span)?
                 .lookup(&normalised)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let raw_y = located.raw_row();
@@ -14387,7 +14969,7 @@ pub(crate) fn call_with_printed(
                 ));
             };
             test_standard(parameter, "KL_block requires a standard parameter", span)?;
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let dominant = parameter
                 .repr
                 .made_dominant(&rc)
@@ -14412,8 +14994,7 @@ pub(crate) fn call_with_printed(
                 IntegralBlockScope::ProperSubsystem | IntegralBlockScope::Full => {}
             }
             let located = parameter
-                .context
-                .rep
+                .context.rep(span)?
                 .lookup_full_block(&dominant)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let raw_start = located.raw_row();
@@ -14550,8 +15131,7 @@ pub(crate) fn call_with_printed(
             // full block over the full/proper/rank-0 uniform subsystem,
             // transporting the query onto the stored block's attitude.
             let located = parameter
-                .context
-                .rep
+                .context.rep(span)?
                 .lookup_full_block(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let block = located.block();
@@ -14654,8 +15234,7 @@ pub(crate) fn call_with_printed(
             };
             test_standard(parameter, "Cannot generate block", span)?;
             let located = parameter
-                .context
-                .rep
+                .context.rep(span)?
                 .lookup(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let block = located.block();
@@ -14686,10 +15265,8 @@ pub(crate) fn call_with_printed(
             }
             Ok(Value::List(params))
         }
-        // full_deform (atlas-types.w:8213-8227, repr.cpp:2251-2290): the
-        // full K-type deformation of a final standard parameter: the
-        // finals of its scale-0 parameter, plus the deformation terms of
-        // each reducibility point, merged into a K-type polynomial.
+        // full_deform: sum the recursively computed Split-valued deformation
+        // of every final constituent; timed calls publish only complete sums.
         "full_deform" => {
             if arguments.is_empty() || arguments.len() > 2 {
                 return Err(type_error(
@@ -14799,8 +15376,7 @@ pub(crate) fn call_with_printed(
                 span,
             )?;
             let located = parameter
-                .context
-                .rep
+                .context.rep(span)?
                 .lookup(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let raw_start = located.raw_row();
@@ -14949,8 +15525,7 @@ pub(crate) fn call_with_printed(
             // Its PartialBlock topology is already expressed in integral-
             // subsystem generator numbering, including imaginary grading.
             let located = parameter
-                .context
-                .rep
+                .context.rep(span)?
                 .lookup_full_block(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let start = located.raw_row();
@@ -15097,8 +15672,7 @@ pub(crate) fn call_with_printed(
             };
             test_standard(parameter, "Cannot generate block", span)?;
             let located = parameter
-                .context
-                .rep
+                .context.rep(span)?
                 .lookup_full_block(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let block = located.block();
@@ -15143,7 +15717,7 @@ pub(crate) fn call_with_printed(
                 ));
             };
             let (delta, gamma) = shift_flip_gates(parameter, &arguments[1], &arguments[2], span)?;
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let context = ExtRepContext::new(&rc, delta)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let extension = shifted_default_extension(&context, &parameter.repr, &gamma)
@@ -15230,7 +15804,7 @@ pub(crate) fn call_with_printed(
             let dual_quasisplit = dual_parent.order.quasisplit_external();
             let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
             let block = build_block(&parameter.context, &dual_rf, span)?;
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let lambda_rho = rc
                 .lambda_rho(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
@@ -15596,7 +16170,7 @@ pub(crate) fn call_with_printed(
             };
             let (delta, factor_num, factor_den) =
                 scale_extended_gates(parameter, &arguments[1], factor, span)?;
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let context = ExtRepContext::new(&rc, delta)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let (repr, flip) =
@@ -15629,7 +16203,7 @@ pub(crate) fn call_with_printed(
                 ));
             };
             let delta = k_type_pol_extended_gates(parameter, &arguments[1], span)?;
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let context = ExtRepContext::new(&rc, delta)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let restricted = extended_restrict_to_k(&context, &parameter.repr)
@@ -15662,7 +16236,7 @@ pub(crate) fn call_with_printed(
                 ));
             };
             let delta = finalize_extended_gates(parameter, &arguments[1], span)?;
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let context = ExtRepContext::new(&rc, delta)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let finalized = extended_finalise(&context, &parameter.repr)
@@ -15739,18 +16313,17 @@ pub(crate) fn call_with_printed(
                     Value::Integer(BigInt::from(fiber_size)),
                 ]),
                 Value::Tuple(vec![
-                    subsystem_type_value(&context.inner_class, imaginary, span)?,
-                    subsystem_type_value(&context.inner_class, real, span)?,
-                    subsystem_type_value(&context.inner_class, &complex, span)?,
+                    subsystem_type_value(context, imaginary, span)?,
+                    subsystem_type_value(context, real, span)?,
+                    subsystem_type_value(context, &complex, span)?,
                 ]),
             ]))
         }
         "torus_factor" => {
             arity(name, arguments, 1, span)?;
             let (context, id) = as_kgb_element(&arguments[0], span)?;
-            let factor = context
-                .graph
-                .torus_factor(id, &context.table)
+            let factor = context.graph(span)?
+                .torus_factor(id, context.table(span)?)
                 .map_err(|error| runtime(span, error.to_string()))?;
             Ok(Value::RatVector(ratvec_from_rationals(
                 factor.to_rationals(),
@@ -15854,12 +16427,11 @@ pub(crate) fn call_with_printed(
                     }
                 }
             }
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let x = parameter.repr.x();
             // srm: gamma-lambda unique modulo X* (StandardReprMod::mod_reduce).
             let bits = parameter
-                .context
-                .graph
+                .context.graph(span)?
                 .element(x)
                 .ok_or_else(|| runtime(span, "KGB element"))?;
             let y_bits = rc
@@ -15885,11 +16457,10 @@ pub(crate) fn call_with_printed(
                 lambda.push(diff);
             }
             // l = base_grading_vector - torus_factor(x) (ell, ext_block.cpp:215).
-            let cocharacter = parameter.context.graph.cocharacter().to_rationals();
+            let cocharacter = parameter.context.graph(span)?.cocharacter().to_rationals();
             let factor = parameter
-                .context
-                .graph
-                .torus_factor(x, &parameter.context.table)
+                .context.graph(span)?
+                .torus_factor(x, parameter.context.table(span)?)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let factor_rat = factor.to_rationals();
             let mut l = Vec::new();
@@ -15916,8 +16487,7 @@ pub(crate) fn call_with_printed(
                 .involution_of(x)
                 .map_err(|error| structure_diagnostic(error, span))?;
             let theta_rows = parameter
-                .context
-                .table
+                .context.table(span)?
                 .record(theta_id)
                 .ok_or_else(|| runtime(span, "involution record"))?
                 .theta()
@@ -15968,26 +16538,23 @@ pub(crate) fn call_with_printed(
             ]))
         }
         // base_grading_vector_wrapper (atlas-types.w:3689): the form's
-        // elected g_rho_check, already frozen into the KGB graph.
+        // elected g_rho_check, frozen into the seed before KGB is needed.
         "base_grading_vector" => {
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
             Ok(Value::RatVector(ratvec_from_rationals(
-                context.graph.cocharacter().to_rationals(),
+                context.seed.square_class_cocharacter().to_rationals(),
                 span,
             )?))
         }
         // x0_torus_part_wrapper (atlas-types.w:3695): the seed's torus
-        // bits. Element #0 IS the seed (the BFS root).
+        // bits. Read the elected seed without constructing its KGB orbit.
         "initial_torus_bits" => {
             arity(name, arguments, 1, span)?;
             let context = as_real_form(&arguments[0], span)?;
-            let base = context
-                .graph
-                .ids()
-                .next()
-                .ok_or_else(|| runtime(span, "Inexistent KGB element"))?;
-            torus_bits_value(context, base, span)
+            let bits = context.seed.element().torus_bits();
+            Ok(Value::Vector(Vec32((0..bits.dimension())
+                .map(|index| i32::from(bits.bit(index) == Some(true))).collect())))
         }
         // torus_bits_wrapper (atlas-types.w:4714): the element's torus part
         // as a 0/1 int vector.
@@ -16012,7 +16579,7 @@ pub(crate) fn call_with_printed(
                         format!("Rank mismatch: ({rank},{})", lam_rho.len()),
                     ));
                 }
-                let rc = rep_context(context);
+                let rc = rep_context(context, span)?;
                 let ktype = KType::sr_k(&rc, x, &Weight::new(lam_rho.clone()))
                     .map_err(|error| structure_diagnostic(error, span))?;
                 Ok(Value::Domain(DomainValue::KType(KTypeValue {
@@ -16021,7 +16588,7 @@ pub(crate) fn call_with_printed(
                 })))
             }
             [Value::Domain(DomainValue::Param(parameter))] => {
-                let rc = rep_context(&parameter.context);
+                let rc = rep_context(&parameter.context, span)?;
                 let ktype = rc
                     .sr_k_of_standard(&parameter.repr)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -16060,7 +16627,7 @@ pub(crate) fn call_with_printed(
                         ),
                     ));
                 }
-                let rc = rep_context(context);
+                let rc = rep_context(context, span)?;
                 let repr = rc
                     .sr(x, &Weight::new(lam_rho), &nu_weight)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -16070,7 +16637,7 @@ pub(crate) fn call_with_printed(
                 })))
             }
             [Value::Domain(DomainValue::KType(ktype))] => {
-                let rc = rep_context(&ktype.context);
+                let rc = rep_context(&ktype.context, span)?;
                 let repr = rc
                     .sr_of_ktype(&ktype.ktype)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -16112,7 +16679,7 @@ pub(crate) fn call_with_printed(
             arity(name, arguments, 1, span)?;
             let result = match &arguments[0] {
                 Value::Domain(DomainValue::KType(ktype)) => {
-                    let rc = rep_context(&ktype.context);
+                    let rc = rep_context(&ktype.context, span)?;
                     match name {
                         "is_standard" => ktype.ktype.is_standard(&rc),
                         "is_dominant" => ktype.ktype.is_dominant(&rc),
@@ -16123,7 +16690,7 @@ pub(crate) fn call_with_printed(
                     }
                 }
                 Value::Domain(DomainValue::Param(parameter)) => {
-                    let rc = rep_context(&parameter.context);
+                    let rc = rep_context(&parameter.context, span)?;
                     match name {
                         "is_standard" => parameter.repr.is_standard(&rc),
                         "is_dominant" => parameter.repr.is_dominant(&rc),
@@ -16161,7 +16728,7 @@ pub(crate) fn call_with_printed(
                         "Real form mismatch when testing equivalence",
                         span,
                     )?;
-                    let rc = rep_context(&left.context);
+                    let rc = rep_context(&left.context, span)?;
                     let result = left
                         .ktype
                         .equivalent(&rc, &right.ktype)
@@ -16178,7 +16745,7 @@ pub(crate) fn call_with_printed(
                         "Real form mismatch when testing equivalence",
                         span,
                     )?;
-                    let rc = rep_context(&left.context);
+                    let rc = rep_context(&left.context, span)?;
                     let result = left
                         .repr
                         .equivalent(&rc, &right.repr)
@@ -16200,7 +16767,7 @@ pub(crate) fn call_with_printed(
             arity(name, arguments, 1, span)?;
             match (&arguments[0], name) {
                 (Value::Domain(DomainValue::KType(ktype)), _) => {
-                    let rc = rep_context(&ktype.context);
+                    let rc = rep_context(&ktype.context, span)?;
                     let transformed = match name {
                         "dominant" => ktype.ktype.made_dominant(&rc),
                         "normal" => ktype.ktype.normalised(&rc),
@@ -16215,7 +16782,7 @@ pub(crate) fn call_with_printed(
                     })))
                 }
                 (Value::Domain(DomainValue::Param(parameter)), "dominant" | "normal") => {
-                    let rc = rep_context(&parameter.context);
+                    let rc = rep_context(&parameter.context, span)?;
                     let transformed = match name {
                         "dominant" => parameter.repr.made_dominant(&rc),
                         "normal" => parameter.repr.normalised(&rc),
@@ -16313,7 +16880,7 @@ pub(crate) fn call_with_printed(
             let Value::Domain(DomainValue::ParamPol(pol)) = &arguments[0] else {
                 return Err(type_error(span, "expected a ParamPol"));
             };
-            let rc = rep_context(&pol.rf);
+            let rc = rep_context(&pol.rf, span)?;
             let mut terms: Vec<(SplitValue, KType)> = Vec::new();
             for (coefficient, repr) in &pol.terms {
                 let ktype = rc
@@ -16342,7 +16909,7 @@ pub(crate) fn call_with_printed(
         "KGP_sum" => {
             arity(name, arguments, 1, span)?;
             let ktype = as_ktype(&arguments[0], span)?;
-            let rc = rep_context(&ktype.context);
+            let rc = rep_context(&ktype.context, span)?;
             if !ktype
                 .ktype
                 .is_semifinal(&rc)
@@ -16380,14 +16947,13 @@ pub(crate) fn call_with_printed(
                 .collect();
             Ok(Value::List(row))
         }
-        // K_type_formula_wrapper (atlas-types.w:6030-6054): the K-type
-        // formula with a height cutoff; a negative bound means unbounded.
-        "K_type_formula" => {
+        // Current atlas-types.w:6216-6259: raw computes directly; memo
+        // shares a real-form-owned formula and truncates any cached excess.
+        "K_type_formula" | "K_type_formula_raw" => {
             arity(name, arguments, 2, span)?;
+            let max_level = ktype_formula_bound(&arguments[1], span)?;
             let ktype = as_ktype(&arguments[0], span)?;
-            let bound = i64::try_from(&as_integer(&arguments[1], span)?)
-                .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
-            let rc = rep_context(&ktype.context);
+            let rc = rep_context(&ktype.context, span)?;
             if !ktype
                 .ktype
                 .is_semifinal(&rc)
@@ -16398,18 +16964,19 @@ pub(crate) fn call_with_printed(
                     "K-type has parity real roots (so not semifinal)",
                 ));
             }
-            let max_level = if bound < 0 {
-                u32::MAX
+            let formula: Arc<[(KType, i32)]> = if name == "K_type_formula_raw" {
+                rc.k_type_formula(&ktype.ktype, max_level)
+                    .map_err(|error| structure_diagnostic(error, span))?.into()
+            } else if ktype.ktype.height() > max_level {
+                Arc::from([])
             } else {
-                u32::try_from(bound)
-                    .map_err(|_| runtime(span, "Integer value to big for conversion"))?
+                ktype.context.rep(span)?.k_type_formula(&ktype.ktype, max_level)
+                    .map_err(|error| structure_diagnostic(error, span))?
             };
-            let formula = rc
-                .k_type_formula(&ktype.ktype, max_level)
-                .map_err(|error| structure_diagnostic(error, span))?;
             let mut terms: Vec<(SplitValue, KType)> = formula
-                .into_iter()
-                .map(|(term, coefficient)| (SplitValue::new(coefficient, 0), term))
+                .iter()
+                .filter(|(term, _)| term.height() <= max_level)
+                .map(|(term, coefficient)| (SplitValue::new(*coefficient, 0), term.clone()))
                 .collect();
             sort_ktypepol_terms(&mut terms);
             Ok(Value::Domain(DomainValue::KTypePol(KTypePolValue {
@@ -16431,7 +16998,7 @@ pub(crate) fn call_with_printed(
             }
             let max_level = u32::try_from(bound)
                 .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
-            let rc = rep_context(&pol.rf);
+            let rc = rep_context(&pol.rf, span)?;
             let mut remainder = pol.terms.clone();
             let mut result: Vec<(SplitValue, KType)> = Vec::new();
             let mut count: u64 = 0;
@@ -16473,12 +17040,12 @@ pub(crate) fn call_with_printed(
                 terms: result,
             })))
         }
-        // deform_wrapper (atlas-types.w:8084-8105): for every final
-        // parameter of the input, compute its deformation terms in the
-        // common block and accumulate an SR_poly. The crate's
-        // deformation_terms returns integer coefficients; the wrapper
-        // scales by `Split_integer(c, -c)` = c(1-s) and by the
-        // finals_for coefficient.
+        // deform_wrapper (current atlas-types.w:8345): locate EACH final
+        // parameter in its actual common block. A KGB x coordinate alone
+        // does not select a block row, and lambda-rho varies across rows.
+        // Condense singular descents and reconstruct each term through its
+        // stored representative and the query's block modifier before
+        // scaling the integer coefficient by c(1-s) and finals_for.
         "deform" => {
             arity(name, arguments, 1, span)?;
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
@@ -16490,40 +17057,25 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let finals = rc
                 .finals_for_standard(&parameter.repr)
                 .map_err(|error| structure_diagnostic(error, span))?;
-            let dual_parent = build_dual_inner_class(&parameter.context.parent, span)?;
-            // The deform block pairs the real form with its dual's
-            // quasisplit form (matching lookup_full_block).
-            let dual_quasisplit = dual_parent.order.quasisplit_external();
-            let dual_rf = build_real_form(&dual_parent, dual_quasisplit, span)?;
+            let table = parameter.context.rep(span)?;
             let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
             for (final_sr, final_coef) in finals {
-                let block = BlockGraph::build(
-                    &parameter.context.graph,
-                    &parameter.context.table,
-                    &dual_rf.graph,
-                    &dual_rf.table,
-                    &dual_rf.parent.inner_class,
-                    WEYL_BUDGET,
+                let located = table
+                    .lookup(&final_sr)
+                    .map_err(|error| structure_diagnostic(error, span))?;
+                let block = located.block();
+                let dterms = common_deformation_terms(
+                    &rc,
+                    &block,
+                    located.block_modifier(),
+                    located.raw_row(),
+                    final_sr.gamma(),
                 )
                 .map_err(|error| structure_diagnostic(error, span))?;
-                let mut kl_table =
-                    KlTable::new(&block).map_err(|error| structure_diagnostic(error, span))?;
-                kl_table
-                    .fill(0)
-                    .map_err(|error| structure_diagnostic(error, span))?;
-                let q_index = (0..block.size())
-                    .find(|&z| block.x(z) == Some(final_sr.x()))
-                    .ok_or_else(|| runtime(span, "parameter not in the common block"))?;
-                let lam_rho = rc
-                    .lambda_rho(&final_sr)
-                    .map_err(|error| structure_diagnostic(error, span))?;
-                let dterms = rc
-                    .deformation_terms(&block, q_index, final_sr.gamma(), &lam_rho, &kl_table)
-                    .map_err(|error| structure_diagnostic(error, span))?;
                 for (term_sr, coefficient) in dterms {
                     // Split_integer(c, -c) * it->second (atlas-types.w:8103).
                     let scaled = SplitValue::new(
@@ -16561,7 +17113,7 @@ pub(crate) fn call_with_printed(
                 ));
             };
             twisted_deform_gates(parameter, span)?;
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let (delta, twist) = distinguished_twist(parameter, span)?;
             let mut terms: Vec<(SplitValue, StandardRepr)> = with_integral_block(
                 parameter,
@@ -16598,10 +17150,9 @@ pub(crate) fn call_with_printed(
         // function (`twisted_kl_column_at_s`, repr.cpp:2371-2423); the
         // external-delta path builds the extended block over the USER's
         // delta and signs by the extended block's own lengths
-        // (`twisted_kl_sum`, repr.cpp:2304-2350). The rank-0 integral
-        // subsystem's singleton block gives `1*p` (P_{y,y} = 1); a proper
-        // integral subsystem runs the same sums over the partial parent
-        // (`with_integral_block`).
+        // (`twisted_kl_sum`, repr.cpp:2304-2350). Distinguished lookup always
+        // retains the actual common block, including full integral gamma;
+        // the external-delta adapter remains separate.
         "twisted_KL_sum_at_s" => {
             let Value::Domain(DomainValue::Param(parameter)) = &arguments[0] else {
                 return Err(type_error(
@@ -16612,7 +17163,7 @@ pub(crate) fn call_with_printed(
                     ),
                 ));
             };
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let (sr, twist_data) = match arguments.len() {
                 1 => {
                     let sr = twisted_kl_sum_gates(parameter, span)?;
@@ -16632,35 +17183,34 @@ pub(crate) fn call_with_printed(
                 }
             };
             let distinguished = arguments.len() == 1;
-            let mut terms: Vec<(SplitValue, StandardRepr)> = with_integral_block(
-                parameter,
-                &rc,
-                &sr,
-                &twist_data,
-                span,
-                // The singleton column sum is 1*sr (repr.cpp:2435-2436
-                // leaves only the x == y entry of the KL table).
-                || vec![(SplitValue::new(1, 0), sr.clone())],
-                |parent, eblock, y0, gamma, singular_orbits| {
-                    let raw = if distinguished {
-                        twisted_kl_column_at_s(&rc, eblock, &parent, y0, gamma, singular_orbits)
-                    } else {
+            let raw = if distinguished {
+                distinguished_twisted_kl_terms(
+                    parameter, &rc, &sr, &twist_data.0, &twist_data.1, span,
+                )?
+            } else {
+                with_integral_block(
+                    parameter,
+                    &rc,
+                    &sr,
+                    &twist_data,
+                    span,
+                    || vec![(sr.clone(), SplitInteger::new(1, 0))],
+                    |parent, eblock, y0, gamma, singular_orbits| {
                         let ext_y = eblock.element(y0);
                         twisted_kl_sum(&rc, eblock, ext_y, &parent, gamma, singular_orbits)
-                    }
-                    .map_err(|error| structure_diagnostic(error, span))?;
-                    let mut terms = Vec::new();
-                    for (term_sr, coefficient) in raw {
-                        let coefficient: (i32, i32) = coefficient.into();
-                        merge_pol_term(
-                            &mut terms,
-                            SplitValue::new(coefficient.0, coefficient.1),
-                            term_sr,
-                        );
-                    }
-                    Ok(terms)
-                },
-            )?;
+                            .map_err(|error| structure_diagnostic(error, span))
+                    },
+                )?
+            };
+            let mut terms = Vec::new();
+            for (term_sr, coefficient) in raw {
+                let coefficient: (i32, i32) = coefficient.into();
+                merge_pol_term(
+                    &mut terms,
+                    SplitValue::new(coefficient.0, coefficient.1),
+                    term_sr,
+                );
+            }
             sort_parampol_terms(&mut terms);
             Ok(Value::Domain(DomainValue::ParamPol(ParamPolValue {
                 rf: Arc::clone(&parameter.context),
@@ -16794,7 +17344,7 @@ pub(crate) fn call_with_printed(
             let bound = i32::try_from(&as_integer(&arguments[2], span)?)
                 .map_err(|_| runtime(span, "Integer value to big for conversion"))?;
             let height_bound = if bound < 0 { u32::MAX } else { bound as u32 };
-            let rc = rep_context(&parameter.context);
+            let rc = rep_context(&parameter.context, span)?;
             let mut deformed_terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
             let mut remainder_terms = accumulator.terms.clone();
             let nu = rc
@@ -16932,7 +17482,7 @@ pub(crate) fn call_with_printed(
                 // KGB element, lambda-rho, and the info character gamma —
                 // NOT the input nu.
                 Value::Domain(DomainValue::Param(parameter)) => {
-                    let rc = rep_context(&parameter.context);
+                    let rc = rep_context(&parameter.context, span)?;
                     let (lam_rho, gamma) = if parameter.repr.is_undefined() {
                         rc.undefined_decomposition(&parameter.repr)
                             .map_err(|error| structure_diagnostic(error, span))?
@@ -16979,7 +17529,7 @@ pub(crate) fn call_with_printed(
                 twist_element(context, *id, &delta, &twist, span)
             }
             [Value::Domain(DomainValue::Param(parameter))] => {
-                let rc = rep_context(&parameter.context);
+                let rc = rep_context(&parameter.context, span)?;
                 twist_parameter(parameter, rc.inner_twisted(&parameter.repr), span)
             }
             [Value::Domain(DomainValue::KgbElement(context, id)), matrix] => {
@@ -16988,7 +17538,7 @@ pub(crate) fn call_with_printed(
             }
             [Value::Domain(DomainValue::Param(parameter)), matrix] => {
                 let (delta, twist) = compatible_outer_twist(&parameter.context, matrix, span)?;
-                let rc = rep_context(&parameter.context);
+                let rc = rep_context(&parameter.context, span)?;
                 twist_parameter(parameter, rc.twisted(&parameter.repr, &delta, &twist), span)
             }
             _ => Err(type_error(
@@ -17087,11 +17637,11 @@ pub(crate) fn call_with_printed(
                 }
             }
             let context = build_weyl_context(handle, span)?;
-            let mut element = WeylElement::identity(&context.system)
+            let mut element = WeylElement::identity(&context.kernel.system)
                 .map_err(|error| runtime(span, error.to_string()))?;
             for generator in word {
                 let (next, _) = element
-                    .right_multiply_simple(&context.system, generator)
+                    .right_multiply_simple(&context.kernel.system, generator)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 element = next;
             }
@@ -17226,23 +17776,38 @@ pub(crate) fn call_with_printed(
             let folded_lie_type =
                 infer_lie_type(folded_datum.cartan_matrix(), datum.lattice_rank(), span)?;
             let folded_isogeny = classify_isogeny(&folded_datum);
-            Ok(Value::Domain(DomainValue::RootDatum(RootDatumHandle {
-                datum: Arc::new(folded_datum),
-                lie_type: folded_lie_type,
-                isogeny: folded_isogeny,
-                prefers_coroots: false,
-            })))
+            Ok(Value::Domain(DomainValue::RootDatum(
+                RootDatumHandle::interned(folded_datum, folded_lie_type, folded_isogeny, false),
+            )))
+        }
+        "W_refl" => {
+            arity(name, arguments, 2, span)?;
+            let index = as_integer(&arguments[1], span)?;
+            i32::try_from(&index)
+                .map_err(|_| runtime(span, "Integer value too big for conversion"))?;
+            let handle = as_root_datum(&arguments[0], span)?;
+            let context = build_weyl_context(handle, span)?;
+            let numbering = RootNumbering::new(&context.kernel.system, handle.prefers_coroots());
+            let alpha = internal_root_nbr(&index, &numbering, false, span)?;
+            let word = reflection_word(&context.kernel.system, &numbering, alpha);
+            let mut element = WeylElement::identity(&context.kernel.system)
+                .map_err(|error| runtime(span, error.to_string()))?;
+            for generator in word {
+                element = element.right_multiply_simple(&context.kernel.system, generator)
+                    .map_err(|error| runtime(span, error.to_string()))?.0;
+            }
+            weyl_elt_value(context, element, span)
         }
         "W_elt" => {
             arity(name, arguments, 2, span)?;
             let handle = as_root_datum(&arguments[0], span)?;
             let word = check_weyl_word(&arguments[1], handle.datum.semisimple_rank(), span)?;
             let context = build_weyl_context(handle, span)?;
-            let mut element = WeylElement::identity(&context.system)
+            let mut element = WeylElement::identity(&context.kernel.system)
                 .map_err(|error| runtime(span, error.to_string()))?;
             for generator in word {
                 let (next, _) = element
-                    .right_multiply_simple(&context.system, generator)
+                    .right_multiply_simple(&context.kernel.system, generator)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 element = next;
             }
@@ -17297,7 +17862,7 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when adding a KType to a KTypePol",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc = rep_context(&accumulator.rf, span)?;
                 let finals = finals_of_final(ktype, &rc, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (coefficient, term) in finals {
@@ -17352,7 +17917,7 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when adding a term to a K_type",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc = rep_context(&accumulator.rf, span)?;
                 let finals = finals_of_final(ktype, &rc, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (final_coefficient, final_term) in finals {
@@ -17367,7 +17932,7 @@ pub(crate) fn call_with_printed(
             // add_K_type_termlist_wrapper (atlas-types.w:5741-5775):
             // expand every K-type through finals_for in source-list order.
             [Value::Domain(DomainValue::KTypePol(accumulator)), Value::List(term_list)] => {
-                let rc = rep_context(&accumulator.rf);
+                let rc = rep_context(&accumulator.rf, span)?;
                 let mut terms = accumulator.terms.clone();
                 for term in term_list {
                     let Value::Tuple(term) = term else {
@@ -17405,7 +17970,7 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when adding a Param to a ParamPol",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc = rep_context(&accumulator.rf, span)?;
                 let expanded = expand_final(parameter, &rc, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (coefficient, term) in expanded {
@@ -17460,7 +18025,7 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when adding a term to a module",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc = rep_context(&accumulator.rf, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (final_coefficient, final_term) in expand_final(parameter, &rc, span)? {
                     merge_pol_term(&mut terms, final_coefficient.mul(*coefficient), final_term);
@@ -17472,7 +18037,7 @@ pub(crate) fn call_with_printed(
                 })))
             }
             [Value::Domain(DomainValue::ParamPol(accumulator)), Value::List(term_list)] => {
-                let rc = rep_context(&accumulator.rf);
+                let rc = rep_context(&accumulator.rf, span)?;
                 let mut terms = accumulator.terms.clone();
                 for term in term_list {
                     let Value::Tuple(term) = term else {
@@ -17525,7 +18090,7 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when subtracting a KType from a KTypePol",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc = rep_context(&accumulator.rf, span)?;
                 let finals = finals_of_final(ktype, &rc, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (coefficient, term) in finals {
@@ -17565,7 +18130,7 @@ pub(crate) fn call_with_printed(
                     "Real form mismatch when subtracting a Param from a ParamPol",
                     span,
                 )?;
-                let rc = rep_context(&accumulator.rf);
+                let rc = rep_context(&accumulator.rf, span)?;
                 let expanded = expand_final(parameter, &rc, span)?;
                 let mut terms = accumulator.terms.clone();
                 for (coefficient, term) in expanded {
@@ -17617,12 +18182,12 @@ pub(crate) fn call_with_printed(
             }
             [Value::Domain(DomainValue::WeylElement(left)), Value::Domain(DomainValue::WeylElement(right))] =>
             {
-                if left.context.handle != right.context.handle {
-                    return Err(runtime(span, "Weyl group mismatch"));
-                }
+                require_weyl_compatible(left, right, span)?;
+                let replayed = weyl_replayed_in_left(left, right)
+                    .map_err(|error| structure_diagnostic(error, span))?;
                 let product = left
                     .element
-                    .multiply(&left.context.system, &right.element)
+                    .multiply(&left.context.kernel.system, &replayed)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 weyl_elt_value(Arc::clone(&left.context), product, span)
             }
@@ -17724,7 +18289,7 @@ pub(crate) fn call_with_printed(
             // (repr.cpp:701-709).
             [Value::Domain(DomainValue::Param(parameter)), Value::Rational(factor)] => {
                 let (numerator, denominator) = rational_pair(factor, span)?;
-                let rc = rep_context(&parameter.context);
+                let rc = rep_context(&parameter.context, span)?;
                 let repr = rc
                     .scale(&parameter.repr, numerator, denominator)
                     .map_err(|error| structure_diagnostic(error, span))?;
@@ -17738,7 +18303,7 @@ pub(crate) fn call_with_printed(
             // finals_for (repr.cpp:1161-1170).
             [Value::Domain(DomainValue::ParamPol(pol)), Value::Rational(factor)] => {
                 let (numerator, denominator) = rational_pair(factor, span)?;
-                let rc = rep_context(&pol.rf);
+                let rc = rep_context(&pol.rf, span)?;
                 let mut terms: Vec<(SplitValue, StandardRepr)> = Vec::new();
                 for (coefficient, repr) in &pol.terms {
                     let scaled = rc
@@ -17788,7 +18353,7 @@ pub(crate) fn call_with_printed(
                 let generator = check_weyl_generator(generator, rank, span)?;
                 let (product, _) = value
                     .element
-                    .right_multiply_simple(&value.context.system, generator)
+                    .right_multiply_simple(&value.context.kernel.system, generator)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 weyl_elt_value(Arc::clone(&value.context), product, span)
             }
@@ -17797,7 +18362,7 @@ pub(crate) fn call_with_printed(
                 let generator_index = check_weyl_generator(generator, rank, span)?;
                 let (product, _) = value
                     .element
-                    .left_multiply_simple(&value.context.system, generator_index)
+                    .left_multiply_simple(&value.context.kernel.system, generator_index)
                     .map_err(|error| runtime(span, error.to_string()))?;
                 weyl_elt_value(Arc::clone(&value.context), product, span)
             }
@@ -17830,7 +18395,7 @@ pub(crate) fn call_with_printed(
                 let mut product = value.element.clone();
                 for generator in word {
                     product = product
-                        .right_multiply_simple(&value.context.system, generator)
+                        .right_multiply_simple(&value.context.kernel.system, generator)
                         .map_err(|error| runtime(span, error.to_string()))?
                         .0;
                 }
@@ -17842,7 +18407,7 @@ pub(crate) fn call_with_printed(
                 let mut product = value.element.clone();
                 for generator in word.into_iter().rev() {
                     product = product
-                        .left_multiply_simple(&value.context.system, generator)
+                        .left_multiply_simple(&value.context.kernel.system, generator)
                         .map_err(|error| runtime(span, error.to_string()))?
                         .0;
                 }
@@ -17879,6 +18444,122 @@ mod tests {
     use crate::diagnostic::{SourceId, SourcePosition};
     use crate::value::Matrix;
 
+    fn parampol_order_split_element(lie_type: &str, rank: usize, index: i64) -> Value {
+        let mut theta = vec![0; rank * rank];
+        for i in 0..rank {
+            theta[i * rank + i] = -1;
+        }
+        // Original basic.at: split_form(rd) uses -identity, including tori.
+        let inner = call("inner_class", &[
+            fixture_datum(lie_type, true), matrix(rank, rank, theta),
+        ], span()).unwrap();
+        let real = call("quasisplit_form", &[inner], span()).unwrap();
+        call("KGB", &[real, int(index)], span()).unwrap()
+    }
+
+    fn parampol_order_repr(x: &Value, lambda_rho: Vec<i32>, nu: Vec<i64>, denominator: u64) -> StandardRepr {
+        let parameter = call("param", &[
+            x.clone(), Value::Vector(Vec32(lambda_rho)),
+            Value::RatVector(RatVec::new(nu, denominator).unwrap()),
+        ], span()).unwrap();
+        let Value::Domain(DomainValue::Param(p)) = parameter else { panic!("expected parameter"); };
+        p.repr
+    }
+
+    #[test]
+    fn parampol_order_a2_original() {
+        // Complete original3847089: x3, lambda [2,1] precedes [1,2].
+        // basic.at parameter subtracts rho=[1,1] before calling param.
+        let x = parampol_order_split_element("A2", 2, 3);
+        let p = parampol_order_repr(&x, vec![1,0], vec![1,1], 1);
+        let q = parampol_order_repr(&x, vec![0,1], vec![1,1], 1);
+        let expected = vec![(SplitValue::new(3,1), p), (SplitValue::new(2,-1), q)];
+        let mut terms = expected.iter().rev().cloned().collect::<Vec<_>>();
+        sort_parampol_terms(&mut terms);
+        println!("PARAMPOL_ORDER_READY a2");
+        assert_eq!(terms, expected);
+        sort_parampol_terms(&mut terms);
+        assert_eq!(terms, expected);
+    }
+
+    #[test]
+    fn parampol_order_t3_original() {
+        // Original3847089's full T3 stream orders coefficients
+        // 8,3,2,4,1,5,6,7: numeric packed torsion, not low-bit-first lex.
+        let x = parampol_order_split_element("T3", 3, 0);
+        let weights = [[0,0,1],[0,1,0],[1,0,0],[1,1,0],[1,0,1],[0,1,1],[1,1,1],[0,0,0]];
+        let input = weights.iter().enumerate().map(|(i, weight)| (
+            SplitValue::new(i as i32 + 1, 0),
+            parampol_order_repr(&x, weight.to_vec(), vec![1,1,1], 1),
+        )).collect::<Vec<_>>();
+        let expected = [7,2,1,3,0,4,5,6].map(|i| input[i].clone()).to_vec();
+        for mut terms in [input.clone(), input.into_iter().rev().collect()] {
+            sort_parampol_terms(&mut terms);
+            println!("PARAMPOL_ORDER_READY t3");
+            assert_eq!(terms, expected);
+        }
+    }
+
+    #[test]
+    fn parampol_order_gamma_original() {
+        // Original3847089: equal height/x/torsion, descending rational
+        // gamma. Keep signs, fractions, zero and coefficient ownership.
+        let x = parampol_order_split_element("T1", 1, 0);
+        let values = [(3,2),(-1,2),(2,1),(1,2),(-2,1),(0,1),(1,1)];
+        let input = values.iter().enumerate().map(|(i, &(n,d))| (
+            SplitValue::new(i as i32 + 1, 0),
+            parampol_order_repr(&x, vec![0], vec![n], d),
+        )).collect::<Vec<_>>();
+        let expected = [2,0,6,3,5,1,4].map(|i| input[i].clone()).to_vec();
+        for mut terms in [input.clone(), input.into_iter().rev().collect()] {
+            sort_parampol_terms(&mut terms);
+            println!("PARAMPOL_ORDER_READY gamma");
+            assert_eq!(terms, expected);
+        }
+    }
+
+    #[test]
+    fn classification_cache_separates_generator_modes_and_count_limits() {
+        let datum = atlas_real_group::BasedRootDatum::standard(
+            vec![vec![2, -1], vec![-1, 2]],
+        ).unwrap();
+        let theta = LatticeInvolution::identity(&datum).unwrap();
+        let inner = InnerClass::new(datum, theta, 6).unwrap();
+        let legacy = CartanClassificationBudget::new(
+            INTEGER_BUDGET,
+            AdjointFiberBudget::new(INTEGER_BUDGET, 1_000_000, 10_000_000),
+            5, 4_096, 4_096,
+        );
+        let direct = legacy.clone().with_generated_involutions(4);
+        let warm = classification_cached(&inner, &direct, span()).unwrap();
+        assert_eq!(warm.twisted_involution_count(), 4);
+        assert!(Arc::ptr_eq(&warm, &classification_cached(&inner, &direct, span()).unwrap()));
+        // Neither the legacy failure nor a stricter new limit may reuse a
+        // successful cached classification from another mode/budget.
+        assert!(classification_cached(&inner, &legacy, span()).is_err());
+        for limit in [0, 3] {
+            assert!(classification_cached(&inner,
+                &legacy.clone().with_generated_involutions(limit), span()).is_err());
+        }
+    }
+
+    #[test]
+    fn rational_pair_preserves_signed_numerators_before_narrowing() {
+        // The original-backed polynomial-coefficient fixture exposes the
+        // lost sign at -1 (job3840181). Exercise the conversion boundary too:
+        // applying sign AFTER narrowing would incorrectly reject i64::MIN.
+        for (numerator, denominator) in [(-3, 2), (-1, 1), (0, 1), (3, 2),
+                                         (i64::MIN, 1), (i64::MAX, 1)] {
+            let value = BigRational::from_integers(BigInt::from(numerator), BigInt::from(denominator));
+            assert_eq!(rational_pair(&value, span()).unwrap(), (numerator, denominator));
+        }
+        for numerator in [BigInt::from(i64::MIN) - BigInt::from(1),
+                          BigInt::from(i64::MAX) + BigInt::from(1)] {
+            let value = BigRational::from_integers(numerator, BigInt::from(1));
+            assert!(rational_pair(&value, span()).is_err());
+        }
+    }
+
     // Regression: partial E6 blocks can omit an imaginary-II Cayley image.
     #[test]
     fn e6_partial_kl_handles_missing_imaginary_two_cayley_image() {
@@ -17902,7 +18583,7 @@ mod tests {
             ], span()).unwrap();
             let Value::Domain(DomainValue::Param(parameter)) = &p
             else { panic!("expected parameter"); };
-            let located = parameter.context.rep.lookup(&parameter.repr).unwrap();
+            let located = parameter.context.rep(span()).expect("initialized owner").lookup(&parameter.repr).unwrap();
             located.with_kl_table(|table| {
                 let support = table.support();
                 let block = support.block();
@@ -18017,7 +18698,7 @@ mod tests {
             let Value::Domain(DomainValue::Param(parameter)) = &p else {
                 panic!("expected parameter");
             };
-            let located = parameter.context.rep.lookup(&parameter.repr).unwrap();
+            let located = parameter.context.rep(span()).expect("initialized owner").lookup(&parameter.repr).unwrap();
             located.with_kl_table(|table| {
                 let support = table.support();
                 let block = support.block();
@@ -21295,9 +21976,159 @@ mod tests {
         let second = build_real_form(&parent, 0, span()).expect("cached canonical form");
 
         assert!(Arc::ptr_eq(&first, &second));
-        assert!(Arc::ptr_eq(&first.rep, &second.rep));
-        assert!(std::ptr::eq(first.table.as_ref(), first.rep.table()));
-        assert!(std::ptr::eq(first.graph.as_ref(), first.rep.graph()));
+        assert!(first.kgb.value.get().is_none());
+        assert!(first.rep.value.get().is_none());
+        assert!(Arc::ptr_eq(first.rep(span()).expect("initialized owner"), second.rep(span()).expect("initialized owner")));
+        assert!(std::ptr::eq(first.table(span()).expect("initialized owner").as_ref(), first.rep(span()).expect("initialized owner").table()));
+        assert!(std::ptr::eq(first.graph(span()).expect("initialized owner").as_ref(), first.rep(span()).expect("initialized owner").graph()));
+    }
+
+    #[test]
+    fn lazy_real_form_metadata_stays_graph_free_and_matches_initialized_values() {
+        for name in ["A1", "A2", "B2", "G2"] {
+            let datum = fixture_datum(name, true);
+            let rank = if name == "A1" { 1 } else { 2 };
+            // This unit calls the domain dispatcher directly; id_mat lives
+            // in the numeric builtin layer used by full session fixtures.
+            let identity = matrix(rank, rank, (0..rank)
+                .flat_map(|row| (0..rank).map(move |column| i32::from(row == column)))
+                .collect());
+            let inner = call("inner_class", &[datum, identity], span()).unwrap();
+            let Value::Domain(DomainValue::InnerClass(parent)) = &inner else { panic!("inner class"); };
+            for i in 0..parent.order.form_count() {
+                let form = build_real_form(parent, i, span()).unwrap();
+                let value = Value::Domain(DomainValue::RealForm(Arc::clone(&form)));
+                let snapshot = || {
+                    let mut output = vec![value.to_string()];
+                    for op in ["form_number", "nr_of_Cartan_classes", "Cartan_order",
+                               "components_rank", "base_grading_vector", "initial_torus_bits",
+                               "central_fiber", "KGB_size", "null_module", "null_K_module"] {
+                        output.push(call(op, std::slice::from_ref(&value), span()).unwrap().to_string());
+                    }
+                    output
+                };
+                let before = snapshot();
+                assert!(same_real_form(&form, &form));
+                assert!(same_real_form_owner(&form, &form));
+                assert!(form.kgb.value.get().is_none(), "{name}/{i} metadata forced KGB");
+                assert!(form.rep.value.get().is_none(), "{name}/{i} metadata forced Rep_table");
+                let expected_size = form.kgb_size(span()).unwrap();
+                let graph = form.graph(span()).unwrap();
+                assert_eq!(graph.size(), expected_size);
+                assert!(form.rep.value.get().is_none(), "KGB alone must not build Rep_table");
+                form.rep(span()).unwrap();
+                assert_eq!(before, snapshot(), "{name}/{i}");
+            }
+        }
+    }
+
+    #[test]
+    fn lazy_real_form_kgb_and_rep_initialize_in_distinct_stages() {
+        let inner = call("inner_class", &[fixture_datum("A1", true), matrix(1, 1, vec![1])], span()).unwrap();
+        let form_value = call("quasisplit_form", &[inner], span()).unwrap();
+        let form = Arc::clone(as_real_form(&form_value, span()).unwrap());
+        assert!(form.kgb.value.get().is_none());
+        assert!(form.rep.value.get().is_none());
+        let x = call("KGB", &[form_value, int(0)], span()).unwrap();
+        assert!(form.kgb.value.get().is_some());
+        assert!(form.rep.value.get().is_none());
+        let ktype = call("K_type", &[x, Value::Vector(Vec32(vec![0]))], span()).unwrap();
+        assert!(form.rep.value.get().is_some());
+        assert!(!ktype.to_string().is_empty());
+        let owner = form.rep(span()).unwrap();
+        assert!(std::ptr::eq(owner.graph(), form.graph(span()).unwrap().as_ref()));
+        assert!(std::ptr::eq(owner.table(), form.table(span()).unwrap().as_ref()));
+    }
+
+    #[test]
+    fn lazy_real_form_failed_initialization_is_retryable() {
+        let cell = FallibleOnce::<usize>::default();
+        let failure = StructureError::AllocationFailed { requested: 17 };
+        assert_eq!(cell.get_or_try_init(|| Err(failure.clone())), Err(failure));
+        assert!(cell.value.get().is_none());
+        assert_eq!(*cell.get_or_try_init(|| Ok(23)).unwrap(), 23);
+        assert_eq!(*cell.get_or_try_init(|| panic!("successful value must be reused")).unwrap(), 23);
+    }
+
+    #[test]
+    fn lazy_real_form_concurrent_initializer_publishes_once() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let cell = Arc::new(FallibleOnce::<Arc<usize>>::default());
+        let count = Arc::new(AtomicUsize::new(0));
+        let barrier = Arc::new(std::sync::Barrier::new(8));
+        let handles: Vec<_> = (0..8).map(|_| {
+            let (cell, count, barrier) = (Arc::clone(&cell), Arc::clone(&count), Arc::clone(&barrier));
+            std::thread::spawn(move || {
+                barrier.wait();
+                Arc::clone(cell.get_or_try_init(|| {
+                    count.fetch_add(1, Ordering::SeqCst);
+                    Ok(Arc::new(29))
+                }).unwrap())
+            })
+        }).collect();
+        let values: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+        assert!(values.iter().all(|value| Arc::ptr_eq(value, &values[0])));
+    }
+
+    #[test]
+    fn lazy_real_form_concurrent_rep_access_shares_the_complete_pipeline() {
+        let inner = call("inner_class", &[fixture_datum("A1", true), matrix(1, 1, vec![1])], span()).unwrap();
+        let value = call("quasisplit_form", &[inner], span()).unwrap();
+        let form = Arc::clone(as_real_form(&value, span()).unwrap());
+        let barrier = Arc::new(std::sync::Barrier::new(2));
+        let handles: Vec<_> = (0..2).map(|_| {
+            let (form, barrier) = (Arc::clone(&form), Arc::clone(&barrier));
+            std::thread::spawn(move || {
+                barrier.wait();
+                Arc::clone(form.rep(span()).unwrap())
+            })
+        }).collect();
+        let values: Vec<_> = handles.into_iter().map(|h| h.join().unwrap()).collect();
+        assert!(Arc::ptr_eq(&values[0], &values[1]));
+        assert!(std::ptr::eq(values[0].graph(), form.graph(span()).unwrap().as_ref()));
+        assert!(std::ptr::eq(values[0].table(), form.table(span()).unwrap().as_ref()));
+    }
+
+    #[test]
+    fn lazy_real_form_initialization_failure_preserves_requesting_span() {
+        // KgbId is deliberately opaque: obtain an in-range identifier from
+        // an independent, healthy A1 graph, not a fabricated numeric id.
+        let reference_inner = call("inner_class", &[
+            fixture_datum("A1", true), matrix(1, 1, vec![1]),
+        ], span()).unwrap();
+        let reference_form = call("quasisplit_form", &[reference_inner], span()).unwrap();
+        let reference_element = call("KGB", &[reference_form, int(0)], span()).unwrap();
+        let (_, reference_id) = as_kgb_element(&reference_element, span()).unwrap();
+        let inner = call("inner_class", &[fixture_datum("A1", true), matrix(1, 1, vec![1])], span()).unwrap();
+        let value = call("quasisplit_form", &[inner], span()).unwrap();
+        let form = Arc::clone(as_real_form(&value, span()).unwrap());
+        let poisoned = Arc::clone(&form);
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+            let _guard = poisoned.kgb.initialization.lock().unwrap();
+            panic!("poison lazy initialization for its diagnostic contract");
+        })).is_err());
+        let first = span();
+        let second = SourceSpan::new(crate::diagnostic::SourceId::new(91), 8, 9,
+            crate::diagnostic::SourcePosition { line: 3, column: 4 },
+            crate::diagnostic::SourcePosition { line: 3, column: 5 });
+        for request in [first, second] {
+            // Renderers also cross the fallible initialization boundary;
+            // they must report the caller's span instead of hiding a failed
+            // initialization behind an infallible String interface.
+            for error in [
+                form.graph(request).unwrap_err(),
+                form.rep(request).unwrap_err(),
+                print_kgb(&form, None, request).unwrap_err(),
+                involution_expression(&form, reference_id, request).unwrap_err(),
+            ] {
+                assert_eq!(error.kind, ErrorKind::Runtime);
+                assert_eq!(error.span, Some(request));
+                assert!(error.message.contains("lazy real-form initialization mutex poisoned"));
+            }
+        }
+        assert!(form.kgb.value.get().is_none());
+        assert!(form.rep.value.get().is_none());
     }
 
     #[test]
@@ -21351,13 +22182,13 @@ mod tests {
             .expect("second builder does not panic")
             .expect("second canonical form");
         assert!(Arc::ptr_eq(&first, &second));
-        assert!(Arc::ptr_eq(&first.rep, &second.rep));
+        assert!(Arc::ptr_eq(first.rep(span()).expect("initialized owner"), second.rep(span()).expect("initialized owner")));
 
         let cached = parent.canonical_forms.lock().expect("canonical cache lock")[0]
             .upgrade()
             .expect("winner remains cached while handles are live");
         assert!(Arc::ptr_eq(&first, &cached));
-        assert!(Arc::ptr_eq(&first.rep, &cached.rep));
+        assert!(Arc::ptr_eq(first.rep(span()).expect("initialized owner"), cached.rep(span()).expect("initialized owner")));
     }
 
     #[test]
@@ -21371,14 +22202,14 @@ mod tests {
 
         let first = build_real_form(&parent, 0, span()).expect("first canonical form");
         let context_weak = Arc::downgrade(&first);
-        let rep_weak = Arc::downgrade(&first.rep);
+        let rep_weak = Arc::downgrade(first.rep(span()).expect("initialized owner"));
         drop(first);
         assert!(context_weak.upgrade().is_none());
         assert!(rep_weak.upgrade().is_none());
 
         let rebuilt = build_real_form(&parent, 0, span()).expect("rebuilt canonical form");
-        assert!(std::ptr::eq(rebuilt.table.as_ref(), rebuilt.rep.table()));
-        assert!(std::ptr::eq(rebuilt.graph.as_ref(), rebuilt.rep.graph()));
+        assert!(std::ptr::eq(rebuilt.table(span()).expect("initialized owner").as_ref(), rebuilt.rep(span()).expect("initialized owner").table()));
+        assert!(std::ptr::eq(rebuilt.graph(span()).expect("initialized owner").as_ref(), rebuilt.rep(span()).expect("initialized owner").graph()));
     }
 
     #[test]
@@ -21424,7 +22255,7 @@ mod tests {
         let second_canonical =
             build_real_form(&second_parent, 0, span()).expect("second canonical form");
         assert!(!Arc::ptr_eq(&first_canonical, &second_canonical));
-        assert!(!Arc::ptr_eq(&first_canonical.rep, &second_canonical.rep));
+        assert!(!Arc::ptr_eq(first_canonical.rep(span()).expect("initialized owner"), second_canonical.rep(span()).expect("initialized owner")));
 
         let custom = || {
             call(
@@ -21446,8 +22277,40 @@ mod tests {
         };
         assert!(same_real_form(&first_custom, &second_custom));
         assert!(!Arc::ptr_eq(&first_custom, &second_custom));
-        assert!(!Arc::ptr_eq(&first_custom.rep, &second_custom.rep));
+        assert!(!Arc::ptr_eq(first_custom.rep(span()).expect("initialized owner"), second_custom.rep(span()).expect("initialized owner")));
         assert!(!same_real_form_owner(&first_custom, &second_custom));
+    }
+
+    #[test]
+    fn ktype_formula_cache_reuses_larger_cutoffs_and_isolates_owners() {
+        let inner = call("inner_class", &[fixture_datum("A1", true), matrix(1, 1, vec![-1])], span())
+            .expect("split inner class");
+        let form = call("quasisplit_form", &[inner], span()).expect("split form");
+        let value = call("K_type", &[
+            call("KGB", &[form, int(0)], span()).expect("KGB element"),
+            Value::Vector(Vec32(vec![0])),
+        ], span()).expect("K-type");
+        let ktype = as_ktype(&value, span()).unwrap();
+        let owner = Arc::clone(ktype.context.rep(span()).expect("initialized owner"));
+        let small = owner.k_type_formula(&ktype.ktype, 2).unwrap();
+        assert_eq!(small.len(), 1);
+        let large = owner.k_type_formula(&ktype.ktype, 8).unwrap();
+        assert_eq!(large.len(), 2);
+        assert!(!Arc::ptr_eq(&small, &large));
+        assert_eq!(small.len(), 1, "previously returned handles stay valid");
+        let repeated = owner.k_type_formula(&ktype.ktype, 8).unwrap();
+        let reduced = owner.k_type_formula(&ktype.ktype, 2).unwrap();
+        assert!(Arc::ptr_eq(&large, &repeated));
+        assert!(Arc::ptr_eq(&large, &reduced), "the wrapper must truncate a shared higher formula");
+        let separate = RepTableOwner::from_shared(
+            Arc::clone(ktype.context.table(span()).expect("initialized owner")), Arc::clone(ktype.context.graph(span()).expect("initialized owner"))).unwrap();
+        let independent = separate.k_type_formula(&ktype.ktype, 8).unwrap();
+        assert_eq!(&*large, &*independent);
+        assert!(!Arc::ptr_eq(&large, &independent));
+        let expected = call("K_type_formula_raw", &[value.clone(), int(2)], span()).unwrap();
+        let actual = call("K_type_formula", &[value, int(2)], span()).unwrap();
+        assert_eq!(actual.to_string(), expected.to_string());
+        assert_eq!(as_ktypepol(&actual, span()).unwrap().terms.len(), 1);
     }
 
     #[test]

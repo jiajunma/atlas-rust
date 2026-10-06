@@ -77,6 +77,10 @@ impl<'a> ParserTypes<'a> {
         self.state.borrow().nest.iter().map(|clutch| clutch.names.len()).sum()
     }
 
+    pub fn has_virtual_group(&self) -> bool {
+        self.state.borrow().nest.iter().any(|clutch| clutch.kind == GroupKind::Virtual)
+    }
+
     pub fn start_defining_types(&self) {
         self.state.borrow_mut().defining_types = true;
     }

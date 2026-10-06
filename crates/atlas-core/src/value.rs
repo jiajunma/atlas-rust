@@ -21,7 +21,7 @@ pub enum Value {
     Integer(BigInt),
     Rational(BigRational),
     Boolean(bool),
-    String(String),
+    String(AtlasString),
     Tuple(Vec<Value>),
     List(Vec<Value>),
     /// An Atlas `vec`: machine 32-bit entries, printed right-aligned.
@@ -96,6 +96,16 @@ pub enum SlotShape {
     },
 }
 
+impl SlotShape {
+    pub(crate) fn binds_slots(&self) -> bool {
+        match self {
+            Self::Leaf => true,
+            Self::Discard => false,
+            Self::Tuple { elements, whole } => *whole || elements.iter().any(Self::binds_slots),
+        }
+    }
+}
+
 impl fmt::Debug for Closure {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
@@ -130,6 +140,97 @@ impl Eq for Closure {}
 
 /// Descriptive alias for callers that prefer the language-level name.
 pub type AtlasValue = Value;
+
+/// Atlas strings are owned bytes, including fragments that are not UTF-8.
+/// Display is for human diagnostics only; interpreter output uses `as_bytes`.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Ord, PartialOrd)]
+pub struct AtlasString(Vec<u8>);
+
+impl AtlasString {
+    pub fn as_bytes(&self) -> &[u8] { &self.0 }
+    pub fn into_bytes(self) -> Vec<u8> { self.0 }
+    pub fn as_utf8(&self) -> Result<&str, std::str::Utf8Error> {
+        std::str::from_utf8(&self.0)
+    }
+    pub fn len(&self) -> usize { self.0.len() }
+    pub fn is_empty(&self) -> bool { self.0.is_empty() }
+    pub fn push_bytes(&mut self, bytes: &[u8]) { self.0.extend_from_slice(bytes); }
+    pub fn push_str(&mut self, text: &str) { self.push_bytes(text.as_bytes()); }
+}
+
+impl From<String> for AtlasString {
+    fn from(text: String) -> Self { Self(text.into_bytes()) }
+}
+impl From<&str> for AtlasString {
+    fn from(text: &str) -> Self { Self(text.as_bytes().to_vec()) }
+}
+impl From<Vec<u8>> for AtlasString {
+    fn from(bytes: Vec<u8>) -> Self { Self(bytes) }
+}
+impl PartialEq<str> for AtlasString {
+    fn eq(&self, other: &str) -> bool { self.as_bytes() == other.as_bytes() }
+}
+impl PartialEq<&str> for AtlasString {
+    fn eq(&self, other: &&str) -> bool { self == *other }
+}
+impl PartialEq<String> for AtlasString {
+    fn eq(&self, other: &String) -> bool { self == other.as_str() }
+}
+impl PartialEq<AtlasString> for String {
+    fn eq(&self, other: &AtlasString) -> bool { self.as_bytes() == other.as_bytes() }
+}
+impl fmt::Display for AtlasString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut rest = self.as_bytes();
+        while !rest.is_empty() {
+            match std::str::from_utf8(rest) {
+                Ok(text) => return f.write_str(text),
+                Err(error) => {
+                    let (valid, invalid) = rest.split_at(error.valid_up_to());
+                    f.write_str(std::str::from_utf8(valid).expect("validated prefix"))?;
+                    let n = error.error_len().unwrap_or(invalid.len());
+                    for byte in &invalid[..n] { write!(f, "\\x{byte:02x}")?; }
+                    rest = &invalid[n..];
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl Value {
+    /// Standard Atlas value printer, without a Unicode conversion boundary.
+    pub fn atlas_text(&self) -> AtlasString {
+        let mut out = AtlasString::default();
+        self.append_atlas_text(&mut out);
+        out
+    }
+
+    pub fn append_atlas_text(&self, out: &mut AtlasString) {
+        match self {
+            Self::String(text) => {
+                out.push_str("\"");
+                out.push_bytes(text.as_bytes());
+                out.push_str("\"");
+            }
+            Self::Tuple(values) | Self::List(values) => {
+                let tuple = matches!(self, Self::Tuple(_));
+                out.push_str(if tuple { "(" } else { "[" });
+                for (index, value) in values.iter().enumerate() {
+                    if index > 0 { out.push_str(","); }
+                    value.append_atlas_text(out);
+                }
+                out.push_str(if tuple { ")" } else { "]" });
+            }
+            Self::Union { injector_name, value, .. } => {
+                value.append_atlas_text(out);
+                out.push_str(".");
+                out.push_str(injector_name);
+            }
+            _ => out.push_str(&self.to_string()),
+        }
+    }
+}
 
 impl fmt::Display for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -199,6 +300,23 @@ impl fmt::Display for Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn byte_strings_render_nested_values_without_replacement() {
+        let left = Value::String(vec![0xc3].into());
+        let right = Value::String(vec![0xa9].into());
+        let value = Value::Tuple(vec![Value::List(vec![left.clone(), right]), Value::Union {
+            tag: 0, injector_name: "byte".into(), value: Box::new(left),
+        }]);
+        assert_eq!(value.atlas_text().as_bytes(), b"([\"\xc3\",\"\xa9\"],\"\xc3\".byte)");
+        let mut joined = AtlasString::from(vec![0xc3]);
+        joined.push_bytes(&[0xa9]);
+        assert_eq!(joined.as_utf8(), Ok("é"));
+        assert_eq!(joined.len(), 2);
+        // Editor formatting may escape invalid bytes, but must not replace
+        // them or be used as the interpreter's output representation.
+        assert_eq!(AtlasString::from(vec![0xc3]).to_string(), "\\xc3");
+    }
 
     #[test]
     fn displays_string_values_like_the_atlas_oracle() {

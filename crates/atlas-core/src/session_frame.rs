@@ -15,7 +15,7 @@ use std::collections::BTreeSet;
 
 use crate::diagnostic::{Diagnostic, ErrorKind, SourceId};
 use crate::lex::{DirectiveKind, Lexer, Token, TokenKind};
-use crate::session::{execute_tokens, SessionEvent};
+use crate::session::{execute_tokens, next_session_token, SessionEvent};
 use crate::source::SourceText;
 use crate::syntax::parse_expression_in;
 use crate::typed::TypedContext;
@@ -33,7 +33,8 @@ pub trait FileProvider {
 /// file with any partial output — upstream behaviour.
 pub trait FileSink {
     fn open(&mut self, path: &str, append: bool) -> bool;
-    fn write(&mut self, text: &str);
+    fn write_bytes(&mut self, bytes: &[u8]);
+    fn write(&mut self, text: &str) { self.write_bytes(text.as_bytes()); }
     fn close(&mut self);
 }
 
@@ -129,11 +130,20 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
     /// differential harness's stderr grammar keys every diagnostic off the
     /// header, and the frozen events record them by category).
     pub fn describe(&self, diagnostic: &Diagnostic) -> String {
+        self.describe_bytes(diagnostic).to_string()
+    }
+
+    pub fn describe_bytes(&self, diagnostic: &Diagnostic) -> crate::value::AtlasString {
+        let mut out = crate::value::AtlasString::default();
         let Some(span) = diagnostic.span else {
-            return format!("{:?} error: {}", diagnostic.kind, diagnostic.message);
+            out.push_str(&format!("{:?} error: ", diagnostic.kind));
+            out.push_bytes(diagnostic.message_bytes());
+            return out;
         };
         let Some(record) = self.registry.get(&span.source_id().get()) else {
-            return format!("{:?} error: {}", diagnostic.kind, diagnostic.message);
+            out.push_str(&format!("{:?} error: ", diagnostic.kind));
+            out.push_bytes(diagnostic.message_bytes());
+            return out;
         };
         let line = record
             .text
@@ -150,14 +160,18 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
             1,
             line.len().saturating_sub(column.saturating_sub(1)).max(1),
         );
-        format!(
-            "{:?} error at {}:{physical}:{column}: {}\n  | {line}\n  | {}{}",
+        out.push_str(&format!(
+            "{:?} error at {}:{physical}:{column}: ",
             diagnostic.kind,
             record.origin,
-            diagnostic.message,
+        ));
+        out.push_bytes(diagnostic.message_bytes());
+        out.push_str(&format!(
+            "\n  | {line}\n  | {}{}",
             " ".repeat(column.saturating_sub(1)),
             "^".repeat(caret_width),
-        )
+        ));
+        out
     }
 
     fn register(&mut self, origin: String, raw_text: &str) -> SourceText {
@@ -196,7 +210,7 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
         let depth = self.active.len();
 
         loop {
-            let token = match lexer.next_token() {
+            let token = match next_session_token(&mut lexer, &mut self.context) {
                 Ok(token) => token,
                 Err(diagnostic) => {
                     // Lexical recovery (the unterminated-string warning) is
@@ -277,7 +291,7 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
         forced: bool,
         events: &mut Vec<SessionEvent>,
     ) -> Outcome {
-        match lexer.next_token() {
+        match next_session_token(lexer, &mut self.context) {
             Ok(token) if matches!(token.kind, TokenKind::Newline | TokenKind::Eof) => {}
             Ok(token) => {
                 events.push(SessionEvent::Diagnostic(Diagnostic::new(
@@ -383,7 +397,7 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
     ) -> Outcome {
         let mut command = Vec::new();
         loop {
-            match lexer.next_token() {
+            match next_session_token(lexer, &mut self.context) {
                 Ok(token) if matches!(token.kind, TokenKind::Newline | TokenKind::Eof) => break,
                 Ok(token) => command.push(token),
                 Err(diagnostic) => {
@@ -426,6 +440,7 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
         for event in command_events {
             match event {
                 SessionEvent::Output { text, .. } => self.sink.write(&text),
+                SessionEvent::OutputBytes { text, .. } => self.sink.write_bytes(text.as_bytes()),
                 other => events.push(other),
             }
         }
@@ -469,10 +484,10 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                     span,
                 } => {
                     if !is_void_type {
-                        events.push(SessionEvent::Output {
-                            text: format!("Value: {value}\n"),
-                            span,
-                        });
+                        let mut text = crate::value::AtlasString::from("Value: ");
+                        value.append_atlas_text(&mut text);
+                        text.push_str("\n");
+                        events.push(SessionEvent::output(text, span));
                     }
                 }
                 SessionEvent::ReportLine { text, span } => {
@@ -480,6 +495,11 @@ impl<P: FileProvider, S: FileSink> SessionFrame<P, S> {
                         text: format!("{}{text}", "  ".repeat(self.active.len())),
                         span,
                     });
+                }
+                SessionEvent::ReportBytes { text, span } => {
+                    let mut output = crate::value::AtlasString::from("  ".repeat(self.active.len()));
+                    output.push_bytes(text.as_bytes());
+                    events.push(SessionEvent::output(output, span));
                 }
                 SessionEvent::Diagnostic(diagnostic) => {
                     if diagnostic.kind != ErrorKind::Io {
@@ -587,6 +607,7 @@ mod tests {
     struct MemorySink {
         refuse: bool,
         writes: Vec<(String, bool, String)>,
+        byte_writes: Vec<(String, bool, Vec<u8>)>,
         open: Option<(String, bool)>,
     }
 
@@ -599,9 +620,12 @@ mod tests {
             true
         }
 
-        fn write(&mut self, text: &str) {
+        fn write_bytes(&mut self, bytes: &[u8]) {
             let (path, append) = self.open.clone().expect("write after open");
-            self.writes.push((path, append, text.to_owned()));
+            self.byte_writes.push((path.clone(), append, bytes.to_vec()));
+            if let Ok(text) = std::str::from_utf8(bytes) {
+                self.writes.push((path, append, text.to_owned()));
+            }
         }
 
         fn close(&mut self) {
@@ -631,6 +655,52 @@ mod tests {
                 _ => None,
             })
             .collect()
+    }
+
+    fn stdout_bytes(events: &[SessionEvent]) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        for event in events {
+            match event {
+                SessionEvent::Output { text, .. } => bytes.extend_from_slice(text.as_bytes()),
+                SessionEvent::OutputBytes { text, .. } => bytes.extend_from_slice(text.as_bytes()),
+                _ => {}
+            }
+        }
+        bytes
+    }
+
+    #[test]
+    fn byte_string_raw_output_matches_original_capture() {
+        let mut f = frame(&[], &[]);
+        let events = f.run_top_level("bytes.atlas", include_str!(
+            "../../../tests/math/generics/string_byte_raw_output.atlas"));
+        assert!(f.is_clean(), "{events:?}");
+        assert_eq!(stdout_bytes(&events), b"RAW_LEFT<\xc3>\nRAW_RIGHT<\xa9>\nRAW_INDEX<\xa9>\nRAW_ROW[\"\xc3\",\"\xa9\"]\nValue: \"\xc3\"\nRAW_REVERSE<\xa9\xc3>\nRECOVER313\n");
+    }
+
+    #[test]
+    fn byte_string_redirect_preserves_nested_value_bytes() {
+        let mut f = frame(&[], &[]);
+        let events = f.run_top_level("redirect.atlas", ">bytes.out [\"é\"[0],\"é\"[1]]\n>>bytes.out prints(\"é\"~[:])\n");
+        assert!(f.is_clean(), "{events:?}");
+        assert!(stdout_bytes(&events).is_empty(), "{events:?}");
+        assert_eq!(f.sink.byte_writes, vec![
+            ("bytes.out".to_owned(), false, b"Value: [\"\xc3\",\"\xa9\"]\n".to_vec()),
+            ("bytes.out".to_owned(), true, b"\xa9\xc3\n".to_vec()),
+        ]);
+    }
+
+    #[test]
+    fn byte_string_runtime_error_and_trace_keep_original_bytes() {
+        let mut f = frame(&[], &[]);
+        let events = f.run_top_level("error.atlas", "set byte_bomb(string x)=error(x)\nbyte_bomb(\"é\"[1])\nprints(back_trace)\n");
+        let diagnostic = events.iter().find_map(|e| match e {
+            SessionEvent::Diagnostic(d) => Some(d), _ => None,
+        }).expect("runtime error");
+        assert_eq!(diagnostic.message_bytes(), b"\xa9");
+        assert!(f.describe_bytes(diagnostic).as_bytes().windows(3).any(|w| w == b": \xa9"));
+        assert!(diagnostic.back_trace.iter().any(|line| line.as_bytes().windows(5).any(|w| w == b"x=\"\xa9\"")));
+        assert!(stdout_bytes(&events).windows(5).any(|w| w == b"x=\"\xa9\""));
     }
 
     fn stderr_of(events: &[SessionEvent]) -> Vec<String> {

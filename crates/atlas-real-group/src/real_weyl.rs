@@ -346,30 +346,10 @@ impl RealWeylContext<'_> {
     /// labels are rebuilt on it exactly as [`CartanClassification::build`]
     /// does per class.
     fn dual_side(&self, cartan_class: &CartanClass) -> Result<DualSide, StructureError> {
-        let primal_system = self.inner_class.root_system();
-        let interface = WeylInterface::new(self.inner_class.datum().cartan_matrix())?;
-        let word =
-            WeylElement::from_action(primal_system, cartan_class.representative().weyl_action())?
-                .canonical_word(primal_system, &interface)?;
-
-        let dual_group = WeylGroup::new(self.dual_inner_class.datum().clone());
-        let mut action = dual_group.identity()?;
-        for generator in word {
-            action = action.compose(&dual_group.simple_reflection(generator)?)?;
-        }
-        action = action.compose(&longest_action(
-            self.dual_inner_class,
-            self.budget.weyl_budget(),
-        )?)?;
-
         let dual_system = self.dual_inner_class.root_system();
-        let twisted = TwistedInvolution::new(
-            self.dual_inner_class.datum(),
-            dual_system,
-            self.dual_inner_class
-                .distinguished_involution()
-                .involution(),
-            action,
+        let twisted = crate::dual::dual_twisted_representative(
+            self.inner_class, cartan_class.representative(), self.dual_inner_class,
+            &longest_action(self.dual_inner_class, self.budget.weyl_budget())?,
         )?;
         let data = twisted.root_involution();
         let source = CartanFiber::build(data.involution(), self.budget.integer_lattice())?;
@@ -1055,6 +1035,30 @@ fn subsystem_cartan(
         cartan.push(entries);
     }
     Ok(cartan)
+}
+
+/// CartanClass::orbit_size (cartanclass.cpp:1041): the complex factor is
+/// ONE component from each involution-paired pair, not their product.
+/// Reuse exactly the subsystem bases used by the real-Weyl implementation.
+pub(crate) fn twisted_orbit_size(
+    root_system: &RootSystem,
+    involution: &RootInvolutionData,
+    full_order: &malachite::Integer,
+) -> Result<usize, StructureError> {
+    use malachite::base::num::arithmetic::traits::DivisibleBy;
+    use crate::weyl_size::weyl_order_of_cartan;
+    let complex = simple_complex(root_system, involution)?;
+    let mut stabilizer = malachite::Integer::from(1);
+    for basis in [involution.imaginary_simple_roots(), involution.real_simple_roots(), &complex] {
+        stabilizer *= weyl_order_of_cartan(&subsystem_cartan(root_system, basis, false)?)?;
+    }
+    if !full_order.divisible_by(&stabilizer) {
+        return Err(StructureError::CartanClassificationInvariantViolation {
+            invariant: "integral twisted orbit size",
+        });
+    }
+    let size = full_order / &stabilizer;
+    usize::try_from(&size).map_err(|_| StructureError::ArithmeticOverflow)
 }
 
 /// `dynkin::Lie_type` of a subsystem Cartan matrix: the typed components

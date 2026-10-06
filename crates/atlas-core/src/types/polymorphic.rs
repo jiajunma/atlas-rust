@@ -190,7 +190,7 @@ impl TypeAssignment {
         Ok(())
     }
 
-    fn equivalent(&self, n: usize) -> Option<&Type> {
+    pub(crate) fn equivalent(&self, n: usize) -> Option<&Type> {
         n.checked_sub(self.fixed).and_then(|i| self.equivalents.get(i)).and_then(Option::as_ref)
     }
 
@@ -473,12 +473,27 @@ impl InferredType {
     }
 
     pub fn matches_argument(&mut self, argument: &Self, table: &TypeTable) -> Result<bool, TypeError> {
+        self.matches_function_component(argument, table, true)
+    }
+
+    /// Export an independently inferred lambda body into the result component
+    /// of the SAME context scheme. Argument/result links must survive export.
+    pub fn matches_result(&mut self, result: &Self, table: &TypeTable) -> Result<bool, TypeError> {
+        self.matches_function_component(result, table, false)
+    }
+
+    fn matches_function_component(&mut self, argument: &Self, table: &TypeTable, is_argument: bool)
+        -> Result<bool, TypeError>
+    {
         if !argument.is_clean() { return Err(TypeError::PendingAssignments); }
         if self.fixed() < argument.fixed() { self.raise_floor(argument.fixed() - self.fixed())?; }
         self.wring_out()?;
-        self.body = expanded_top(&self.body, table)?;
-        let formal = match &self.body {
-            Type::Function(parts) => parts.0.clone(),
+        // Expose components without replacing the observable named/applied
+        // function context. Their variables still belong to this assignment;
+        // bake() substitutes the original constructor arguments afterward.
+        let expanded = expanded_top(&self.body, table)?;
+        let formal = match &expanded {
+            Type::Function(parts) => if is_argument { parts.0.clone() } else { parts.1.clone() },
             _ => return Err(TypeError::ExpectedFunction),
         };
         // append accounts for both the function's degree and any difference
@@ -918,6 +933,46 @@ mod tests {
         let mut pattern = Type::function(int(), int());
         assert!(actual.unify_specialise(&mut pattern, &table).unwrap());
         assert_eq!(actual.bake().unwrap(), pattern);
+    }
+
+    #[test]
+    fn lambda_result_export_preserves_context_links_and_rigid_parameters() {
+        let table = TypeTable::new();
+        let mut linked = InferredType::wrap(&Type::function(var(0), var(0)), 0).unwrap();
+        let result = InferredType::wrap(&Type::row(int()), 0).unwrap();
+        assert!(linked.matches_result(&result, &table).unwrap());
+        assert_eq!(linked.bake().unwrap(), Type::function(Type::row(int()), Type::row(int())));
+
+        let mut context = InferredType::bottom(1).unwrap();
+        let mut pattern = Type::function(var(0), Type::Undetermined);
+        assert!(context.try_unify_specialise(&mut pattern, &table).unwrap());
+        let body = InferredType::wrap(&Type::row(var(0)), 1).unwrap();
+        assert!(context.matches_result(&body, &table).unwrap());
+        assert_eq!(context.bake().unwrap(), Type::function(var(0), Type::row(var(0))));
+        let wrong = InferredType::wrap(&Type::row(int()), 1).unwrap();
+        assert!(!context.matches_result(&wrong, &table).unwrap());
+    }
+
+    #[test]
+    fn function_component_matching_retains_named_context_and_links() {
+        let mut table = TypeTable::new();
+        let named = table.add_simple(TypeBinding {
+            name: "IntFunction".into(), definition: Type::function(int(), int()), fields: vec![],
+        });
+        let generic = table.add_constructor(TypeBinding {
+            name: "LinkedFunction".into(), definition: Type::function(var(0), Type::row(var(0))), fields: vec![],
+        }, 1, false);
+        let mut concrete = InferredType::wrap(&Type::Tabled(named), 0).unwrap();
+        assert!(concrete.matches_result(&InferredType::wrap(&int(), 0).unwrap(), &table).unwrap());
+        assert_eq!(concrete.bake().unwrap(), Type::Tabled(named));
+        let mut result = InferredType::wrap(&Type::Applied(generic, vec![var(0)]), 0).unwrap();
+        assert!(result.matches_result(&InferredType::wrap(&Type::row(int()), 0).unwrap(), &table).unwrap());
+        assert_eq!(result.bake().unwrap(), Type::Applied(generic, vec![int()]));
+        assert_eq!(result.function_parts(&table).unwrap(), (int(), Type::row(int())));
+        let mut argument = InferredType::wrap(&Type::Applied(generic, vec![var(0)]), 0).unwrap();
+        assert!(argument.matches_argument(&InferredType::wrap(&rat(), 0).unwrap(), &table).unwrap());
+        assert_eq!(argument.bake().unwrap(), Type::Applied(generic, vec![rat()]));
+        assert_eq!(argument.function_parts(&table).unwrap(), (rat(), Type::row(rat())));
     }
 
     #[test]

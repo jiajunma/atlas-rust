@@ -20,7 +20,9 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::diagnostic::SourceId;
-use crate::value::Value;
+use crate::value::{AtlasString, Value};
+
+mod completions;
 
 /// A shared runtime value (upstream `shared_value`).
 pub type SharedValue = Rc<Value>;
@@ -49,11 +51,10 @@ pub struct EvaluationContext {
     /// Text produced by printer builtins (upstream writes to
     /// `*output_stream` mid-evaluation); the command layer drains it into
     /// report events after each top-level evaluation.
-    printed: Vec<String>,
-    /// Names the `readline_completions` builtin completes from
-    /// (buffer.w:1175-1192). The command layer refreshes this snapshot at
-    /// each command boundary, so a call sees post-previous-command state.
-    completion_candidates: Vec<String>,
+    printed: Vec<AtlasString>,
+    /// First-lexical-use order and current visibility, updated by the
+    /// command layer. The borrowed snapshot is only built on a query.
+    completion_candidates: completions::CompletionCandidates,
     /// Display names of source buffers for back-trace locations
     /// (buffer.w:694): the top-level stream is `<standard input>`, include
     /// files their resolved path. The session frame records each buffer as
@@ -68,31 +69,44 @@ impl EvaluationContext {
 
     /// Append one printer builtin's output (upstream's unconditional
     /// `*output_stream` writes, e.g. atlas-types.w:8944-8957).
-    pub fn print_text(&mut self, text: String) {
-        self.printed.push(text);
+    pub fn print_text(&mut self, text: impl Into<AtlasString>) {
+        self.printed.push(text.into());
     }
 
     /// Drain the buffered printer output in production order.
-    pub fn take_printed(&mut self) -> Vec<String> {
+    pub fn take_printed(&mut self) -> Vec<AtlasString> {
         std::mem::take(&mut self.printed)
     }
 
     /// Direct buffer access for domain builtins that both print and throw
     /// mid-evaluation (ext_kl.cpp:945-948 prints `Delta does not fix
     /// gamma=...` before raising `No valid extended block`).
-    pub fn printed_buffer(&mut self) -> &mut Vec<String> {
+    pub fn printed_buffer(&mut self) -> &mut Vec<AtlasString> {
         &mut self.printed
     }
 
-    /// Replace the completion candidate snapshot (command layer, once per
-    /// command).
+    /// Replace an explicitly supplied snapshot. The typed command pipeline
+    /// instead updates individual names without materializing a snapshot.
     pub fn set_completion_candidates(&mut self, candidates: Vec<String>) {
-        self.completion_candidates = candidates;
+        self.completion_candidates.replace(candidates);
     }
 
     /// The current completion candidate snapshot, in upstream hash order.
     pub fn completion_candidates(&self) -> &[String] {
-        &self.completion_candidates
+        self.completion_candidates.snapshot()
+    }
+
+    pub(crate) fn intern_completion_name(&mut self, name: &str) {
+        self.completion_candidates.intern(name);
+    }
+
+    pub(crate) fn set_completion_active(&mut self, name: &str, active: bool) {
+        self.completion_candidates.set_active(name, active);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn completion_snapshot_is_initialized(&self) -> bool {
+        self.completion_candidates.is_initialized()
     }
 
     /// Record a source buffer's trace display name (session frame, once per

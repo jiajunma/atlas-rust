@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use crate::twisted_involution::compose_matrices;
 use crate::{
     BasedRootDatum, CartanGradingData, CayleyCrossDecomposition, RealFormLabels,
-    RootInvolutionData, StructureError, TwistedInvolution, WeakRealFormPartition,
+    InnerClass, RootInvolutionData, StructureError, TwistedInvolution, WeakRealFormPartition,
 };
 
 /// One deterministic orbit under Weyl twisted conjugacy.
@@ -44,11 +44,10 @@ impl TwistedConjugacyClass {
 /// The full twisted-conjugacy partition of one inner class's twisted
 /// involutions, with a membership lookup.
 ///
-/// Classes are in the deterministic enumeration order (matrix-lexicographic;
-/// NOT graded — the identity class generally sorts last). This raw order is
-/// an implementation detail of the orbit walk: the Cartan-numbering consumer
-/// [`crate::CartanClassification`] reorders the classes into Atlas's BFS
-/// discovery order through this partition's membership map. The lookup key
+/// Explicitly enumerated partitions retain their deterministic raw order
+/// (not Cartan numbering). Direct classifications instead store canonical
+/// representatives in Atlas BFS order, with exact orbit sizes and on-demand
+/// membership canonicalization. The lookup key
 /// is the root-image permutation, which does not encode the datum, so
 /// [`Self::class_of`] gates datum and distinguished-involution provenance
 /// before the map hit; a miss after those gates is an invariant violation,
@@ -59,6 +58,9 @@ pub struct TwistedConjugacyPartition {
     distinguished: RootInvolutionData,
     classes: Vec<TwistedConjugacyClass>,
     class_by_permutation: BTreeMap<Vec<u8>, usize>,
+    // Representative-only partitions canonicalize membership queries on
+    // demand; enumerated partitions retain their complete member map.
+    canonicalizer: Option<InnerClass>,
 }
 
 impl TwistedConjugacyPartition {
@@ -73,19 +75,33 @@ impl TwistedConjugacyPartition {
             distinguished,
             classes,
             class_by_permutation,
+            canonicalizer: None,
         }
+    }
+
+    pub(crate) fn from_canonical_classes(
+        inner: &InnerClass,
+        classes: Vec<TwistedConjugacyClass>,
+    ) -> Result<Self, StructureError> {
+        let mut membership = BTreeMap::new();
+        for (index, class) in classes.iter().enumerate() {
+            let key = class.representative().root_involution().image_permutation()
+                .iter().map(|id| u8::try_from(id.0).map_err(|_| StructureError::RootSystemTooLarge))
+                .collect::<Result<Vec<_>, _>>()?;
+            if membership.insert(key, index).is_some() {
+                return Err(StructureError::CartanClassificationInvariantViolation {
+                    invariant: "distinct canonical Cartan representatives",
+                });
+            }
+        }
+        let mut result = Self::new(inner.datum().clone(),
+            inner.distinguished_involution().clone(), classes, membership);
+        result.canonicalizer = Some(inner.clone());
+        Ok(result)
     }
 
     pub fn classes(&self) -> &[TwistedConjugacyClass] {
         &self.classes
-    }
-
-    /// The raw index of the class containing the twisted involution whose
-    /// root-image permutation is `permutation`: the map lookup behind
-    /// [`Self::class_of`] without the provenance gates, for consumers that
-    /// derive the permutation from a lattice involution directly.
-    pub(crate) fn class_index_of_permutation(&self, permutation: &[u8]) -> Option<usize> {
-        self.class_by_permutation.get(permutation).copied()
     }
 
     /// The index of the class containing this twisted involution.
@@ -110,7 +126,19 @@ impl TwistedConjugacyPartition {
             .iter()
             .map(|id| id.0 as u8)
             .collect();
-        self.class_by_permutation.get(&key).copied().ok_or(
+        if let Some(&index) = self.class_by_permutation.get(&key) {
+            return Ok(index);
+        }
+        if let Some(inner) = &self.canonicalizer {
+            let (canonical, _) = inner.canonicalize(twisted.clone())?;
+            let key = canonical.root_involution().image_permutation().iter()
+                .map(|id| u8::try_from(id.0).map_err(|_| StructureError::RootSystemTooLarge))
+                .collect::<Result<Vec<_>, _>>()?;
+            if let Some(&index) = self.class_by_permutation.get(&key) {
+                return Ok(index);
+            }
+        }
+        Err(
             StructureError::CartanClassificationInvariantViolation {
                 invariant: "enumerated class lookup",
             },

@@ -420,23 +420,37 @@ fn build_ladder_bottoms(
         let mut root_bottoms = RootSet::with_capacity(count)?;
         let mut coroot_bottoms = RootSet::with_capacity(count)?;
         for beta in 0..count {
-            subtract_coordinates(
+            let root_difference_is_stored = match subtract_coordinates(
                 roots[beta].as_slice(),
                 roots[alpha].as_slice(),
                 &mut difference,
-            )?;
-            if roots
-                .binary_search_by(|candidate| candidate.as_slice().cmp(difference.as_slice()))
-                .is_err()
-            {
+            ) {
+                Ok(()) => roots
+                    .binary_search_by(|candidate| {
+                        candidate.as_slice().cmp(difference.as_slice())
+                    })
+                    .is_ok(),
+                // Every stored coordinate is i32. If the exact difference is
+                // outside that range, it cannot equal a stored root; overflow
+                // therefore answers this membership query rather than making
+                // construction fail. Allocation and all other errors remain
+                // observable.
+                Err(StructureError::ArithmeticOverflow) => false,
+                Err(error) => return Err(error),
+            };
+            if !root_difference_is_stored {
                 root_bottoms.insert(RootId(beta));
             }
-            subtract_coordinates(
+            let coroot_difference_is_stored = match subtract_coordinates(
                 coroots[beta].as_slice(),
                 coroots[alpha].as_slice(),
                 &mut difference,
-            )?;
-            if !coroot_ids.contains_key(difference.as_slice()) {
+            ) {
+                Ok(()) => coroot_ids.contains_key(difference.as_slice()),
+                Err(StructureError::ArithmeticOverflow) => false,
+                Err(error) => return Err(error),
+            };
+            if !coroot_difference_is_stored {
                 coroot_bottoms.insert(RootId(beta));
             }
         }
@@ -917,6 +931,38 @@ mod tests {
         let roots = RootSystem::enumerate(&a2(), 6).unwrap();
         assert_eq!(roots.min_roots_for(RootId(6)), None);
         assert_eq!(roots.min_coroots_for(RootId(6)), None);
+    }
+
+    // Original Atlas3868832 accepts all eleven coordinate-boundary cases.
+    // In A1 the only roots are +/-alpha, so every difference is 0 or
+    // +/-2alpha, never a root. This remains true outside the i32 range.
+    fn ladder_coordinate_boundary_case(dual: bool) {
+        for m in [0, 1_073_741_823, 1_073_741_824, i32::MAX] {
+            let (root, coroot) = if dual { (vec![0, 2], vec![m, 1]) }
+                                 else { (vec![m, 1], vec![0, 2]) };
+            let datum = BasedRootDatum::from_simple_data(
+                2, vec![vec![2]], vec![Weight::new(root)], vec![Coweight::new(coroot)],
+            ).unwrap();
+            let result = RootSystem::enumerate(&datum, 2);
+            assert!(result.is_ok(), "ladder membership must not reject m={m}, dual={dual}: {result:?}");
+            let roots = result.unwrap();
+            assert_eq!(roots.roots().len(), 2);
+            for (alpha, _, _) in roots.entries() {
+                for table in [roots.min_roots_for(alpha), roots.min_coroots_for(alpha)] {
+                    assert_eq!(table.unwrap().iter().collect::<Vec<_>>(), vec![RootId(0), RootId(1)]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn ladder_coordinate_boundary_roots() {
+        ladder_coordinate_boundary_case(false);
+    }
+
+    #[test]
+    fn ladder_coordinate_boundary_coroots() {
+        ladder_coordinate_boundary_case(true);
     }
 
     #[test]

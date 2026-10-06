@@ -10,8 +10,20 @@
 //! byte for byte (axis-types.w:1610-1675).
 
 use std::fmt;
+use std::sync::Arc;
 
 pub mod polymorphic;
+mod recursive;
+
+#[cfg(test)]
+#[path = "types/revision_tests.rs"]
+mod revision_tests;
+
+#[cfg(test)]
+thread_local! {
+    // Per-thread deterministic work measurement, not a wall-clock assertion.
+    static VALIDATION_VISITS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
 
 /// All twenty upstream primitive types, in the upstream prim_names order
 /// (axis-types.w:295-315). Every name is load-bearing from B1 on: the lexer
@@ -177,9 +189,30 @@ impl Type {
     /// Semantic equality, distinct from textual/table-slot equality and from
     /// compatibility with holes. Recursive names are a terminating boundary.
     pub fn equivalent(&self, other: &Type, table: &TypeTable) -> bool {
+        // Named heads may expose a different shape. All other unequal heads
+        // are an immediate negative result, including malformed descendants:
+        // validation could only turn that same result into false again.
+        match (self, other) {
+            (Type::Tabled(_) | Type::Applied(..), _)
+            | (_, Type::Tabled(_) | Type::Applied(..)) => {}
+            (Type::Primitive(a), Type::Primitive(b)) => return a == b,
+            (Type::Variable(a), Type::Variable(b)) => return a == b,
+            (Type::Undetermined, Type::Undetermined) => return true,
+            (Type::Row(_), Type::Row(_)) | (Type::Function(_), Type::Function(_)) => {}
+            (Type::Tuple(a), Type::Tuple(b)) | (Type::Union(a), Type::Union(b))
+                if a.len() == b.len() => {}
+            _ => return false,
+        }
         if table.validate_applications(self).is_err() || table.validate_applications(other).is_err() {
             return false;
         }
+        self.equivalent_validated(other, table)
+    }
+
+    /// Both visible structural trees have already been validated. Descending
+    /// through them must not rescan every remaining subtree. Expanding a named
+    /// definition exposes NEW nodes and therefore re-enters `equivalent`.
+    fn equivalent_validated(&self, other: &Type, table: &TypeTable) -> bool {
         match (self, other) {
             (Type::Tabled(a), Type::Tabled(b)) if a == b => true,
             (Type::Tabled(a), Type::Tabled(b))
@@ -192,18 +225,18 @@ impl Type {
             (Type::Tabled(a), b) => table.expansion(*a).equivalent(b, table),
             (a, Type::Tabled(b)) => a.equivalent(table.expansion(*b), table),
             (Type::Applied(a, xs), Type::Applied(b, ys)) if a == b =>
-                xs.len() == ys.len() && xs.iter().zip(ys).all(|(x, y)| x.equivalent(y, table)),
+                xs.len() == ys.len() && xs.iter().zip(ys).all(|(x, y)| x.equivalent_validated(y, table)),
             (Type::Applied(a, _), Type::Applied(b, _))
                 if table.is_recursive(*a) && table.is_recursive(*b) => false,
             (Type::Applied(..), b) => table.expand_application(self)
                 .is_ok_and(|a| a.equivalent(b, table)),
             (a, Type::Applied(..)) => table.expand_application(other)
                 .is_ok_and(|b| a.equivalent(&b, table)),
-            (Type::Row(a), Type::Row(b)) => a.equivalent(b, table),
+            (Type::Row(a), Type::Row(b)) => a.equivalent_validated(b, table),
             (Type::Function(a), Type::Function(b)) =>
-                a.0.equivalent(&b.0, table) && a.1.equivalent(&b.1, table),
+                a.0.equivalent_validated(&b.0, table) && a.1.equivalent_validated(&b.1, table),
             (Type::Tuple(a), Type::Tuple(b)) | (Type::Union(a), Type::Union(b)) =>
-                a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x.equivalent(y, table)),
+                a.len() == b.len() && a.iter().zip(b).all(|(x, y)| x.equivalent_validated(y, table)),
             _ => self == other,
         }
     }
@@ -326,13 +359,33 @@ pub struct TypeBinding {
 
 /// Immutable type identities plus live identifier bindings. Redefinition or
 /// forgetting changes only the latter: existing values keep their old types.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Default)]
 pub struct TypeTable {
     bindings: Vec<TypeBinding>,
     active: std::collections::BTreeMap<String, TypeNumber>,
     /// Only new constructor entries occur here. Legacy tabled entries retain
     /// their nominal recursive-type behavior until the declaration layer moves.
     constructors: std::collections::BTreeMap<usize, (usize, bool)>,
+    // An owned, nonsemantic snapshot identity. Clones share it until a
+    // mutation; cached readers keep it alive, preventing address reuse.
+    // Arc preserves TypeTable's Send+Sync auto traits.
+    revision: Arc<()>,
+}
+
+impl PartialEq for TypeTable {
+    fn eq(&self, other: &Self) -> bool {
+        self.bindings == other.bindings && self.active == other.active
+            && self.constructors == other.constructors
+    }
+}
+
+impl Eq for TypeTable {}
+
+impl fmt::Debug for TypeTable {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TypeTable").field("bindings", &self.bindings)
+            .field("active", &self.active).field("constructors", &self.constructors).finish()
+    }
 }
 
 impl TypeTable {
@@ -340,10 +393,21 @@ impl TypeTable {
         Self::default()
     }
 
+    pub(crate) fn revision(&self) -> &Arc<()> {
+        &self.revision
+    }
+
+    fn changed(&mut self) {
+        self.revision = Arc::new(());
+    }
+
     pub fn add(&mut self, binding: TypeBinding) -> TypeNumber {
         let number = TypeNumber(self.bindings.len());
-        self.active.insert(binding.name.clone(), number);
+        if !binding.name.is_empty() {
+            self.active.insert(binding.name.clone(), number);
+        }
         self.bindings.push(binding);
+        self.changed();
         number
     }
 
@@ -354,6 +418,7 @@ impl TypeTable {
         let binding = &mut self.bindings[number.0];
         binding.definition = definition;
         binding.fields = fields;
+        self.changed();
     }
 
     pub fn binding(&self, number: TypeNumber) -> &TypeBinding {
@@ -404,6 +469,8 @@ impl TypeTable {
     /// remain finite. Validate even equal applications and variable bindings:
     /// neither fast path is permission to accept a malformed constructor.
     pub fn validate_applications(&self, ty: &Type) -> Result<(), polymorphic::TypeError> {
+        #[cfg(test)]
+        VALIDATION_VISITS.with(|visits| visits.set(visits.get() + 1));
         match ty {
             Type::Tabled(number) => self.validate_constructor(*number, 0),
             Type::Applied(number, args) => {
@@ -469,6 +536,7 @@ impl TypeTable {
         {
             self.active.insert(binding.name.clone(), TypeNumber(index));
             self.bindings[index].fields = binding.fields;
+            self.changed();
             return TypeNumber(index);
         }
         self.add_constructor(binding, arity, false)
@@ -486,7 +554,9 @@ impl TypeTable {
 
     /// Remove an identifier without invalidating stored type references.
     pub fn forget(&mut self, name: &str) -> bool {
-        self.active.remove(name).is_some()
+        let removed = self.active.remove(name).is_some();
+        if removed { self.changed(); }
+        removed
     }
 
     /// Classify a token without cloning its structural expansion.
@@ -531,6 +601,11 @@ fn write_type(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) -> 
             write_naked(type_, table, out)?;
             write!(out, ")")
         }
+        Type::Tabled(number) | Type::Applied(number, _)
+            if table.binding(*number).name.is_empty() => {
+                let expanded = table.expand_application(type_).map_err(|_| fmt::Error)?;
+                write_type(&expanded, table, out)
+            }
         Type::Tabled(number) => write!(out, "{}", table.binding(*number).name),
         Type::Applied(number, args) => {
             write!(out, "{}<", table.binding(*number).name)?;
@@ -585,6 +660,11 @@ fn write_naked(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) ->
 /// nested function type keeps its own parentheses.
 fn write_arrow_side(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_>) -> fmt::Result {
     match type_ {
+        Type::Tabled(number) | Type::Applied(number, _)
+            if table.binding(*number).name.is_empty() => {
+                let expanded = table.expand_application(type_).map_err(|_| fmt::Error)?;
+                write_arrow_side(&expanded, table, out)
+            }
         Type::Tuple(_) | Type::Union(_) => write_naked(type_, table, out),
         other => write_type(other, table, out),
     }
@@ -593,6 +673,93 @@ fn write_arrow_side(type_: &Type, table: &TypeTable, out: &mut fmt::Formatter<'_
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn type_equivalence_checks_named_arguments_even_when_unused() {
+        let mut table = TypeTable::new();
+        let constant = table.add_constructor(TypeBinding {
+            name: "Constant".into(), definition: Type::Primitive(Prim::Int), fields: vec![],
+        }, 1, false);
+        let bad_args = [Type::Tabled(TypeNumber(999)), Type::Applied(constant, vec![])];
+        for bad in bad_args {
+            let applied = Type::Applied(constant, vec![bad]);
+            // Substitution would erase the bad unused argument; validation
+            // must reject it before either identity or expansion can succeed.
+            assert!(!applied.equivalent(&applied, &table));
+            assert!(!applied.equivalent(&Type::Primitive(Prim::Int), &table));
+            assert!(!Type::Primitive(Prim::Int).equivalent(&applied, &table));
+            for outer in [Type::row(applied.clone()),
+                          Type::function(Type::Primitive(Prim::Int), applied.clone()),
+                          Type::tuple(vec![Type::Primitive(Prim::Int), applied.clone()]),
+                          Type::union_of(vec![Type::Primitive(Prim::Int), applied])] {
+                assert!(!outer.equivalent(&outer, &table));
+            }
+        }
+    }
+
+    #[test]
+    fn type_equivalence_revalidates_newly_exposed_alias_bodies() {
+        let mut table = TypeTable::new();
+        let invalid = table.add_constructor(TypeBinding {
+            name: "InvalidBody".into(),
+            definition: Type::row(Type::Tabled(TypeNumber(999))), fields: vec![],
+        }, 0, false);
+        let named = Type::Tabled(invalid);
+        // Preserve nominal identity; the invalid body is checked when an
+        // expansion is actually requested, not by changing table semantics.
+        assert!(named.equivalent(&named, &table));
+        let malformed = table.expansion(invalid).clone();
+        assert!(!named.equivalent(&malformed, &table));
+        assert!(!malformed.equivalent(&named, &table));
+        for structural in [Type::row(Type::Primitive(Prim::Int)), Type::Primitive(Prim::Int)] {
+            assert!(!named.equivalent(&structural, &table));
+            assert!(!structural.equivalent(&named, &table));
+        }
+    }
+
+    #[test]
+    fn type_equivalence_keeps_complete_structural_and_named_matrix() {
+        let mut table = TypeTable::new();
+        table.add_alias("Integer", Type::Primitive(Prim::Int));
+        let integer = table.resolve_name("Integer").unwrap();
+        let identity = table.add_constructor(TypeBinding {
+            name: "Identity".into(), definition: Type::Variable(0), fields: vec![],
+        }, 1, false);
+        let values = [(Type::Primitive(Prim::Int), 0), (integer.clone(), 0),
+            (Type::Applied(identity, vec![integer]), 0), (Type::Primitive(Prim::Rat), 1),
+            (Type::Undetermined, 2), (Type::Variable(0), 3), (Type::Variable(1), 4),
+            (Type::void(), 5)];
+        let mut corpus = Vec::new();
+        for (base, group) in values {
+            corpus.push((base.clone(), (0, group)));
+            corpus.push((Type::row(base.clone()), (1, group)));
+            corpus.push((Type::function(base.clone(), Type::Primitive(Prim::Bool)), (2, group)));
+            corpus.push((Type::tuple(vec![base.clone(), Type::Primitive(Prim::Bool)]), (3, group)));
+            corpus.push((Type::union_of(vec![base, Type::Primitive(Prim::Bool)]), (4, group)));
+        }
+        for (left, expected_left) in &corpus {
+            for (right, expected_right) in &corpus {
+                assert_eq!(left.equivalent(right, &table), expected_left == expected_right,
+                           "{left:?} versus {right:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn type_equivalence_validation_is_linear_in_structural_nodes() {
+        let table = TypeTable::new();
+        let depth = 128;
+        let left = (0..depth).fold(Type::Primitive(Prim::Int), |t, _| Type::row(t));
+        let right = left.clone();
+        VALIDATION_VISITS.with(|visits| visits.set(0));
+        assert!(left.equivalent(&right, &table));
+        assert_eq!(VALIDATION_VISITS.with(|visits| visits.get()), 2 * (depth + 1),
+                   "each input structural node must be validated exactly once");
+        VALIDATION_VISITS.with(|visits| visits.set(0));
+        assert!(!left.equivalent(&Type::Primitive(Prim::Int), &table));
+        assert_eq!(VALIDATION_VISITS.with(|visits| visits.get()), 0,
+                   "different structural heads cannot match; do not walk their children");
+    }
 
     fn show(type_: &Type) -> String {
         type_.display(&TypeTable::new()).to_string()

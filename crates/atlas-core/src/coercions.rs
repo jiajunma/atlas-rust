@@ -222,35 +222,57 @@ pub fn row_coercion<'a>(final_type: &Type, table: &TypeTable) -> Option<(&'a Coe
 }
 
 /// Three-bit proximity: 0x1 `x` coerces to `y`, 0x2 `y` to `x`, 0x4 close.
-/// Equal types give 0x7; void and `*` are close to nothing.
+/// Equal types give 0x7; void and `*` are close only to themselves.
 pub fn is_close(x: &Type, y: &Type, table: &TypeTable) -> u8 {
-    let (x, y) = (expanded(x, table), expanded(y, table));
-    let (x, y) = (&*x, &*y);
+    // Match axis-types.w::is_close: equality includes void and recursive
+    // identity, so it must precede both the boundary checks and expansion.
+    if same(x, y, table) {
+        return 0x7;
+    }
     if x.is_void() || y.is_void() {
         return 0;
     }
     if matches!(x, Type::Undetermined) || matches!(y, Type::Undetermined) {
         return 0;
     }
-    if same(x, y, table) {
-        return 0x7;
+    if let Type::Tabled(name) | Type::Applied(name, _) = x {
+        return if table.is_recursive(*name) {
+            0
+        } else {
+            table.expand_application(x).map_or(0, |body| is_close(&body, y, table))
+        };
     }
-    let mut bits = 0;
-    if coercion_between(x, y, table).is_some() {
-        bits |= 0x1;
+    if let Type::Tabled(name) | Type::Applied(name, _) = y {
+        return if table.is_recursive(*name) {
+            0
+        } else {
+            table.expand_application(y).map_or(0, |body| is_close(x, &body, table))
+        };
     }
-    if coercion_between(y, x, table).is_some() {
-        bits |= 0x2;
-    }
-    if bits != 0 {
-        return bits | 0x4;
+    // Look up coercions with a primitive endpoint. Row-to-row coercions
+    // are lifted componentwise below, without scanning the table here.
+    if matches!(x, Type::Primitive(_)) || matches!(y, Type::Primitive(_)) {
+        let mut bits = 0;
+        if coercion_between(x, y, table).is_some() {
+            bits |= 0x1;
+        }
+        if coercion_between(y, x, table).is_some() {
+            bits |= 0x2;
+        }
+        return if bits == 0 { 0 } else { bits | 0x4 };
     }
     match (x, y) {
         (Type::Row(a), Type::Row(b)) => is_close(a, b, table),
-        (Type::Tuple(xs), Type::Tuple(ys)) if xs.len() == ys.len() => xs
-            .iter()
-            .zip(ys)
-            .fold(0x7, |bits, (a, b)| bits & is_close(a, b, table)),
+        (Type::Tuple(xs), Type::Tuple(ys)) if xs.len() == ys.len() => {
+            let mut bits = 0x7;
+            for (a, b) in xs.iter().zip(ys) {
+                bits &= is_close(a, b, table);
+                if bits == 0 {
+                    break;
+                }
+            }
+            bits
+        }
         _ => 0,
     }
 }
@@ -321,6 +343,45 @@ mod tests {
         assert_eq!(coercion.tag, "Qv[Q]");
         assert_eq!(component, &rat());
         assert_eq!(coercion_table().len(), 29);
+    }
+
+    #[test]
+    fn overload_void_argument_identity_is_exact() {
+        // Original3856293 replaces a zero-argument overload in place.
+        // axis-types.w::is_close tests equality BEFORE the void boundary.
+        let table = TypeTable::new();
+        assert_eq!(is_close(&Type::void(), &Type::void(), &table), 0x7);
+        assert_eq!(is_close(&Type::void(), &int(), &table), 0);
+        assert_eq!(is_close(&int(), &Type::void(), &table), 0);
+    }
+
+    #[test]
+    fn overload_recursive_names_keep_nominal_identity() {
+        // Original3856744 accepts both self-row overloads, then replaces
+        // just the left one. Unequal recursive names are not coercible.
+        use crate::types::TypeBinding;
+        let mut table = TypeTable::new();
+        let left = table.add_constructor(TypeBinding {
+            name: "Left".into(), definition: Type::void(), fields: vec![],
+        }, 0, true);
+        let right = table.add_constructor(TypeBinding {
+            name: "Right".into(), definition: Type::void(), fields: vec![],
+        }, 0, true);
+        table.update(left, Type::row(Type::Tabled(left)), vec![]);
+        table.update(right, Type::row(Type::Tabled(right)), vec![]);
+        let (left, right) = (Type::Tabled(left), Type::Tabled(right));
+        assert_eq!(is_close(&left, &left, &table), 0x7);
+        assert_eq!(is_close(&right, &right, &table), 0x7);
+        assert_eq!(is_close(&left, &right, &table), 0);
+        assert_eq!(is_close(&right, &left, &table), 0);
+        // Original equality can compare a named type with its one-step
+        // structural body; do not reject a recursive head before equality.
+        assert_eq!(is_close(&left, &Type::row(left.clone()), &table), 0x7);
+        table.add_alias("LeftView", Type::row(left.clone()));
+        let alias = table.resolve_name("LeftView").unwrap();
+        assert_eq!(is_close(&alias, &left, &table), 0x7);
+        assert_eq!(is_close(&alias, &right, &table), 0);
+        assert_eq!(is_close(&Type::Undetermined, &Type::Undetermined, &table), 0x7);
     }
 
     #[test]

@@ -597,9 +597,11 @@ impl<'a> RepContext<'a> {
         }
         let projection = self.projection(involution)?;
         let coordinates = projection.coordinates(lam_rho)?;
-        // C++ `arithmetic::divide` truncates toward zero (involutions.cpp:325),
-        // unlike Rust's div_euclid; the A2 su(2,1) anchors pin this sign.
-        let halves: Vec<i64> = coordinates.iter().map(|&v| v / 2).collect();
+        // arithmetic::divide is EUCLIDEAN division (arithmetic.h:249-253),
+        // not C++'s built-in signed division. Truncating negative odd values
+        // elects different representatives of the same coset, so formula
+        // terms fail to combine (original3840093, A2 x=1/3 regressions).
+        let halves: Vec<i64> = coordinates.iter().map(|&v| v.div_euclid(2)).collect();
         let correction = projection.lift(&halves)?;
         let mut normalized = Vec::new();
         normalized.try_reserve_exact(lam_rho.rank()).map_err(|_| {
@@ -1074,14 +1076,13 @@ impl<'a> RepContext<'a> {
             .root_involution())
     }
 
-    /// `Rep_context::orientation_number` (repr.cpp:455-493 — the `#if 0`
-    /// variant, whose semantics the language layer has verified against the
-    /// oracle; do not "fix" this to the active repr.cpp:495-523 variant):
-    /// the count of non-integral positive roots that are real and
-    /// mis-oriented for gamma, plus one per contributing conjugate complex
-    /// pair.
+    /// The active `Rep_context::orientation_number` (repr.cpp:504-532).
+    /// First make gamma dominant, then count nonintegral complex descents
+    /// in pairs and nonintegral real roots with even floor pairing against
+    /// gamma-lambda+rho_R. Positive complex roots can have NEGATIVE images;
+    /// looking only for their image in a positive-root list loses them.
     pub fn orientation_number(&self, z: &StandardRepr) -> Result<u32, StructureError> {
-        z.ensure_defined()?;
+        let z = z.made_dominant(self)?;
         let system = self.inner_class().root_system();
         let root_count = system.roots().len();
         let involution = self.involution_of(z.x())?;
@@ -1091,92 +1092,53 @@ impl<'a> RepContext<'a> {
             .filter(|&root| system.is_positive(root).unwrap_or(false))
             .collect();
         let two_rho_real = self.two_rho_of(&positive_real_roots)?;
-        let lifted = self.y_lift(involution, z.y_bits())?;
-        // representative of a class modulo $2(1-\theta)(X^*)$
-        let test_wt: Vec<i32> = lifted
-            .as_slice()
-            .iter()
-            .zip(self.two_rho().as_slice())
-            .zip(two_rho_real.as_slice())
-            .map(|((&a, &b), &c)| a + b - c)
-            .collect();
-        let numerator = z.gamma().numerator();
-        let denominator = z.gamma().denominator();
-        // Positive roots in the upstream `rt_abs` order: coroot coordinates,
-        // ascending.
-        let mut positive_indices: Vec<usize> = (0..root_count)
-            .filter(|&index| {
-                system
-                    .is_positive(RootId::from_usize(index))
-                    .unwrap_or(false)
-            })
-            .collect();
-        positive_indices.sort_by_key(|&index| {
-            system
-                .coroot(RootId::from_usize(index))
-                .map(|coroot| coroot.as_slice().to_vec())
-                .unwrap_or_default()
-        });
-        let mut count = 0_u32;
-        for (alpha_order, &alpha_index) in positive_indices.iter().enumerate() {
+        let rho_real = RationalWeight::new(
+            two_rho_real.as_slice().iter().map(|&entry| i64::from(entry)).collect(),
+            2,
+        )?;
+        let gamma_lambda_rho_real = z.gamma().sub(self.rho())?
+            .add(&rho_real)?
+            .sub(&RationalWeight::from_weight(&self.lambda_rho(&z)?)?)?;
+        let mut real_count = 0_u32;
+        let mut complex_count = 0_u32;
+        for alpha_index in 0..root_count {
             let alpha = RootId::from_usize(alpha_index);
-            let Some(coroot_alpha) = system.coroot(alpha) else {
+            if system.is_positive(alpha) != Some(true) {
                 continue;
-            };
-            let num: i64 = coroot_alpha
-                .as_slice()
-                .iter()
-                .zip(numerator)
-                .map(|(&c, &n)| i64::from(c) * n)
-                .sum();
-            if num.rem_euclid(denominator) == 0 {
+            }
+            let coroot = system.coroot(alpha).ok_or(StructureError::IndexOutOfRange {
+                index: alpha_index,
+                upper_bound: root_count,
+            })?;
+            if pair_i64(z.gamma().numerator(), coroot)? % z.gamma().denominator() == 0 {
                 continue; // skip integral roots
             }
-            if root_involution.kind(alpha) == Some(RootKind::Real) {
-                let test_pair: i64 = coroot_alpha
-                    .as_slice()
-                    .iter()
-                    .zip(&test_wt)
-                    .map(|(&c, &t)| i64::from(c) * i64::from(t))
-                    .sum();
-                let eps = if test_pair.rem_euclid(4) == 0 {
-                    0
-                } else {
-                    denominator
-                };
-                // either positive for gamma and oriented, or neither
-                let oriented = (num > 0) == ((num + eps).rem_euclid(2 * denominator) < denominator);
-                if oriented {
-                    count += 1;
-                }
-            } else {
-                // complex root
-                let beta = root_involution
-                    .image(alpha)
-                    .ok_or(StructureError::IndexOutOfRange {
+            match root_involution.kind(alpha) {
+                Some(RootKind::Complex) => {
+                    let image = root_involution.image(alpha).ok_or(StructureError::IndexOutOfRange {
                         index: alpha_index,
                         upper_bound: root_count,
                     })?;
-                let beta_coroot = system.coroot(beta).ok_or(StructureError::IndexOutOfRange {
-                    index: beta.0,
-                    upper_bound: root_count,
-                })?;
-                let beta_pair: i64 = beta_coroot
-                    .as_slice()
-                    .iter()
-                    .zip(numerator)
-                    .map(|(&c, &n)| i64::from(c) * n)
-                    .sum();
-                // consider only the first of the two conjugate coroot pairs
-                let beta_order = positive_indices.iter().position(|&r| r == beta.0);
-                if let Some(beta_order) = beta_order {
-                    if alpha_order < beta_order && (num > 0) != (beta_pair > 0) {
-                        count += 1;
+                    if system.is_positive(image) == Some(false) {
+                        complex_count += 1;
                     }
                 }
+                Some(RootKind::Real) => {
+                    let numerator = pair_i64(gamma_lambda_rho_real.numerator(), coroot)?;
+                    // Upstream uses floor, not truncation towards zero.
+                    if numerator.div_euclid(gamma_lambda_rho_real.denominator()) % 2 == 0 {
+                        real_count += 1;
+                    }
+                }
+                _ => {}
             }
         }
-        Ok(count)
+        if complex_count % 2 != 0 {
+            return Err(StructureError::RepInvariantViolation {
+                invariant: "orientation complex-root pairs",
+            });
+        }
+        Ok(real_count + complex_count / 2)
     }
 
     /// Whether `delta` fixes the infinitesimal character of `z`:

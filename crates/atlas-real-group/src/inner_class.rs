@@ -1,5 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
+#[cfg(test)]
+std::thread_local! {
+    pub(crate) static GENERATED_PARTITION_BUILD_COUNT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 use crate::grading::try_capacity;
 use crate::twisted_involution::compose_matrices;
 use crate::{
@@ -634,6 +639,82 @@ impl InnerClass {
             classes,
             class_by_permutation,
         ))
+    }
+
+    /// Build the full twisted-conjugacy partition by generator closure.
+    ///
+    /// Unlike the legacy `twisted_conjugacy_partition`, the explicit budget
+    /// here counts twisted involutions, not ALL Weyl elements. Only one
+    /// lattice involution per class is materialized; membership uses compact
+    /// root permutations. This keeps large-group construction from cloning
+    /// the full lattice datum for every candidate. External Cartan numbering
+    /// is still elected by `CartanClassification`, not by this raw partition.
+    pub fn generated_twisted_conjugacy_partition(
+        &self,
+        involution_budget: usize,
+    ) -> Result<TwistedConjugacyPartition, StructureError> {
+        #[cfg(test)]
+        GENERATED_PARTITION_BUILD_COUNT.with(|count| count.set(count.get() + 1));
+        let compact = crate::weyl_transducer::CompactWeyl::new(self.datum.cartan_matrix())?;
+        let twist = self.generator_twist()?;
+        let elements = compact.generate_twisted_involutions(&twist, involution_budget)?;
+        let reflections = (0..self.datum.semisimple_rank())
+            .map(|s| WeylAction::simple_reflection(&self.datum, s))
+            .collect::<Result<Vec<_>, _>>()?;
+        let simple = reflections.iter().map(|action| {
+            self.roots.action_permutation(action)?.into_iter()
+                .map(|id| u8::try_from(id.0).map_err(|_| StructureError::RootSystemTooLarge))
+                .collect::<Result<Vec<_>, _>>()
+        }).collect::<Result<Vec<_>, StructureError>>()?;
+        let pieces = compact.piece_root_permutations(&simple);
+        let delta = self.distinguished_involution.image_permutation();
+        let permutations = compact.element_root_permutations(&elements, &pieces)
+            .into_iter().map(|w| delta.iter().map(|id| w[id.0]).collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+        let lookup = permutations.iter().enumerate()
+            .map(|(i, p)| (p.clone(), i)).collect::<std::collections::HashMap<_, _>>();
+        if lookup.len() != elements.len() {
+            return Err(StructureError::InvalidRootAutomorphism);
+        }
+        let mut visited = vec![false; elements.len()];
+        let mut classes = Vec::new();
+        let mut membership = BTreeMap::new();
+        for index in 0..elements.len() {
+            if visited[index] { continue; }
+            visited[index] = true;
+            let mut pending = vec![index];
+            let mut cursor = 0;
+            while cursor < pending.len() {
+                let member = pending[cursor];
+                cursor += 1;
+                membership.insert(permutations[member].clone(), classes.len());
+                for reflection in &simple {
+                    // p = w*delta is the FULL involution. Ordinary s*p*s
+                    // already incorporates the diagram twist on the right.
+                    let image = (0..reflection.len()).map(|root|
+                        reflection[permutations[member][reflection[root] as usize] as usize])
+                        .collect::<Vec<_>>();
+                    let target = *lookup.get(&image)
+                        .ok_or(StructureError::InvalidRootAutomorphism)?;
+                    if !visited[target] {
+                        visited[target] = true;
+                        pending.push(target);
+                    }
+                }
+            }
+            let mut action = WeylAction::identity(&self.datum)?;
+            for i in 0..self.datum.semisimple_rank() {
+                for &local in compact.word_of_piece(i, elements[index][i]) {
+                    let external = compact.d_out()[compact.piece_offset(i) + local];
+                    action = action.compose(&reflections[external])?;
+                }
+            }
+            let representative = TwistedInvolution::new(&self.datum, &self.roots,
+                self.distinguished_involution.involution(), action)?;
+            classes.push(TwistedConjugacyClass::new(representative, pending.len()));
+        }
+        Ok(TwistedConjugacyPartition::new(self.datum.clone(),
+            self.distinguished_involution.clone(), classes, membership))
     }
 
     fn enumerated_twisted_involutions(
@@ -1726,5 +1807,424 @@ mod tests {
                 .weight_matrix(),
             central_reflection.weight_matrix()
         );
+    }
+}
+
+#[cfg(test)]
+mod generator_orbit_experiment_tests {
+    use super::*;
+
+    // Test-only candidate: production remains the original all-Weyl sweep.
+    // Upstream weyl.cpp:1256 grows a twisted-conjugacy class using simple
+    // generators. Here p is the FULL involution w*delta, so s*p*s is ordinary
+    // conjugation on root permutations; the diagram twist is already in p.
+    fn generator_partition(
+        inner: &InnerClass,
+        candidates: &[TwistedInvolution],
+        simple: &[Vec<u8>],
+    ) -> Result<TwistedConjugacyPartition, StructureError> {
+        let permutations = candidate_permutations(candidates);
+        let lookup = permutations.iter().enumerate()
+            .map(|(i, p)| (p.clone(), i)).collect::<BTreeMap<_, _>>();
+        assert_eq!(lookup.len(), candidates.len(), "candidate permutations must be unique");
+        let mut visited = vec![false; candidates.len()];
+        let mut classes = Vec::new();
+        let mut membership = BTreeMap::new();
+        for index in 0..candidates.len() {
+            if visited[index] { continue; }
+            visited[index] = true;
+            let mut pending = vec![index];
+            let mut next = 0;
+            while next < pending.len() {
+                let member = pending[next];
+                next += 1;
+                membership.insert(permutations[member].clone(), classes.len());
+                for reflection in simple {
+                    let image = (0..reflection.len())
+                        .map(|root| reflection[permutations[member][reflection[root] as usize] as usize])
+                        .collect::<Vec<_>>();
+                    let target = *lookup.get(&image)
+                        .ok_or(StructureError::InvalidRootAutomorphism)?;
+                    if !visited[target] {
+                        visited[target] = true;
+                        pending.push(target);
+                    }
+                }
+            }
+            classes.push(TwistedConjugacyClass::new(candidates[index].clone(), pending.len()));
+        }
+        Ok(TwistedConjugacyPartition::new(inner.datum.clone(),
+            inner.distinguished_involution.clone(), classes, membership))
+    }
+
+    fn candidate_permutations(candidates: &[TwistedInvolution]) -> Vec<Vec<u8>> {
+        candidates.iter().map(|candidate| candidate.root_involution()
+            .image_permutation().iter().map(|id| u8::try_from(id.0).unwrap())
+            .collect()).collect()
+    }
+
+    fn simple_permutations(inner: &InnerClass) -> Vec<Vec<u8>> {
+        (0..inner.datum.semisimple_rank()).map(|s| {
+            let action = WeylAction::simple_reflection(&inner.datum, s).unwrap();
+            inner.roots.action_permutation(&action).unwrap().into_iter()
+                .map(|id| u8::try_from(id.0).unwrap()).collect()
+        }).collect()
+    }
+
+    // Unchanged production formula, but fed the SAME candidate vector as
+    // the experiment. Separate calls to enumerate return different HashSet
+    // orders, which cannot be used to compare raw partition numbering.
+    pub(super) fn all_weyl_partition(
+        inner: &InnerClass,
+        candidates: &[TwistedInvolution],
+        actions: &[Vec<u8>],
+    ) -> TwistedConjugacyPartition {
+        let permutations = candidate_permutations(candidates);
+        let lookup = permutations.iter().enumerate()
+            .map(|(i, p)| (p.clone(), i)).collect::<BTreeMap<_, _>>();
+        let mut visited = vec![false; candidates.len()];
+        let mut classes = Vec::new();
+        let mut membership = BTreeMap::new();
+        for (index, candidate) in candidates.iter().enumerate() {
+            if visited[index] { continue; }
+            let orbit = actions.iter().map(|action| {
+                let inverse = inverse_permutation(action).unwrap();
+                let conjugate = (0..action.len())
+                    .map(|root| action[permutations[index][inverse[root]] as usize])
+                    .collect::<Vec<_>>();
+                *lookup.get(&conjugate).unwrap()
+            }).collect::<BTreeSet<_>>();
+            for member in &orbit {
+                visited[*member] = true;
+                membership.insert(permutations[*member].clone(), classes.len());
+            }
+            classes.push(TwistedConjugacyClass::new(candidate.clone(), orbit.len()));
+        }
+        TwistedConjugacyPartition::new(inner.datum.clone(),
+            inner.distinguished_involution.clone(), classes, membership)
+    }
+
+    fn compare_partition_algorithms(label: &str, inner: &InnerClass) {
+        let (compact, elements, mut candidates) =
+            inner.enumerated_twisted_involutions(10_000).unwrap();
+        let simple = simple_permutations(inner);
+        let pieces = compact.piece_root_permutations(&simple);
+        let actions = compact.element_root_permutations(&elements, &pieces);
+        for reversed in [false, true] {
+            if reversed { candidates.reverse(); }
+            let expected = all_weyl_partition(inner, &candidates, &actions);
+            let actual = generator_partition(inner, &candidates, &simple).unwrap();
+            // Eq covers the exact representative, size and complete member
+            // map of EVERY class, not just sorted class counts.
+            assert_eq!(actual, expected, "{label}, reversed={reversed}");
+            assert_eq!(actual.classes().iter().map(|c| c.twisted_involution_count())
+                .sum::<usize>(), candidates.len());
+            for candidate in &candidates {
+                assert_eq!(actual.class_of(candidate).unwrap(), expected.class_of(candidate).unwrap());
+            }
+            println!("\nORBIT_EQUAL {label} reversed={reversed} weyl={} candidates={} classes={}",
+                elements.len(), candidates.len(), actual.classes().len());
+        }
+    }
+
+    #[test]
+    fn generator_orbits_match_every_classical_exceptional_member_and_representative() {
+        let cases = [
+            ("A1", vec![vec![2]]),
+            ("A2", vec![vec![2,-1],vec![-1,2]]),
+            ("B2", vec![vec![2,-2],vec![-1,2]]),
+            ("C2", vec![vec![2,-1],vec![-2,2]]),
+            ("D4", vec![vec![2,-1,0,0],vec![-1,2,-1,-1],vec![0,-1,2,0],vec![0,-1,0,2]]),
+            ("G2", vec![vec![2,-3],vec![-1,2]]),
+            ("F4", vec![vec![2,-1,0,0],vec![-1,2,-2,0],vec![0,-1,2,-1],vec![0,0,-1,2]]),
+        ];
+        for (name, cartan) in cases {
+            let datum = BasedRootDatum::standard(cartan).unwrap();
+            let dual = crate::dual_datum(&datum).unwrap();
+            for (lattice, datum) in [("root",datum),("dual",dual)] {
+                let theta = LatticeInvolution::identity(&datum).unwrap();
+                let inner = InnerClass::new(datum, theta, 10_000).unwrap();
+                compare_partition_algorithms(&format!("{name}/{lattice}"), &inner);
+            }
+        }
+    }
+
+    #[test]
+    fn generator_orbits_include_diagram_and_component_twists() {
+        for (name, cartan) in [("A2",vec![vec![2,-1],vec![-1,2]]),
+                              ("A1.A1",vec![vec![2,0],vec![0,2]])] {
+            let datum = BasedRootDatum::standard(cartan).unwrap();
+            let swap = vec![vec![0,1],vec![1,0]];
+            let theta = LatticeInvolution::new(&datum, swap.clone(), swap).unwrap();
+            let inner = InnerClass::new(datum, theta, 10_000).unwrap();
+            compare_partition_algorithms(&format!("{name}/swap"), &inner);
+        }
+    }
+
+    #[test]
+    fn generator_orbits_preserve_root_free_and_central_torus_actions() {
+        for with_root in [false, true] {
+            let datum = if with_root {
+                BasedRootDatum::from_simple_data(2, vec![vec![2]],
+                    vec![crate::Weight::new(vec![2,0])],
+                    vec![crate::Coweight::new(vec![1,0])]).unwrap()
+            } else {
+                BasedRootDatum::from_simple_data(2, vec![], vec![], vec![]).unwrap()
+            };
+            for sign in [-1,1] {
+                let matrix = vec![vec![1,0],vec![0,sign]];
+                let theta = LatticeInvolution::new(&datum, matrix.clone(), matrix).unwrap();
+                let inner = InnerClass::new(datum.clone(), theta, 10_000).unwrap();
+                compare_partition_algorithms(&format!("torus/root={with_root}/sign={sign}"), &inner);
+            }
+        }
+    }
+
+    #[test]
+    fn generator_orbits_reject_missing_conjugates_instead_of_dropping_them() {
+        let datum = BasedRootDatum::standard(vec![vec![2,-1],vec![-1,2]]).unwrap();
+        let theta = LatticeInvolution::identity(&datum).unwrap();
+        let inner = InnerClass::new(datum.clone(), theta, 6).unwrap();
+        let identity = WeylAction::identity(&datum).unwrap();
+        let candidate = inner.twisted_involutions(6).unwrap().into_iter()
+            .find(|c| c.weyl_action() != &identity).unwrap();
+        assert_eq!(generator_partition(&inner, &[candidate], &simple_permutations(&inner)),
+            Err(StructureError::InvalidRootAutomorphism));
+    }
+}
+
+#[cfg(test)]
+mod direct_involution_experiment_tests {
+    use super::*;
+    use crate::weyl_transducer::{CompactWeyl, WeylElt};
+    use std::collections::HashSet;
+
+    // Test-only implementation of the reversed descent argument in original
+    // weyl.cpp:1312-1354. Production still uses complete Weyl enumeration.
+    // The budget counts DISCOVERED TWISTED INVOLUTIONS, including identity;
+    // it does not redefine the public legacy Weyl-enumeration budget.
+    fn generate(
+        compact: &CompactWeyl,
+        twist: &[usize],
+        involution_budget: usize,
+    ) -> Result<Vec<WeylElt>, StructureError> {
+        if involution_budget == 0 {
+            return Err(StructureError::ResourceLimitExceeded { limit: 0 });
+        }
+        let mut simple = Vec::new();
+        for s in 0..twist.len() {
+            let mut reflection = compact.identity();
+            compact.inner_mult(&mut reflection, s);
+            simple.push(reflection);
+        }
+        let mut seen = HashSet::new();
+        let mut pending = vec![compact.identity()];
+        seen.insert(compact.identity());
+        let mut cursor = 0;
+        while cursor < pending.len() {
+            let w = pending[cursor];
+            cursor += 1;
+            for s in 0..twist.len() {
+                let mut left = simple[s];
+                compact.multiply(&mut left, &w);
+                let mut conjugate = left;
+                compact.inner_mult(&mut conjugate, twist[s]);
+                let next = if conjugate == w { left } else { conjugate };
+                if !seen.contains(&next) {
+                    if pending.len() == involution_budget {
+                        return Err(StructureError::ResourceLimitExceeded {
+                            limit: involution_budget,
+                        });
+                    }
+                    seen.insert(next);
+                    pending.push(next);
+                }
+            }
+        }
+        Ok(pending)
+    }
+
+    fn materialize(inner: &InnerClass, compact: &CompactWeyl, w: &WeylElt) -> TwistedInvolution {
+        let mut action = WeylAction::identity(&inner.datum).unwrap();
+        for i in 0..inner.datum.semisimple_rank() {
+            for &local in compact.word_of_piece(i, w[i]) {
+                let external = compact.d_out()[compact.piece_offset(i) + local];
+                action = action.compose(&WeylAction::simple_reflection(&inner.datum, external).unwrap()).unwrap();
+            }
+        }
+        TwistedInvolution::new(&inner.datum, &inner.roots,
+            inner.distinguished_involution.involution(), action).unwrap()
+    }
+
+    fn compare_complete_sets(label: &str, inner: &InnerClass, weyl_budget: usize) {
+        let (compact, elements, old) = inner.enumerated_twisted_involutions(weyl_budget).unwrap();
+        let twist = inner.generator_twist().unwrap();
+        let expected = elements.iter().copied()
+            .filter(|w| compact.is_twisted_involution(w, &twist)).collect::<BTreeSet<_>>();
+        let generated = generate(&compact, &twist, expected.len()).unwrap();
+        assert_eq!(compact.generate_twisted_involutions(&twist, expected.len()).unwrap(), generated,
+            "{label}: production discovery order versus test-only prototype");
+        assert_eq!(generated.len(), expected.len(), "{label}: duplicates");
+        assert_eq!(generated.iter().copied().collect::<BTreeSet<_>>(), expected,
+            "{label}: entire compact set, not only its size");
+        let old_by_matrix = old.into_iter().map(|w|
+            (w.weyl_action().matrix().to_vec(), w)).collect::<BTreeMap<_, _>>();
+        assert_eq!(old_by_matrix.len(), expected.len());
+        for w in &generated {
+            assert!(compact.is_twisted_involution(w, &twist), "{label}: invalid element");
+            let actual = materialize(inner, &compact, w);
+            assert_eq!(&actual, old_by_matrix.get(actual.weyl_action().matrix()).unwrap(),
+                "{label}: full root/coroot and central-lattice involution");
+        }
+        let materialized = generated.iter().map(|w| materialize(inner,&compact,w)).collect::<Vec<_>>();
+        let simple = (0..inner.datum.semisimple_rank()).map(|s|
+            inner.roots.action_permutation(&WeylAction::simple_reflection(&inner.datum,s).unwrap())
+                .unwrap().into_iter().map(|id| u8::try_from(id.0).unwrap()).collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+        let pieces = compact.piece_root_permutations(&simple);
+        let actions = compact.element_root_permutations(&elements,&pieces);
+        let expected_partition = super::generator_orbit_experiment_tests::all_weyl_partition(
+            inner,&materialized,&actions);
+        assert_eq!(inner.generated_twisted_conjugacy_partition(expected.len()).unwrap(), expected_partition,
+            "{label}: every representative, orbit size and root-permutation membership");
+        assert_eq!(inner.generated_twisted_conjugacy_partition(expected.len()-1),
+            Err(StructureError::ResourceLimitExceeded { limit: expected.len()-1 }));
+        assert_eq!(generate(&compact, &twist, expected.len()-1),
+            Err(StructureError::ResourceLimitExceeded { limit: expected.len()-1 }));
+        println!("\nDIRECT_EQUAL {label} weyl={} candidates={}", elements.len(), expected.len());
+        println!("\nDIRECT_PARTITION_EQUAL {label} classes={}",expected_partition.classes().len());
+    }
+
+    fn diagram(letter: char, rank: usize) -> Vec<Vec<i32>> {
+        let mut result = vec![vec![0; rank]; rank];
+        for (i, row) in result.iter_mut().enumerate() { row[i] = 2; }
+        let edges = match letter {
+            'D' => (1..rank-2).map(|i| (i-1,i))
+                .chain([(rank-3,rank-2),(rank-3,rank-1)]).collect::<Vec<_>>(),
+            // Bourbaki E numbering: 0--2--3--4--..., with 1 attached to 3.
+            'E' => vec![(0,2),(1,3)].into_iter()
+                .chain((3..rank).map(|i| (i-1,i))).collect(),
+            _ => (1..rank).map(|i| (i-1,i)).collect(),
+        };
+        for (a,b) in edges { result[a][b] = -1; result[b][a] = -1; }
+        result
+    }
+
+    #[test]
+    fn direct_sets_match_full_weyl_and_full_lattice_involutions() {
+        let cases = [
+            ("A1", vec![vec![2]], 2),
+            ("A2", diagram('A',2), 6),
+            ("B2", vec![vec![2,-2],vec![-1,2]], 8),
+            ("C2", vec![vec![2,-1],vec![-2,2]], 8),
+            ("D4", diagram('D',4), 192),
+            ("D5", diagram('D',5), 1920),
+            ("D6", diagram('D',6), 23040),
+            ("G2", vec![vec![2,-3],vec![-1,2]], 12),
+            ("F4", vec![vec![2,-1,0,0],vec![-1,2,-2,0],vec![0,-1,2,-1],vec![0,0,-1,2]], 1152),
+            ("E6", diagram('E',6), 51840),
+        ];
+        for (label, cartan, cap) in cases {
+            let datum = BasedRootDatum::standard(cartan).unwrap();
+            let dual = crate::dual_datum(&datum).unwrap();
+            for (lattice, datum) in [("root",datum),("dual",dual)] {
+                let theta = LatticeInvolution::identity(&datum).unwrap();
+                let inner = InnerClass::new(datum, theta, 256).unwrap();
+                compare_complete_sets(&format!("{label}/{lattice}"), &inner, cap);
+            }
+        }
+    }
+
+    #[test]
+    fn direct_sets_include_nontrivial_diagram_and_component_twists() {
+        for (label, cartan, permutation, cap) in [
+            ("A2", diagram('A',2), vec![1,0], 6),
+            ("A1.A1", vec![vec![2,0],vec![0,2]], vec![1,0], 4),
+            ("D4", diagram('D',4), vec![0,1,3,2], 192),
+            ("E6", diagram('E',6), vec![5,1,4,3,2,0], 51840),
+        ] {
+            let datum = BasedRootDatum::standard(cartan).unwrap();
+            let dual = crate::dual_datum(&datum).unwrap();
+            for (lattice, datum) in [("root",datum),("dual",dual)] {
+                let mut swap = vec![vec![0; permutation.len()]; permutation.len()];
+                for (i, &j) in permutation.iter().enumerate() { swap[j][i] = 1; }
+                let theta = LatticeInvolution::new(&datum, swap.clone(), swap).unwrap();
+                let inner = InnerClass::new(datum, theta, 256).unwrap();
+                compare_complete_sets(&format!("{label}/swap/{lattice}"), &inner, cap);
+            }
+        }
+    }
+
+    #[test]
+    fn direct_sets_preserve_central_and_root_free_involutions() {
+        for with_root in [false,true] {
+            let datum = if with_root {
+                BasedRootDatum::from_simple_data(2, vec![vec![2]],
+                    vec![Weight::new(vec![2,0])],vec![Coweight::new(vec![1,0])]).unwrap()
+            } else {
+                BasedRootDatum::from_simple_data(2,vec![],vec![],vec![]).unwrap()
+            };
+            for sign in [-1,1] {
+                let theta = vec![vec![1,0],vec![0,sign]];
+                let inner = InnerClass::new(datum.clone(),
+                    LatticeInvolution::new(&datum,theta.clone(),theta).unwrap(),256).unwrap();
+                compare_complete_sets(&format!("torus/root={with_root}/sign={sign}"), &inner, 2);
+            }
+        }
+    }
+
+    #[test]
+    fn direct_budget_is_separate_from_legacy_weyl_budget() {
+        let datum = BasedRootDatum::standard(diagram('A',2)).unwrap();
+        let inner = InnerClass::new(datum.clone(),LatticeInvolution::identity(&datum).unwrap(),6).unwrap();
+        let compact = CompactWeyl::new(datum.cartan_matrix()).unwrap();
+        assert_eq!(generate(&compact,&[0,1],0),Err(StructureError::ResourceLimitExceeded { limit: 0 }));
+        assert_eq!(generate(&compact,&[0,1],4).unwrap().len(),4);
+        assert_eq!(inner.twisted_involutions(5),Err(StructureError::ResourceLimitExceeded { limit: 5 }));
+        assert_eq!(inner.twisted_involutions(6).unwrap().len(),4);
+        assert_eq!(compact.generate_twisted_involutions(&[0,1],0),
+            Err(StructureError::ResourceLimitExceeded { limit: 0 }));
+        for invalid in [&[0][..],&[2,1][..],&[1,1][..]] {
+            assert_eq!(compact.generate_twisted_involutions(invalid,4),
+                Err(StructureError::InvalidBasedAutomorphism));
+        }
+    }
+
+    #[test]
+    fn direct_large_group_closure_without_full_weyl_enumeration() {
+        for (letter,rank) in [('D',8),('E',7),('E',8)] {
+            let compact = CompactWeyl::new(&diagram(letter,rank)).unwrap();
+            let twist = (0..rank).collect::<Vec<_>>();
+            let started = std::time::Instant::now();
+            let generated = generate(&compact,&twist,1_000_000).unwrap();
+            assert_eq!(compact.generate_twisted_involutions(&twist,generated.len()).unwrap(), generated);
+            let members = generated.iter().copied().collect::<HashSet<_>>();
+            assert_eq!(members.len(),generated.len());
+            assert_eq!(generated[0], compact.identity());
+            for w in &generated {
+                assert!(compact.is_twisted_involution(w,&twist));
+                // Independent closure check uses inverse-based left multiply,
+                // not the multiply(simple,w) implementation under test.
+                for s in 0..rank {
+                    let mut inverse = compact.inverse(w);
+                    compact.inner_mult(&mut inverse,s);
+                    let left = compact.inverse(&inverse);
+                    let mut conjugate = left;
+                    compact.inner_mult(&mut conjugate,twist[s]);
+                    let next = if conjugate == *w { left } else { conjugate };
+                    assert!(members.contains(&next),"missing {letter}{rank} neighbor");
+                }
+            }
+            println!("\nDIRECT_CLOSED {letter}{rank} candidates={} seconds={:.6}",
+                generated.len(),started.elapsed().as_secs_f64());
+            let datum = BasedRootDatum::standard(diagram(letter,rank)).unwrap();
+            let theta = LatticeInvolution::identity(&datum).unwrap();
+            let inner = InnerClass::new(datum,theta,256).unwrap();
+            let partition = inner.generated_twisted_conjugacy_partition(generated.len()).unwrap();
+            assert_eq!(partition.classes().iter().map(|c| c.twisted_involution_count()).sum::<usize>(),
+                generated.len());
+            println!("\nDIRECT_LARGE_PARTITION {letter}{rank} candidates={} classes={}",
+                generated.len(),partition.classes().len());
+        }
     }
 }

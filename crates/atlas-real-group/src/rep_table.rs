@@ -29,7 +29,7 @@ use crate::real_projection::RealProjection;
 use crate::rep_context::RepContextDerived;
 use crate::{
     bruhat_below, BlockLocator, BlockModifier, CommonContext, IntegralDatumItem,
-    IntegralDatumTable, IntegralSubsystem, InvolutionTable, KgbGraph, KgbId, PartialBlock,
+    IntegralDatumTable, IntegralSubsystem, InvolutionTable, KgbGraph, KgbId, KType, PartialBlock,
     RationalWeight, RepContext, StandardRepr, StandardReprMod, StructureError, Weight,
 };
 
@@ -800,18 +800,12 @@ impl RepTable {
                 state.overlap_hits(&interval_keys)
             };
 
-            // Relative attitudes (repr.cpp:1671-1693): per overlapping
-            // record whose stored locator differs from the query's, build
-            // the `sub_to_new` block_modifier — the query locator made
-            // relative to the stored one, plus the integral-orthogonal
-            // shift — so the stored rows can be transported to the query
-            // attitude before pooling.
-            let mut modifiers: Vec<Option<BlockModifier>> = Vec::with_capacity(overlap.len());
+            // Every overlapping record needs its relative modifier
+            // (repr.cpp:1749-1754). Equal locators imply identity relative
+            // Weyl attitude, but the representatives can still require a
+            // nonzero integral-orthogonal shift before pooling.
+            let mut modifiers = Vec::with_capacity(overlap.len());
             for (record, stored_row, hit_index) in &overlap {
-                if record.locator == reduced.locator {
-                    modifiers.push(None);
-                    continue;
-                }
                 let srm0 = record.block.element(*stored_row).ok_or(
                     StructureError::RepInvariantViolation {
                         invariant: "overlapping block hit row representative",
@@ -827,14 +821,12 @@ impl RepTable {
                     &mut modifier,
                     interval[*hit_index].clone(),
                 )?;
-                modifiers.push(Some(modifier));
+                modifiers.push(modifier);
             }
 
             // Pool extension (repr.cpp:1601-1607): append every row of every
-            // overlapping block, keyed-deduped against the pool.  Identity
-            // relative attitude means shift 0 and `w` the identity, so the
-            // stored srms are inserted as-is; a non-identity attitude's rows
-            // are transported by `shift` then `transform<false>` first.  A
+            // overlapping block, keyed-deduped against the pool. All rows
+            // are transported by `shift` then `transform<false>` first. A
             // stored row whose key already occurs in the pool is the same
             // param class (upstream's shift-transported row `hash.match`-es
             // the pooled interval element), so it is skipped rather than
@@ -850,15 +842,9 @@ impl RepTable {
                             .ok_or(StructureError::RepInvariantViolation {
                                 invariant: "representation block row representative",
                             })?;
-                    let transported = match modifier {
-                        None => element.clone(),
-                        Some(modifier) => {
-                            let mut rep = element.clone();
-                            rc.shift_srm(modifier.shift(), &mut rep)?;
-                            rc.transform_srm::<false>(modifier.w(), &mut rep)?;
-                            rep
-                        }
-                    };
+                    let mut transported = element.clone();
+                    rc.shift_srm(modifier.shift(), &mut transported)?;
+                    rc.transform_srm::<false>(modifier.w(), &mut transported)?;
                     let key =
                         Self::canonical_key(rc, &transported, &reduced.locator, &reduced.coroots)?;
                     if !pool_keys.contains(&key) {
@@ -1233,6 +1219,12 @@ impl RepTable {
     }
 }
 
+#[derive(Debug)]
+struct KTypeFormulaEntry {
+    max_level: u32,
+    terms: Arc<[(KType, i32)]>,
+}
+
 /// Owned representation context substrates and their shared block cache.
 ///
 /// A fresh [`RepContext`] is borrowed from the owned table and graph for each
@@ -1244,6 +1236,7 @@ pub struct RepTableOwner {
     graph: Arc<KgbGraph>,
     derived: Arc<RepContextDerived>,
     blocks: RepTable,
+    ktype_formulas: Mutex<HashMap<(KgbId, Weight), KTypeFormulaEntry>>,
 }
 
 impl RepTableOwner {
@@ -1265,6 +1258,7 @@ impl RepTableOwner {
             graph,
             derived,
             blocks: RepTable::new(),
+            ktype_formulas: Mutex::new(HashMap::new()),
         })
     }
 
@@ -1285,6 +1279,7 @@ impl RepTableOwner {
             graph,
             derived,
             blocks: RepTable::with_test_gates(partial, full),
+            ktype_formulas: Mutex::new(HashMap::new()),
         })
     }
 
@@ -1300,6 +1295,47 @@ impl RepTableOwner {
     /// Resolve or materialize the smallest partial block below `query`.
     pub fn lookup(&self, query: &StandardRepr) -> Result<LocatedBlock, StructureError> {
         self.blocks.lookup(&self.context(), query)
+    }
+
+    /// Memoized K-type formula, following `Rep_table::K_type_formula` in
+    /// K_repr.cpp:591-602. A cached higher cutoff may be returned: callers
+    /// must truncate terms to their requested height before exporting them.
+    /// The key is the strict K-type identity within this real-form owner,
+    /// not its equivalence class under moving to a different involution.
+    pub fn k_type_formula(
+        &self,
+        ktype: &KType,
+        max_level: u32,
+    ) -> Result<Arc<[(KType, i32)]>, StructureError> {
+        let key = (ktype.x(), ktype.lambda_rho().clone());
+        let lock = || self.ktype_formulas.lock().map_err(|_| {
+            StructureError::RepInvariantViolation {
+                invariant: "K-type formula cache mutex",
+            }
+        });
+        {
+            let cached = lock()?;
+            if let Some(entry) = cached.get(&key) {
+                if entry.max_level >= max_level {
+                    return Ok(Arc::clone(&entry.terms));
+                }
+            }
+        }
+        // Do not hold a shared mutex during mathematical generation. If
+        // another caller commits a larger formula meanwhile, retain it.
+        let terms: Arc<[(KType, i32)]> = self.context()
+            .k_type_formula(ktype, max_level)?.into();
+        let mut cached = lock()?;
+        if let Some(entry) = cached.get(&key) {
+            if entry.max_level >= max_level {
+                return Ok(Arc::clone(&entry.terms));
+            }
+        }
+        cached.insert(key, KTypeFormulaEntry {
+            max_level,
+            terms: Arc::clone(&terms),
+        });
+        Ok(terms)
     }
 
     /// Resolve or materialize the full common block containing `query`.

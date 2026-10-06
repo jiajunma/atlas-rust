@@ -61,7 +61,7 @@ pub struct Token {
 const KEYWORDS: &[&str] = &[
     "quit", "set", "let", "in", "begin", "end", "if", "then", "else", "elif", "fi", "and", "or",
     "not", "next", "do", "dont", "from", "downto", "while", "for", "od", "case", "esac", "rec_fun",
-    "true", "false", "die", "break", "return", "set_type", "whattype", "showall", "forget",
+    "true", "false", "die", "break", "return", "set_type", "any_type", "whattype", "showall", "forget",
 ];
 
 /// All twenty upstream primitive type names (axis-types.w prim_names,
@@ -677,9 +677,11 @@ mod tests {
     }
 
     #[test]
-    fn oracle_non_keyword_is_scanned_as_an_identifier() {
-        let tokens = tokenize(&SourceText::new("any_type\n")).expect("valid identifier");
-        assert_eq!(tokens[0].kind, TokenKind::Identifier);
+    fn current_oracle_any_type_is_a_reserved_keyword() {
+        // Latest parser.y and the retained any_type_keyword_rejected fixture
+        // supersede the historical pre-generics oracle's identifier contract.
+        let tokens = tokenize(&SourceText::new("any_type\n")).expect("valid keyword");
+        assert_eq!(tokens[0].kind, TokenKind::Keyword("any_type".into()));
     }
 
     #[test]

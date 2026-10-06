@@ -53,9 +53,9 @@ impl FileSink for FsSink {
         }
     }
 
-    fn write(&mut self, text: &str) {
+    fn write_bytes(&mut self, bytes: &[u8]) {
         if let Some(file) = self.file.as_mut() {
-            let _ = file.write_all(text.as_bytes());
+            let _ = file.write_all(bytes);
         }
     }
 
@@ -69,9 +69,21 @@ fn print_events(frame: &SessionFrame<FsProvider, FsSink>, events: &[SessionEvent
         match event {
             SessionEvent::Output { text, .. } => print!("{text}"),
             SessionEvent::ReportLine { text, .. } => print!("{text}"),
-            SessionEvent::Diagnostic(diagnostic) => eprintln!("{}", frame.describe(diagnostic)),
+            SessionEvent::OutputBytes { text, .. } | SessionEvent::ReportBytes { text, .. } => {
+                let _ = std::io::stdout().write_all(text.as_bytes());
+            }
+            SessionEvent::Diagnostic(diagnostic) => {
+                let mut text = frame.describe_bytes(diagnostic);
+                text.push_str("\n");
+                let _ = std::io::stderr().write_all(text.as_bytes());
+            }
             // The frame renders values as Output text; none reach here.
-            SessionEvent::Value { value, .. } => println!("Value: {value}"),
+            SessionEvent::Value { value, .. } => {
+                let mut text = atlas_core::value::AtlasString::from("Value: ");
+                value.append_atlas_text(&mut text);
+                text.push_str("\n");
+                let _ = std::io::stdout().write_all(text.as_bytes());
+            }
         }
     }
 }

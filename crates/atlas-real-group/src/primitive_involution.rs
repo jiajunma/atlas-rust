@@ -66,14 +66,17 @@ impl std::error::Error for InnerClassLetterError {}
 /// `'u'` survives only for even-rank D, collapses to `'s'` for A(n>=2),
 /// odd-rank D, E6, and T, and is meaningless elsewhere (atlas-types.w:793-820).
 pub fn checked_inner_class_letters(
-    symbols: &str,
+    symbols: impl AsRef<[u8]>,
     factors: &[(char, usize)],
 ) -> Result<Vec<char>, InnerClassLetterError> {
     let mut result = Vec::new();
-    let mut characters = symbols.chars().peekable();
+    // The interpreter's strings and upstream istringstream contain bytes.
+    // Keep unknown symbols as unsigned byte-valued chars for the caller's
+    // exact-byte diagnostic; never decode or replace a UTF-8 fragment.
+    let mut characters = symbols.as_ref().iter().copied().map(char::from).peekable();
     let mut index = 0_usize; // position in the simple factors of the Lie type
     loop {
-        while matches!(characters.peek(), Some(c) if c.is_ascii_punctuation() || c.is_whitespace())
+        while matches!(characters.peek(), Some(c) if c.is_ascii_punctuation() || c.is_ascii_whitespace())
         {
             characters.next();
         }

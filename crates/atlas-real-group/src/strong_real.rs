@@ -368,20 +368,10 @@ impl StrongRealClassification {
 
             // Strong representatives: solve toAdjoint(x) = rep XOR base per
             // local class, then classify the solution mask.
-            let augmented = adjoint_dimension
-                .checked_add(fiber_dimension)
-                .ok_or(StructureError::ArithmeticOverflow)?;
-            let mut span = ModTwoSubspace::new(augmented)?;
-            for (basis_index, coordinates) in image_coordinates.iter().enumerate() {
-                let mut ones = try_capacity(augmented)?;
-                for bit in 0..adjoint_dimension {
-                    if coordinates.bit(bit) == Some(true) {
-                        ones.push(bit);
-                    }
-                }
-                ones.push(adjoint_dimension + basis_index);
-                span.insert(ModTwoVector::from_ones(augmented, ones)?)?;
-            }
+            let section = crate::mod_two::CanonicalModTwoSection::new(
+                adjoint_dimension,
+                &image_coordinates,
+            )?;
             let mut strong_representatives = try_capacity(local_count)?;
             let mut wrf_preimage_masks = try_capacity(local_count)?;
             for (local_index, square) in central_square_classes.iter().enumerate() {
@@ -393,25 +383,11 @@ impl StrongRealClassification {
                     })?;
                 let difference = adjoint.add(representative, &class_bases[square.0])?;
                 let coordinates = adjoint.coordinates(&difference)?;
-                let mut ones = try_capacity(augmented)?;
-                for bit in 0..adjoint_dimension {
-                    if coordinates.bit(bit) == Some(true) {
-                        ones.push(bit);
-                    }
-                }
-                let remainder =
-                    span.quotient_representative(ModTwoVector::from_ones(augmented, ones)?)?;
-                if (0..adjoint_dimension).any(|bit| remainder.bit(bit) == Some(true)) {
-                    return Err(StructureError::StrongRealInvariantViolation {
+                let mask = section.solve(&coordinates)?.ok_or(
+                    StructureError::StrongRealInvariantViolation {
                         invariant: "strong representative",
-                    });
-                }
-                let mut mask = 0_u64;
-                for basis_index in 0..fiber_dimension {
-                    if remainder.bit(adjoint_dimension + basis_index) == Some(true) {
-                        mask |= 1_u64 << basis_index;
-                    }
-                }
+                    },
+                )?;
                 let mask_index =
                     usize::try_from(mask).map_err(|_| StructureError::ArithmeticOverflow)?;
                 let fiber_orbit = usize::try_from(tables[square.0][mask_index])
@@ -762,13 +738,10 @@ pub fn strong_real_class_prints(
 /// solve (`toAdjoint(y) == diff`), upstream's `preimage`
 /// (innerclass.cpp:1020-1039) collects `fromBasis(fe + y)` for the members
 /// `fe` of `y`'s strong orbit whose adjoint image is `diff`, swept in
-/// ascending fiber-element order. The emitted SET is independent of the
-/// particular preimage solve: translation by `ker(toAdjoint)` commutes with
-/// the fiber action (the action's grading condition factors through
-/// `toAdjoint`), so another solution permutes the list. The crate's solve
-/// convention is the augmented-span reduction shared with the strong
-/// representatives, not upstream's `BinaryMap::section`; the frozen fixtures
-/// all have `diff == 0`, where every linear solve returns `y == 0`.
+/// ascending fiber-element order. The stored preimage uses upstream's
+/// `BinaryMap::section` election: another valid preimage can permute the
+/// emitted list, even when its set of elements agrees. Do not sort the
+/// translated output; preserve both the elected preimage and member order.
 pub fn central_fiber(
     classification: &CartanClassification,
     strong: &StrongRealClassification,

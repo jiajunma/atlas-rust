@@ -6,17 +6,17 @@ use super::{
     lambda_parameter, lambda_parameters, let_bindings, forget_overload_command,
     let_expression, list_expression, named_field, rec_function_binding, rec_lambda, return_expression,
     selector_suffix, operator_selector, sequence, set_command, set_type_command, show_overloads_command,
-    operator_function_binding,
+    operator_function_binding, operator_pattern,
     type_definition, type_spec_span,
-    unit_selector, next_sequence, break_level, case_select_expression, counted_for_expression,
-    tuple_expression, function_binding,
+    unit_selector, next_sequence, case_select_expression, counted_for_expression,
+    tuple_expression, function_binding, quiet_if_expression,
     prepend_let_group,
     call_suffix, postfix, prefix_operator_call, slice_suffix, matrix_slice_suffix, start_binary_formula, start_prefix_formula,
     subscription_suffix, pair_index, type_group, type_function, type_primitive, type_row, type_union_append,
     type_union_start, type_variant, type_wild_row, unary, finish_conditional, if_tail,
     anonymous_parameter, const_pattern_name, finish_pattern, pattern_binding, pattern_empty_tuple,
-    pattern_name, pattern_slots, pattern_tuple, prepend_while_effect, tuple_parameter,
-    whattype_command, while_expression, bar_list_expression,
+    pattern_name, pattern_slots, pattern_tuple, tuple_parameter,
+    whattype_command, while_expression, while_tail, guarded_body, bar_list_expression,
     BinaryOp, CaseBranch, Command, Expr, LambdaParam, LetBinding, ParsedFor, ParsedIf,
     ParsedLet, ParserToken, PatternTail, PostfixSuffix, Prim, Program, SlotTail, SpannedValue,
     TypeExpr, TypeField, TypeSpec, TypeVariantSlot, UnaryOp, Pattern, TypeDefinition,
@@ -48,7 +48,7 @@ pub Command: Command = {
     <name:"identifier"> <_colon:":"> <value:Expr> => definition(name, value),
     // set_type (parser.y:163-167): the single-name form aliases and the
     // bracketed form enters the tabled type map.
-    <set_type:"set_type"> <name:TypeOrIdentifier> <_equals:"="> <spec:TypeSpecNode> => {
+    <set_type:"set_type"> <name:SimpleTypeStart> <spec:ConstructorSpec> => {
         let end = type_spec_span(&spec);
         set_type_command(set_type, vec![type_definition(name, spec)], false, 0, end)
     },
@@ -58,6 +58,12 @@ pub Command: Command = {
     },
     <set_type:"set_type"> <_open:"["> <definitions:TypeEquations> <close:"]"> => {
         set_type_command(set_type, definitions, true, 0, close)
+    },
+    // '[' has opened the lexical group before AbstractionArgs reduces.
+    // The formals disappear with ']', including on command recovery.
+    <set_type:"set_type"> <arity:AbstractionArgs> <_open:"[">
+        <definitions:TypeEquations> <close:"]"> => {
+        set_type_command(set_type, definitions, true, arity, close)
     },
     // whattype id_op `?` (parser.y:187): list the overload instances of an
     // identifier or operator. The `?` cannot follow an expression or an
@@ -79,11 +85,11 @@ pub Command: Command = {
     <set:"set"> <name:"identifier"> => set_option_command(set, name),
     // set (parser.y:140): the `let` declaration forms, bound globally and
     // in parallel; function-typed leaves enter the overload table.
-    <set:"set"> <operator:Operator> <open:"(">
-        <parameters:LambdaParametersOpt> <_close:")"> <_equals:"="> <body:Expr> => {
-        set_command(set, vec![operator_function_binding(operator, open, parameters, body)])
-    },
     <set:"set"> <bindings:LetBindings> => set_command(set, bindings),
+    <start:"any_type"> <count:AbstractionArgs> "begin"
+        <groups:PolymorphicDeclarations> <end:"end"> => Command::PolymorphicSet {
+        count, bindings: groups, span: join_span(start, end),
+    },
     // forget (parser.y:141-142,155-157): an identifier drops its global
     // binding; `name @ type` (identifier or operator) removes ONE overload.
     <forget:"forget"> <name:TypeOrIdentifier> => forget_command(forget, name),
@@ -123,16 +129,44 @@ ConstructorArgs: usize = {
     },
 };
 
+// parser.y id_eq opens a virtual lexical group until the complete type_spec.
+// This also matters for an incomplete ordinary constructor application at a
+// physical newline: the parser must request the following line, not recover
+// early and execute it as an unrelated command.
+SimpleTypeStart: SpannedValue<String> = {
+    <name:TypeOrIdentifier> "=" => { scope.push_group(GroupKind::Virtual); name },
+};
+
 ConstructorSpec: TypeSpec = {
     <spec:TypeSpecNode> => { scope.pop_group(); spec },
+};
+
+// The '(' or BEGIN lookahead has ALREADY opened this lexical group in
+// TokenStream. Unlike constructor formals, no extra virtual group is needed.
+AbstractionArgs: usize = {
+    <first:"identifier"> <rest:("," <"identifier">)*> => {
+        let mut names = vec![first.value];
+        names.extend(rest.into_iter().map(|name| name.value));
+        scope.introduce(&names);
+        names.len()
+    },
+};
+
+// Original parser.y permits only SET declaration groups here, not arbitrary
+// commands or nested generic command blocks. Flatten raw comma bindings too.
+PolymorphicDeclarations: Vec<LetBinding> = {
+    <groups:("set" <LetBindings>)+> => groups.into_iter().flatten().collect(),
 };
 
 pub Expr: Expr = {
     <let_span:"let"> <tail:LetTail> => let_expression(let_span, tail),
     <cast:Cast> => cast,
-    // Lambda literals and `return` sit at the top expression level and
+    // Lambda literals sit at the top expression level and
     // greedily take the rest of the expression (parser.y:224-238).
     <open:"("> <parameters:LambdaParameters> <_close:")"> ":" <body:Expr> => {
+        lambda(open, parameters, body)
+    },
+    <open:"("> <parameters:LambdaParameters> <_close:")"> <body:Cast> => {
         lambda(open, parameters, body)
     },
     <rec_span:"rec_fun"> <self_name:"identifier"> <_open:"(">
@@ -141,7 +175,7 @@ pub Expr: Expr = {
         rec_lambda(rec_span, self_name, parameters, result_type, body)
     },
     <at:"@"> ":" <body:Expr> => lambda(at, Vec::new(), body),
-    <return_span:"return"> <value:Expr> => return_expression(return_span, value),
+    <at:"@"> <body:Cast> => lambda(at, Vec::new(), body),
     // Sequencing (parser.y:243): `tertiary ';' expr`, right-recursive, so
     // `a; b; c` is `a; (b; c)`. `next` (parser.y:236) shares the
     // precedence but yields the FIRST operand's value.
@@ -178,6 +212,7 @@ LambdaParam: LambdaParam = {
 // grammar LR(1): no reduce competes with the grouping shift.
 Pattern: Pattern = {
     <name:"identifier"> => pattern_name(name),
+    <operator:DeclarationOperator> => operator_pattern(operator),
     <bang:"!"> <name:"identifier"> => const_pattern_name(bang, name),
     <open:"("> <close:")"> => pattern_empty_tuple(open, close),
     <open:"("> <first:Pattern> <tail:PatternTail> => finish_pattern(open, first, tail),
@@ -228,6 +263,12 @@ TypeExprNode: TypeExpr = {
         TypeExpr::Applied { name, arguments, span }
     },
     <span:"void"> => TypeExpr::Void { span },
+    <closed:ClosedTypeNode> => closed,
+};
+
+// parser.y closed_type: explicit cast formals are introduced only after the
+// opening bracket/parenthesis lookahead has opened their lexical group.
+ClosedTypeNode: TypeExpr = {
     <open:"["> <inner:TypeUnionList> <close:"]"> => type_row(open, inner, close),
     <open:"["> <_star:"*"> <close:"]"> => type_wild_row(open, close),
     <open:"("> <inner:TypeUnionList> <close:")"> => type_group(open, inner, close),
@@ -265,9 +306,8 @@ TypeFieldNode: TypeField = {
     <type_expr:SpecTypeNode> <dot:"."> => anonymous_field(type_expr, dot),
 };
 
-// Type expressions inside a `set_type` spec additionally allow defined type
-// names, including new recursive-group references. The extra IDENT alternative
-// never leaks into expression/cast contexts and perturbs their LR states.
+// Ordinary alias/constructor specifications. Bare old constructors are NOT
+// types here: only grouped td_type below permits them (parser.y:1004+).
 SpecTypeNode: TypeExpr = {
     <prim:"primitive_type"> => type_primitive(prim),
     <span:"void"> => TypeExpr::Void { span },
@@ -314,7 +354,81 @@ TypeEquations: Vec<TypeDefinition> = {
 };
 
 TypeEquation: TypeDefinition = {
-    <name:TypeOrIdentifier> <_equals:"="> <spec:TypeSpecNode> => type_definition(name, spec),
+    <name:TypeOrIdentifier> <_equals:"="> <spec:GroupTypeSpec> => type_definition(name, spec),
+};
+
+// parser.y:974 typedef_type has a RESTRICTED root, unlike its nested td_type.
+// A bare named/group/formal reference is rejected by parsing, not by the
+// recursive graph builder. Primitive void is still allowed (PRIMTYPE upstream).
+GroupTypeSpec: TypeSpec = {
+    "(" <first:GroupTypeField> <second:("," <GroupTypeField>)>
+        <rest:("," <GroupTypeField>)*> ")" => {
+        let mut fields = vec![first, second]; fields.extend(rest);
+        TypeSpec::Struct(fields)
+    },
+    "(" <first:GroupTypeField> <second:("|" <GroupTypeField>)>
+        <rest:("|" <GroupTypeField>)*> ")" => {
+        let mut fields = vec![first, second]; fields.extend(rest);
+        TypeSpec::Union(fields)
+    },
+    <prim:"primitive_type"> => TypeSpec::Alias(type_primitive(prim)),
+    <span:"void"> => TypeSpec::Alias(TypeExpr::Void { span }),
+    <applied:GroupTypeApplication> => TypeSpec::Alias(applied),
+    <open:"["> <inner:GroupUnionList> <close:"]"> => TypeSpec::Alias(type_row(open, inner, close)),
+    <open:"("> <inner:GroupUnionListTwo> <close:")"> => TypeSpec::Alias(type_group(open, inner, close)),
+    <open:"("> <argument:GroupUnionList?> "->" <result:GroupUnionList?> <close:")"> => {
+        TypeSpec::Alias(type_function(open, argument, result, close))
+    },
+};
+
+GroupTypeField: TypeField = {
+    <type_expr:GroupTypeNode> <name:"identifier"> => named_field(type_expr, name),
+    <type_expr:GroupTypeNode> <dot:"."> => anonymous_field(type_expr, dot),
+};
+
+GroupTypeApplication: TypeExpr = {
+    <name:"type_constructor"> "<" <first:GroupTypeNode> <rest:("," <GroupTypeNode>)*> <close:">"> => {
+        let span = join_span(name.span, close);
+        let mut arguments = vec![first]; arguments.extend(rest);
+        TypeExpr::Applied { name, arguments, span }
+    },
+};
+
+GroupTypeNode: TypeExpr = {
+    <prim:"primitive_type"> => type_primitive(prim),
+    <span:"void"> => TypeExpr::Void { span },
+    <name:TypeOrIdentifier> => TypeExpr::Named { name: name.value, span: name.span },
+    <variable:"type_variable"> => TypeExpr::Variable { index: variable.value, span: variable.span },
+    <applied:GroupTypeApplication> => applied,
+    <open:"["> <inner:GroupUnionList> <close:"]"> => type_row(open, inner, close),
+    <open:"("> <inner:GroupUnionList> <close:")"> => type_group(open, inner, close),
+    <open:"("> <argument:GroupUnionList?> "->" <result:GroupUnionList?> <close:")"> => {
+        type_function(open, argument, result, close)
+    },
+};
+
+GroupUnionList: Vec<TypeVariantSlot> = {
+    <single:GroupTypeNode> => type_union_start(Some(vec![single]), false),
+    <multiple:GroupUnionListTwo> => multiple,
+};
+
+// At least two tuple components, OR a union containing an explicit bar.
+// This distinction excludes `(int)` as a root while retaining it nested.
+GroupUnionListTwo: Vec<TypeVariantSlot> = {
+    <first:GroupTypeNode> <second:("," <GroupTypeNode>)> <rest:("," <GroupTypeNode>)*> => {
+        let mut parts = vec![first, second]; parts.extend(rest);
+        type_union_start(Some(parts), false)
+    },
+    <left:GroupUnionList?> "|" <right:GroupVariant?> => {
+        match left {
+            Some(left) => type_union_append(left, right),
+            None => type_union_start(right, true),
+        }
+    },
+};
+
+GroupVariant: Vec<TypeExpr> = {
+    <first:GroupTypeNode> <rest:("," <GroupTypeNode>)*> => type_variant(first, rest),
 };
 
 // `|`-separated variant slots; a missing slot is a void variant. Mirrors
@@ -340,6 +454,12 @@ LetBindings: Vec<LetBinding> = {
 
 LetBinding: LetBinding = {
     <pattern:Pattern> <_equals:"="> <initializer:Expr> => pattern_binding(pattern, initializer),
+    // A declaration has the same operator-function form globally, locally
+    // and inside an any_type block. Bang is a symbol, not a formula operator.
+    <operator:DeclarationOperator> <open:"(">
+        <parameters:LambdaParametersOpt> <_close:")"> "=" <body:Expr> => {
+        operator_function_binding(operator, open, parameters, body)
+    },
     // `name(params) = body` and the rec_fun variant desugar to lambda
     // bindings (parser.y:251-257).
     <name:"identifier"> <open:"("> <parameters:LambdaParametersOpt> <_close:")">
@@ -353,11 +473,19 @@ LetBinding: LetBinding = {
     },
 };
 
+DeclarationOperator: FormulaOperator = {
+    <operator:Operator> => operator,
+    <span:"!"> => FormulaOperator::new("!", 0).with_span(span),
+};
+
 AssignmentExpr: Expr = {
+    // parser.y::tertiary: RETURN tertiary. The operand does not consume
+    // following ';' or NEXT; a grouped operand can explicitly include them.
+    <return_span:"return"> <value:AssignmentExpr> => return_expression(return_span, value),
     <name:"identifier"> <_becomes:":="> <value:AssignmentExpr> => assignment(name, value),
-    // `name op:= value` desugars in the parser to `name := op(name, value)`
-    // (parser.y:267-268).
-    <name:"identifier"> <operator:"operator_becomes"> <value:AssignmentExpr> => {
+    // Current parser.y::tertiary accepts both symbolic OPERATOR_BECOMES
+    // and IDENT BECOMES, lowering both through the same operation call.
+    <name:"identifier"> <operator:CompoundUpdate> <value:AssignmentExpr> => {
         operate_assignment(name, operator, value)
     },
     // `name[index] := value` and its reversed `~[` spelling (parser.y:265,
@@ -381,25 +509,30 @@ AssignmentExpr: Expr = {
         field_assignment(name, field, value)
     },
     // `name[index] op:= value` and `name.field op:= value` (parser.y:272-276).
-    <name:"identifier"> "[" <index:Expr> "]" <operator:"operator_becomes"> <value:AssignmentExpr> => {
+    <name:"identifier"> "[" <index:Expr> "]" <operator:CompoundUpdate> <value:AssignmentExpr> => {
         component_transform(name, index, false, operator, value)
     },
-    <name:"identifier"> "~[" <index:Expr> "]" <operator:"operator_becomes"> <value:AssignmentExpr> => {
+    <name:"identifier"> "~[" <index:Expr> "]" <operator:CompoundUpdate> <value:AssignmentExpr> => {
         component_transform(name, index, true, operator, value)
     },
-    <name:"identifier"> "[" <first:Expr> "," <second:Expr> "]" <operator:"operator_becomes"> <value:AssignmentExpr> => {
+    <name:"identifier"> "[" <first:Expr> "," <second:Expr> "]" <operator:CompoundUpdate> <value:AssignmentExpr> => {
         component_transform(name, pair_index(first, second), false, operator, value)
     },
-    <name:"identifier"> "~[" <first:Expr> "," <second:Expr> "]" <operator:"operator_becomes"> <value:AssignmentExpr> => {
+    <name:"identifier"> "~[" <first:Expr> "," <second:Expr> "]" <operator:CompoundUpdate> <value:AssignmentExpr> => {
         component_transform(name, pair_index(first, second), true, operator, value)
     },
-    <name:"identifier"> "." <field:"identifier"> <operator:"operator_becomes"> <value:AssignmentExpr> => {
+    <name:"identifier"> "." <field:"identifier"> <operator:CompoundUpdate> <value:AssignmentExpr> => {
         field_transform(name, field, operator, value)
     },
     <set:"set"> <pattern:Pattern> <_becomes:":="> <value:AssignmentExpr> => {
         multi_assignment(set, pattern, value)
     },
     <expression:OrExpr> => expression,
+};
+
+CompoundUpdate: (SpannedValue<String>, bool) = {
+    <operator:"operator_becomes"> => (operator, false),
+    <operator:"identifier"> ":=" => (operator, true),
 };
 
 OrExpr: Expr = {
@@ -465,6 +598,9 @@ Postfix: Expr = {
 };
 
 PostfixSuffix: PostfixSuffix = {
+    // parser.y:389: primary '!' is unary application of the bang symbol.
+    // Its span follows the receiver, just as an operator selector does.
+    <span:"!"> => operator_selector(FormulaOperator::new("!", 0).with_span(span)),
     <_open:"["> <index:Expr> <close:"]"> => subscription_suffix(index, false, close),
     <_open:"~["> <index:Expr> <close:"]"> => subscription_suffix(index, true, close),
     // Two-index subscription `M[i,j]` / `M~[i,j]` (parser.y:585-598,
@@ -508,27 +644,17 @@ PostfixSuffix: PostfixSuffix = {
     },
     <_open:"("> <arguments:CallArguments> <close:")"> => call_suffix(arguments, close),
     // `receiver.name` lowers to `name(receiver)`; unit and operator
-    // selectors (parser.y:312,321) apply the literal or the operator's
+    // selectors (parser.y:391-394) apply the unit or the operator's
     // prefix form to the receiver.
     <_dot:"."> <name:"identifier"> => selector_suffix(name),
     <_dot:"."> <operator:Operator> => operator_selector(operator),
     <_dot:"."> <unit:UnitSelector> => unit_selector(unit),
 };
 
-// `selector: unit` (parser.y:321) — a literal in selector position.
+// `selector: unit` also includes grouped functions, control expressions and
+// type abstractions. Share the full unit grammar, not just scalar literals.
 UnitSelector: Expr = {
-    <integer:"integer"> => Expr::Integer {
-        value: integer.value,
-        span: integer.span,
-    },
-    <boolean:"boolean"> => Expr::Boolean {
-        value: boolean.value,
-        span: boolean.span,
-    },
-    <string:"string"> => Expr::String {
-        value: string.value,
-        span: string.span,
-    },
+    <unit:UnitAtom> => unit,
 };
 
 #[inline]
@@ -549,6 +675,28 @@ CallArguments: Vec<Expr> = {
 };
 
 Atom: Expr = {
+    <open:"("> <close:")"> => tuple_expression(open, Vec::new(), close),
+    <unit:UnitAtom> => unit,
+};
+
+UnitAtom: Expr = {
+    <name:"identifier"> "@" <argument_type:OperatorCastType> => {
+        let span = join_span(name.span, argument_type.span());
+        Expr::OperatorCast { name, argument_type: Box::new(argument_type), span }
+    },
+    <operator:DeclarationOperator> "@" <argument_type:OperatorCastType> => {
+        let start = operator.span.expect("grammar operators carry spans");
+        Expr::OperatorCast {
+            name: SpannedValue { value: operator.symbol, span: start },
+            span: join_span(start, argument_type.span()), argument_type: Box::new(argument_type),
+        }
+    },
+    <start:"any_type"> <count:AbstractionArgs> "(" <body:Expr> <end:")"> => {
+        Expr::TypeAbstraction { count, body: Box::new(body), span: join_span(start, end) }
+    },
+    <start:"any_type"> <count:AbstractionArgs> "begin" <body:Expr> <end:"end"> => {
+        Expr::TypeAbstraction { count, body: Box::new(body), span: join_span(start, end) }
+    },
     <if_span:"if"> <tail:IfTail> => finish_conditional(if_span, tail),
     <integer:"integer"> => Expr::Integer { value: integer.value, span: integer.span },
     <boolean:"boolean"> => Expr::Boolean { value: boolean.value, span: boolean.span },
@@ -558,7 +706,6 @@ Atom: Expr = {
     // matrix whose ROWS are the comma-separated segments (upstream:
     // `transpose (mat: [[a,b],[c,d]])` via the hidden `"transpose "`).
     <open:"["> <rows:CommaBarList> <close:"]"> => bar_list_expression(open, rows, close),
-    <open:"("> <close:")"> => tuple_expression(open, Vec::new(), close),
     <open:"("> <first:Expr> <rest:TupleTail> <close:")"> => {
         tuple_expression(open, expression_list(first, rest), close)
     },
@@ -572,15 +719,12 @@ Atom: Expr = {
     },
     // Loops and `break` are units upstream (parser.y:364,473-474,506-531).
     <while_span:"while"> <tail:WhileTail> => while_expression(while_span, tail),
-    <for_span:"for"> <tail:ForTail> => for_expression(for_span, tail),
-    <for_span:"for"> <tail:CountedForTail> => counted_for_expression(for_span, tail),
-    // `break` / `break N` (parser.y:385-386): plain `break` unwinds one
-    // loop; `break N` unwinds N+1. The analysis layer checks that enough
-    // loops lexically enclose the unit (axis.w:673-685).
-    <span:"break"> => Expr::Break { levels: 0, span },
-    <span:"break"> <level:"integer"> => Expr::Break {
-        levels: break_level(&level.value),
-        span: join_span(span, level.span),
+    <loop_:IfForLoop> => loop_,
+    // Current parser.y:461-462 repeats BREAK tokens; numeric break N is
+    // historical syntax rejected by original3838661.
+    <start:"break"> <rest:"break"*> => {
+        let end = rest.last().copied().unwrap_or(start);
+        Expr::Break { levels: rest.len(), span: join_span(start, end) }
     },
     // `die` (parser.y:383): a unit that type-checks anywhere and throws
     // `I die` when evaluated.
@@ -594,6 +738,11 @@ Atom: Expr = {
     <case:"case"> <condition:Expr> <tail:CaseSelectTail> => {
         case_select_expression(case, condition, tail)
     },
+};
+
+OperatorCastType: TypeExpr = {
+    <argument_type:TypeExprNode> => argument_type,
+    <_count:AbstractionArgs> <argument_type:ClosedTypeNode> => argument_type,
 };
 
 // The tail of an integer/union `case`: the keyword-permuted `then`/`else`
@@ -672,6 +821,9 @@ CaseBranch: CaseBranch = {
     <tag:"identifier"> <pattern:CasePattern> <_colon:":"> <body:Expr> => {
         case_branch(tag, Some(pattern), body)
     },
+    <pattern:CasePattern> "." <tag:"identifier"> ":" <body:Expr> => {
+        case_branch(tag, Some(pattern), body)
+    },
     <else_span:"else"> <body:Expr> => else_branch(else_span, body),
 };
 
@@ -702,44 +854,121 @@ CasePatternTail: PatternTail = {
     },
 };
 
-// Atlas's do_expr (parser.y:438-443) permits effect-only expressions before
-// the guard. Each prefix is evaluated at no-value level; `dont` supplies the
-// false guard, while bare `do` supplies true.
-WhileTail: (Option<Expr>, Expr, SourceSpan) = {
-    <effect:AssignmentExpr> ";" <tail:WhileTail> => prepend_while_effect(effect, tail),
-    <dont:"dont"> <od:"od"> => (
-        Some(Expr::Boolean { value: false, span: dont }),
-        Expr::Dont { span: dont },
-        od,
-    ),
-    <_do:"do"> <body:Expr> <od:"od"> => (None, body, od),
-    <condition:AssignmentExpr> <_do:"do"> <body:Expr> <od:"od"> => (Some(condition), body, od),
+// The guard/body stays below all let/choice scopes (parser.y:515-581).
+WhileTail: (Option<Expr>, Expr, SourceSpan, bool) = {
+    <body:DoExpr> <reversed:TildeOpt> <od:"od"> => while_tail(body, od, reversed),
 };
 
-// `FOR pattern_opt ['@' IDENT] IN expr DO expr OD` (parser.y:506-531); the
+DoExpr: Expr = {
+    <effect:AssignmentExpr> ";" <body:DoExpr> => sequence(effect, body),
+    <condition:AssignmentExpr> "do" <body:Expr> => {
+        let start = condition.span();
+        guarded_body(Some(condition), body, start)
+    },
+    <start:"do"> <body:Expr> => guarded_body(None, body, start),
+    <span:"dont"> => Expr::Dont { span },
+    <start:"let"> <tail:DoLetTail> => let_expression(start, tail),
+    <start:"if"> <tail:DoIfTail> => finish_conditional(start, tail),
+    <start:"case"> <subject:Expr> "|" <branches:DoCaseBranches> <end:"esac"> => {
+        case_expression(start, subject, branches, end)
+    },
+    <start:"case"> <condition:Expr> <tail:DoCaseTail> => case_select_expression(start, condition, tail),
+    "(" <body:DoExpr> ")" => body,
+};
+
+DoLetTail: ParsedLet = {
+    <bindings:LetBindings> "in" <body:DoExpr> => finish_let(bindings, body),
+    <bindings:LetBindings> "then" <tail:DoLetTail> => prepend_let_group(bindings, tail),
+};
+
+DoIfTail: ParsedIf = {
+    <condition:Expr> "then" <yes:DoExpr> "else" <no:DoExpr> <end:"fi"> => if_tail(condition, yes, Some(no), end),
+    <condition:Expr> "then" <yes:DoExpr> "elif" <tail:DoIfTail> => elif_tail(condition, yes, tail),
+    <condition:Expr> "else" <no:DoExpr> "then" <yes:DoExpr> <end:"fi"> => if_tail(condition, yes, Some(no), end),
+};
+
+DoCaseBranches: Vec<CaseBranch> = {
+    <first:DoCaseBranch> <rest:("|" <DoCaseBranch>)*> => {
+        let mut branches = vec![first];
+        branches.extend(rest);
+        branches
+    },
+};
+
+DoCaseBranch: CaseBranch = {
+    <tag:"identifier"> ":" <body:DoExpr> => case_branch(tag, None, body),
+    <tag:"identifier"> <pattern:CasePattern> ":" <body:DoExpr> => case_branch(tag, Some(pattern), body),
+    <pattern:CasePattern> "." <tag:"identifier"> ":" <body:DoExpr> => case_branch(tag, Some(pattern), body),
+    <start:"else"> <body:DoExpr> => else_branch(start, body),
+};
+
+DoCommaList: Vec<Expr> = {
+    <first:DoExpr> <rest:("," <DoExpr>)*> => expression_list(first, rest),
+};
+
+DoCaseTail: ParsedCaseSelect = {
+    "in" <branches:DoCommaList> <end:"esac"> => ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+        branches, then_branch: None, else_branch: None, esac: end,
+    })),
+    "in" <branches:DoCommaList> "else" <no:DoExpr> <end:"esac"> => ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+        branches, then_branch: None, else_branch: Some(no), esac: end,
+    })),
+    "else" <no:DoExpr> "in" <branches:DoCommaList> <end:"esac"> => ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+        branches, then_branch: None, else_branch: Some(no), esac: end,
+    })),
+    "in" <branches:DoCommaList> "then" <yes:DoExpr> "else" <no:DoExpr> <end:"esac"> => ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+        branches, then_branch: Some(yes), else_branch: Some(no), esac: end,
+    })),
+    "then" <yes:DoExpr> "in" <branches:DoCommaList> "else" <no:DoExpr> <end:"esac"> => ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+        branches, then_branch: Some(yes), else_branch: Some(no), esac: end,
+    })),
+    "then" <yes:DoExpr> "else" <no:DoExpr> "in" <branches:DoCommaList> <end:"esac"> => ParsedCaseSelect::Int(Box::new(ParsedIntCase {
+        branches, then_branch: Some(yes), else_branch: Some(no), esac: end,
+    })),
+};
+
+// Quiet IF contributes a singleton/empty row. Nested loop bodies already
+// produce rows; only an enclosing FOR joins those rows (parser.y:583-652).
+IfForLoop: Expr = {
+    <start:"if"> <condition:Expr> "do" <body:Expr> <end:"fi"> => {
+        quiet_if_expression(start, condition, body, end, true)
+    },
+    <start:"if"> <condition:Expr> <body:IfForLoop> <end:"fi"> => {
+        quiet_if_expression(start, condition, body, end, false)
+    },
+    <start:"for"> <tail:ForTail> => for_expression(start, tail),
+    <start:"for"> <tail:CountedForTail> => counted_for_expression(start, tail),
+};
+
+ForBody: (Expr, bool) = {
+    "do" <body:Expr> => (body, false),
+    <body:IfForLoop> => (body, true),
+};
+
+// `FOR pattern_opt ['@' IDENT] IN expr DO expr OD` (parser.y:598-621); the
 // loop pattern reuses the let-binding pattern grammar, exactly like the
 // upstream pair wrap (pattern, index).
 ForTail: ParsedFor = {
-    <pattern:ForPattern> <index:ForIndex?> <_in:"in"> <iterable:Expr> <_do:"do">
-        <body:Expr> <od:"od"> => {
-        ParsedFor { pattern, index, iterable, body, od }
+    <pattern:ForPattern> <index:ForIndex?> <_in:"in"> <iterable:Expr> <input_reversed:TildeOpt>
+        <body:ForBody> <output_reversed:TildeOpt> <od:"od"> => {
+        ParsedFor { pattern, index, iterable, body: body.0, flatten: body.1, input_reversed, output_reversed, od }
     },
 };
 
 // Counted for loops (parser.y:550-573): `FOR IDENT ':' count [FROM bound |
 // DOWNTO bound] DO body OD`, or the anonymous `FOR ':' count DO body OD`.
 CountedForTail: ParsedCountedFor = {
-    <name:"identifier"> ":" <count:Expr> "from" <bound:Expr> "do" <body:Expr> <od:"od"> => {
-        ParsedCountedFor { name: Some(name), count, bound: Some(bound), decreasing: false, body, od }
+    <name:"identifier"> ":" <count:Expr> "from" <bound:Expr> <decreasing:TildeOpt> <body:ForBody> <output_reversed:TildeOpt> <od:"od"> => {
+        ParsedCountedFor { name: Some(name), count, bound: Some(bound), decreasing, output_reversed, body: body.0, flatten: body.1, od }
     },
-    <name:"identifier"> ":" <count:Expr> "downto" <bound:Expr> "do" <body:Expr> <od:"od"> => {
-        ParsedCountedFor { name: Some(name), count, bound: Some(bound), decreasing: true, body, od }
+    <name:"identifier"> ":" <count:Expr> "downto" <bound:Expr> <body:ForBody> <od:"od"> => {
+        ParsedCountedFor { name: Some(name), count, bound: Some(bound), decreasing: true, output_reversed: false, body: body.0, flatten: body.1, od }
     },
-    <name:"identifier"> ":" <count:Expr> "do" <body:Expr> <od:"od"> => {
-        ParsedCountedFor { name: Some(name), count, bound: None, decreasing: false, body, od }
+    <name:"identifier"> ":" <count:Expr> <decreasing:TildeOpt> <body:ForBody> <output_reversed:TildeOpt> <od:"od"> => {
+        ParsedCountedFor { name: Some(name), count, bound: None, decreasing, output_reversed, body: body.0, flatten: body.1, od }
     },
-    ":" <count:Expr> "do" <body:Expr> <od:"od"> => {
-        ParsedCountedFor { name: None, count, bound: None, decreasing: false, body, od }
+    ":" <count:Expr> <body:ForBody> <output_reversed:TildeOpt> <od:"od"> => {
+        ParsedCountedFor { name: None, count, bound: None, decreasing: false, output_reversed, body: body.0, flatten: body.1, od }
     },
 };
 
@@ -845,6 +1074,7 @@ extern {
         "?" => ParserToken::Question(<SourceSpan>),
         "set" => ParserToken::Set(<SourceSpan>),
         "set_type" => ParserToken::SetType(<SourceSpan>),
+        "any_type" => ParserToken::AnyType(<SourceSpan>),
         "whattype" => ParserToken::Whattype(<SourceSpan>),
         "showall" => ParserToken::Showall(<SourceSpan>),
         "forget" => ParserToken::Forget(<SourceSpan>),

@@ -93,7 +93,9 @@ pub fn alcove_center(
     for entry in &solution {
         let scaled = entry * Rational::from(denominator);
         numerators.push(
-            i64::try_from(scaled.numerator_ref())
+            // The exact integral conversion retains the rational's sign;
+            // numerator_ref alone changes negative alcove centers to positive.
+            i64::try_from(&scaled)
                 .map_err(|_| StructureError::ArithmeticOverflow)?,
         );
     }

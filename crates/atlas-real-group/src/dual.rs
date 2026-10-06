@@ -19,7 +19,7 @@ use crate::twisted_involution::compose_matrices;
 use crate::weak_real_form::WeakRealFormPartition;
 use crate::{
     BasedRootDatum, CartanClassification, CartanId, Coweight, InnerClass, LatticeInvolution,
-    StructureError, Weight, WeylAction, WeylGroup,
+    StructureError, TwistedInvolution, Weight, WeylAction, WeylElement, WeylGroup, WeylInterface,
 };
 
 /// The based root datum dual to `datum`: transposed Cartan matrix, simple
@@ -182,9 +182,9 @@ pub fn dual_inner_class(
 /// of [`crate::TwistedConjugacyPartition::class_of`]. Each entry carries
 /// the dual CartanId with the dual class's weak-real-form count (upstream
 /// `CartanClass::numDualRealForms`, the dual fiber's weak-real partition
-/// size). A permutation miss is an invariant violation, never a hole: every
-/// twisted involution is in the full-W enumeration. `weyl_budget` bounds
-/// that enumeration of the dual side.
+/// size). A class miss is an invariant violation, never a hole. Partitions
+/// may enumerate members or canonicalize them on demand. The legacy budget
+/// argument is unused here.
 pub fn dual_cartan_correspondence(
     inner_class: &InnerClass,
     classification: &CartanClassification,
@@ -207,7 +207,6 @@ pub fn dual_cartan_correspondence(
     {
         return Err(StructureError::DatumMismatch);
     }
-    let dual_roots = dual.root_system();
     let dual_fundamental = dual_classification.cartan_ids().next().ok_or(
         StructureError::CartanClassificationInvariantViolation {
             invariant: "dual Cartan correspondence",
@@ -224,72 +223,25 @@ pub fn dual_cartan_correspondence(
         return Err(StructureError::DatumMismatch);
     }
 
-    // The dual partition's member-permutation map, and the raw class index of
-    // each classification class (its representative's permutation is a member
-    // key; the fundamental class's normalized identity is the identity
-    // permutation, also a member key).
+    // Query through the provenance-checked API: direct classifications now
+    // store representatives only and canonicalize nonrepresentative members.
     let partition = std::sync::Arc::clone(dual_classification.twisted_partition());
-    let permutation_of = |dual_class: &crate::CartanClass| {
-        dual_class
-            .representative()
-            .root_involution()
-            .image_permutation()
-            .iter()
-            .map(|id| id.0 as u8)
-            .collect::<Vec<_>>()
-    };
     let mut cartan_of_raw = vec![None; partition.classes().len()];
     for id in dual_classification.cartan_ids() {
         let dual_class = dual_classification
             .cartan_class(id)
             .expect("cartan_ids yields in-range ids");
-        let raw = partition
-            .class_index_of_permutation(&permutation_of(dual_class))
-            .ok_or(StructureError::CartanClassificationInvariantViolation {
-                invariant: "dual Cartan correspondence",
-            })?;
+        let raw = partition.class_of(dual_class.representative())?;
         cartan_of_raw[raw] = Some(id);
     }
 
     let mut correspondence = Vec::with_capacity(classification.cartan_classes().len());
+    // The public argument was not a budget on this lookup. Bound the
+    // longest-element walk by the already enumerated root count instead.
+    let longest = longest_action(dual, dual.root_system().roots().len())?;
     for cartan_class in classification.cartan_classes() {
-        // theta_dual = -(theta on the coweight lattice): the permutation that
-        // map induces on the dual roots.
-        let coweight = cartan_class
-            .representative()
-            .root_involution()
-            .involution()
-            .coweight_matrix();
-        let mut permutation = Vec::with_capacity(dual_roots.roots().len());
-        for root in dual_roots.roots() {
-            let mut image = Vec::with_capacity(coweight.len());
-            for entries in coweight.iter() {
-                let mut value = 0_i64;
-                for (column, &entry) in root.as_slice().iter().enumerate() {
-                    let term = i64::from(entries[column])
-                        .checked_mul(i64::from(entry))
-                        .ok_or(StructureError::ArithmeticOverflow)?;
-                    value = value
-                        .checked_add(term)
-                        .ok_or(StructureError::ArithmeticOverflow)?;
-                }
-                let negated = value
-                    .checked_neg()
-                    .ok_or(StructureError::ArithmeticOverflow)?;
-                image.push(i32::try_from(negated).map_err(|_| StructureError::ArithmeticOverflow)?);
-            }
-            permutation.push(dual_roots.id_of(&Weight::new(image)).ok_or(
-                StructureError::CartanClassificationInvariantViolation {
-                    invariant: "dual Cartan correspondence",
-                },
-            )?);
-        }
-        let permutation: Vec<u8> = permutation.iter().map(|id| id.0 as u8).collect();
-        let raw = partition.class_index_of_permutation(&permutation).ok_or(
-            StructureError::CartanClassificationInvariantViolation {
-                invariant: "dual Cartan correspondence",
-            },
-        )?;
+        let twisted = dual_twisted_representative(inner_class, cartan_class.representative(), dual, &longest)?;
+        let raw = partition.class_of(&twisted)?;
         let dual_id =
             cartan_of_raw[raw].ok_or(StructureError::CartanClassificationInvariantViolation {
                 invariant: "dual Cartan correspondence",
@@ -302,6 +254,29 @@ pub fn dual_cartan_correspondence(
         correspondence.push((dual_id, form_count));
     }
     Ok(correspondence)
+}
+
+/// The same primal-word replay used by RealWeylContext's dual fiber: w*w0
+/// on the dual datum. Unlike a bare root-permutation lookup this preserves
+/// both lattice actions and the distinguished-involution provenance.
+pub(crate) fn dual_twisted_representative(
+    primal: &InnerClass,
+    twisted: &TwistedInvolution,
+    dual: &InnerClass,
+    longest: &WeylAction,
+) -> Result<TwistedInvolution, StructureError> {
+    let system = primal.root_system();
+    let interface = WeylInterface::new(primal.datum().cartan_matrix())?;
+    let word = WeylElement::from_action(system, twisted.weyl_action())?
+        .canonical_word(system, &interface)?;
+    let group = WeylGroup::new(dual.datum().clone());
+    let mut action = group.identity()?;
+    for generator in word {
+        action = action.compose(&group.simple_reflection(generator)?)?;
+    }
+    action = action.compose(longest)?;
+    TwistedInvolution::new(dual.datum(), dual.root_system(),
+        dual.distinguished_involution().involution(), action)
 }
 
 /// The number of dual real forms of `inner_class`: the fundamental

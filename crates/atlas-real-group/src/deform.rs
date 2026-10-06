@@ -386,8 +386,9 @@ pub fn common_deformation_terms(
         match descent {
             None => contribution[z].push((z, 1)),
             Some((s, BlockDescent::ComplexDescent)) => {
-                let target = block
-                    .cross(z, s)
+                // PartialBlock's inherent cross takes (generator, row),
+                // unlike BlockTopology. Make the row-first trait explicit.
+                let target = BlockTopology::cross(block, z, s)
                     .ok_or(StructureError::BlockInvariantViolation {
                         invariant: "common deformation complex cross",
                     })?;

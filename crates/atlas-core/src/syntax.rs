@@ -130,6 +130,13 @@ pub enum Expr {
         arguments: Vec<Expr>,
         span: SourceSpan,
     },
+    /// Select a global overload by argument type, without calling it.
+    /// Explicit `f@ T (T)` formals are free variables, not an abstraction.
+    OperatorCast {
+        name: SpannedValue<String>,
+        argument_type: Box<TypeExpr>,
+        span: SourceSpan,
+    },
     Call {
         callee: Box<Expr>,
         arguments: Vec<Expr>,
@@ -164,6 +171,13 @@ pub enum Expr {
         inner: Box<Expr>,
         span: SourceSpan,
     },
+    /// Lexically rigid type variables, abstracted to a scheme on leaving the
+    /// body. This node disappears during type analysis (axis.w:4109).
+    TypeAbstraction {
+        count: usize,
+        body: Box<Expr>,
+        span: SourceSpan,
+    },
     /// `if c then t [else e] fi` (elif desugars to nesting at parse;
     /// a missing else branch is the void value, parser.y:415).
     Conditional {
@@ -192,12 +206,20 @@ pub enum Expr {
     While {
         condition: Option<Box<Expr>>,
         body: Box<Expr>,
+        reversed: bool,
+        span: SourceSpan,
+    },
+    /// A guarded body inside the while control tree. Its lexical let/case
+    /// frame must enclose BOTH expressions (axis.w:5887-5898).
+    Do {
+        condition: Option<Box<Expr>>,
+        body: Box<Expr>,
         span: SourceSpan,
     },
     /// `for pattern[@index] in row do body od` (parser.y:506-531). Boxed
     /// to keep `Expr` small, like `RecLambda`.
     For(Box<ForLoop>),
-    /// `break` / `break N` (parser.y:385-386 BREAK / BREAK INT units):
+    /// Repeated `break` tokens (current parser.y:461-462):
     /// unwinds `levels + 1` loops; the breaking iteration of each unwound
     /// loop contributes no value to the collected row.
     Break {
@@ -267,6 +289,7 @@ pub struct ComponentTransformExpr {
     pub reversed: bool,
     pub operator: String,
     pub operator_span: SourceSpan,
+    pub named_operator: bool,
     pub value: Expr,
     pub span: SourceSpan,
 }
@@ -291,6 +314,7 @@ pub struct FieldTransformExpr {
     pub field_span: SourceSpan,
     pub operator: String,
     pub operator_span: SourceSpan,
+    pub named_operator: bool,
     pub value: Expr,
     pub span: SourceSpan,
 }
@@ -328,6 +352,7 @@ pub struct CountedForLoop {
     /// `downto` counts down to the bound inclusive; otherwise the loop
     /// takes `count` increasing steps from the bound (default 0).
     pub decreasing: bool,
+    pub output_reversed: bool,
     pub body: Expr,
     pub span: SourceSpan,
 }
@@ -350,6 +375,8 @@ pub struct ForLoop {
     pub index: Option<SpannedValue<String>>,
     pub iterable: Box<Expr>,
     pub body: Box<Expr>,
+    pub input_reversed: bool,
+    pub output_reversed: bool,
     pub span: SourceSpan,
 }
 
@@ -364,11 +391,13 @@ pub enum Pattern {
     /// An empty `pat_list` slot, as in `(a, , c)`. It consumes one tuple
     /// component without constraining its type or binding a name.
     Omitted { span: SourceSpan },
-    /// `x` or const `!x`.
+    /// `x`, const `!x`, or an operator symbol. The symbol flag is independent
+    /// of constness (upstream pattern bits 0x8 and 0x4 respectively).
     Name {
         name: String,
         name_span: SourceSpan,
         constant: bool,
+        operator: bool,
         span: SourceSpan,
     },
     /// `(p, …)` destructuring; `: t` / `: !t` also binds the whole value
@@ -526,8 +555,17 @@ impl TypeExpr {
                 argument.resolve_in(table)?,
                 result.resolve_in(table)?,
             )),
-            Self::Named { name, span } => table.resolve_name(name).ok_or_else(|| Diagnostic::new(
-                ErrorKind::Name, format!("undefined type name '{name}'"), Some(*span))),
+            Self::Named { name, span } => {
+                let number = table.lookup(name).ok_or_else(|| Diagnostic::new(
+                    ErrorKind::Name, format!("undefined type name '{name}'"), Some(*span)))?;
+                let expected = table.constructor_arity(number);
+                if expected != 0 {
+                    return Err(Diagnostic::new(ErrorKind::Type,
+                        format!("Type constructor '{name}' called with 0 type arguments, expected {expected}"),
+                        Some(*span)));
+                }
+                Ok(Type::Tabled(number))
+            }
         }
     }
 
@@ -560,6 +598,9 @@ pub struct ParsedFor {
     pub index: Option<SpannedValue<String>>,
     pub iterable: Expr,
     pub body: Expr,
+    pub flatten: bool,
+    pub input_reversed: bool,
+    pub output_reversed: bool,
     pub od: SourceSpan,
 }
 
@@ -617,16 +658,19 @@ impl Expr {
             | Self::Unary { span, .. }
             | Self::Binary { span, .. }
             | Self::OperatorCall { span, .. }
+            | Self::OperatorCast { span, .. }
             | Self::Call { span, .. }
             | Self::Lambda { span, .. }
             | Self::Return { span, .. }
             | Self::RecLambda { span, .. }
             | Self::Group { span, .. }
+            | Self::TypeAbstraction { span, .. }
             | Self::Conditional { span, .. }
             | Self::Cast { span, .. }
             | Self::Sequence { span, .. }
             | Self::Next { span, .. }
             | Self::While { span, .. }
+            | Self::Do { span, .. }
             | Self::Break { span, .. }
             | Self::Dont { span }
             | Self::Die { span } => *span,
@@ -646,7 +690,8 @@ impl Expr {
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct SliceFlags {
-    /// `M~[lo:hi]` output reversal (parser.y:639-657); one-dimensional
+    /// `M~[lo:hi]` selects from reverse iterator coordinates; it is NOT
+    /// the reversal of the forward-selected interval. One-dimensional
     /// only — the two-dimensional grammar has no `~[` production.
     pub reverse_output: bool,
     pub lower_from_end: bool,
@@ -758,6 +803,13 @@ pub enum Command {
         bindings: Vec<LetBinding>,
         span: SourceSpan,
     },
+    /// Each raw declaration executes separately, including comma siblings;
+    /// a failure does not roll back earlier or prevent later declarations.
+    PolymorphicSet {
+        count: usize,
+        bindings: Vec<LetBinding>,
+        span: SourceSpan,
+    },
     /// `set quiet` / `set verbose` (parser.y:171-178): a session verbosity
     /// option command; unknown options print
     /// `'X' is not something one can set` and abort the command without
@@ -789,6 +841,7 @@ impl Command {
             | Self::Forget { span, .. }
             | Self::ForgetOverload { span, .. }
             | Self::Set { span, .. }
+            | Self::PolymorphicSet { span, .. }
             | Self::SetOption { span, .. }
             | Self::ShowOverloads { span, .. }
             | Self::ShowAll { span } => *span,
@@ -877,6 +930,7 @@ pub enum ParserToken {
     Question(SourceSpan),
     Set(SourceSpan),
     SetType(SourceSpan),
+    AnyType(SourceSpan),
     Whattype(SourceSpan),
     Showall(SourceSpan),
     Forget(SourceSpan),
@@ -952,6 +1006,7 @@ impl ParserToken {
             | Self::Question(span)
             | Self::Set(span)
             | Self::SetType(span)
+            | Self::AnyType(span)
             | Self::Whattype(span)
             | Self::Showall(span)
             | Self::Forget(span)
@@ -1025,6 +1080,7 @@ impl fmt::Display for ParserToken {
             Self::Question(_) => "?",
             Self::Set(_) => "set",
             Self::SetType(_) => "set_type",
+            Self::AnyType(_) => "any_type",
             Self::Whattype(_) => "whattype",
             Self::Showall(_) => "showall",
             Self::Forget(_) => "forget",
@@ -1168,6 +1224,7 @@ fn parser_tokens_from_tokens(
                         "die" => ParserToken::Die(span),
                         "set" => ParserToken::Set(span),
                         "set_type" => ParserToken::SetType(span),
+                        "any_type" => ParserToken::AnyType(span),
                         "whattype" => ParserToken::Whattype(span),
                         "showall" => ParserToken::Showall(span),
                         "forget" => ParserToken::Forget(span),
@@ -1302,12 +1359,26 @@ pub fn parse_command(tokens: &[Token], source: &SourceText) -> Result<Command, P
 pub fn parse_command_in(
     tokens: &[Token], source: &SourceText, types: &crate::types::TypeTable,
 ) -> Result<Command, ParseError> {
+    parse_command_fragment_in(tokens, source, types, false)
+        .map(|command| command.expect("a final fragment cannot request another line"))
+}
+
+/// Physical newlines do not terminate an unfinished parser-owned type spec.
+/// Retry parsing the retained token prefix on the next line; no AST is ever
+/// evaluated until complete. EOF and non-EOF syntax errors still diagnose.
+pub(crate) fn parse_command_fragment_in(
+    tokens: &[Token], source: &SourceText, types: &crate::types::TypeTable,
+    allow_more: bool,
+) -> Result<Option<Command>, ParseError> {
     let parsed = parser_tokens_from_tokens(tokens.iter().cloned())?;
     let spans: Vec<SourceSpan> = parsed.iter().map(|(_, span)| *span).collect();
     let scope = ParserTypes::new(types);
-    grammar::CommandParser::new()
-        .parse(&scope, TokenStream::new(parsed, &scope))
-        .map_err(|error| syntax_error(error, source, &spans))
+    match grammar::CommandParser::new().parse(&scope, TokenStream::new(parsed, &scope)) {
+        Ok(command) => Ok(Some(command)),
+        Err(lalrpop_util::ParseError::UnrecognizedEof { .. })
+            if allow_more && scope.has_virtual_group() => Ok(None),
+        Err(error) => Err(syntax_error(error, source, &spans)),
+    }
 }
 
 /// Parse one already-delimited Atlas expression. The body of a `>file` /
@@ -1503,6 +1574,7 @@ fn bison_token_name(token: &ParserToken) -> Option<&'static str> {
         ParserToken::Becomes(_) => Some(":="),
         ParserToken::Set(_) => Some("SET"),
         ParserToken::SetType(_) => Some("SET_TYPE"),
+        ParserToken::AnyType(_) => Some("ANY_TYPE"),
         ParserToken::Whattype(_) => Some("WHATTYPE"),
         ParserToken::Showall(_) => Some("SHOWALL"),
         ParserToken::Forget(_) => Some("FORGET"),
@@ -1537,13 +1609,8 @@ fn join_span(start: SourceSpan, end: SourceSpan) -> SourceSpan {
     )
 }
 
-/// The level count of a `break N` unit (parser.y:386 `make_break(stoi)`):
-/// the literal is non-negative by tokenisation; an out-of-range literal
-/// saturates so analysis still reports the depth error.
-fn break_level(value: &BigInt) -> usize {
-    usize::try_from(value).unwrap_or(usize::MAX)
-}
-
+// The original raw AST still prints the depth numerically, even though its
+// source grammar and lexical-depth diagnostic now use repeated BREAK tokens.
 fn break_shape(levels: usize) -> String {
     if levels == 0 {
         "break".to_string()
@@ -1611,7 +1678,7 @@ fn component_transform(
     name: SpannedValue<String>,
     index: Expr,
     reversed: bool,
-    operator: SpannedValue<String>,
+    (operator, named_operator): (SpannedValue<String>, bool),
     value: Expr,
 ) -> Expr {
     Expr::ComponentTransform(Box::new(ComponentTransformExpr {
@@ -1622,6 +1689,7 @@ fn component_transform(
         reversed,
         operator: operator.value,
         operator_span: operator.span,
+        named_operator,
         value,
     }))
 }
@@ -1642,7 +1710,7 @@ fn field_assignment(name: SpannedValue<String>, field: SpannedValue<String>, val
 fn field_transform(
     name: SpannedValue<String>,
     field: SpannedValue<String>,
-    operator: SpannedValue<String>,
+    (operator, named_operator): (SpannedValue<String>, bool),
     value: Expr,
 ) -> Expr {
     Expr::FieldTransform(Box::new(FieldTransformExpr {
@@ -1653,6 +1721,7 @@ fn field_transform(
         field_span: field.span,
         operator: operator.value,
         operator_span: operator.span,
+        named_operator,
         value,
     }))
 }
@@ -1662,15 +1731,42 @@ fn field_transform(
 /// `make_binary_call`); the priority is irrelevant once the call is built.
 fn operate_assignment(
     name: SpannedValue<String>,
-    operator: SpannedValue<String>,
+    (operator, named_operator): (SpannedValue<String>, bool),
     value: Expr,
 ) -> Expr {
     let operand = Expr::Identifier {
         name: name.value.clone(),
         span: name.span,
     };
-    let operator = FormulaOperator::new(operator.value, 0).with_span(operator.span);
-    assignment(name, operator_call(operator, vec![operand, value]))
+    let span = join_span(name.span, value.span());
+    let call = compound_update_call(operator.value, operator.span, named_operator,
+        vec![operand, value], span);
+    assignment(name, call)
+}
+
+/// Named compound updates resolve an identifier callee before its arguments.
+/// Keep symbolic operator lookup unchanged; an absent IDENT is a name error,
+/// not a failure to match an existing overload (original3839528).
+pub(crate) fn compound_update_call(
+    operator: String,
+    operator_span: SourceSpan,
+    named_operator: bool,
+    arguments: Vec<Expr>,
+    span: SourceSpan,
+) -> Expr {
+    if named_operator {
+        Expr::Call {
+            callee: Box::new(Expr::Identifier { name: operator, span: operator_span }),
+            arguments,
+            span,
+        }
+    } else {
+        Expr::OperatorCall {
+            operator: FormulaOperator::new(operator, 0).with_span(operator_span),
+            arguments,
+            span,
+        }
+    }
 }
 
 fn sequence(first: Expr, rest: Expr) -> Expr {
@@ -1697,19 +1793,49 @@ pub struct ParsedCountedFor {
     pub count: Expr,
     pub bound: Option<Expr>,
     pub decreasing: bool,
+    pub output_reversed: bool,
     pub body: Expr,
+    pub flatten: bool,
     pub od: SourceSpan,
 }
 
 fn counted_for_expression(for_span: SourceSpan, parsed: ParsedCountedFor) -> Expr {
-    Expr::CountedFor(Box::new(CountedForLoop {
+    let span = join_span(for_span, parsed.od);
+    let loop_ = Expr::CountedFor(Box::new(CountedForLoop {
         name: parsed.name,
         count: parsed.count,
         bound: parsed.bound,
         decreasing: parsed.decreasing,
+        output_reversed: parsed.output_reversed,
         body: parsed.body,
-        span: join_span(for_span, parsed.od),
-    }))
+        span,
+    }));
+    finish_iffor_loop(loop_, parsed.flatten, for_span, span)
+}
+
+/// parser.y lowers filtered/nested FOR through the inaccessible-to-source
+/// "## " overload. Calling visible "##" would let user overrides change
+/// language semantics (original3839480's generic-override regression).
+fn finish_iffor_loop(loop_: Expr, flatten: bool, start: SourceSpan, span: SourceSpan) -> Expr {
+    if !flatten { return loop_; }
+    Expr::Call {
+        callee: Box::new(Expr::Identifier { name: "## ".into(), span: start }),
+        arguments: vec![loop_],
+        span,
+    }
+}
+
+fn quiet_if_expression(
+    start: SourceSpan, condition: Expr, body: Expr, end: SourceSpan, singleton: bool,
+) -> Expr {
+    let span = join_span(start, end);
+    let then_branch = if singleton { Expr::List { elements: vec![body], span } } else { body };
+    Expr::Conditional {
+        condition: Box::new(condition),
+        then_branch: Box::new(then_branch),
+        else_branch: Box::new(Expr::List { elements: Vec::new(), span }),
+        span,
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1802,35 +1928,60 @@ fn case_select_expression(case_span: SourceSpan, condition: Expr, tail: ParsedCa
     }
 }
 
-fn while_expression(while_span: SourceSpan, tail: (Option<Expr>, Expr, SourceSpan)) -> Expr {
-    let (condition, body, od) = tail;
+fn while_expression(while_span: SourceSpan, tail: (Option<Expr>, Expr, SourceSpan, bool)) -> Expr {
+    let (condition, body, od, reversed) = tail;
     Expr::While {
         span: join_span(while_span, od),
+        condition: condition.map(Box::new),
+        body: Box::new(body),
+        reversed,
+    }
+}
+
+fn guarded_body(condition: Option<Expr>, body: Expr, start: SourceSpan) -> Expr {
+    Expr::Do {
+        span: join_span(start, body.span()),
         condition: condition.map(Box::new),
         body: Box::new(body),
     }
 }
 
+fn while_tail(body: Expr, od: SourceSpan, reversed: bool) -> (Option<Expr>, Expr, SourceSpan, bool) {
+    // Retain the old flat representation for simple guards. A scoped
+    // control tree stays intact: pulling its guard out would lose bindings
+    // or evaluate a discriminator/effect twice.
+    match body {
+        Expr::Do { condition, body, .. } => (condition.map(|c| *c), *body, od, reversed),
+        Expr::Dont { span } => (Some(Expr::Boolean { value: false, span }), Expr::Dont { span }, od, reversed),
+        Expr::Sequence { first, second, .. } => prepend_while_effect(*first, while_tail(*second, od, reversed)),
+        body => (None, body, od, reversed),
+    }
+}
+
 fn prepend_while_effect(
     effect: Expr,
-    tail: (Option<Expr>, Expr, SourceSpan),
-) -> (Option<Expr>, Expr, SourceSpan) {
-    let (condition, body, od) = tail;
+    tail: (Option<Expr>, Expr, SourceSpan, bool),
+) -> (Option<Expr>, Expr, SourceSpan, bool) {
+    let (condition, body, od, reversed) = tail;
     let condition = condition.unwrap_or_else(|| Expr::Boolean {
         value: true,
         span: effect.span(),
     });
-    (Some(sequence(effect, condition)), body, od)
+    (Some(sequence(effect, condition)), body, od, reversed)
 }
 
 fn for_expression(for_span: SourceSpan, parsed: ParsedFor) -> Expr {
-    Expr::For(Box::new(ForLoop {
+    let span = join_span(for_span, parsed.od);
+    let loop_ = Expr::For(Box::new(ForLoop {
         pattern: parsed.pattern,
         index: parsed.index,
-        span: join_span(for_span, parsed.od),
+        span,
         iterable: Box::new(parsed.iterable),
         body: Box::new(parsed.body),
-    }))
+        input_reversed: parsed.input_reversed,
+        output_reversed: parsed.output_reversed,
+    }));
+    finish_iffor_loop(loop_, parsed.flatten, for_span, span)
 }
 
 fn let_expression(let_span: SourceSpan, parsed: ParsedLet) -> Expr {
@@ -1941,7 +2092,7 @@ fn operator_selector(operator: FormulaOperator) -> PostfixSuffix {
     }
 }
 
-/// `receiver.unit` — the literal applies as a function (parser.y:321
+/// `receiver.unit` — the unit applies as a function (parser.y:391-394
 /// `selector: unit`).
 fn unit_selector(callee: Expr) -> PostfixSuffix {
     PostfixSuffix::Selector {
@@ -2009,6 +2160,7 @@ fn pattern_name(name: SpannedValue<String>) -> Pattern {
         name: name.value,
         name_span: name.span,
         constant: false,
+        operator: false,
     }
 }
 
@@ -2019,6 +2171,16 @@ fn const_pattern_name(bang: SourceSpan, name: SpannedValue<String>) -> Pattern {
         name: name.value,
         name_span: name.span,
         constant: true,
+        operator: false,
+    }
+}
+
+/// An operator in a binding position must have function type after inference.
+/// Keep this distinct from `!name`, which marks an ordinary name constant.
+fn operator_pattern(operator: FormulaOperator) -> Pattern {
+    let span = operator.span.expect("grammar operators carry spans");
+    Pattern::Name {
+        name: operator.symbol, name_span: span, constant: false, operator: true, span,
     }
 }
 
@@ -2144,22 +2306,18 @@ fn function_binding(
     )
 }
 
-/// `operator(params) = body` in a global `set` declaration.  Atlas stores
-/// operators in the same overload table as named functions; representing the
-/// operator as a pattern name lets the existing binding/evaluation path keep
-/// its shared dispatch and reporting behavior.
+/// `operator(params) = body`, globally or locally. Preserve the operator
+/// pattern flag even though the lambda already ensures a function result.
 fn operator_function_binding(
     target: FormulaOperator,
-    open: SourceSpan,
+    _open: SourceSpan,
     parameters: Vec<LambdaParam>,
     body: Expr,
 ) -> LetBinding {
     let span = target.span.expect("grammar operators carry spans");
-    let name = SpannedValue {
-        value: target.symbol,
-        span,
-    };
-    function_binding(name, open, parameters, body)
+    pattern_binding(operator_pattern(target), Expr::Lambda {
+        parameters, span: join_span(span, body.span()), body: Box::new(body),
+    })
 }
 
 /// `rec_fun name(params) = result: body` in a let declaration desugars to
@@ -2441,8 +2599,11 @@ fn case_expression(
 }
 
 fn case_branch(tag: SpannedValue<String>, pattern: Option<Pattern>, body: Expr) -> CaseBranch {
+    let start = pattern.as_ref().map(Pattern::span)
+        .filter(|span| span.byte_start() < tag.span.byte_start())
+        .unwrap_or(tag.span);
     CaseBranch {
-        span: join_span(tag.span, body.span()),
+        span: join_span(start, body.span()),
         tag: Some(tag),
         pattern,
         body,
@@ -2843,6 +3004,8 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             ),
             _ => format!("{}({})", operator.symbol, compact_expressions(arguments)),
         },
+        Expr::OperatorCast { name, argument_type, .. } =>
+            format!("{}@{}", name.value, compact_type(argument_type)),
         Expr::Call {
             callee, arguments, ..
         } => format!(
@@ -2879,6 +3042,8 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
         ),
         Expr::Return { value, .. } => format!("return {}", compact_expression(value)),
         Expr::Group { inner, .. } => format!("({})", compact_expression(inner)),
+        // parsetree.w prints the abstractor as '&' followed by its degree.
+        Expr::TypeAbstraction { count, body, .. } => format!("&{count}{}", compact_expression(body)),
         Expr::Conditional {
             condition,
             then_branch,
@@ -2901,14 +3066,17 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
             )
         }
         Expr::While {
-            condition, body, ..
+            condition, body, reversed, ..
         } => {
             let condition = condition
                 .as_ref()
                 .map(|condition| format!("{} ", compact_expression(condition)))
                 .unwrap_or_default();
-            format!("while {condition}do {} od", compact_expression(body))
+            format!("while {condition}do {} {}od", compact_expression(body), if *reversed { "~" } else { "" })
         }
+        Expr::Do { condition, body, .. } => format!("{}do {}",
+            condition.as_ref().map(|c| format!("{} ", compact_expression(c))).unwrap_or_default(),
+            compact_expression(body)),
         Expr::For(loop_) => {
             let pattern = loop_
                 .pattern
@@ -2921,9 +3089,11 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 .map(|index| format!("@{}", index.value))
                 .unwrap_or_default();
             format!(
-                "for {pattern}{index} in {} do {} od",
+                "for {pattern}{index} in {} {}do {} {}od",
                 compact_expression(&loop_.iterable),
-                compact_expression(&loop_.body)
+                if loop_.input_reversed { "~" } else { "" },
+                compact_expression(&loop_.body),
+                if loop_.output_reversed { "~" } else { "" },
             )
         }
         Expr::Break { levels, .. } => break_shape(*levels),
@@ -3005,9 +3175,11 @@ pub(crate) fn compact_expression(expression: &Expr) -> String {
                 (None, _) => String::new(),
             };
             format!(
-                "for {name}: {}{bound} do {} od",
+                "for {name}: {}{bound} {}do {} {}od",
                 compact_expression(&loop_.count),
-                compact_expression(&loop_.body)
+                if loop_.decreasing && loop_.bound.is_none() { "~" } else { "" },
+                compact_expression(&loop_.body),
+                if loop_.output_reversed { "~" } else { "" },
             )
         }
     }
@@ -3356,6 +3528,9 @@ mod tests {
                     .join(",")
             ),
             Expr::Group { inner, .. } => format!("group({})", expression_shape(inner)),
+            Expr::OperatorCast { name, argument_type, .. } =>
+                format!("select({}@{})", name.value, compact_type(argument_type)),
+            Expr::TypeAbstraction { count, body, .. } => format!("abstract{count}({})", expression_shape(body)),
             Expr::Conditional {
                 condition,
                 then_branch,
@@ -3403,6 +3578,9 @@ mod tests {
                     .unwrap_or_default(),
                 expression_shape(body)
             ),
+            Expr::Do { condition, body, .. } => format!("do({};{})",
+                condition.as_ref().map(|c| expression_shape(c)).unwrap_or_default(),
+                expression_shape(body)),
             Expr::For(loop_) => format!(
                 "for({}{};{};{})",
                 loop_
@@ -3899,6 +4077,20 @@ mod tests {
     }
 
     #[test]
+    fn return_operand_stops_before_sequence_and_next() {
+        // parser.y::tertiary is RETURN tertiary, not RETURN expr.
+        // Original3839128 rejects the rat return despite the later int.
+        assert_eq!(expression_shape(&parse_one("return 3/2;0")),
+            "seq(return(/@6(3,2));0)");
+        assert_eq!(expression_shape(&parse_one("return 1 next 2")),
+            "next(return(1);2)");
+        assert_eq!(expression_shape(&parse_one("return (1;2)")),
+            "return(group(seq(1;2)))");
+        assert_eq!(expression_shape(&parse_one("return x:=1")),
+            "return(assign(x,1))");
+    }
+
+    #[test]
     fn parses_b3a_function_fixture() {
         let source = SourceText::new(include_str!(
             "../../../tests/fixtures/eval/functions_b3.atlas"
@@ -4093,6 +4285,16 @@ mod tests {
     }
 
     #[test]
+    fn parses_complete_units_as_selectors() {
+        assert_eq!(expression_shape(&parse_one("3.((int n):n+4)")),
+            "call(group(lambda(+@4(n,4)));3)");
+        assert_eq!(expression_shape(&parse_one("3.(rec_fun f(int n) int:n)")),
+            "call(group(rec_lambda(n));3)");
+        assert_eq!(expression_shape(&parse_one("3.begin ((int n):n) end")),
+            "call(group(group(lambda(n)));3)");
+    }
+
+    #[test]
     fn parses_unit_and_operator_selectors() {
         // An operator selector lowers to the prefix-shaped operator call.
         assert_eq!(expression_shape(&parse_one("2.-")), "-@4(2)");
@@ -4165,20 +4367,23 @@ mod tests {
     }
 
     #[test]
-    fn break_accepts_an_integer_level() {
-        // parser.y:385-386: BREAK is BREAK 0; BREAK INT unwinds INT+1 loops.
+    fn break_repeats_tokens_and_rejects_the_historical_integer_level() {
+        // Current original3838661 rejects numeric syntax and accepts
+        // repeated BREAK. Keep the old numeric source as negative coverage.
         assert_eq!(expression_shape(&parse_one("break")), "break");
-        assert_eq!(expression_shape(&parse_one("break 0")), "break");
-        assert_eq!(expression_shape(&parse_one("break 2")), "break 2");
+        assert_eq!(expression_shape(&parse_one("break break break")), "break 2");
         assert_eq!(
-            expression_shape(&parse_one("while do break 1 od")),
+            expression_shape(&parse_one("while do break break od")),
             "while(;break 1)"
         );
-        // The level spans both tokens, like the oracle's error location.
-        let Expr::Break { span, .. } = parse_one("break 12") else {
-            panic!("break 12 parses as a break")
+        for source in ["break 0", "break 1", "break 2", "break 12"] {
+            let error = parse(&SourceText::new(source)).expect_err("numeric level no longer accepted");
+            assert_eq!(error.kind, crate::diagnostic::ErrorKind::Syntax);
+        }
+        let Expr::Break { span, .. } = parse_one("break break break") else {
+            panic!("repeated tokens parse as one break")
         };
-        assert_eq!(span.end.column - span.start.column, 8);
+        assert_eq!(span.end.column - span.start.column, 17);
     }
 
     #[test]
@@ -4186,6 +4391,49 @@ mod tests {
         let source = SourceText::new(include_str!("../../../tests/fixtures/eval/loops_b4.atlas"));
         let program = parse(&source).expect("B4 loop fixture parses");
         assert_eq!(program.expressions.len(), 8);
+    }
+
+    #[test]
+    fn named_update_uses_the_same_nodes_as_symbolic_update() {
+        let Expr::Assignment { value, .. } = parse_one("n AND:=3")
+        else { panic!("named scalar update lowers to assignment") };
+        let Expr::Call { callee, arguments, .. } = *value
+        else { panic!("named update must resolve an identifier callee") };
+        assert!(matches!(*callee, Expr::Identifier { name, .. } if name == "AND"));
+        assert_eq!(arguments.len(), 2);
+        for (source, reversed) in [("r[0] AND:=3", false), ("r~[0] OR:=1", true)] {
+            let Expr::ComponentTransform(transform) = parse_one(source)
+            else { panic!("named component update keeps its index: {source}") };
+            assert_eq!(transform.reversed, reversed);
+            assert!(transform.named_operator);
+        }
+        let Expr::FieldTransform(transform) = parse_one("p.first AND:=3")
+        else { panic!("named field update keeps its field") };
+        assert_eq!(transform.field, "first");
+        assert_eq!(transform.operator, "AND");
+        assert!(transform.named_operator);
+        assert!(matches!(parse_one("n AND:=3; n"), Expr::Sequence { .. }));
+        assert!(matches!(parse_one("n next n AND:=n-1"), Expr::Next { .. }));
+    }
+
+    #[test]
+    fn iffor_lowering_uses_hidden_join_only_for_nested_loop_bodies() {
+        let Expr::Conditional { then_branch, else_branch, .. } = parse_one("if true do 7 fi")
+        else { panic!("quiet-if lowers to a conditional") };
+        assert!(matches!(*then_branch, Expr::List { elements, .. } if elements.len() == 1));
+        assert!(matches!(*else_branch, Expr::List { elements, .. } if elements.is_empty()));
+        for source in [
+            "for i:3 if i!=1 do i fi od",
+            "for x@i in [1,2] if i=0 do x fi od",
+            "for i:2 for j:2 do i+j od od",
+        ] {
+            let Expr::Call { callee, arguments, .. } = parse_one(source)
+            else { panic!("iffor must call the hidden join: {source}") };
+            assert!(matches!(*callee, Expr::Identifier { name, .. } if name == "## "));
+            assert_eq!(arguments.len(), 1);
+        }
+        // Explicit DO preserves the row-valued body without flattening.
+        assert!(matches!(parse_one("for i:2 do for j:2 do i+j od od"), Expr::CountedFor(_)));
     }
 
     #[test]
@@ -4297,6 +4545,44 @@ mod tests {
         let TypeSpec::Struct(fields) = &definitions[0].spec else { panic!("struct") };
         assert!(matches!(fields[0].type_expr, TypeExpr::Variable { index: 0, .. }));
         assert!(matches!(fields[1].type_expr, TypeExpr::Variable { index: 1, .. }));
+    }
+
+    #[test]
+    fn abstraction_actions_keep_duplicate_slots_and_restore_sibling_scopes() {
+        // Original accepts duplicate slots and siblings, not nested same-name
+        // shadowing (retained3834266/3834951 captures).
+        let Expr::TypeAbstraction { count, body, .. } =
+            parse_one("any_type T,T (any_type S ((T x,S y):(x,y)))") else {
+                panic!("outer abstraction")
+            };
+        assert_eq!(count, 2);
+        let Expr::TypeAbstraction { count, body, .. } = *body else { panic!("inner abstraction") };
+        assert_eq!(count, 1);
+        let Expr::Lambda { parameters, .. } = *body else { panic!("lambda") };
+        for (parameter, expected) in parameters.iter().zip([0, 2]) {
+            let LambdaParam::Typed(parameter) = parameter else { panic!("typed parameter") };
+            assert!(matches!(parameter.type_expr, TypeExpr::Variable { index, .. } if index == expected));
+        }
+        assert!(parse(&SourceText::new(
+            "(any_type T ((T x):x),any_type T ((T y):y))"
+        )).is_ok());
+        assert!(parse(&SourceText::new(
+            "any_type T (any_type T ((T x):x))"
+        )).is_err());
+    }
+
+    #[test]
+    fn polymorphic_commands_flatten_declarations_and_allow_lambda_result_casts() {
+        let Command::PolymorphicSet { count, bindings, .. } = parse_one_command(
+            "any_type T begin set first(T x)=T:x, second(T x)=T:first(x) set ! (T x)=(T y) T:y end"
+        ) else { panic!("polymorphic command") };
+        assert_eq!(count, 1);
+        assert_eq!(bindings.len(), 3);
+        let Expr::Lambda { body, .. } = &bindings[2].initializer else { panic!("function binding") };
+        let Expr::Lambda { body, .. } = &**body else { panic!("returned lambda") };
+        assert!(matches!(&**body, Expr::Cast { target: TypeExpr::Variable { index: 0, .. }, .. }));
+        assert!(matches!(parse_one("@ int:7"), Expr::Lambda { .. }));
+        assert!(parse(&SourceText::new("any_type T begin 1 end")).is_ok());
     }
 
     #[test]

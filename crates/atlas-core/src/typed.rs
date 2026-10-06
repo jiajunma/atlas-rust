@@ -33,8 +33,23 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::time::Instant;
+
+mod type_groups;
+
+#[cfg(test)]
+#[path = "typed/completion_tests.rs"]
+mod completion_work_tests;
+
+#[cfg(test)]
+#[path = "typed/command_cache_tests.rs"]
+mod command_cache_tests;
+
+#[cfg(test)]
+std::thread_local! {
+    static OVERLOAD_VIEW_BUILD_COUNT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
 
 /// Why evaluation stopped early. Loops consume `Break(0)` and rethrow
 /// decremented; closure application consumes `Return`; runtime errors
@@ -53,6 +68,14 @@ pub enum Control {
 pub enum Level {
     NoValue,
     SingleValue,
+}
+
+/// Required result context selects the while evaluator (axis.w:5948-6004).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum WhileMode {
+    Void,
+    Count,
+    Row { reversed: bool },
 }
 
 /// One resolved destination in a `set pattern := value` expression. Globals
@@ -197,6 +220,9 @@ pub enum TypedExpr {
         array: Box<TypedExpr>,
         index: Box<TypedExpr>,
         reversed: bool,
+        /// Domain coefficient reads evaluate the receiver BEFORE the key;
+        /// ordinary positional subscriptions evaluate the index first.
+        polynomial: bool,
         /// Compact rendering of the source expression, quoted by the
         /// out-of-range diagnostic exactly like the oracle's `range_mess`
         /// prints the subscription node (axis.w:4188-4194).
@@ -303,10 +329,15 @@ pub enum TypedExpr {
     While {
         condition: Option<Box<TypedExpr>>,
         body: Box<TypedExpr>,
+        mode: WhileMode,
     },
-    /// A for loop over a row value; each iteration pushes the 0-based
-    /// index slot when `index` is set, then distributes the element per
-    /// `shape` (the upstream (index, pattern) pair wrap).
+    /// Lexically scoped guard/body; a false guard exits the enclosing while.
+    Do {
+        condition: Option<Box<TypedExpr>>,
+        body: Box<TypedExpr>,
+    },
+    /// A component loop over any of the seven upstream aggregates. The
+    /// index is an integer, KType or Param depending on the receiver.
     For {
         shape: SlotShape,
         index: bool,
@@ -316,9 +347,11 @@ pub enum TypedExpr {
         names: Rc<[String]>,
         iterable: Box<TypedExpr>,
         body: Box<TypedExpr>,
+        input_reversed: bool,
+        output_reversed: bool,
     },
-    /// `break N`, unwound through `levels + 1` enclosing loop boundaries
-    /// (parser.y:385-386, axis.w:665 `loop_break(depth)`).
+    /// Repeated `break`, unwound through `levels + 1` enclosing loop boundaries
+    /// (current parser.y:461-462, axis.w `loop_break(depth)`).
     Break {
         levels: usize,
     },
@@ -383,6 +416,7 @@ pub enum TypedExpr {
     CountedFor {
         name: Option<String>,
         decreasing: bool,
+        output_reversed: bool,
         count: Box<TypedExpr>,
         bound: Option<Box<TypedExpr>>,
         body: Box<TypedExpr>,
@@ -405,23 +439,59 @@ pub enum PilferDestination {
     },
 }
 
+/// A live conversion requirement. Function bodies and their return operands
+/// share this cell; ordinary components and the first balancing pass use fresh
+/// cells. Never retain a RefCell borrow while recursively converting syntax.
+#[derive(Clone)]
+struct ConversionType(Rc<RefCell<(Type, usize)>>);
+
+impl ConversionType {
+    fn new(type_: Type, fixed: usize) -> Self {
+        Self(Rc::new(RefCell::new((type_, fixed))))
+    }
+
+    fn get(&self) -> Type { self.0.borrow().0.clone() }
+
+    fn fixed(&self) -> usize { self.0.borrow().1 }
+
+    fn set(&self, type_: Type) { self.0.borrow_mut().0 = type_; }
+
+    fn set_scoped(&self, type_: Type, fixed: usize) {
+        *self.0.borrow_mut() = (type_, fixed);
+    }
+
+    fn expanded(&self, types: &TypeTable) -> Box<Type> {
+        Box::new(self.get().expanded(types).into_owned())
+    }
+
+    fn is_void(&self) -> bool { self.0.borrow().0.is_void() }
+
+    fn display(&self, types: &TypeTable) -> String {
+        self.get().display(types).to_string()
+    }
+}
+
 /// Conversion-time context (locals are let bindings and lambda parameters).
+#[derive(Clone)]
 pub struct Analysis<'a> {
     pub types: &'a TypeTable,
     pub globals: &'a IdTable,
     /// The context's overload state: `forget`-removed startup overloads
     /// and user `set` definitions, merged into resolution.
     pub overloads: &'a OverloadState,
+    /// Unshifted ordered signatures shared by lexical children of this
+    /// analysis, never inferred types or cross-command resolution results.
+    overload_views: Rc<RefCell<AnalysisOverloadViews<'a>>>,
     locals: BTreeMap<String, (TypeCell, usize, usize)>,
     /// Names bound by a const `!x` pattern; assignment to them is an
     /// analysis error. Entries shadow outward like `locals` does: a
     /// non-const rebinding removes the name.
     constant_locals: BTreeSet<String>,
-    /// Set while converting a function body: `return` is legal only there
-    /// (the axis layer's return_type marker).
-    in_function: bool,
+    /// The nearest function's LIVE result requirement, independent of the
+    /// current expression's context (axis.w::layer::current_return_type).
+    return_type: Option<ConversionType>,
     /// Number of enclosing loops: `break` is legal only when nonzero
-    /// (mirrors `in_function`; upstream rejects a stray `break` during
+    /// (upstream rejects a stray `break` during
     /// analysis, before anything evaluates).
     loop_depth: usize,
     /// Variables below this lexical threshold are rigid; higher indices in
@@ -435,9 +505,12 @@ impl<'a> Analysis<'a> {
             types,
             globals,
             overloads,
+            overload_views: Rc::new(RefCell::new(AnalysisOverloadViews {
+                types, overloads, variants: BTreeMap::new(),
+            })),
             locals: BTreeMap::new(),
             constant_locals: BTreeSet::new(),
-            in_function: false,
+            return_type: None,
             loop_depth: 0,
             type_floor: 0,
         }
@@ -449,12 +522,35 @@ impl<'a> Analysis<'a> {
             types: self.types,
             globals: self.globals,
             overloads: self.overloads,
+            overload_views: self.overload_views.clone(),
             locals: self.locals.clone(),
             constant_locals: self.constant_locals.clone(),
-            in_function: self.in_function,
+            return_type: self.return_type.clone(),
             loop_depth: self.loop_depth + 1,
             type_floor: self.type_floor,
         }
+    }
+
+    fn overload_view(&self, name: &str) -> Rc<[MergedVariant]> {
+        let mut views = self.overload_views.borrow_mut();
+        // Public Analysis references can be rebound on a clone. The stored
+        // references keep both owners alive and prevent address reuse; safe
+        // shared borrows prohibit mutation of either table during analysis.
+        if !std::ptr::eq(views.types, self.types)
+            || !std::ptr::eq(views.overloads, self.overloads)
+        {
+            views.types = self.types;
+            views.overloads = self.overloads;
+            views.variants.clear();
+        }
+        if let Some(variants) = views.variants.get(name) {
+            return variants.clone();
+        }
+        let variants = self.overloads.merged_view(name, self.types);
+        views.variants.insert(name.to_owned(), variants.clone());
+        // The RefCell borrow ends here, before any recursive conversion or
+        // polymorphic trial uses the returned immutable view.
+        variants
     }
 }
 
@@ -555,9 +651,38 @@ pub struct UserOverload {
 pub struct OverloadState {
     forgotten: Vec<(String, Type)>,
     user: BTreeMap<String, Vec<UserOverload>>,
+    views: RefCell<CommandOverloadViews>,
+}
+
+impl Clone for OverloadState {
+    fn clone(&self) -> Self {
+        // Transactional type/member installation clones the real state.
+        // Its optional cache is disposable, never shared mutable state.
+        Self { forgotten: self.forgotten.clone(), user: self.user.clone(), views: RefCell::default() }
+    }
 }
 
 impl OverloadState {
+    fn merged_view(&self, name: &str, types: &TypeTable) -> Rc<[MergedVariant]> {
+        let mut views = self.views.borrow_mut();
+        if !views.types.as_ref().is_some_and(|revision| Arc::ptr_eq(revision, types.revision())) {
+            views.variants.clear();
+            views.types = Some(Arc::clone(types.revision()));
+        }
+        if let Some(variants) = views.variants.get(name) {
+            return variants.clone();
+        }
+        let variants: Rc<[MergedVariant]> = merged_variants(name, self, types).into();
+        views.variants.insert(name.to_owned(), variants.clone());
+        // Only immutable, unshifted signatures and origin indices escape;
+        // fresh trial scopes and current function values are read elsewhere.
+        variants
+    }
+
+    fn invalidate_view(&mut self, name: &str) {
+        self.views.get_mut().variants.remove(name);
+    }
+
     /// Whether `forget name @ type` hid the startup overload at `arg_type`.
     fn is_forgotten(&self, name: &str, arg_type: &Type, types: &TypeTable) -> bool {
         self.forgotten
@@ -589,7 +714,7 @@ impl OverloadState {
             unreachable!("only function-typed values enter the overload table")
         };
         let arg_type = parts.0.clone();
-        let merged = merged_variants(name, self, types);
+        let merged = self.merged_view(name, types);
         let old_n = merged.len();
         let mut lower = 0;
         let mut upper = old_n;
@@ -625,6 +750,7 @@ impl OverloadState {
                     self.user
                         .get_mut(name)
                         .expect("a merged user variant has a slot")[user_index] = entry;
+                    self.invalidate_view(name);
                     return Ok((old_n, old_n));
                 }
                 // Replacing a startup overload keeps the count: hide the
@@ -644,6 +770,7 @@ impl OverloadState {
             .entry(name.to_owned())
             .or_default()
             .insert(user_position, entry);
+        self.invalidate_view(name);
         Ok((old_n, n))
     }
 
@@ -662,6 +789,7 @@ impl OverloadState {
                 if users.is_empty() {
                     self.user.remove(name);
                 }
+                self.invalidate_view(name);
                 return true;
             }
         }
@@ -671,6 +799,7 @@ impl OverloadState {
             .any(|builtin| builtin.arg_type.equivalent(arg_type, types));
         if active_builtin && !self.is_forgotten(name, arg_type, types) {
             self.forgotten.push((name.to_owned(), arg_type.clone()));
+            self.invalidate_view(name);
             return true;
         }
         false
@@ -844,10 +973,36 @@ struct MergedVariant {
     origin: OverloadOrigin,
 }
 
+struct AnalysisOverloadViews<'a> {
+    types: &'a TypeTable,
+    overloads: &'a OverloadState,
+    variants: BTreeMap<String, Rc<[MergedVariant]>>,
+}
+
+#[derive(Default)]
+struct CommandOverloadViews {
+    // Keep only the current type revision. An owned identity prevents ABA
+    // without keeping an entire old table or a chain of revisions alive.
+    types: Option<Arc<()>>,
+    variants: BTreeMap<String, Rc<[MergedVariant]>>,
+}
+
+/// Test presence without cloning signatures or computing overload order.
+/// Keep the same active set as `merged_variants`, including type-aware
+/// forgotten builtins; a name in the startup registry may no longer be active.
+fn has_active_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> bool {
+    !overloads.user_variants(name).is_empty()
+        || overload_variants(name).iter().any(|&index| {
+            !overloads.is_forgotten(name, &builtin_registry()[index].arg_type, types)
+        })
+}
+
 /// The active variants for `name`: startup overloads not hidden by
 /// `forget`, with user variants inserted at the position the upstream
 /// single-table ordering gives them.
 fn merged_variants(name: &str, overloads: &OverloadState, types: &TypeTable) -> Vec<MergedVariant> {
+    #[cfg(test)]
+    OVERLOAD_VIEW_BUILD_COUNT.with(|count| count.set(count.get() + 1));
     let mut merged: Vec<MergedVariant> = overload_variants(name)
         .iter()
         .copied()
@@ -898,6 +1053,8 @@ fn insert_position(arg_type: &Type, merged: &[MergedVariant], types: &TypeTable)
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypedCommandEvent {
+    /// Ordered failure inside a sequential polymorphic declaration block.
+    Diagnostic(Diagnostic),
     Value {
         value: Value,
         type_: Type,
@@ -907,20 +1064,31 @@ pub enum TypedCommandEvent {
         text: String,
         span: SourceSpan,
     },
+    ReportBytes {
+        text: crate::value::AtlasString,
+        span: SourceSpan,
+    },
     Output {
         text: String,
         span: SourceSpan,
     },
 }
 
+impl TypedCommandEvent {
+    fn report(text: crate::value::AtlasString, span: SourceSpan) -> Self {
+        match String::from_utf8(text.into_bytes()) {
+            Ok(text) => Self::ReportLine { text, span },
+            Err(error) => Self::ReportBytes { text: error.into_bytes().into(), span },
+        }
+    }
+}
+
 /// The startup completion names (buffer.w:1175-1192): every
 /// `main_hash_table` entry present at session start, in hash-code order —
-/// 34 keywords, 21 primitive type names, then the builtins in upstream
-/// registration order (NOT this crate's registry order). Captured
-/// verbatim from the oracle (`readline_completions("")` on a fresh
-/// session); "transpose " (trailing space) and "matrix slicer" are the
-/// deliberately unregistered hidden builtins (see the registry batch-4
-/// comment). The three startup system variables (main.w:408-435) are NOT
+/// 35 keywords, 21 primitive type names, then names in upstream registration
+/// order (NOT this crate's registry order). Original3839492 captures all309;
+/// the associated test pins the remaining registration gaps explicitly.
+/// The three startup system variables (main.w:408-435) are NOT
 /// here: they are session globals, seeded in `TypedContext::new`.
 const STARTUP_COMPLETION_NAMES: &[&str] = &[
     "quit",
@@ -954,6 +1122,7 @@ const STARTUP_COMPLETION_NAMES: &[&str] = &[
     "break",
     "return",
     "set_type",
+    "any_type",
     "whattype",
     "showall",
     "forget",
@@ -1007,9 +1176,14 @@ const STARTUP_COMPLETION_NAMES: &[&str] = &[
     "<=",
     "<",
     "##",
-    "ascii",
+    "ASCII",
     "readline_completions",
+    "print",
+    "prints",
+    "to_string",
+    "error",
     "#",
+    "## ",
     "shape",
     "row",
     "column",
@@ -1039,6 +1213,8 @@ const STARTUP_COMPLETION_NAMES: &[&str] = &[
     "mod2_section",
     "subspace_normal",
     "elapsed_ms",
+    "query",
+    "system",
     "Lie_type",
     "extend",
     "Cartan_matrix",
@@ -1082,8 +1258,9 @@ const STARTUP_COMPLETION_NAMES: &[&str] = &[
     "dual",
     "derived_info",
     "mod_central_torus_info",
-    "integrality_datum",
     "integrality_rank",
+    "integrality_simples",
+    "integrality_datum",
     "is_integrally_dominant",
     "integrality_points",
     "Weyl_orbit",
@@ -1098,6 +1275,7 @@ const STARTUP_COMPLETION_NAMES: &[&str] = &[
     "FPP_numers",
     "FPP_w_shifts",
     "W_elt",
+    "W_refl",
     "word",
     "length",
     "from_dominant",
@@ -1164,6 +1342,7 @@ const STARTUP_COMPLETION_NAMES: &[&str] = &[
     "first_term",
     "truncate_above_height",
     "KGP_sum",
+    "K_type_formula_raw",
     "K_type_formula",
     "branch",
     "param",
@@ -1192,8 +1371,12 @@ const STARTUP_COMPLETION_NAMES: &[&str] = &[
     "block_deform",
     "full_deform",
     "twisted_full_deform",
+    "stored_full_deform",
+    "stored_twisted_full_deform",
     "KL_sum_at_s",
     "KL_sum_at_s_to_height",
+    "stored_KL_sum_at_s",
+    "stored_KL_Q_polynomials",
     "twisted_KL_sum_at_s",
     "KL_column",
     "scale_extended",
@@ -1226,7 +1409,6 @@ const STARTUP_COMPLETION_NAMES: &[&str] = &[
 const SYSTEM_VARIABLE_NAMES: &[&str] = &["input_path", "prelude_log", "back_trace"];
 
 /// Persistent state for command-at-a-time typed execution.
-#[derive(Default)]
 pub struct TypedContext {
     types: TypeTable,
     globals: IdTable,
@@ -1238,14 +1420,26 @@ pub struct TypedContext {
     /// `set verbose` = 1; the verbose analysis trace prints when this is
     /// nonzero.
     verbosity: u8,
-    /// Session completion names in order of first definition (the
-    /// upstream hash codes allocated after the startup entries; they are
-    /// never recycled, so a forgotten-then-redefined name revives at its
-    /// original position). Seeded with the system variables.
-    completion_order: Vec<String>,
     /// Location belongs to the current identifier binding, not its possibly
     /// reused type-table slot (redefinition must report the new location).
     type_locations: BTreeMap<String, SourceSpan>,
+}
+
+impl Default for TypedContext {
+    fn default() -> Self {
+        let mut evaluation = EvaluationContext::default();
+        // Preserve the captured startup inventory, including explicitly
+        // tracked registration gaps. A successful forget updates only its
+        // affected name; it must not hide unrelated unported startup names.
+        for name in STARTUP_COMPLETION_NAMES {
+            evaluation.set_completion_active(name, true);
+        }
+        Self {
+            types: TypeTable::default(), globals: IdTable::default(), evaluation,
+            overloads: OverloadState::default(), verbosity: 0,
+            type_locations: BTreeMap::new(),
+        }
+    }
 }
 
 impl TypedContext {
@@ -1257,7 +1451,7 @@ impl TypedContext {
                 Type::row(string_type()),
                 crate::frames::global_with(Rc::new(Value::List(Vec::new()))),
             );
-            context.completion_order.push(name.to_owned());
+            context.note_completion_name(name);
         }
         context.globals.mark_const("prelude_log");
         context
@@ -1305,7 +1499,6 @@ impl TypedContext {
     }
 
     pub fn execute(&mut self, command: &Command) -> Result<Vec<TypedCommandEvent>, Diagnostic> {
-        self.refresh_completion_candidates();
         match command {
             Command::Expression(expression) => {
                 // The verbose analysis trace (main.w:495-516, 528-540):
@@ -1444,12 +1637,29 @@ impl TypedContext {
                 tabled,
                 arity,
                 span,
-            } => self.execute_set_type(definitions, *tabled, *arity, *span),
+            } => {
+                let result = self.execute_set_type(definitions, *tabled, *arity, *span);
+                // Grouped publication is transactional; simple aliases can
+                // publish before a member error. Read the actual tables on
+                // BOTH exits, without altering either publication contract.
+                for definition in definitions {
+                    self.sync_completion_name(&definition.name.value);
+                    if let TypeSpec::Struct(fields) | TypeSpec::Union(fields) = &definition.spec {
+                        for name in fields.iter().filter_map(|field| field.name.as_ref()) {
+                            self.sync_completion_name(&name.value);
+                        }
+                    }
+                }
+                result
+            }
             Command::Whattype { target, span } => self.execute_whattype(target, *span),
             Command::Forget { name, span } => {
                 self.type_locations.remove(&name.value);
                 let was_type = self.types.forget(&name.value);
                 let was_known = self.globals.remove(&name.value) || was_type;
+                if was_known {
+                    self.sync_completion_name(&name.value);
+                }
                 let state = if was_known { "forgotten" } else { "not known" };
                 Ok(vec![TypedCommandEvent::ReportLine {
                     text: format!("Identifier '{}' {state}\n", name.value),
@@ -1466,6 +1676,9 @@ impl TypedContext {
                 // resolved signature, exactly as upstream prints `type`.
                 let resolved = signature.resolve_in(&self.types)?;
                 let removed = self.overloads.remove(&name.value, &resolved, &self.types);
+                if removed {
+                    self.sync_completion_name(&name.value);
+                }
                 let state = if removed { "forgotten" } else { "not known" };
                 Ok(vec![TypedCommandEvent::ReportLine {
                     text: format!(
@@ -1477,6 +1690,29 @@ impl TypedContext {
                 }])
             }
             Command::Set { bindings, span } => self.execute_set(bindings, *span),
+            Command::PolymorphicSet { count, bindings, span } => {
+                let mut events = Vec::new();
+                for binding in bindings {
+                    // Original insert_type_abstraction wraps EACH initializer,
+                    // then sequentially_set_identifiers runs one raw binding.
+                    let wrapped = LetBinding {
+                        pattern: binding.pattern.clone(),
+                        initializer: Expr::TypeAbstraction {
+                            count: *count,
+                            body: Box::new(binding.initializer.clone()),
+                            span: *span,
+                        },
+                    };
+                    match self.execute_set(&[wrapped], *span) {
+                        Ok(part) => events.extend(part),
+                        Err(diagnostic) => {
+                            events.extend(self.drain_failed_printed(diagnostic.span));
+                            events.push(TypedCommandEvent::Diagnostic(diagnostic));
+                        }
+                    }
+                }
+                Ok(events)
+            }
             Command::ShowOverloads { name, span } => {
                 // show_overloads (global.w:1790-1799): one line per active
                 // variant, argument and result types printed independently.
@@ -1495,46 +1731,40 @@ impl TypedContext {
                 }
                 Ok(vec![TypedCommandEvent::ReportLine { text, span: *span }])
             }
-            Command::ShowAll { span } => Ok(vec![TypedCommandEvent::ReportLine {
-                text: self.show_all_text(),
-                span: *span,
-            }]),
+            Command::ShowAll { span } => Ok(vec![TypedCommandEvent::report(self.show_all_text(), *span)]),
         }
     }
 
-    /// Refresh the completion candidate snapshot the
-    /// `readline_completions` builtin reads (buffer.w:1175-1192): the
-    /// static startup names (upstream hash codes are never recycled, so a
-    /// redefined builtin keeps its startup position) followed by the
-    /// session names still present in the identifier or overload table.
-    fn refresh_completion_candidates(&mut self) {
-        let mut candidates: Vec<String> = STARTUP_COMPLETION_NAMES
-            .iter()
-            .map(|name| (*name).to_owned())
-            .collect();
-        for name in &self.completion_order {
-            if self.globals.lookup(name).is_some() || !self.overloads.user_variants(name).is_empty()
-            {
-                candidates.push(name.clone());
-            }
-        }
-        self.evaluation.set_completion_candidates(candidates);
+    /// Original lexer.w interns identifiers before analysis, including local
+    /// and rejected names. Merely being interned does not make one visible.
+    pub(crate) fn note_completion_token(&mut self, token: &crate::lex::Token) {
+        use crate::lex::TokenKind;
+        let name = match &token.kind {
+            TokenKind::Identifier => token.lexeme.as_str(),
+            TokenKind::Operator(name) | TokenKind::OperatorBecomes(name)
+                if !matches!(name.as_str(), "!" | "->" | "~[") => name.as_str(),
+            _ => return,
+        };
+        self.evaluation.intern_completion_name(name);
     }
 
-    /// Record a session name for completions (buffer.w:1175-1192): the
-    /// upstream hash code is allocated at first definition and never
-    /// recycled, so a name enters the order once; a name already in the
-    /// startup hash table keeps its startup position (no duplicate).
+    /// Successful variable/overload publication. AST-only callers without a
+    /// lexer still acquire a stable position when their name is published.
     fn note_completion_name(&mut self, name: &str) {
-        if !STARTUP_COMPLETION_NAMES.contains(&name)
-            && !self.completion_order.iter().any(|known| known == name)
-        {
-            self.completion_order.push(name.to_owned());
-        }
+        self.evaluation.set_completion_active(name, true);
     }
 
-    fn show_all_text(&self) -> String {
-        let mut text = String::from("Overloaded operators and functions:\n");
+    /// Forgetting one kind of binding must retain another surviving kind.
+    /// Only the 35 keywords and 21 primitive names are always visible.
+    fn sync_completion_name(&mut self, name: &str) {
+        let active = STARTUP_COMPLETION_NAMES[..56].contains(&name)
+            || self.globals.lookup(name).is_some() || self.types.is_type_name(name)
+            || has_active_variants(name, &self.overloads, &self.types);
+        self.evaluation.set_completion_active(name, active);
+    }
+
+    fn show_all_text(&self) -> crate::value::AtlasString {
+        let mut text = crate::value::AtlasString::from("Overloaded operators and functions:\n");
         let mut names = Vec::new();
         for builtin in builtin_registry()
             .iter()
@@ -1576,16 +1806,16 @@ impl TypedContext {
         }
         text.push_str("Global variables:\n");
         for (name, (type_cell, cell)) in &self.globals.entries {
-            let value = cell
-                .borrow()
-                .as_ref()
-                .map_or_else(|| "*".to_owned(), |value| value.to_string());
             text.push_str(&format!(
-                "{}: {}: {}\n",
+                "{}: {}: ",
                 name,
                 type_cell.borrow().display(&self.types),
-                value
             ));
+            match cell.borrow().as_ref() {
+                Some(value) => value.append_atlas_text(&mut text),
+                None => text.push_str("*"),
+            }
+            text.push_str("\n");
         }
         text
     }
@@ -1603,7 +1833,7 @@ impl TypedContext {
         self.evaluation
             .take_printed()
             .into_iter()
-            .map(|text| TypedCommandEvent::ReportLine { text, span })
+            .map(|text| TypedCommandEvent::report(text, span))
             .collect()
     }
 
@@ -1722,7 +1952,7 @@ impl TypedContext {
             for binding in bindings {
                 let mut found = pattern_type(&binding.pattern);
                 let typed = convert_expr(&binding.initializer, &mut found, &analysis)?;
-                let leaves = bind_pattern_leaves(&binding.pattern, &found, &self.types, 0)?;
+                let leaves = bind_pattern_leaves_at(&binding.pattern, &found, &self.types, 0, BindingSite::Global)?;
                 pending.push(Pending {
                     shape: pattern_slot_shape(&binding.pattern),
                     leaves,
@@ -1779,11 +2009,50 @@ impl TypedContext {
         let mut reported = Vec::with_capacity(definitions.len());
         let redefined: Vec<bool> = definitions.iter()
             .map(|d| self.types.is_type_name(&d.name.value)).collect();
-        for definition in definitions {
-            if self.globals.lookup(&definition.name.value).is_some() {
-                return Err(Diagnostic::new(ErrorKind::Name,
-                    format!("Identifier '{}' is already defined as a value", definition.name.value),
-                    Some(definition.name.span)));
+        if tabled {
+            // global.w checks every defined name before any field name.
+            // Ordinary functions and variables may coexist; neither may
+            // become inaccessible by installing a type with the same name.
+            let mut names = BTreeSet::new();
+            for definition in definitions {
+                let name = &definition.name.value;
+                let variable = self.globals.lookup(name).is_some();
+                let function = has_active_variants(name, &self.overloads, &self.types);
+                if variable || function {
+                    let role = match (variable, function) {
+                        (true, true) => "both global variable and function",
+                        (true, false) => "global variable",
+                        _ => "function",
+                    };
+                    return Err(Diagnostic::new(ErrorKind::Program,
+                        format!("Cannot define '{name}' as a type; it is in use as {role}"),
+                        Some(definition.name.span)));
+                }
+                if !names.insert(name.as_str()) {
+                    return Err(Diagnostic::new(ErrorKind::Program,
+                        format!("Repeated definition of '{name}' in grouped type definition"),
+                        Some(definition.name.span)));
+                }
+            }
+            for definition in definitions {
+                if let TypeSpec::Struct(fields) | TypeSpec::Union(fields) = &definition.spec {
+                    for name in fields.iter().filter_map(|field| field.name.as_ref()) {
+                        if names.contains(name.value.as_str()) {
+                            return Err(Diagnostic::new(ErrorKind::Program,
+                                format!("Used '{}' as defined type AND as field name", name.value),
+                                Some(name.span)));
+                        }
+                    }
+                }
+            }
+        } else {
+            // Keep the separate simple-alias publication contract unchanged.
+            for definition in definitions {
+                if self.globals.lookup(&definition.name.value).is_some() {
+                    return Err(Diagnostic::new(ErrorKind::Name,
+                        format!("Identifier '{}' is already defined as a value", definition.name.value),
+                        Some(definition.name.span)));
+                }
             }
         }
         // Resolve against a candidate table first; a failed definition must
@@ -1794,19 +2063,24 @@ impl TypedContext {
             let numbers: Vec<TypeNumber> = definitions
                 .iter()
                 .map(|definition| {
-                    types.add(TypeBinding {
+                    types.add_constructor(TypeBinding {
                         name: definition.name.value.clone(),
                         definition: Type::Undetermined,
                         fields: Vec::new(),
-                    })
+                    }, arity, true)
                 })
                 .collect();
-            // Pass 2: resolve each spec with every group name visible.
-            for (definition, number) in definitions.iter().zip(numbers) {
-                let (expansion, fields) = resolve_type_spec(&definition.spec, &types)?;
-                reported.push(expansion.clone());
-                types.update(number, expansion, fields);
-                targets.push(Type::Tabled(number));
+            // Resolve ALL RHSs before installing graph-wide nominal identities.
+            let resolved = definitions.iter().map(|definition|
+                type_groups::resolve_spec(&definition.spec, &types, &numbers, arity))
+                .collect::<Result<Vec<_>, _>>()?;
+            types.complete_recursive_group(&numbers, &resolved, arity)
+                .map_err(|message| Diagnostic::new(ErrorKind::Program, message, Some(span)))?;
+            for number in numbers {
+                reported.push(types.expansion(number).clone());
+                targets.push(if arity == 0 { Type::Tabled(number) } else {
+                    Type::Applied(number, (0..arity).map(Type::Variable).collect())
+                });
             }
         } else {
             let definition = definitions
@@ -1821,11 +2095,30 @@ impl TypedContext {
                 Type::Applied(number, (0..arity).map(Type::Variable).collect())
             });
         }
-        self.types = types;
         let mut events = Vec::with_capacity(definitions.len());
+        if tabled {
+            // Type/member analysis has no runtime effects. Stage every table
+            // together; a later member error must discard earlier members,
+            // type identities, locations and declaration report lines too.
+            let mut overloads = self.overloads.clone();
+            let mut locations = self.type_locations.clone();
+            for (((definition, target), redefined), reported) in definitions.iter().zip(&targets).zip(redefined).zip(&reported) {
+                let text = Self::define_type_members(&types, &mut overloads,
+                    definition, target, redefined, reported, true)
+                    .map_err(|mut error| { error.kind = ErrorKind::Program; error })?;
+                locations.insert(definition.name.value.clone(), span);
+                events.push(TypedCommandEvent::ReportLine { text, span });
+            }
+            self.types = types;
+            self.overloads = overloads;
+            self.type_locations = locations;
+            return Ok(events);
+        }
+        self.types = types;
         for (((definition, target), redefined), reported) in definitions.iter().zip(&targets).zip(redefined).zip(&reported) {
             self.type_locations.insert(definition.name.value.clone(), span);
-            let text = self.define_type_members(definition, target, redefined, reported)?;
+            let text = Self::define_type_members(&self.types, &mut self.overloads,
+                definition, target, redefined, reported, false)?;
             events.push(TypedCommandEvent::ReportLine { text, span });
         }
         Ok(events)
@@ -1834,18 +2127,20 @@ impl TypedContext {
     /// Install the projector (struct) or injector (union) globals of one
     /// definition as one-argument closures, and render its report line.
     fn define_type_members(
-        &mut self,
+        types: &TypeTable,
+        overloads: &mut OverloadState,
         definition: &crate::syntax::TypeDefinition,
         target: &Type,
         redefined: bool,
         reported: &Type,
+        grouped: bool,
     ) -> Result<String, Diagnostic> {
-        let expansion = target.expanded(&self.types);
+        let expansion = target.expanded(types);
         let heading = format!(
             "Type name '{}' {}defined as {}\n",
             definition.name.value,
             if redefined { "re" } else { "" },
-            reported.display(&self.types)
+            reported.display(types)
         );
         let fields = match &definition.spec {
             TypeSpec::Alias(_) => return Ok(heading),
@@ -1857,10 +2152,18 @@ impl TypedContext {
         };
         let union = matches!(definition.spec, TypeSpec::Union(_));
         let mut names = Vec::new();
+        let mut seen = BTreeSet::new();
         for (index, field) in fields.iter().enumerate() {
             let Some(field_name) = &field.name else {
                 continue;
             };
+            // Check in field order: an earlier overload conflict keeps
+            // priority over a later duplicate, matching definition_group.
+            if grouped && !seen.insert(field_name.value.as_str()) {
+                return Err(Diagnostic::new(ErrorKind::Program,
+                    format!("Multiple occurrences of '{}' cannot be defined in same definition", field_name.value),
+                    Some(field_name.span)));
+            }
             let component = components.get(index).cloned().unwrap_or(Type::Undetermined);
             let (function_type, body) = if union {
                 (
@@ -1880,8 +2183,8 @@ impl TypedContext {
                     },
                 )
             };
-            self.overloads.add_user(&field_name.value, function_type,
-                member_closure(body, field.span), &self.types, field.span)?;
+            overloads.add_user(&field_name.value, function_type,
+                member_closure(body, field.span), types, field.span)?;
             names.push(field_name.value.clone());
         }
         if names.is_empty() {
@@ -2091,32 +2394,32 @@ fn mark_balance_failure(
 fn convert_list_expression(
     elements: &[Expr],
     span: SourceSpan,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, BalanceConversionError> {
     // In row context (or undetermined), elements share the component pattern;
     // in a non-row context the first row coercion for that target decides the
     // component type (mat context -> vec).
     if required.expanded(analysis.types).is_void() {
-        // Upstream still converts and evaluates a list in a void context,
-        // while discarding its resulting row value.  Keep an undetermined
-        // component pattern so nested balance errors can be resolved before
-        // the enclosing void conversion is inserted.
+        // axis.w:1363 returns the balanced display unchanged, even when
+        // balancing finds void components. The caller's evaluation level
+        // determines whether this entire display is discarded.
         let mut component = Type::Undetermined;
         let branches = elements.iter().collect::<Vec<_>>();
         let display = TypedExpr::ListDisplay(balance(&branches, &mut component, span, analysis)?);
-        return conform_types(&Type::row(component), required, display, span, analysis)
+        return conform_context(&Type::row(component), required, display, span, analysis)
             .map_err(BalanceConversionError::Diagnostic);
     }
     // Current axis.w::list_display specialises the context to a row first.
     // A free variable supplied by a direct generic function is not a rigid
     // non-row target (the retained3837257 captured-printer failure).
-    let mut context = inferred_type(required, analysis, span)
+    let mut context = inferred_type(&required.get(), analysis, span)
         .map_err(BalanceConversionError::Diagnostic)?;
     let mut row_pattern = Type::row(Type::Undetermined);
     let accepts_row = context.try_unify_specialise(&mut row_pattern, analysis.types)
         .map_err(|e| BalanceConversionError::Diagnostic(inference_error(e, span)))?;
     let (mut component, coercion_tag) = if accepts_row {
+        required.set(context.bake().map_err(|e| BalanceConversionError::Diagnostic(inference_error(e, span)))?);
         let Type::Row(component) = row_pattern else { unreachable!("specialised row pattern") };
         (*component, None)
     } else {
@@ -2135,7 +2438,11 @@ fn convert_list_expression(
         }
     };
     let branches = elements.iter().collect::<Vec<_>>();
-    let converted = balance(&branches, &mut component, span, analysis)?;
+    let mut converted = balance(&branches, &mut component, span, analysis)?;
+    if accepts_row && component.expanded(analysis.types).is_void() {
+        converted = converted.into_iter().zip(elements)
+            .map(|(converted, source)| void_nonempty(converted, source)).collect();
+    }
     let display = TypedExpr::ListDisplay(converted);
     match coercion_tag {
         Some(tag) => Ok(TypedExpr::Conversion {
@@ -2143,7 +2450,7 @@ fn convert_list_expression(
             inner: Box::new(display),
             span,
         }),
-        None => conform_types(&Type::row(component), required, display, span, analysis)
+        None => conform_context(&Type::row(component), required, display, span, analysis)
             .map_err(BalanceConversionError::Diagnostic),
     }
 }
@@ -2153,13 +2460,13 @@ fn convert_conditional_expression(
     then_branch: &Expr,
     else_branch: &Expr,
     span: SourceSpan,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, BalanceConversionError> {
     let mut bool_type = Type::Primitive(Prim::Bool);
     let condition = convert_expr(condition, &mut bool_type, analysis)
         .map_err(BalanceConversionError::Diagnostic)?;
-    let branches = balance(&[then_branch, else_branch], required, span, analysis)?;
+    let branches = balance_context(&[then_branch, else_branch], required, span, analysis)?;
     let mut branches = branches.into_iter();
     Ok(TypedExpr::Conditional {
         condition: Box::new(condition),
@@ -2170,6 +2477,16 @@ fn convert_conditional_expression(
 
 fn inference_error(error: InferenceError, span: SourceSpan) -> Diagnostic {
     type_error(format!("Invalid type inference scope: {error:?}"), span)
+}
+
+/// A static void type does not imply a unit-valued expression. Only the
+/// explicit consumers listed in axis.w insert this discard boundary.
+fn void_nonempty(converted: TypedExpr, source: &Expr) -> TypedExpr {
+    if matches!(source, Expr::Tuple { elements, .. } if elements.is_empty()) {
+        converted
+    } else {
+        TypedExpr::Void(Box::new(converted))
+    }
 }
 
 fn inferred_type(type_: &Type, analysis: &Analysis<'_>, span: SourceSpan)
@@ -2197,6 +2514,21 @@ fn has_type_variable(type_: &Type) -> bool {
 /// node (the caller voids); otherwise a matching table entry wraps the
 /// converted expression. The error wording is the oracle's uniform
 /// type_error rendering (global.w:655-663).
+fn conform_context(
+    found: &Type,
+    required: &ConversionType,
+    converted: TypedExpr,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    // Read after all operands have been analysed: a nested return may have
+    // constrained this same function-result cell in the meantime.
+    let mut type_ = required.get();
+    let converted = conform_types(found, &mut type_, converted, span, analysis)?;
+    required.set(type_);
+    Ok(converted)
+}
+
 fn conform_types(
     found: &Type,
     required: &mut Type,
@@ -2224,16 +2556,9 @@ fn conform_types(
         if let Some(named) = named_context.filter(|t| !has_type_variable(t)) { *required = named; }
         return Ok(converted);
     }
-    if required.is_void() {
-        return Ok(if found.is_void() {
-            converted
-        } else {
-            TypedExpr::Void(Box::new(converted))
-        });
-    }
-    // Current original coerce() leaves expressions unchanged in a void
-    // context. Named-void global initializers retain their values (capture
-    // 3834868), unlike the explicit structural voiding nodes used elsewhere.
+    // axis-types.w:5082 leaves BOTH structural-void and named-void coercions
+    // unchanged. Original3839396 observes scalar, tuple and function values
+    // surviving here. Container/assignment/call consumers void explicitly.
     if required.expanded(analysis.types).is_void() {
         return Ok(converted);
     }
@@ -2254,25 +2579,57 @@ fn conform_types(
     ))
 }
 
+/// All for-loop kinds share the same result-context analysis (axis.w:6508+).
+/// Establish the component requirement BEFORE analysing the body; analysing
+/// an unconstrained body and coercing the resulting row is not equivalent.
+fn convert_for_body(
+    body: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+    span: SourceSpan,
+) -> Result<(TypedExpr, Type, Option<&'static str>), Diagnostic> {
+    let target = required.expanded(analysis.types);
+    let mut context = inferred_type(&required.get(), analysis, span)?;
+    let mut row_pattern = Type::row(Type::Undetermined);
+    let accepts_row = context.try_unify_specialise(&mut row_pattern, analysis.types)
+        .map_err(|e| inference_error(e, span))?;
+    let (mut component, coercion) = if accepts_row {
+        required.set(context.bake().map_err(|e| inference_error(e, span))?);
+        let Type::Row(component) = row_pattern else { unreachable!("specialised row pattern") };
+        (*component, None)
+    } else if target.is_void() {
+        (required.get(), None)
+    } else if let Some((coercion, component)) = row_coercion(&target, analysis.types) {
+        (component.clone(), Some(coercion.tag))
+    } else {
+        return Err(type_error(format!("found [*] while {} was needed.", target.display(analysis.types)), span));
+    };
+    let mut body = convert_expr(body, &mut component, analysis)?;
+    if !target.is_void() && component.expanded(analysis.types).is_void() {
+        body = TypedExpr::Void(Box::new(body));
+    }
+    Ok((body, component, coercion))
+}
+
 /// A bare overloaded identifier is a value only when its complete function
 /// signature is unique in the required context (current axis.w:1630-1750).
 /// Failed trials own their substitutions and cannot constrain later variants.
 fn capture_overloaded_identifier(
     name: &str,
-    required: &mut Type,
+    required: &ConversionType,
     span: SourceSpan,
     analysis: &Analysis<'_>,
 ) -> Result<Option<TypedExpr>, Diagnostic> {
-    let variants = merged_variants(name, analysis.overloads, analysis.types);
+    let variants = analysis.overload_view(name);
     if variants.is_empty() { return Ok(None); }
-    let mut context = inferred_type(required, analysis, span)?;
+    let mut context = inferred_type(&required.get(), analysis, span)?;
     let mut pattern = Type::function(Type::Undetermined, Type::Undetermined);
     if !context.try_unify_specialise(&mut pattern, analysis.types)
         .map_err(|e| inference_error(e, span))? { return Ok(None); }
     context.wring_out().map_err(|e| inference_error(e, span))?;
     let mut selected: Option<(TypedExpr, Type)> = None;
     let mut previous: Option<Type> = None;
-    for variant in &variants {
+    for variant in variants.iter() {
         let signature = Type::function(variant.arg_type.clone(), variant.result_type.clone());
         let mut model = InferredType::wrap(&signature, 0).map_err(|e| inference_error(e, span))?;
         model.raise_floor(analysis.type_floor).map_err(|e| inference_error(e, span))?;
@@ -2310,8 +2667,89 @@ fn capture_overloaded_identifier(
         previous = Some(signature);
     }
     match selected {
-        Some((capture, type_)) => { *required = type_; Ok(Some(capture)) }
+        Some((capture, type_)) => { required.set(type_); Ok(Some(capture)) }
         None => Ok(None),
+    }
+}
+
+/// axis.w::op_cast_expr selects only the GLOBAL overload table, even if a
+/// lexical function shadows the name. Exact entries precede generic matches;
+/// unlike calls, this selection never inserts an argument coercion.
+fn capture_operator_cast(
+    name: &str,
+    argument_type: &Type,
+    required: &ConversionType,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let variants = analysis.overload_view(name);
+    let schemes = variants.iter().map(|variant|
+        TypeScheme::wrap(&Type::function(variant.arg_type.clone(), variant.result_type.clone()), 0)
+            .map_err(|e| inference_error(e, span))
+    ).collect::<Result<Vec<_>, _>>()?;
+    let capture = |variant: &MergedVariant, print_name: String| {
+        let value = match variant.origin {
+            OverloadOrigin::Builtin(index) => Value::BuiltinFunction(Rc::new(BuiltinFunction {
+                index, print_name: format!("{}@{}", name, variant.arg_type.display(analysis.types)),
+            })),
+            OverloadOrigin::User(index) => analysis.overloads.user_variants(name)[index].value.clone(),
+        };
+        TypedExpr::Captured { value, name: print_name }
+    };
+    // global.w::overload_table::entry shifts free indices out of the fixed
+    // scope. At nonzero floor the original exact search visits poly entries
+    // only; concrete entries remain candidates in the fallback search.
+    for (variant, scheme) in variants.iter().zip(&schemes) {
+        if analysis.type_floor != 0 && !scheme.is_polymorphic() { continue; }
+        let shifted_argument = shift(&variant.arg_type, 0, analysis.type_floor)
+            .map_err(|e| inference_error(e, span))?;
+        if !shifted_argument.equivalent(argument_type, analysis.types) { continue; }
+        let mut model = InferredType::from_scheme(scheme.clone())
+            .map_err(|e| inference_error(e, span))?;
+        model.raise_floor(analysis.type_floor).map_err(|e| inference_error(e, span))?;
+        let function_type = model.bake().map_err(|e| inference_error(e, span))?;
+        return conform_context(&function_type, required,
+            capture(variant, format!("{name}@{}", argument_type.display(analysis.types))), span, analysis);
+    }
+    let actual = inferred_type(argument_type, analysis, span)?;
+    let mut selected = None;
+    let mut previous: Option<&Type> = None;
+    for (variant, scheme) in variants.iter().zip(&schemes) {
+        let Type::Function(parts) = scheme.body() else { unreachable!("whole function scheme") };
+        let mut trial = actual.clone();
+        let (matched, displacement) = trial.matches(&parts.0, scheme.degree(), analysis.types)
+            .map_err(|e| inference_error(e, span))?;
+        if !matched { continue; }
+        if let Some(previous) = previous {
+            return Err(type_error(format!(
+                "Ambiguous argument in function call, specified type {} matches both {} and {}",
+                argument_type.display(analysis.types), previous.display(analysis.types),
+                variant.arg_type.display(analysis.types)), span));
+        }
+        // Substitute the WHOLE signature at once: argument/result references
+        // to a formal must keep the same assignment and compacted index.
+        let shifted = shift(scheme.body(), 0, displacement).map_err(|e| inference_error(e, span))?;
+        let function_type = trial.assignments().substitution(&shifted)
+            .map_err(|e| inference_error(e, span))?;
+        let mut print_name = format!("{name}@{}", variant.arg_type.display(analysis.types));
+        let mut substitutions = Vec::new();
+        for index in 0..scheme.degree() {
+            if let Some(value) = trial.assignments().equivalent(index + displacement) {
+                let value = trial.assignments().substitution(value).map_err(|e| inference_error(e, span))?;
+                substitutions.push(format!("{}={}", Type::Variable(index).display(analysis.types), value.display(analysis.types)));
+            }
+        }
+        if !substitutions.is_empty() {
+            print_name.push('[');
+            print_name.push_str(&substitutions.join(","));
+            print_name.push(']');
+        }
+        selected = Some((capture(variant, print_name), function_type));
+        previous = Some(&variant.arg_type);
+    }
+    match selected {
+        Some((capture, function_type)) => conform_context(&function_type, required, capture, span, analysis),
+        None => Err(type_error(format!("No instance for {name}@{} found", argument_type.display(analysis.types)), span)),
     }
 }
 
@@ -2321,10 +2759,66 @@ pub fn convert_expr(
     required: &mut Type,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
+    let context = ConversionType::new(required.clone(), analysis.type_floor);
+    let converted = convert_expr_context(expression, &context, analysis);
+    *required = context.get();
+    converted
+}
+
+fn convert_expr_context(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    // A return operand may use an outer function's requirement while the
+    // syntax occurs inside a type abstraction. Interpret its variables at the
+    // requirement's actual fixed floor, as upstream convert_expr does.
+    let scoped;
+    let analysis = if analysis.type_floor != required.fixed() {
+        scoped = Analysis { type_floor: required.fixed(), ..analysis.clone() };
+        &scoped
+    } else { analysis };
+    // Keep recursive dispatch small: original3839541 traps in this analysis
+    // frame before evaluating the root fixture. Family helpers retain the
+    // same arm bodies and the already-adjusted shared conversion context.
+    match expression {
+        Expr::Integer { .. } | Expr::Boolean { .. } | Expr::String { .. } | Expr::Lambda { .. } | Expr::RecLambda { .. } | Expr::OperatorCast { .. } | Expr::Return { .. } | Expr::Group { .. } | Expr::Identifier { .. } | Expr::Break { .. } | Expr::Dont { .. } | Expr::Die { .. } =>
+            convert_expr_atom_family(expression, required, analysis),
+        Expr::TypeAbstraction { .. } | Expr::Cast { .. } =>
+            convert_expr_type_context_family(expression, required, analysis),
+        Expr::Tuple { .. } | Expr::List { .. } | Expr::BarList { .. } =>
+            convert_expr_display_family(expression, required, analysis),
+        Expr::Let { .. } =>
+            convert_expr_binding_family(expression, required, analysis),
+        Expr::MultiAssignment(_) | Expr::Assignment { .. } | Expr::ComponentAssignment(_) | Expr::ComponentTransform(_) | Expr::FieldAssignment(_) | Expr::FieldTransform(_) =>
+            convert_expr_assignment_family(expression, required, analysis),
+        Expr::Subscription { .. } =>
+            convert_expr_subscription_family(expression, required, analysis),
+        Expr::Slice { .. } =>
+            convert_expr_slice_family(expression, required, analysis),
+        Expr::OperatorCall { .. } | Expr::Call { .. } =>
+            convert_expr_application_family(expression, required, analysis),
+        Expr::Conditional { .. } | Expr::Binary { .. } | Expr::Unary { .. } | Expr::Sequence { .. } | Expr::Do { .. } | Expr::Next { .. } =>
+            convert_expr_control_family(expression, required, analysis),
+        Expr::While { .. } | Expr::For(_) | Expr::CountedFor(_) =>
+            convert_expr_loop_family(expression, required, analysis),
+        Expr::Case(_) =>
+            convert_expr_tagged_case_family(expression, required, analysis),
+        Expr::IntCase(_) | Expr::UnionCase(_) =>
+            convert_expr_case_family(expression, required, analysis),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_atom_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
     match expression {
         Expr::Integer { value, span } => {
             let found = Type::Primitive(Prim::Int);
-            conform_types(
+            conform_context(
                 &found,
                 required,
                 TypedExpr::Denotation(Value::Integer(value.clone())),
@@ -2332,17 +2826,17 @@ pub fn convert_expr(
                 analysis,
             )
         }
-        Expr::Boolean { value, span } => conform_types(
+        Expr::Boolean { value, span } => conform_context(
             &Type::Primitive(Prim::Bool),
             required,
             TypedExpr::Denotation(Value::Boolean(*value)),
             *span,
             analysis,
         ),
-        Expr::String { value, span } => conform_types(
+        Expr::String { value, span } => conform_context(
             &Type::Primitive(Prim::String),
             required,
-            TypedExpr::Denotation(Value::String(value.clone())),
+            TypedExpr::Denotation(Value::String(value.clone().into())),
             *span,
             analysis,
         ),
@@ -2351,120 +2845,34 @@ pub fn convert_expr(
             body,
             span,
         } => convert_lambda_expression(parameters, body, *span, required, analysis),
+        Expr::OperatorCast { name, argument_type, span } => {
+            let argument_type = resolve_annotation(argument_type, analysis.types)?;
+            capture_operator_cast(&name.value, &argument_type, required, *span, analysis)
+        }
         Expr::RecLambda { .. } => convert_rec_lambda_expression(expression, required, analysis),
         Expr::Return { value, span } => {
             // `return` is legal only lexically inside a function body (the
             // axis layer's return_type marker); upstream rejects it during
             // analysis, before anything evaluates.
-            if !analysis.in_function {
+            let Some(return_type) = &analysis.return_type else {
                 return Err(type_error(
                     "One can only use 'return' within a function body".into(),
                     *span,
                 ));
-            }
-            // The enclosing context is the function's result type;
-            // evaluation unwinds to the innermost call boundary.
-            let converted = convert_expr(value, required, analysis)?;
+            };
+            // RETURN itself imposes no local constraint. Its operand uses
+            // the function result even inside a discarded branch or loop.
+            let converted = convert_expr_context(value, return_type, analysis)?;
             Ok(TypedExpr::Return {
                 value: Box::new(converted),
             })
         }
-        Expr::Group { inner, .. } => convert_expr(inner, required, analysis),
-        Expr::Cast { target, body, .. } => {
-            // The cast's whole effect is conversion-time: convert the body
-            // against the denoted type, then conform THAT to the context.
-            let cast_type = resolve_annotation(target, analysis.types)?;
-            let mut body_type = cast_type.clone();
-            let converted = convert_expr(body, &mut body_type, analysis)?;
-            // Named annotations survive structural specialisation of a
-            // lambda, row or tuple during checking. Anonymous holes refine.
-            let found = if matches!(cast_type, Type::Tabled(_) | Type::Applied(_, _)) { cast_type } else { body_type };
-            conform_types(&found, required, converted, expression.span(), analysis)
-        }
-        Expr::Tuple { elements, span } => {
-            // Prepare a tuple pattern of the right arity.  When it cannot
-            // specialise to the required type the display is not yet
-            // rejected: the a priori tuple may still COERCE into the
-            // required type (axis.w:786-815 — the (int,int)->Split
-            // conversion is the unique such entry), so components convert
-            // against undetermined slots and the coercion applies directly;
-            // failing that, the error is the standard found/needed wording.
-            let mut pattern = Type::Tuple(vec![Type::Undetermined; elements.len()]);
-            let mut context = inferred_type(required, analysis, *span)?;
-            if !context.try_unify_specialise(&mut pattern, analysis.types)
-                .map_err(|e| inference_error(e, *span))? {
-                let mut components = vec![Type::Undetermined; elements.len()];
-                let converted = elements
-                    .iter()
-                    .zip(components.iter_mut())
-                    .map(|(element, component)| convert_expr(element, component, analysis))
-                    .collect::<Result<Vec<_>, _>>()?;
-                let found = Type::tuple(components);
-                if let Some(coercion) =
-                    crate::coercions::coercion_between(&found, required, analysis.types)
-                {
-                    return Ok(TypedExpr::Conversion {
-                        tag: coercion.tag,
-                        inner: Box::new(TypedExpr::TupleDisplay(converted)),
-                        span: *span,
-                    });
-                }
-                return Err(type_error(
-                    format!(
-                        "found {} while {} was needed.",
-                        found.display(analysis.types),
-                        required.display(analysis.types)
-                    ),
-                    *span,
-                ));
-            }
-            let components = match &mut pattern {
-                Type::Tuple(components) => components,
-                // A 1-element display collapsed; treat as the single type.
-                single => {
-                    let converted = elements
-                        .first()
-                        .map(|element| convert_expr(element, single, analysis))
-                        .transpose()?;
-                    let found = single.clone();
-                    return conform_types(
-                        &found,
-                        required,
-                        converted.expect("collapse implies one element"),
-                        *span,
-                        analysis,
-                    );
-                }
-            };
-            let converted = elements
-                .iter()
-                .zip(components.iter_mut())
-                .map(|(element, component)| convert_expr(element, component, analysis))
-                .collect::<Result<Vec<_>, _>>()?;
-            // Component inference ranges are independent even if they use
-            // the same printed variable name. Recheck the linked outer
-            // requirement only after importing each component freshly.
-            let found = InferredType::wrap_tuple(
-                components.iter().map(|t| inferred_type(t, analysis, *span))
-                    .collect::<Result<Vec<_>, _>>()?, analysis.type_floor,
-            ).and_then(|t| t.bake()).map_err(|e| inference_error(e, *span))?;
-            conform_types(
-                &found,
-                required,
-                TypedExpr::TupleDisplay(converted),
-                *span,
-                analysis,
-            )
-        }
-        Expr::List { elements, span } => {
-            convert_list_expression(elements, *span, required, analysis)
-                .map_err(|error| error.into_diagnostic(analysis, "components of list expression"))
-        }
+        Expr::Group { inner, .. } => convert_expr_context(inner, required, analysis),
         Expr::Identifier { name, span } => {
             if let Some((type_, depth, offset)) = analysis.locals.get(name) {
                 let found = type_.import_at(analysis.type_floor)
                     .map_err(|e| inference_error(e, *span))?;
-                return conform_types(
+                return conform_context(
                     &found,
                     required,
                     TypedExpr::LocalIdent {
@@ -2489,7 +2897,7 @@ pub fn convert_expr(
             };
             let found = type_.import_at(analysis.type_floor)
                 .map_err(|e| inference_error(e, *span))?;
-            conform_types(
+            conform_context(
                 &found,
                 required,
                 TypedExpr::GlobalIdent {
@@ -2501,6 +2909,335 @@ pub fn convert_expr(
                 analysis,
             )
         }
+        Expr::Break { levels, span } => {
+            // Lexical depth is checked before evaluation, and lambdas reset
+            // this depth. Source spelling now repeats BREAK (axis.w:702+).
+            if analysis.loop_depth <= *levels {
+                let message = if *levels == 0 {
+                    "Using 'break' not in the reach of any loop".to_string()
+                } else {
+                    format!(
+                        "Using 'break{}' requires {} nested levels of loops",
+                        " break".repeat(*levels),
+                        levels + 1
+                    )
+                };
+                return Err(type_error(message, *span));
+            }
+            // Like die, break never yields a value and imposes no result
+            // constraint. Forcing void corrupts fixed-T collecting loops
+            // (basic.at take; original-backed3838661 regression).
+            Ok(TypedExpr::Break { levels: *levels })
+        }
+        Expr::Dont { span } => {
+            if analysis.loop_depth == 0 {
+                return Err(type_error(
+                    "Using 'dont' not in the reach of any loop".into(),
+                    *span,
+                ));
+            }
+            // parser.y lowers dont to `false do die`: no value is ever
+            // yielded and die imposes no constraint on the body type.
+            Ok(TypedExpr::Dont)
+        }
+        Expr::Die { span } => {
+            // `die` passes analysis trivially in ANY context, leaving the
+            // required type untouched (upstream die_expr, axis.w:634-638);
+            // only evaluation throws.
+            Ok(TypedExpr::Die { span: *span })
+        }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_type_context_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
+        Expr::TypeAbstraction { count, body, span } => {
+            // axis.w:4109 raises the EXISTING required context. Using an
+            // unconstrained body instead wrongly accepts concrete outer casts.
+            let mut inner = InferredType::wrap(&required.get(), analysis.type_floor)
+                .map_err(|e| inference_error(e, *span))?;
+            inner.raise_floor(*count).map_err(|e| inference_error(e, *span))?;
+            let fixed = inner.fixed();
+            required.set_scoped(inner.bake().map_err(|e| inference_error(e, *span))?, fixed);
+            let scoped = Analysis {
+                types: analysis.types, globals: analysis.globals, overloads: analysis.overloads,
+                overload_views: analysis.overload_views.clone(),
+                locals: analysis.locals.clone(), constant_locals: analysis.constant_locals.clone(),
+                return_type: analysis.return_type.clone(), loop_depth: analysis.loop_depth, type_floor: fixed,
+            };
+            let converted = convert_expr_context(body, required, &scoped)?;
+            let mut result = InferredType::wrap(&required.get(), fixed)
+                .map_err(|e| inference_error(e, *span))?;
+            result.lower_floor(*count).map_err(|e| inference_error(e, *span))?;
+            required.set_scoped(result.bake().map_err(|e| inference_error(e, *span))?, analysis.type_floor);
+            Ok(converted)
+        }
+        Expr::Cast { target, body, .. } => {
+            // Specialise the LIVE target before the body, so returns see
+            // explicit result annotations (axis.w:7323). Only coercing casts
+            // need a separate body requirement.
+            let cast_type = resolve_annotation(target, analysis.types)?;
+            let mut context = inferred_type(&required.get(), analysis, expression.span())?;
+            let mut pattern = cast_type.clone();
+            if context.try_unify_specialise(&mut pattern, analysis.types)
+                .map_err(|e| inference_error(e, expression.span()))? {
+                required.set(context.bake().map_err(|e| inference_error(e, expression.span()))?);
+                return convert_expr_context(body, required, analysis);
+            }
+            let mut body_type = cast_type.clone();
+            let converted = convert_expr(body, &mut body_type, analysis)?;
+            // Named annotations survive structural specialisation of a
+            // lambda, row or tuple during checking. Anonymous holes refine.
+            let found = if matches!(cast_type, Type::Tabled(_) | Type::Applied(_, _)) { cast_type } else { body_type };
+            conform_context(&found, required, converted, expression.span(), analysis)
+        }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_display_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
+        Expr::Tuple { elements, span } => {
+            // Prepare a tuple pattern of the right arity.  When it cannot
+            // specialise to the required type the display is not yet
+            // rejected: the a priori tuple may still COERCE into the
+            // required type (axis.w:786-815 — the (int,int)->Split
+            // conversion is the unique such entry), so components convert
+            // against undetermined slots and the coercion applies directly;
+            // failing that, the error is the standard found/needed wording.
+            let mut pattern = Type::Tuple(vec![Type::Undetermined; elements.len()]);
+            let mut context = inferred_type(&required.get(), analysis, *span)?;
+            if !context.try_unify_specialise(&mut pattern, analysis.types)
+                .map_err(|e| inference_error(e, *span))? {
+                let mut components = vec![Type::Undetermined; elements.len()];
+                let converted = elements
+                    .iter()
+                    .zip(components.iter_mut())
+                    .map(|(element, component)| convert_expr(element, component, analysis))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let found = Type::tuple(components);
+                return conform_context(&found, required,
+                    TypedExpr::TupleDisplay(converted), *span, analysis);
+            }
+            required.set(context.bake().map_err(|e| inference_error(e, *span))?);
+            let components = match &mut pattern {
+                Type::Tuple(components) => components,
+                // A 1-element display collapsed; treat as the single type.
+                single => {
+                    let converted = elements
+                        .first()
+                        .map(|element| convert_expr(element, single, analysis))
+                        .transpose()?;
+                    let found = single.clone();
+                    return conform_context(
+                        &found,
+                        required,
+                        converted.expect("collapse implies one element"),
+                        *span,
+                        analysis,
+                    );
+                }
+            };
+            let converted = elements
+                .iter()
+                .zip(components.iter_mut())
+                .map(|(element, component)| {
+                    // axis.w:919 tests the PREPARED component requirement,
+                    // not its inferred type after analysing the expression.
+                    let discard = component.expanded(analysis.types).is_void();
+                    convert_expr(element, component, analysis).map(|converted|
+                        if discard { void_nonempty(converted, element) } else { converted })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            // Component inference ranges are independent even if they use
+            // the same printed variable name. Recheck the linked outer
+            // requirement only after importing each component freshly.
+            let found = InferredType::wrap_tuple(
+                components.iter().map(|t| inferred_type(t, analysis, *span))
+                    .collect::<Result<Vec<_>, _>>()?, analysis.type_floor,
+            ).and_then(|t| t.bake()).map_err(|e| inference_error(e, *span))?;
+            conform_context(
+                &found,
+                required,
+                TypedExpr::TupleDisplay(converted),
+                *span,
+                analysis,
+            )
+        }
+        Expr::List { elements, span } => {
+            convert_list_expression(elements, *span, required, analysis)
+                .map_err(|error| error.into_diagnostic(analysis, "components of list expression"))
+        }
+        Expr::BarList { rows, span } => {
+            // Each segment is a comma-list of `int` entries (upstream routes
+            // the row-of-rows through a `mat` cast, which balances every
+            // entry against int: "found string while int was needed.").
+            let converted_rows = rows
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|entry| {
+                            let mut entry_type = Type::Primitive(Prim::Int);
+                            convert_expr(entry, &mut entry_type, analysis)
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let found = Type::Primitive(Prim::Mat);
+            conform_context(
+                &found,
+                required,
+                TypedExpr::BarList {
+                    rows: converted_rows,
+                    span: *span,
+                },
+                *span,
+                analysis,
+            )
+        }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_binding_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
+        Expr::Let {
+            binding_groups,
+            body,
+            span: _,
+        } => {
+            let mut locals = analysis.locals.clone();
+            let mut constant_locals = analysis.constant_locals.clone();
+            let mut groups = Vec::with_capacity(binding_groups.len());
+            for bindings in binding_groups {
+                let mut pending = Vec::with_capacity(bindings.len());
+                for binding in bindings {
+                    let mut binding_type = pattern_type(&binding.pattern);
+                    let converted = convert_expr(
+                        &binding.initializer,
+                        &mut binding_type,
+                        &Analysis {
+                            types: analysis.types,
+                            globals: analysis.globals,
+                            overloads: analysis.overloads,
+                            overload_views: analysis.overload_views.clone(),
+                            locals: locals.clone(),
+                            constant_locals: constant_locals.clone(),
+                            return_type: analysis.return_type.clone(),
+                            loop_depth: analysis.loop_depth,
+                            type_floor: analysis.type_floor,
+                        },
+                    )?;
+                    // The pattern supplies the RHS context first. Omitted
+                    // slots stay open, while an explicit `()` is void.
+                    let leaves =
+                        bind_pattern_leaves(&binding.pattern, &binding_type, analysis.types, analysis.type_floor)?;
+                    let converted = if !leaves.is_empty()
+                        && binding_type.expanded(analysis.types).is_void() {
+                        void_nonempty(converted, &binding.initializer)
+                    } else { converted };
+                    pending.push((pattern_slot_shape(&binding.pattern), leaves, converted));
+                }
+                let mut names = BTreeSet::new();
+                for (_, leaves, _) in &pending {
+                    for (name, name_span, _, _) in leaves {
+                        if !names.insert(name.as_str()) {
+                            return Err(Diagnostic::new(
+                                ErrorKind::Name,
+                                format!("Multiple binding of '{name}' in same scope"),
+                                Some(*name_span),
+                            ));
+                        }
+                    }
+                }
+                // A group of pure discards claims no frame (empty-layer
+                // rule), so depths shift only when it binds a slot.
+                let group_slots: usize = pending.iter().map(|(_, leaves, _)| leaves.len()).sum();
+                if group_slots > 0 {
+                    for (_, depth, _) in locals.values_mut() {
+                        *depth += 1;
+                    }
+                }
+                let mut offset = 0;
+                for (_, leaves, _) in &pending {
+                    for (name, _, constant, binding_type) in leaves {
+                        locals.insert(
+                            name.clone(),
+                            (TypeCell::new(binding_type.clone(), analysis.type_floor), 0, offset),
+                        );
+                        if *constant {
+                            constant_locals.insert(name.clone());
+                        } else {
+                            constant_locals.remove(name);
+                        }
+                        offset += 1;
+                    }
+                }
+                // Slot names in bind order across the group's bindings,
+                // for the error-time frame dump (axis.w:2882-2909).
+                let names: Vec<String> = pending
+                    .iter()
+                    .flat_map(|(_, leaves, _)| leaves.iter().map(|(name, _, _, _)| name.clone()))
+                    .collect();
+                groups.push((
+                    pending
+                        .into_iter()
+                        .map(|(shape, _, converted)| (shape, converted))
+                        .collect::<Vec<_>>(),
+                    names,
+                ));
+            }
+            let mut converted = convert_expr_context(
+                body,
+                required,
+                &Analysis {
+                    types: analysis.types,
+                    globals: analysis.globals,
+                    overloads: analysis.overloads,
+                    overload_views: analysis.overload_views.clone(),
+                    locals,
+                    constant_locals,
+                    return_type: analysis.return_type.clone(),
+                    loop_depth: analysis.loop_depth,
+                    type_floor: analysis.type_floor,
+                },
+            )?;
+            for (initializers, names) in groups.into_iter().rev() {
+                converted = TypedExpr::LetGroup {
+                    initializers,
+                    names: Rc::from(names),
+                    body: Box::new(converted),
+                };
+            }
+            Ok(converted)
+        }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_assignment_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
         Expr::MultiAssignment(assignment) => {
             // Parenthesised single names collapse in the parser. Upstream
             // recognises their exact kind and sends them through ordinary
@@ -2509,6 +3246,7 @@ pub fn convert_expr(
                 name,
                 name_span,
                 constant: false,
+                operator: false,
                 ..
             } = &assignment.pattern
             {
@@ -2541,6 +3279,17 @@ pub fn convert_expr(
         Expr::FieldTransform(transform) => {
             convert_field_transform(expression, transform, required, analysis)
         }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_subscription_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
         Expr::Subscription {
             array,
             index,
@@ -2549,10 +3298,8 @@ pub fn convert_expr(
         } => {
             let mut array_type = Type::Undetermined;
             let converted_array = convert_expr(array, &mut array_type, analysis)?;
-            // The index converts with an undetermined a-priori type, exactly
-            // like upstream (axis.w:4020-4026); only equality with `int` is
-            // admitted, so a mistyped index falls to the dedicated `not_so`
-            // error rather than a coercion failure.
+            // axis.w::index_kind requires the exact index type (including
+            // KType/Param for polynomial coefficients), not a coercion.
             let mut index_type = Type::Undetermined;
             let converted_index = convert_expr(index, &mut index_type, analysis)?;
             // Upstream `subscr_base::index_kind` (axis.w:3941-3973): a row
@@ -2570,6 +3317,8 @@ pub fn convert_expr(
                             .iter()
                             .all(|part| matches!(&*part.expanded(analysis.types), Type::Primitive(Prim::Int)))
             );
+            let polynomial = matches!(&*array_type.expanded(analysis.types),
+                Type::Primitive(Prim::KTypePol | Prim::ParamPol));
             let found = match &*array_type.expanded(analysis.types) {
                 Type::Row(component) if int_index => (**component).clone(),
                 Type::Primitive(Prim::String) if int_index => Type::Primitive(Prim::String),
@@ -2577,17 +3326,33 @@ pub fn convert_expr(
                 Type::Primitive(Prim::RatVec) if int_index => Type::Primitive(Prim::Rat),
                 Type::Primitive(Prim::Mat) if int_index => Type::Primitive(Prim::Vec),
                 Type::Primitive(Prim::Mat) if pair_index => Type::Primitive(Prim::Int),
+                Type::Primitive(Prim::KTypePol)
+                    if matches!(&*index_type.expanded(analysis.types), Type::Primitive(Prim::KType)) =>
+                    Type::Primitive(Prim::Split),
+                Type::Primitive(Prim::ParamPol)
+                    if matches!(&*index_type.expanded(analysis.types), Type::Primitive(Prim::Param)) =>
+                    Type::Primitive(Prim::Split),
                 _ => {
-                    return Err(type_error(
+                    return Err(Diagnostic::new(
+                        if polynomial { ErrorKind::Program } else { ErrorKind::Type },
                         format!(
                             "Cannot subscript value of type {} with index of type {}",
                             array_type.display(analysis.types),
                             index_type.display(analysis.types)
                         ),
-                        *span,
+                        Some(*span),
                     ));
                 }
             };
+            if polynomial && *reversed {
+                return Err(Diagnostic::new(ErrorKind::Program, format!(
+                    "Cannot do reversed subscription of a {}",
+                    if matches!(&*array_type.expanded(analysis.types), Type::Primitive(Prim::KTypePol)) {
+                        "KTypePol"
+                    } else {
+                        "ParamPol"
+                    }), Some(*span)));
+            }
             // The pair-index subscription prints without the tuple
             // parentheses in the range diagnostic (`M[5,0]`, while the
             // assignment compact keeps them: `M[(5,0)]:=1`).
@@ -2601,13 +3366,14 @@ pub fn convert_expr(
                 ),
                 _ => compact_expression(expression),
             };
-            conform_types(
+            conform_context(
                 &found,
                 required,
                 TypedExpr::Subscription {
                     array: Box::new(converted_array),
                     index: Box::new(converted_index),
                     reversed: *reversed,
+                    polynomial,
                     source,
                     span: *span,
                 },
@@ -2615,6 +3381,17 @@ pub fn convert_expr(
                 analysis,
             )
         }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_slice_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
         Expr::Slice {
             array,
             lower,
@@ -2672,7 +3449,7 @@ pub fn convert_expr(
                 }
                 let mut converted_bounds = converted_bounds.into_iter();
                 let found = Type::Primitive(Prim::Mat);
-                return conform_types(
+                return conform_context(
                     &found,
                     required,
                     TypedExpr::Slice {
@@ -2695,10 +3472,14 @@ pub fn convert_expr(
             }
             let mut array_type = Type::Undetermined;
             let converted_array = convert_expr(array, &mut array_type, analysis)?;
-            // Only row slicing is implemented; anything else is the
-            // analysis-time error upstream raises from the `make_slice`
-            // default case (axis.w:4171-4173).
-            let Type::Row(component) = &*array_type.expanded(analysis.types) else {
+            // axis.w::slice analyses both bounds before rejecting the
+            // receiver, and returns its original (possibly named) type.
+            let mut bound_type = Type::Primitive(Prim::Int);
+            let converted_lower = convert_expr(lower, &mut bound_type, analysis)?;
+            let mut bound_type = Type::Primitive(Prim::Int);
+            let converted_upper = convert_expr(upper, &mut bound_type, analysis)?;
+            if !matches!(&*array_type.expanded(analysis.types),
+                Type::Row(_) | Type::Primitive(Prim::String | Prim::Vec | Prim::RatVec | Prim::Mat)) {
                 return Err(type_error(
                     format!(
                         "Cannot slice value of type {}",
@@ -2706,13 +3487,9 @@ pub fn convert_expr(
                     ),
                     *span,
                 ));
-            };
-            let mut bound_type = Type::Primitive(Prim::Int);
-            let converted_lower = convert_expr(lower, &mut bound_type, analysis)?;
-            let mut bound_type = Type::Primitive(Prim::Int);
-            let converted_upper = convert_expr(upper, &mut bound_type, analysis)?;
-            let found = Type::row((**component).clone());
-            conform_types(
+            }
+            let found = array_type;
+            conform_context(
                 &found,
                 required,
                 TypedExpr::Slice {
@@ -2729,137 +3506,17 @@ pub fn convert_expr(
                 analysis,
             )
         }
-        Expr::BarList { rows, span } => {
-            // Each segment is a comma-list of `int` entries (upstream routes
-            // the row-of-rows through a `mat` cast, which balances every
-            // entry against int: "found string while int was needed.").
-            let converted_rows = rows
-                .iter()
-                .map(|row| {
-                    row.iter()
-                        .map(|entry| {
-                            let mut entry_type = Type::Primitive(Prim::Int);
-                            convert_expr(entry, &mut entry_type, analysis)
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let found = Type::Primitive(Prim::Mat);
-            conform_types(
-                &found,
-                required,
-                TypedExpr::BarList {
-                    rows: converted_rows,
-                    span: *span,
-                },
-                *span,
-                analysis,
-            )
-        }
-        Expr::Let {
-            binding_groups,
-            body,
-            span: _,
-        } => {
-            let mut locals = analysis.locals.clone();
-            let mut constant_locals = analysis.constant_locals.clone();
-            let mut groups = Vec::with_capacity(binding_groups.len());
-            for bindings in binding_groups {
-                let mut pending = Vec::with_capacity(bindings.len());
-                for binding in bindings {
-                    let mut binding_type = pattern_type(&binding.pattern);
-                    let converted = convert_expr(
-                        &binding.initializer,
-                        &mut binding_type,
-                        &Analysis {
-                            types: analysis.types,
-                            globals: analysis.globals,
-                            overloads: analysis.overloads,
-                            locals: locals.clone(),
-                            constant_locals: constant_locals.clone(),
-                            in_function: analysis.in_function,
-                            loop_depth: analysis.loop_depth,
-                            type_floor: analysis.type_floor,
-                        },
-                    )?;
-                    // The pattern supplies the RHS context first. Omitted
-                    // slots stay open, while an explicit `()` is void.
-                    let leaves =
-                        bind_pattern_leaves(&binding.pattern, &binding_type, analysis.types, analysis.type_floor)?;
-                    pending.push((pattern_slot_shape(&binding.pattern), leaves, converted));
-                }
-                let mut names = BTreeSet::new();
-                for (_, leaves, _) in &pending {
-                    for (name, name_span, _, _) in leaves {
-                        if !names.insert(name.as_str()) {
-                            return Err(Diagnostic::new(
-                                ErrorKind::Name,
-                                format!("Multiple binding of '{name}' in same scope"),
-                                Some(*name_span),
-                            ));
-                        }
-                    }
-                }
-                // A group of pure discards claims no frame (empty-layer
-                // rule), so depths shift only when it binds a slot.
-                let group_slots: usize = pending.iter().map(|(_, leaves, _)| leaves.len()).sum();
-                if group_slots > 0 {
-                    for (_, depth, _) in locals.values_mut() {
-                        *depth += 1;
-                    }
-                }
-                let mut offset = 0;
-                for (_, leaves, _) in &pending {
-                    for (name, _, constant, binding_type) in leaves {
-                        locals.insert(
-                            name.clone(),
-                            (TypeCell::new(binding_type.clone(), analysis.type_floor), 0, offset),
-                        );
-                        if *constant {
-                            constant_locals.insert(name.clone());
-                        } else {
-                            constant_locals.remove(name);
-                        }
-                        offset += 1;
-                    }
-                }
-                // Slot names in bind order across the group's bindings,
-                // for the error-time frame dump (axis.w:2882-2909).
-                let names: Vec<String> = pending
-                    .iter()
-                    .flat_map(|(_, leaves, _)| leaves.iter().map(|(name, _, _, _)| name.clone()))
-                    .collect();
-                groups.push((
-                    pending
-                        .into_iter()
-                        .map(|(shape, _, converted)| (shape, converted))
-                        .collect::<Vec<_>>(),
-                    names,
-                ));
-            }
-            let mut converted = convert_expr(
-                body,
-                required,
-                &Analysis {
-                    types: analysis.types,
-                    globals: analysis.globals,
-                    overloads: analysis.overloads,
-                    locals,
-                    constant_locals,
-                    in_function: analysis.in_function,
-                    loop_depth: analysis.loop_depth,
-                    type_floor: analysis.type_floor,
-                },
-            )?;
-            for (initializers, names) in groups.into_iter().rev() {
-                converted = TypedExpr::LetGroup {
-                    initializers,
-                    names: Rc::from(names),
-                    body: Box::new(converted),
-                };
-            }
-            Ok(converted)
-        }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_application_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
         Expr::OperatorCall {
             operator,
             arguments,
@@ -2887,7 +3544,7 @@ pub fn convert_expr(
                     .expect("integer inverse overload is registered");
                 let mut argument_type = int_type();
                 let argument = convert_expr(&arguments[1], &mut argument_type, analysis)?;
-                return conform_types(
+                return conform_context(
                     &rat_type(),
                     required,
                     TypedExpr::BuiltinCall {
@@ -2899,6 +3556,15 @@ pub fn convert_expr(
                     *span,
                     analysis,
                 );
+            }
+            // axis.w::function_call: a lexical function shadows operator
+            // overloads exactly as it shadows an identifier's overloads.
+            if analysis.locals.get(&operator.symbol).is_some_and(|(type_, _, _)|
+                matches!(&*type_.borrow().expanded(analysis.types), Type::Function(_))) {
+                let callee = Expr::Identifier {
+                    name: operator.symbol.clone(), span: operator.span.unwrap_or(*span),
+                };
+                return convert_function_application(&callee, arguments, required, *span, analysis);
             }
             convert_overload_application(
                 &operator.symbol,
@@ -2923,7 +3589,7 @@ pub fn convert_expr(
                 let local_function = local
                     .is_some_and(|(type_, _, _)| matches!(&*type_.borrow().expanded(analysis.types), Type::Function(_)));
                 let use_overloads = !local_function
-                    && (!merged_variants(name, analysis.overloads, analysis.types).is_empty()
+                    && (has_active_variants(name, analysis.overloads, analysis.types)
                         || (local.is_none() && analysis.globals.lookup(name).is_none()));
                 if use_overloads {
                     return convert_overload_application(
@@ -2931,69 +3597,19 @@ pub fn convert_expr(
                     );
                 }
             }
-            // Fallback path: the callee must have function type and the
-            // argument converts against its parameter type; mismatches
-            // carry the upstream wording (axis-types.w:2403-2410).
-            let mut callee_type = Type::Undetermined;
-            let function = convert_expr(callee, &mut callee_type, analysis)?;
-            let mut function_type = inferred_type(&callee_type, analysis, *span)?;
-            let mut function_pattern = Type::function(Type::Undetermined, Type::Undetermined);
-            if !function_type.try_unify_specialise(&mut function_pattern, analysis.types)
-                .map_err(|e| inference_error(e, *span))? {
-                return Err(type_error(
-                    format!(
-                        "found {} while {} was needed.",
-                        callee_type.display(analysis.types),
-                        function_pattern.display(analysis.types)
-                    ),
-                    callee.span(),
-                ));
-            }
-            let (mut argument_type, _) = function_type.function_parts(analysis.types)
-                .map_err(|e| inference_error(e, *span))?;
-            // Closures take their argument as ONE value (axis.w:3222): a
-            // bare expression for a single argument, otherwise the tuple.
-            let argument_source = if arguments.len() == 1 {
-                arguments[0].clone()
-            } else {
-                Expr::Tuple {
-                    elements: arguments.clone(),
-                    span: *span,
-                }
-            };
-            // Current axis.w:2763+: unlike overload dispatch, a direct
-            // function supplies the argument context. Solve that argument
-            // against the WHOLE function so the result shares its assignments.
-            let mut argument = convert_expr(&argument_source, &mut argument_type, analysis)?;
-            if argument_type.expanded(analysis.types).is_void()
-                && !matches!(&argument_source, Expr::Tuple { elements, .. } if elements.is_empty()) {
-                argument = TypedExpr::Void(Box::new(argument));
-            }
-            let actual = inferred_type(&argument_type, analysis, argument_source.span())?;
-            if !function_type.matches_argument(&actual, analysis.types)
-                .map_err(|e| inference_error(e, *span))? {
-                let (expected, _) = function_type.function_parts(analysis.types)
-                    .map_err(|e| inference_error(e, *span))?;
-                return Err(type_error(format!("found {} while {} was needed.",
-                    argument_type.display(analysis.types), expected.display(analysis.types)), *span));
-            }
-            let (_, result_type) = function_type.function_parts(analysis.types)
-                .map_err(|e| inference_error(e, *span))?;
-            conform_types(
-                &result_type,
-                required,
-                TypedExpr::FunctionCall {
-                    function: Box::new(function),
-                    argument: Box::new(argument),
-                    // A dynamically computed callee has no resolved overload
-                    // name; the trace falls back to the callee rendering.
-                    name: None,
-                    span: *span,
-                },
-                *span,
-                analysis,
-            )
+            convert_function_application(callee, arguments, required, *span, analysis)
         }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_control_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
         Expr::Conditional {
             condition,
             then_branch,
@@ -3029,7 +3645,7 @@ pub fn convert_expr(
                     rhs.as_ref().clone(),
                 ),
             };
-            convert_expr(
+            convert_expr_context(
                 &Expr::Conditional {
                     condition: Box::new(condition),
                     then_branch: Box::new(then_branch),
@@ -3041,7 +3657,7 @@ pub fn convert_expr(
             )
         }
         Expr::Unary { op, operand, span } => match op {
-            crate::syntax::UnaryOp::Not => convert_expr(
+            crate::syntax::UnaryOp::Not => convert_expr_context(
                 &Expr::Conditional {
                     condition: operand.clone(),
                     then_branch: Box::new(Expr::Boolean {
@@ -3063,24 +3679,58 @@ pub fn convert_expr(
             // (upstream make_sequence); the sequence yields the second half.
             let mut void = Type::void();
             let first = convert_expr(first, &mut void, analysis)?;
-            let second = convert_expr(second, required, analysis)?;
+            let second = convert_expr_context(second, required, analysis)?;
             Ok(TypedExpr::Sequence {
                 first: Box::new(first),
                 second: Box::new(second),
             })
         }
+        Expr::Do { condition, body, .. } => {
+            // Upstream checks the body before the guard, even for false.
+            let body = convert_expr_context(body, required, analysis)?;
+            let condition = condition.as_ref().map(|condition| {
+                convert_expr(condition, &mut Type::Primitive(Prim::Bool), analysis)
+            }).transpose()?;
+            Ok(TypedExpr::Do { condition: condition.map(Box::new), body: Box::new(body) })
+        }
+        Expr::Next { first, second, .. } => {
+            // next_expr (axis.w:3697-3704): the first half converts
+            // against the required pattern, the second against void.
+            let first = convert_expr_context(first, required, analysis)?;
+            let mut void = Type::void();
+            let second = convert_expr(second, &mut void, analysis)?;
+            Ok(TypedExpr::Next {
+                first: Box::new(first),
+                second: Box::new(second),
+            })
+        }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_loop_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
         Expr::While {
             condition,
             body,
+            reversed,
             span,
         } => {
+            // axis.w installs the loop layer around the entire do-tree.
+            // Flattening a guard must not move it outside this boundary.
+            let loop_analysis = analysis.in_loop();
             let condition = condition
                 .as_ref()
                 .map(|condition| {
                     // A-priori conversion, then the bool check with the
                     // upstream `found … while … was needed.` wording.
                     let mut found = Type::Undetermined;
-                    let converted = convert_expr(condition, &mut found, analysis)?;
+                    let converted = convert_expr(condition, &mut found, &loop_analysis)?;
                     if !Type::Primitive(Prim::Bool).specialise(&found, analysis.types) {
                         return Err(type_error(
                             format!(
@@ -3093,20 +3743,46 @@ pub fn convert_expr(
                     Ok(converted)
                 })
                 .transpose()?;
-            // The body converts against a fresh component pattern with the
-            // loop depth raised; the loop's type is a row of that pattern.
-            let mut component = Type::Undetermined;
-            let body = convert_expr(body, &mut component, &analysis.in_loop())?;
-            conform_types(
-                &Type::row(component),
-                required,
-                TypedExpr::While {
-                    condition: condition.map(Box::new),
-                    body: Box::new(body),
-                },
-                *span,
-                analysis,
-            )
+            let target = required.expanded(analysis.types);
+            let mode = if target.is_void() {
+                WhileMode::Void
+            } else if *target == Type::Primitive(Prim::Int) {
+                WhileMode::Count
+            } else {
+                WhileMode::Row { reversed: *reversed }
+            };
+            if !matches!(mode, WhileMode::Row { .. }) {
+                // Unlike an unused list display, the loop body itself has
+                // void context. Heterogeneous branches are valid here.
+                let body = convert_expr(body, &mut Type::void(), &loop_analysis)?;
+                return Ok(TypedExpr::While {
+                    condition: condition.map(Box::new), body: Box::new(body), mode,
+                });
+            }
+            let mut context = inferred_type(&required.get(), analysis, *span)?;
+            let mut row_pattern = Type::row(Type::Undetermined);
+            let accepts_row = context.try_unify_specialise(&mut row_pattern, analysis.types)
+                .map_err(|e| inference_error(e, *span))?;
+            let (mut component, coercion_tag) = if accepts_row {
+                required.set(context.bake().map_err(|e| inference_error(e, *span))?);
+                let Type::Row(component) = row_pattern else { unreachable!("specialised row pattern") };
+                (*component, None)
+            } else if let Some((coercion, component)) = row_coercion(&target, analysis.types) {
+                (component.clone(), Some(coercion.tag))
+            } else {
+                return Err(type_error(format!("found [*] while {} was needed.", target.display(analysis.types)), *span));
+            };
+            let converted_body = convert_expr(body, &mut component, &loop_analysis)?;
+            let body = if accepts_row && component.expanded(analysis.types).is_void() {
+                void_nonempty(converted_body, body)
+            } else { converted_body };
+            let loop_ = TypedExpr::While {
+                condition: condition.map(Box::new), body: Box::new(body), mode,
+            };
+            match coercion_tag {
+                Some(tag) => Ok(TypedExpr::Conversion { tag, inner: Box::new(loop_), span: *span }),
+                None => conform_context(&Type::row(component), required, loop_, *span, analysis),
+            }
         }
         Expr::For(loop_) => {
             let ForLoop {
@@ -3114,22 +3790,30 @@ pub fn convert_expr(
                 index,
                 iterable,
                 body,
+                input_reversed,
+                output_reversed,
                 span,
             } = loop_.as_ref();
             let mut found = Type::Undetermined;
             let iterable = convert_expr(iterable, &mut found, analysis)?;
-            let Type::Row(component) = &*found.expanded(analysis.types) else {
-                return Err(type_error(
+            let (component, index_type) = match &*found.expanded(analysis.types) {
+                Type::Row(component) => ((**component).clone(), Prim::Int),
+                Type::Primitive(Prim::Vec) => (Type::Primitive(Prim::Int), Prim::Int),
+                Type::Primitive(Prim::RatVec) => (Type::Primitive(Prim::Rat), Prim::Int),
+                Type::Primitive(Prim::String) => (Type::Primitive(Prim::String), Prim::Int),
+                Type::Primitive(Prim::Mat) => (Type::Primitive(Prim::Vec), Prim::Int),
+                Type::Primitive(Prim::KTypePol) => (Type::Primitive(Prim::Split), Prim::KType),
+                Type::Primitive(Prim::ParamPol) => (Type::Primitive(Prim::Split), Prim::Param),
+                _ => return Err(type_error(
                     format!(
                         "Cannot iterate over value of type {}",
                         found.display(analysis.types)
                     ),
                     loop_.iterable.span(),
-                ));
+                )),
             };
-            // The pattern claims the row's component; the `@` name binds
-            // the 0-based index as int (the upstream (index, pattern) pair
-            // wrap, in that slot order).
+            // Polynomial components are Split coefficients; @ binds their
+            // actual KType/Param keys. Other aggregates use storage indices.
             let leaves = match pattern {
                 Some(pattern) => bind_pattern_leaves(pattern, &component, analysis.types, analysis.type_floor)?,
                 None => Vec::new(),
@@ -3171,7 +3855,7 @@ pub fn convert_expr(
             if let Some(index) = index {
                 locals.insert(
                     index.value.clone(),
-                    (TypeCell::new(Type::Primitive(Prim::Int), analysis.type_floor), 0, offset),
+                    (TypeCell::new(Type::Primitive(index_type), analysis.type_floor), 0, offset),
                 );
                 // axis.w::thread_bindings forces the const bit for ALL
                 // row-loop bindings, including the integer index.
@@ -3197,35 +3881,111 @@ pub fn convert_expr(
                 .map(|index| index.value.clone())
                 .chain(leaves.iter().map(|(name, _, _, _)| name.clone()))
                 .collect();
-            let mut body_type = Type::Undetermined;
-            let body = convert_expr(
+            let (body, body_type, coercion) = convert_for_body(
                 body,
-                &mut body_type,
+                required,
                 &Analysis {
                     types: analysis.types,
                     globals: analysis.globals,
                     overloads: analysis.overloads,
+                    overload_views: analysis.overload_views.clone(),
                     locals,
                     constant_locals,
-                    in_function: analysis.in_function,
+                    return_type: analysis.return_type.clone(),
                     loop_depth: analysis.loop_depth + 1,
                     type_floor: analysis.type_floor,
                 },
+                *span,
             )?;
-            conform_types(
-                &Type::row(body_type),
-                required,
-                TypedExpr::For {
+            let loop_ = TypedExpr::For {
                     shape,
                     index: index.is_some(),
                     names: Rc::from(names),
                     iterable: Box::new(iterable),
                     body: Box::new(body),
+                    input_reversed: *input_reversed,
+                    output_reversed: *output_reversed,
+                };
+            match coercion {
+                Some(tag) => Ok(TypedExpr::Conversion { tag, inner: Box::new(loop_), span: *span }),
+                None => conform_context(&Type::row(body_type), required, loop_, *span, analysis),
+            }
+        }
+        Expr::CountedFor(loop_) => {
+            let crate::syntax::CountedForLoop {
+                name,
+                count,
+                bound,
+                decreasing,
+                output_reversed,
+                body,
+                span,
+            } = loop_.as_ref();
+            let mut count_type = Type::Primitive(Prim::Int);
+            let count = convert_expr(count, &mut count_type, analysis)?;
+            let bound = match bound {
+                Some(bound) => {
+                    let mut bound_type = Type::Primitive(Prim::Int);
+                    Some(Box::new(convert_expr(bound, &mut bound_type, analysis)?))
+                }
+                None => None,
+            };
+            // Current axis.w passes true (=1) to layer::add's flags, not
+            // const-bit0x4. Despite its old comment, original3837531 allows
+            // counted-index assignment. Shadow an outer constant as mutable.
+            let mut locals = analysis.locals.clone();
+            let mut constant_locals = analysis.constant_locals.clone();
+            if let Some(name) = name {
+                for (_, depth, _) in locals.values_mut() {
+                    *depth += 1;
+                }
+                locals.insert(
+                    name.value.clone(),
+                    (TypeCell::new(Type::Primitive(Prim::Int), analysis.type_floor), 0, 0),
+                );
+                constant_locals.remove(&name.value);
+            }
+            let (body, body_type, coercion) = convert_for_body(
+                body,
+                required,
+                &Analysis {
+                    types: analysis.types,
+                    globals: analysis.globals,
+                    overloads: analysis.overloads,
+                    overload_views: analysis.overload_views.clone(),
+                    locals,
+                    constant_locals,
+                    return_type: analysis.return_type.clone(),
+                    loop_depth: analysis.loop_depth + 1,
+                    type_floor: analysis.type_floor,
                 },
                 *span,
-                analysis,
-            )
+            )?;
+            let loop_ = TypedExpr::CountedFor {
+                    name: name.as_ref().map(|name| name.value.clone()),
+                    decreasing: *decreasing,
+                    output_reversed: *output_reversed,
+                    count: Box::new(count),
+                    bound,
+                    body: Box::new(body),
+                    span: *span,
+                };
+            match coercion {
+                Some(tag) => Ok(TypedExpr::Conversion { tag, inner: Box::new(loop_), span: *span }),
+                None => conform_context(&Type::row(body_type), required, loop_, *span, analysis),
+            }
         }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_tagged_case_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
         Expr::Case(case) => {
             let crate::syntax::CaseExpr {
                 subject,
@@ -3292,12 +4052,16 @@ pub fn convert_expr(
             // Branch bodies share one type pattern, converted in source
             // order: the first body fixes it and a later mismatch reports
             // against what the earlier branches needed.
-            let mut common = required.clone();
             let mut converted_branches = Vec::new();
             let mut fallback = None;
+            let mut filled = BTreeSet::new();
             for branch in branches {
                 let Some(tag) = &branch.tag else {
-                    let body = convert_expr(&branch.body, &mut common, analysis)?;
+                    if fallback.is_some() {
+                        return Err(Diagnostic::new(ErrorKind::Program,
+                            "Multiple default branches present", Some(*span)));
+                    }
+                    let body = convert_expr_context(&branch.body, required, analysis)?;
                     fallback = Some(Box::new(body));
                     continue;
                 };
@@ -3315,6 +4079,12 @@ pub fn convert_expr(
                         Some(tag.span),
                     ));
                 };
+                // Check only when this branch is reached: an earlier body
+                // error wins, but a duplicate label wins over its own body.
+                if !filled.insert(index) {
+                    return Err(Diagnostic::new(ErrorKind::Program,
+                        format!("Multiple branches with label {}", tag.value), Some(*span)));
+                }
                 let mut payload = inferred_type(&variants[index], analysis, *span)?;
                 let tag_type = InferredType::wrap(&candidate_variants[index], 0)
                     .map_err(|e| inference_error(e, *span))?;
@@ -3378,46 +4148,57 @@ pub fn convert_expr(
                         constant_locals.remove(name);
                     }
                 }
-                let body = convert_expr(
+                let body = convert_expr_context(
                     &branch.body,
-                    &mut common,
+                    required,
                     &Analysis {
                         types: analysis.types,
                         globals: analysis.globals,
                         overloads: analysis.overloads,
+                        overload_views: analysis.overload_views.clone(),
                         locals,
                         constant_locals,
-                        in_function: analysis.in_function,
+                        return_type: analysis.return_type.clone(),
                         loop_depth: analysis.loop_depth,
                         type_floor: analysis.type_floor,
                     },
                 )?;
                 converted_branches.push((index as u16, shape, body));
             }
-            conform_types(
-                &common,
-                required,
-                TypedExpr::Case {
+            // Original axis.w:5828-5859 checks coverage after analyzing the
+            // branches in source order; even an unselected variant matters.
+            if branches.len() > variants.len() {
+                return Err(Diagnostic::new(ErrorKind::Program,
+                    "Spurious default branch present", Some(*span)));
+            }
+            if fallback.is_none() && filled.len() < variants.len() {
+                let missing = (0..variants.len()).find(|index| !filled.contains(index))
+                    .expect("fewer filled branches than variants");
+                let label = injector_names[missing].as_ref().map_or_else(
+                    || format!("anonymous variant {missing}"),
+                    |tag| format!("variant {tag}"));
+                return Err(Diagnostic::new(ErrorKind::Program,
+                    format!("Missing branch for {label} of type {} in discrimination clause",
+                        expanded.display(analysis.types)), Some(*span)));
+            }
+            Ok(TypedExpr::Case {
                     subject: Box::new(converted_subject),
                     branches: converted_branches,
                     fallback,
                     span: *span,
-                },
-                *span,
-                analysis,
-            )
+                })
         }
-        Expr::Next { first, second, .. } => {
-            // next_expr (axis.w:3697-3704): the first half converts
-            // against the required pattern, the second against void.
-            let first = convert_expr(first, required, analysis)?;
-            let mut void = Type::void();
-            let second = convert_expr(second, &mut void, analysis)?;
-            Ok(TypedExpr::Next {
-                first: Box::new(first),
-                second: Box::new(second),
-            })
-        }
+        _ => unreachable!("incorrect expression conversion family"),
+    }
+}
+
+#[inline(never)]
+fn convert_expr_case_family(
+    expression: &Expr,
+    required: &ConversionType,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    match expression {
         Expr::IntCase(case) => {
             let crate::syntax::IntCaseExpr {
                 condition,
@@ -3439,7 +4220,7 @@ pub fn convert_expr(
                 ordered.push(else_branch);
             }
             ordered.extend(branches.iter());
-            let mut converted = balance(&ordered, required, *span, analysis)
+            let mut converted = balance_context(&ordered, required, *span, analysis)
                 .map_err(|error| error.into_diagnostic(analysis, "branches of case"))?
                 .into_iter();
             let then_branch = then_branch
@@ -3495,7 +4276,7 @@ pub fn convert_expr(
             // Each branch converts against (variant_i -> shared hole);
             // the shared pattern specialises left-to-right
             // (axis.w:5098-5109).
-            let mut common = required.clone();
+            let mut common = required.get();
             let mut converted = Vec::with_capacity(branches.len());
             for (branch, variant) in branches.iter().zip(variants) {
                 let mut function_type = Type::function(variant.clone(), common.clone());
@@ -3505,7 +4286,7 @@ pub fn convert_expr(
                 };
                 common.specialise(&parts.1, analysis.types);
             }
-            conform_types(
+            conform_context(
                 &common,
                 required,
                 TypedExpr::UnionCase {
@@ -3517,111 +4298,7 @@ pub fn convert_expr(
                 analysis,
             )
         }
-        Expr::CountedFor(loop_) => {
-            let crate::syntax::CountedForLoop {
-                name,
-                count,
-                bound,
-                decreasing,
-                body,
-                span,
-            } = loop_.as_ref();
-            let mut count_type = Type::Primitive(Prim::Int);
-            let count = convert_expr(count, &mut count_type, analysis)?;
-            let bound = match bound {
-                Some(bound) => {
-                    let mut bound_type = Type::Primitive(Prim::Int);
-                    Some(Box::new(convert_expr(bound, &mut bound_type, analysis)?))
-                }
-                None => None,
-            };
-            // Current axis.w passes true (=1) to layer::add's flags, not
-            // const-bit0x4. Despite its old comment, original3837531 allows
-            // counted-index assignment. Shadow an outer constant as mutable.
-            let mut locals = analysis.locals.clone();
-            let mut constant_locals = analysis.constant_locals.clone();
-            if let Some(name) = name {
-                for (_, depth, _) in locals.values_mut() {
-                    *depth += 1;
-                }
-                locals.insert(
-                    name.value.clone(),
-                    (TypeCell::new(Type::Primitive(Prim::Int), analysis.type_floor), 0, 0),
-                );
-                constant_locals.remove(&name.value);
-            }
-            let mut body_type = Type::Undetermined;
-            let body = convert_expr(
-                body,
-                &mut body_type,
-                &Analysis {
-                    types: analysis.types,
-                    globals: analysis.globals,
-                    overloads: analysis.overloads,
-                    locals,
-                    constant_locals,
-                    in_function: analysis.in_function,
-                    loop_depth: analysis.loop_depth + 1,
-                    type_floor: analysis.type_floor,
-                },
-            )?;
-            conform_types(
-                &Type::row(body_type),
-                required,
-                TypedExpr::CountedFor {
-                    name: name.as_ref().map(|name| name.value.clone()),
-                    decreasing: *decreasing,
-                    count: Box::new(count),
-                    bound,
-                    body: Box::new(body),
-                    span: *span,
-                },
-                *span,
-                analysis,
-            )
-        }
-        Expr::Break { levels, span } => {
-            // `break N` is legal only when N+1 loops lexically enclose it;
-            // upstream rejects it during analysis (axis.w:673-685,
-            // layer::may_break), before anything evaluates.
-            if analysis.loop_depth <= *levels {
-                let message = if *levels == 0 {
-                    "Using 'break' not in the reach of any loop".to_string()
-                } else {
-                    format!(
-                        "Using 'break {}' requires {} nested levels of loops",
-                        levels,
-                        levels + 1
-                    )
-                };
-                return Err(type_error(message, *span));
-            }
-            // A break yields no value and converts as void, so a
-            // `… then break fi` branch balances against the implicit
-            // void else branch.
-            conform_types(
-                &Type::void(),
-                required,
-                TypedExpr::Break { levels: *levels },
-                *span,
-                analysis,
-            )
-        }
-        Expr::Dont { span } => {
-            if analysis.loop_depth == 0 {
-                return Err(type_error(
-                    "Using 'dont' not in the reach of any loop".into(),
-                    *span,
-                ));
-            }
-            conform_types(&Type::void(), required, TypedExpr::Dont, *span, analysis)
-        }
-        Expr::Die { span } => {
-            // `die` passes analysis trivially in ANY context, leaving the
-            // required type untouched (upstream die_expr, axis.w:634-638);
-            // only evaluation throws.
-            Ok(TypedExpr::Die { span: *span })
-        }
+        _ => unreachable!("incorrect expression conversion family"),
     }
 }
 
@@ -3632,7 +4309,7 @@ fn convert_simple_assignment(
     target_span: SourceSpan,
     value: &Expr,
     span: SourceSpan,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
     if let Some((target, depth, offset)) = analysis.locals.get(name) {
@@ -3650,7 +4327,10 @@ fn convert_simple_assignment(
         let converted = convert_expr(value, &mut required_value, analysis)?;
         *target.borrow_mut() = required_value.clone();
         let converted = prepare_hungry_assignment(converted, name, Some((*depth, *offset)), None);
-        return conform_types(
+        let converted = if required_value.expanded(analysis.types).is_void() {
+            void_nonempty(converted, value)
+        } else { converted };
+        return conform_context(
             &required_value,
             required,
             TypedExpr::LocalAssignment {
@@ -3686,7 +4366,10 @@ fn convert_simple_assignment(
     let converted = convert_expr(value, &mut required_value, analysis)?;
     *target.borrow_mut() = required_value.clone();
     let converted = prepare_hungry_assignment(converted, name, None, Some(cell));
-    conform_types(
+    let converted = if required_value.expanded(analysis.types).is_void() {
+        void_nonempty(converted, value)
+    } else { converted };
+    conform_context(
         &required_value,
         required,
         TypedExpr::GlobalAssignment {
@@ -3745,7 +4428,8 @@ fn lookup_assignable(
 /// The subscriptability check of a component assignment or transform
 /// (axis.w:8163-8172, 8531-8546: `subscr_base::index_kind` gated on
 /// `assignable`): rows, vec, and mat (column or two-index entry) admit
-/// component assignment; ratvec is read-only upstream.
+/// component assignment, as do KTypePol[KType] and ParamPol[Param];
+/// ratvec is read-only upstream.
 fn component_type_for_assignment(
     aggregate_type: &Type,
     index_type: &Type,
@@ -3770,6 +4454,12 @@ fn component_type_for_assignment(
         Type::Primitive(Prim::Vec) if int_index => return Ok(Type::Primitive(Prim::Int)),
         Type::Primitive(Prim::Mat) if int_index => return Ok(Type::Primitive(Prim::Vec)),
         Type::Primitive(Prim::Mat) if pair_index => return Ok(Type::Primitive(Prim::Int)),
+        Type::Primitive(Prim::KTypePol)
+            if matches!(&*index_type.expanded(analysis.types), Type::Primitive(Prim::KType)) =>
+                return Ok(Type::Primitive(Prim::Split)),
+        Type::Primitive(Prim::ParamPol)
+            if matches!(&*index_type.expanded(analysis.types), Type::Primitive(Prim::Param)) =>
+                return Ok(Type::Primitive(Prim::Split)),
         _ => {}
     }
     let message = if transform {
@@ -3785,7 +4475,12 @@ fn component_type_for_assignment(
             index_type.display(analysis.types)
         )
     };
-    Err(type_error(message, span))
+    if matches!(&*aggregate_type.expanded(analysis.types),
+        Type::Primitive(Prim::KTypePol | Prim::ParamPol)) {
+        Err(Diagnostic::new(ErrorKind::Program, message, Some(span)))
+    } else {
+        Err(type_error(message, span))
+    }
 }
 
 /// Current axis.w:8824+ uses retained type definitions, not the current value
@@ -3876,7 +4571,7 @@ fn factor_transform_call(
 fn convert_component_assignment(
     expression: &Expr,
     assignment: &ComponentAssignmentExpr,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
     let compact = compact_expression(expression);
@@ -3912,7 +4607,10 @@ fn convert_component_assignment(
         ),
         _ => compact,
     };
-    conform_types(
+    let converted_value = if required_value.expanded(analysis.types).is_void() {
+        void_nonempty(converted_value, &assignment.value)
+    } else { converted_value };
+    conform_context(
         &required_value,
         required,
         TypedExpr::ComponentAssignment {
@@ -3936,7 +4634,7 @@ fn convert_component_assignment(
 fn convert_component_transform(
     expression: &Expr,
     transform: &ComponentTransformExpr,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
     let compact = compact_expression(expression);
@@ -3965,14 +4663,72 @@ fn convert_component_transform(
         reversed: transform.reversed,
         span: transform.span,
     };
-    let call = Expr::OperatorCall {
-        operator: FormulaOperator::new(transform.operator.clone(), 0)
-            .with_span(transform.operator_span),
-        arguments: vec![subscription, transform.value.clone()],
-        span: transform.span,
-    };
+    let call = crate::syntax::compound_update_call(
+        transform.operator.clone(), transform.operator_span, transform.named_operator,
+        vec![subscription, transform.value.clone()], transform.span,
+    );
     let mut call_required = component_type.clone();
     let converted_call = convert_expr(&call, &mut call_required, analysis)?;
+    if matches!(&*aggregate_type.expanded(analysis.types),
+        Type::Primitive(Prim::KTypePol | Prim::ParamPol)) {
+        // axis.w:9168-9358: polynomial transforms use the FULL ordinary
+        // call, including left-operand coercions, rather than the optimized
+        // row transform. A bare identifier is intentionally reread on write.
+        if matches!(&transform.index, Expr::Identifier { .. }) {
+            return conform_context(
+                &component_type, required,
+                TypedExpr::ComponentAssignment {
+                    target,
+                    name: transform.name.clone(),
+                    index: Box::new(converted_index),
+                    reversed: transform.reversed,
+                    value: Box::new(converted_call),
+                    source: compact,
+                    span: transform.span,
+                }, transform.span, analysis);
+        }
+
+        // let $ = I in Q[$] := op(Q[$], rhs). Keep the already-converted
+        // index outside the new frame and reanalyse the body at its deeper
+        // lexical level, so local/captured targets and operands stay valid.
+        let hidden = "$".to_owned();
+        let key = Expr::Identifier { name: hidden.clone(), span: transform.index.span() };
+        let read = Expr::Subscription {
+            array: Box::new(Expr::Identifier {
+                name: transform.name.clone(), span: transform.name_span,
+            }),
+            index: Box::new(key.clone()), reversed: transform.reversed, span: transform.span,
+        };
+        let body = Expr::ComponentAssignment(Box::new(ComponentAssignmentExpr {
+            name: transform.name.clone(), name_span: transform.name_span,
+            index: key, reversed: transform.reversed,
+            value: crate::syntax::compound_update_call(
+                transform.operator.clone(), transform.operator_span, transform.named_operator,
+                vec![read, transform.value.clone()], transform.span),
+            span: transform.span,
+        }));
+        let mut locals = analysis.locals.clone();
+        for (_, depth, _) in locals.values_mut() {
+            *depth += 1;
+        }
+        locals.insert(hidden.clone(), (TypeCell::new(index_type, analysis.type_floor), 0, 0));
+        let mut constant_locals = analysis.constant_locals.clone();
+        constant_locals.insert(hidden.clone());
+        let body = convert_expr_context(&body, required, &Analysis {
+            types: analysis.types, globals: analysis.globals, overloads: analysis.overloads,
+            overload_views: analysis.overload_views.clone(),
+            locals, constant_locals, return_type: analysis.return_type.clone(),
+            loop_depth: analysis.loop_depth, type_floor: analysis.type_floor,
+        })?;
+        let pattern = Pattern::Name {
+            name: hidden.clone(), name_span: transform.index.span(),
+            constant: true, operator: false, span: transform.index.span(),
+        };
+        return Ok(TypedExpr::LetGroup {
+            initializers: vec![(pattern_slot_shape(&pattern), converted_index)],
+            names: Rc::from(vec![hidden]), body: Box::new(body),
+        });
+    }
     let (operation, rhs, conversion) = factor_transform_call(converted_call);
     // The vec/mat transform range check fires on the component READ, whose
     // diagnostic quotes the selection (`M[5]`, pair index without the tuple
@@ -3992,7 +4748,7 @@ fn convert_component_transform(
             compact_expression(index)
         ),
     };
-    conform_types(
+    conform_context(
         &component_type,
         required,
         TypedExpr::ComponentTransform {
@@ -4016,7 +4772,7 @@ fn convert_component_transform(
 fn convert_field_assignment(
     expression: &Expr,
     assignment: &FieldAssignmentExpr,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
     let compact = compact_expression(expression);
@@ -4031,7 +4787,7 @@ fn convert_field_assignment(
         resolve_projector(&assignment.field, &tuple_type, assignment.span, analysis)?;
     let mut required_value = component_type;
     let converted_value = convert_expr(&assignment.value, &mut required_value, analysis)?;
-    conform_types(
+    conform_context(
         &required_value,
         required,
         TypedExpr::FieldAssignment {
@@ -4052,7 +4808,7 @@ fn convert_field_assignment(
 fn convert_field_transform(
     expression: &Expr,
     transform: &FieldTransformExpr,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
     let compact = compact_expression(expression);
@@ -4076,16 +4832,14 @@ fn convert_field_transform(
         }],
         span: transform.span,
     };
-    let call = Expr::OperatorCall {
-        operator: FormulaOperator::new(transform.operator.clone(), 0)
-            .with_span(transform.operator_span),
-        arguments: vec![selection, transform.value.clone()],
-        span: transform.span,
-    };
+    let call = crate::syntax::compound_update_call(
+        transform.operator.clone(), transform.operator_span, transform.named_operator,
+        vec![selection, transform.value.clone()], transform.span,
+    );
     let mut call_required = component_type.clone();
     let converted_call = convert_expr(&call, &mut call_required, analysis)?;
     let (operation, rhs, conversion) = factor_transform_call(converted_call);
-    conform_types(
+    conform_context(
         &component_type,
         required,
         TypedExpr::FieldTransform {
@@ -4184,16 +4938,19 @@ struct MultiAssignmentRefinement {
     path: Vec<usize>,
 }
 
-struct MultiAssignmentThreader<'a> {
+// The expression/threader borrow can be shorter than the immutable tables
+// held by Analysis. Keep the lifetimes distinct: the shared view cache makes
+// Analysis invariant in its table lifetime.
+struct MultiAssignmentThreader<'a, 'tables> {
     assignment: &'a Expr,
     span: SourceSpan,
-    analysis: &'a Analysis<'a>,
+    analysis: &'a Analysis<'tables>,
     names: BTreeSet<String>,
     refinements: Vec<MultiAssignmentRefinement>,
 }
 
-impl<'a> MultiAssignmentThreader<'a> {
-    fn new(assignment: &'a Expr, span: SourceSpan, analysis: &'a Analysis<'a>) -> Self {
+impl<'a, 'tables> MultiAssignmentThreader<'a, 'tables> {
+    fn new(assignment: &'a Expr, span: SourceSpan, analysis: &'a Analysis<'tables>) -> Self {
         Self {
             assignment,
             span,
@@ -4367,13 +5124,16 @@ fn multi_assignment_component(type_: &Type, path: &[usize], types: &TypeTable) -
 fn convert_multi_assignment(
     expression: &Expr,
     assignment: &MultiAssignmentExpr,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
     let mut rhs_type = Type::Undetermined;
     let mut threader = MultiAssignmentThreader::new(expression, assignment.span, analysis);
     let plan = threader.thread(&assignment.pattern, &mut rhs_type, &mut Vec::new())?;
     let converted = convert_expr(&assignment.value, &mut rhs_type, analysis)?;
+    let converted = if rhs_type.expanded(analysis.types).is_void() {
+        void_nonempty(converted, &assignment.value)
+    } else { converted };
 
     // RHS conversion can fill holes left by omitted slots or polymorphic
     // targets. Only after that conversion succeeds do target TypeCells learn
@@ -4391,7 +5151,7 @@ fn convert_multi_assignment(
             .specialise(&component, analysis.types);
     }
 
-    conform_types(
+    conform_context(
         &rhs_type,
         required,
         TypedExpr::MultiAssignment {
@@ -4407,7 +5167,7 @@ fn convert_multi_assignment(
 /// parameters as a new local layer, then convert the body against the
 /// required pattern's result hole so a context type reaches the body (and
 /// any `return`) directly. A void context converts the body against a
-/// dummy result and discards the closure.
+/// dummy result; the enclosing consumer decides whether to discard the closure.
 /// The frame-slot layout one bound value distributes into (upstream
 /// `bind_pattern`'s variable list): the whole-value name of a `(a, b): t`
 /// pattern takes the first slot, then elements left-to-right.
@@ -4461,15 +5221,46 @@ fn bind_pattern_leaves(
     types: &TypeTable,
     fixed: usize,
 ) -> Result<Vec<PatternLeaf>, Diagnostic> {
+    bind_pattern_leaves_at(pattern, found, types, fixed, BindingSite::Local)
+}
+
+#[derive(Clone, Copy)]
+enum BindingSite { Global, Local }
+
+fn bind_pattern_leaves_at(
+    pattern: &Pattern,
+    found: &Type,
+    types: &TypeTable,
+    fixed: usize,
+    site: BindingSite,
+) -> Result<Vec<PatternLeaf>, Diagnostic> {
     match pattern {
         Pattern::Discard { .. } | Pattern::Omitted { .. } => Ok(Vec::new()),
         Pattern::Name {
             name,
             name_span,
             constant,
+            operator,
             ..
-        } => Ok(vec![(name.clone(), *name_span,
-            binding_is_constant(*constant, found, fixed, *name_span)?, found.clone())]),
+        } => {
+            // global.w::definition_group and axis.w::layer reject symbols
+            // before evaluating any initializer, including tuple leaves.
+            if *operator && !matches!(&*found.expanded(types), Type::Function(_)) {
+                let action = match site {
+                    BindingSite::Global => "set",
+                    BindingSite::Local => "bind",
+                };
+                let value = match site {
+                    BindingSite::Global => "a value",
+                    BindingSite::Local => "an expression",
+                };
+                return Err(type_error(format!(
+                    "Cannot {action} operator '{name}' to {value} of non-function type {}",
+                    found.display(types)), *name_span));
+            }
+            Ok(vec![(name.clone(), *name_span,
+                binding_is_constant(*constant, found, fixed, *name_span)?, found.clone())])
+        }
         Pattern::Tuple {
             elements,
             whole,
@@ -4493,10 +5284,10 @@ fn bind_pattern_leaves(
             }
             let mut leaves = Vec::new();
             if let Some(whole) = whole {
-                leaves.extend(bind_pattern_leaves(whole, found, types, fixed)?);
+                leaves.extend(bind_pattern_leaves_at(whole, found, types, fixed, site)?);
             }
             for (element, component) in elements.iter().zip(components) {
-                leaves.extend(bind_pattern_leaves(element, component, types, fixed)?);
+                leaves.extend(bind_pattern_leaves_at(element, component, types, fixed, site)?);
             }
             Ok(leaves)
         }
@@ -4552,7 +5343,7 @@ fn convert_lambda_expression(
     parameters: &[LambdaParam],
     body: &Expr,
     span: SourceSpan,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
     let mut converted_parameters = Vec::with_capacity(parameters.len());
@@ -4605,13 +5396,14 @@ fn convert_lambda_expression(
             offset += 1;
         }
     }
-    let body_analysis = Analysis {
+    let mut body_analysis = Analysis {
         types: analysis.types,
         globals: analysis.globals,
         overloads: analysis.overloads,
+        overload_views: analysis.overload_views.clone(),
         locals,
         constant_locals,
-        in_function: true,
+        return_type: None,
         // A closure evaluates in its captured context, not the defining
         // loop's; `break` legality starts over at the function boundary.
         loop_depth: 0,
@@ -4626,13 +5418,20 @@ fn convert_lambda_expression(
         param_names: Rc::from(param_names),
     };
     if required.expanded(analysis.types).is_void() {
-        let mut dummy = Type::Undetermined;
-        let converted = convert_expr(body, &mut dummy, &body_analysis)?;
+        let dummy = Type::Undetermined;
+        let body_context = ConversionType::new(dummy, analysis.type_floor);
+        body_analysis.return_type = Some(body_context.clone());
+        let converted = convert_expr_context(body, &body_context, &body_analysis)?;
         let converted = closure(converted);
-        return Ok(if required.is_void() { TypedExpr::Void(Box::new(converted)) } else { converted });
+        return Ok(converted);
     }
-    let function_pattern = Type::function(Type::tuple(parameter_types), Type::Undetermined);
-    if !required.specialise(&function_pattern, analysis.types) {
+    // A raised abstraction context is often a FREE variable, not the old
+    // Undetermined placeholder. Structural specialisation must use its scope;
+    // otherwise even any_type T ((T x):x) fails before analysing the body.
+    let mut context = inferred_type(&required.get(), analysis, span)?;
+    let mut function_pattern = Type::function(Type::tuple(parameter_types), Type::Undetermined);
+    if !context.try_unify_specialise(&mut function_pattern, analysis.types)
+        .map_err(|e| inference_error(e, span))? {
         return Err(type_error(
             format!(
                 "type {} does not match required pattern {}",
@@ -4642,10 +5441,17 @@ fn convert_lambda_expression(
             span,
         ));
     }
-    let Type::Function(parts) = required else {
-        unreachable!("specialising to a function pattern yields a function type")
-    };
-    let converted = convert_expr(body, &mut parts.1, &body_analysis)?;
+    let (_, body_type) = context.function_parts(analysis.types)
+        .map_err(|e| inference_error(e, span))?;
+    let body_context = ConversionType::new(body_type, analysis.type_floor);
+    body_analysis.return_type = Some(body_context.clone());
+    let converted = convert_expr_context(body, &body_context, &body_analysis)?;
+    let result = inferred_type(&body_context.get(), analysis, span)?;
+    if !context.matches_result(&result, analysis.types)
+        .map_err(|e| inference_error(e, span))? {
+        return Err(type_error("Lambda body does not match its required result type".into(), span));
+    }
+    required.set(context.bake().map_err(|e| inference_error(e, span))?);
     Ok(closure(converted))
 }
 
@@ -4656,7 +5462,7 @@ fn convert_lambda_expression(
 /// result type.
 fn convert_rec_lambda_expression(
     expression: &Expr,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, Diagnostic> {
     let Expr::RecLambda {
@@ -4722,13 +5528,14 @@ fn convert_rec_lambda_expression(
             offset += 1;
         }
     }
-    let body_analysis = Analysis {
+    let mut body_analysis = Analysis {
         types: analysis.types,
         globals: analysis.globals,
         overloads: analysis.overloads,
+        overload_views: analysis.overload_views.clone(),
         locals,
         constant_locals,
-        in_function: true,
+        return_type: None,
         // A closure evaluates in its captured context, not the defining
         // loop's; `break` legality starts over at the function boundary.
         loop_depth: 0,
@@ -4743,12 +5550,20 @@ fn convert_rec_lambda_expression(
         param_names: Rc::from(param_names),
     };
     if required.expanded(analysis.types).is_void() {
-        let mut dummy = declared_result;
-        let converted = convert_expr(body, &mut dummy, &body_analysis)?;
+        let dummy = declared_result;
+        let body_context = ConversionType::new(dummy, analysis.type_floor);
+        body_analysis.return_type = Some(body_context.clone());
+        let converted = convert_expr_context(body, &body_context, &body_analysis)?;
         let converted = closure(converted);
-        return Ok(if required.is_void() { TypedExpr::Void(Box::new(converted)) } else { converted });
+        return Ok(converted);
     }
-    if !required.specialise(&function_type, analysis.types) {
+    // Recursion shares the same scoped context contract as a plain lambda.
+    // In particular an escaping recursive closure can receive a FREE result
+    // context from its outer lambda (retained full-core3838315 failure).
+    let mut context = inferred_type(&required.get(), analysis, *span)?;
+    let mut pattern = function_type.clone();
+    if !context.try_unify_specialise(&mut pattern, analysis.types)
+        .map_err(|e| inference_error(e, *span))? {
         return Err(type_error(
             format!(
                 "type {} does not match required pattern {}",
@@ -4758,8 +5573,17 @@ fn convert_rec_lambda_expression(
             *span,
         ));
     }
-    let mut result_required = declared_result;
-    let converted = convert_expr(body, &mut result_required, &body_analysis)?;
+    let (_, result_required) = context.function_parts(analysis.types)
+        .map_err(|e| inference_error(e, *span))?;
+    let body_context = ConversionType::new(result_required, analysis.type_floor);
+    body_analysis.return_type = Some(body_context.clone());
+    let converted = convert_expr_context(body, &body_context, &body_analysis)?;
+    let result = inferred_type(&body_context.get(), analysis, *span)?;
+    if !context.matches_result(&result, analysis.types)
+        .map_err(|e| inference_error(e, *span))? {
+        return Err(type_error("Recursive lambda body does not match its required result type".into(), *span));
+    }
+    required.set(context.bake().map_err(|e| inference_error(e, *span))?);
     Ok(closure(converted))
 }
 
@@ -4769,12 +5593,23 @@ fn convert_rec_lambda_expression(
 fn overload_call(
     name: &str,
     variant: &MergedVariant,
-    arguments: Vec<TypedExpr>,
+    mut arguments: Vec<TypedExpr>,
     argument_type: &Type,
     span: SourceSpan,
     analysis: &Analysis<'_>,
 ) -> TypedExpr {
     let trace_name = format!("{name}@{}", argument_type.display(analysis.types));
+    // A nullary overload still evaluates a nonempty void-typed operand for
+    // effects, but receives unit (axis.w:2037). Multi-argument tuples retain
+    // their independently inferred components, including void-typed values.
+    if argument_type.expanded(analysis.types).is_void() && !arguments.is_empty() {
+        let argument = if arguments.len() == 1 {
+            arguments.pop().expect("one argument")
+        } else {
+            TypedExpr::TupleDisplay(std::mem::take(&mut arguments))
+        };
+        arguments.push(TypedExpr::Void(Box::new(argument)));
+    }
     match variant.origin {
         OverloadOrigin::Builtin(index) => TypedExpr::BuiltinCall {
             builtin: index, arguments, name: trace_name, span,
@@ -4794,15 +5629,64 @@ fn overload_call(
     }
 }
 
+/// Direct calls, including lexical operator functions, share argument/result
+/// inference. The callee supplies context rather than using global overloads.
+fn convert_function_application(
+    callee: &Expr,
+    arguments: &[Expr],
+    required: &ConversionType,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> Result<TypedExpr, Diagnostic> {
+    let mut callee_type = Type::Undetermined;
+    let function = convert_expr(callee, &mut callee_type, analysis)?;
+    let mut function_type = inferred_type(&callee_type, analysis, span)?;
+    let mut function_pattern = Type::function(Type::Undetermined, Type::Undetermined);
+    if !function_type.try_unify_specialise(&mut function_pattern, analysis.types)
+        .map_err(|e| inference_error(e, span))? {
+        return Err(type_error(format!("found {} while {} was needed.",
+            callee_type.display(analysis.types), function_pattern.display(analysis.types)), callee.span()));
+    }
+    let (mut argument_type, _) = function_type.function_parts(analysis.types)
+        .map_err(|e| inference_error(e, span))?;
+    // Closures take ONE value: a single expression or the complete tuple.
+    let argument_source = if arguments.len() == 1 {
+        arguments[0].clone()
+    } else {
+        Expr::Tuple { elements: arguments.to_vec(), span }
+    };
+    let mut argument = convert_expr(&argument_source, &mut argument_type, analysis)?;
+    if argument_type.expanded(analysis.types).is_void()
+        && !matches!(&argument_source, Expr::Tuple { elements, .. } if elements.is_empty()) {
+        argument = TypedExpr::Void(Box::new(argument));
+    }
+    // Solve against the whole function so parameter/result variables remain linked.
+    let actual = inferred_type(&argument_type, analysis, argument_source.span())?;
+    if !function_type.matches_argument(&actual, analysis.types)
+        .map_err(|e| inference_error(e, span))? {
+        let (expected, _) = function_type.function_parts(analysis.types)
+            .map_err(|e| inference_error(e, span))?;
+        return Err(type_error(format!("found {} while {} was needed.",
+            argument_type.display(analysis.types), expected.display(analysis.types)), span));
+    }
+    let (_, result_type) = function_type.function_parts(analysis.types)
+        .map_err(|e| inference_error(e, span))?;
+    conform_context(&result_type, required, TypedExpr::FunctionCall {
+        function: Box::new(function), argument: Box::new(argument),
+        // No selected overload; the backtrace uses the callee rendering.
+        name: None, span,
+    }, span, analysis)
+}
+
 fn convert_overload_application(
     name: &str,
     expressions: &[Expr],
-    required: &mut Type,
+    required: &ConversionType,
     span: SourceSpan,
     analysis: &Analysis<'_>,
     resolve_name_first: bool,
 ) -> Result<TypedExpr, Diagnostic> {
-    let variants = merged_variants(name, analysis.overloads, analysis.types);
+    let variants = analysis.overload_view(name);
     if resolve_name_first && variants.is_empty() {
         // Atlas resolves the callee before analysing its arguments.  This is
         // observable for `foo(missing)`: the undefined function wins over an
@@ -4859,7 +5743,7 @@ fn convert_overload_application(
             actual.body(), span, analysis);
         // Original conforms the first result BEFORE looking for a second
         // match. A wrong return context is not a reason to try another overload.
-        exact = Some(conform_types(&result_type, required, call, span, analysis)?);
+        exact = Some(conform_context(&result_type, required, call, span, analysis)?);
         first_argument_type = Some(&variant.arg_type);
     }
     if let Some(call) = exact { return Ok(call); }
@@ -4907,7 +5791,7 @@ fn convert_overload_application(
         })
         .collect::<Result<Vec<_>, _>>()?;
     let call = overload_call(name, variant, arguments, &variant.arg_type, span, analysis);
-    conform_types(&variant.result_type, required, call, span, analysis)
+    conform_context(&variant.result_type, required, call, span, analysis)
 }
 
 /// Current axis-types.w::join_to distinguishes polymorphic unification from
@@ -4950,13 +5834,27 @@ fn balance(
     span: SourceSpan,
     analysis: &Analysis<'_>,
 ) -> Result<Vec<TypedExpr>, BalanceConversionError> {
+    let context = ConversionType::new(target.clone(), analysis.type_floor);
+    let converted = balance_context(branches, &context, span, analysis);
+    *target = context.get();
+    converted
+}
+
+fn balance_context(
+    branches: &[&Expr],
+    target: &ConversionType,
+    span: SourceSpan,
+    analysis: &Analysis<'_>,
+) -> Result<Vec<TypedExpr>, BalanceConversionError> {
     let mut converted = Vec::with_capacity(branches.len());
     let mut types = Vec::new();
-    let mut common = target.clone();
     let mut conflicts = Vec::new();
     for branch in branches {
-        let mut slot = target.clone();
-        match convert_balanced_branch(branch, &mut slot, analysis) {
+        // Ordinary branches get independent copies. An explicit RETURN can
+        // still update the enclosing shared target, so copy its LIVE value
+        // separately for each branch, rather than one frozen initial value.
+        let slot = ConversionType::new(target.get(), analysis.type_floor);
+        match convert_balanced_branch(branch, &slot, analysis) {
             Ok(expression) => {
                 converted.push(Some(expression));
             }
@@ -4984,13 +5882,14 @@ fn balance(
         // Failed branch conversions retain the original target as their
         // component type.  If pruning later chooses a broader common type,
         // the final reconversion below fills their previously empty slot.
-        types.push(slot);
+        types.push(slot.get());
     }
     if types.is_empty() {
         return Ok(Vec::new());
     }
-    // Convert all branches against the same original context before joining;
-    // one earlier branch must not constrain a later branch's first analysis.
+    // Regular branch types are joined only now. RETURN constraints have
+    // already reached the live function result and precede this balancing.
+    let mut common = target.get();
     for type_ in &types {
         if !join_balanced_type(&mut common, type_, span, analysis)
             .map_err(BalanceConversionError::Diagnostic)? {
@@ -5019,7 +5918,7 @@ fn balance(
             container: BalanceContainer::Unknown,
         }));
     }
-    *target = common.clone();
+    target.set(common.clone());
     let common_is_polymorphic = inferred_type(&common, analysis, span)
         .map_err(BalanceConversionError::Diagnostic)?.is_polymorphic();
     for (index, type_) in types.iter().enumerate() {
@@ -5027,9 +5926,8 @@ fn balance(
             .map_err(BalanceConversionError::Diagnostic)?.is_polymorphic();
         if !common_is_polymorphic && (converted[index].is_none()
             || (!component_is_polymorphic && !type_.equivalent(&common, analysis.types))) {
-            let mut slot = common.clone();
             converted[index] = Some(
-                convert_expr(branches[index], &mut slot, analysis)
+                convert_expr_context(branches[index], target, analysis)
                     .map_err(BalanceConversionError::Diagnostic)?,
             );
         }
@@ -5045,7 +5943,7 @@ fn balance(
 /// being folded into the enclosing conflict set.
 fn convert_balanced_branch(
     branch: &Expr,
-    required: &mut Type,
+    required: &ConversionType,
     analysis: &Analysis<'_>,
 ) -> Result<TypedExpr, BalanceConversionError> {
     match branch {
@@ -5067,7 +5965,7 @@ fn convert_balanced_branch(
             analysis,
         )
         .map_err(|error| mark_balance_failure(error, *span, BalanceContainer::Conditional)),
-        _ => convert_expr(branch, required, analysis).map_err(BalanceConversionError::Diagnostic),
+        _ => convert_expr_context(branch, required, analysis).map_err(BalanceConversionError::Diagnostic),
     }
 }
 
@@ -5272,13 +6170,17 @@ impl Builtin {
                         DomainNoValue::BuildAndDrop => {}
                     }
                 }
-                domain_builtins::call_owned_with_printed(
+                let mut printed = Vec::new();
+                let result = domain_builtins::call_owned_with_printed(
                     name,
                     arguments,
                     span,
-                    context.printed_buffer(),
-                )
-                .map(|value| at_builtin_level(level, || value))
+                    &mut printed,
+                );
+                // Domain printers are UTF-8, but their partial output must
+                // also survive a later domain error in the same call.
+                for text in printed { context.print_text(text); }
+                result.map(|value| at_builtin_level(level, || value))
                 .map_err(Control::Runtime)
             }
             BuiltinImpl::DomainPrinter { name } => {
@@ -5292,6 +6194,18 @@ impl Builtin {
                 let (Value::Domain(first), Value::Domain(second)) = (first, second) else {
                     panic!("domain relation saw non-domain arguments")
                 };
+                // Binary Weyl relations check the abstract-group identity
+                // before the no-value gate, like the original
+                // (atlas-types.w:2421-2432): incompatible owners reject even
+                // when the boolean result is discarded.
+                if let (
+                    domain_builtins::DomainValue::WeylElement(left),
+                    domain_builtins::DomainValue::WeylElement(right),
+                ) = (&first, &second)
+                {
+                    domain_builtins::require_weyl_compatible(left, right, span)
+                        .map_err(Control::Runtime)?;
+                }
                 Ok(at_builtin_level(level, || {
                     Value::Boolean(match relation {
                         Relation::Equal => first == second,
@@ -5309,8 +6223,8 @@ impl Builtin {
                         context
                             .completion_candidates()
                             .iter()
-                            .filter(|name| name.starts_with(prefix.as_str()))
-                            .map(|name| Value::String(name.clone()))
+                            .filter(|name| name.as_bytes().starts_with(prefix.as_bytes()))
+                            .map(|name| Value::String(name.clone().into()))
                             .collect(),
                     )
                 }))
@@ -5330,7 +6244,9 @@ impl Builtin {
                 } else {
                     Value::Tuple(arguments)
                 };
-                context.print_text(format!("{value}\n"));
+                let mut text = value.atlas_text();
+                text.push_str("\n");
+                context.print_text(text);
                 Ok(at_builtin_level(level, || value))
             }
             BuiltinImpl::ToString => {
@@ -5461,14 +6377,14 @@ fn at_builtin_level(level: Level, value: impl FnOnce() -> Value) -> Option<Value
 /// tuple: string components print without quotes, every other value prints
 /// like `print`. No trailing newline — `prints` adds the wrapper's
 /// `std::endl` itself, `to_string` and `error` do not.
-fn stripped_text(arguments: &[Value]) -> String {
-    fn component(text: &mut String, value: &Value) {
+fn stripped_text(arguments: &[Value]) -> crate::value::AtlasString {
+    fn component(text: &mut crate::value::AtlasString, value: &Value) {
         match value {
-            Value::String(string) => text.push_str(string),
-            other => text.push_str(&other.to_string()),
+            Value::String(string) => text.push_bytes(string.as_bytes()),
+            other => other.append_atlas_text(text),
         }
     }
-    let mut text = String::new();
+    let mut text = crate::value::AtlasString::default();
     // A single argument arrives unwrapped (the variadic tuple collapses), so
     // a lone tuple's components print individually; anything else prints as
     // one value.
@@ -5491,8 +6407,10 @@ fn stripped_text(arguments: &[Value]) -> String {
 
 /// `prints_wrapper`'s output (axis.w:8850-8853): the stripped text plus one
 /// trailing newline.
-fn prints_text(arguments: &[Value]) -> String {
-    format!("{}\n", stripped_text(arguments))
+fn prints_text(arguments: &[Value]) -> crate::value::AtlasString {
+    let mut text = stripped_text(arguments);
+    text.push_str("\n");
+    text
 }
 
 fn expect_unary(mut arguments: Vec<Value>) -> Value {
@@ -6050,7 +6968,7 @@ fn run_scalar(
                     Value::Rational(value) => {
                         relation_matches(relation, value.cmp(&BigRational::from(0)))
                     }
-                    Value::String(value) => relation_matches(relation, value.as_str().cmp("")),
+                    Value::String(value) => relation_matches(relation, value.as_bytes().cmp(b"")),
                     Value::Vector(vector) => match relation {
                         Relation::Equal => vector.0.iter().all(|&entry| entry == 0),
                         Relation::NotEqual => vector.0.iter().any(|&entry| entry != 0),
@@ -6117,9 +7035,10 @@ fn run_scalar(
         ScalarOp::StringConcat => {
             let (first, second) = expect_pair(arguments);
             match (first, second) {
-                (Value::String(first), Value::String(second)) => {
+                (Value::String(mut first), Value::String(second)) => {
                     Ok(at_builtin_level(level, || {
-                        Value::String(format!("{first}{second}"))
+                        first.push_bytes(second.as_bytes());
+                        Value::String(first)
                     }))
                 }
                 other => panic!("string concatenation saw {other:?}"),
@@ -6144,10 +7063,10 @@ fn run_scalar(
         // concatenate_strings (global.w:3492-3508): fold a row of strings.
         ScalarOp::StringListConcat => match expect_unary(arguments) {
             Value::List(values) => Ok(at_builtin_level(level, || {
-                let mut joined = String::new();
+                let mut joined = crate::value::AtlasString::default();
                 for value in values {
                     match value {
-                        Value::String(text) => joined.push_str(&text),
+                        Value::String(text) => joined.push_bytes(text.as_bytes()),
                         other => panic!("string list concatenation saw {other:?}"),
                     }
                 }
@@ -6179,12 +7098,10 @@ fn run_scalar(
                     ));
                 }
                 Ok(at_builtin_level(level, || {
-                    Value::String(String::from(char::from(
-                        u8::try_from(code).expect("printable ASCII fits u8"),
-                    )))
+                    Value::String(vec![u8::try_from(code).expect("printable ASCII fits u8")].into())
                 }))
             }
-            other => panic!("ascii char saw {other:?}"),
+            other => panic!("ASCII char saw {other:?}"),
         },
         // sizeof_string/vector/ratvec and matrix_ncols (global.w:3578-3601):
         // byte count, lengths, and the column count respectively.
@@ -6332,7 +7249,9 @@ fn run_scalar(
                 Ok(at_builtin_level(level, || {
                     let mut bits = BigInt::from(0);
                     for &entry in &vector.0 {
-                        bits += BigInt::from(1) << (entry as u64);
+                        // The original constructs a BitMap: repeated
+                        // indices are idempotent, not carries into new bits.
+                        bits |= BigInt::from(1) << (entry as u64);
                     }
                     Value::Integer(bits)
                 }))
@@ -8191,6 +9110,15 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 0,
                 ScalarOp::RowJoinRowOfRows,
             ),
+            // The parser's internal iffor join has its own overload key.
+            // Never resolve it through the user-replaceable visible name.
+            scalar_builtin(
+                "## ",
+                Type::row(Type::row(Type::Variable(0))),
+                Type::row(Type::Variable(0)),
+                0,
+                ScalarOp::RowJoinRowOfRows,
+            ),
             // join_vectors / join_vector_row (global.w:4398-4399): vec
             // concatenation, pairwise and for a row of vecs.
             scalar_builtin(
@@ -8210,13 +9138,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
             // ascii (global.w:4388-4389): first byte, and its inverse for
             // printable ASCII (plus newline).
             scalar_builtin(
-                "ascii",
+                "ASCII",
                 string_type(),
                 int_type(),
                 0,
                 ScalarOp::StringToAscii,
             ),
-            scalar_builtin("ascii", int_type(), string_type(), 0, ScalarOp::AsciiChar),
+            scalar_builtin("ASCII", int_type(), string_type(), 0, ScalarOp::AsciiChar),
             // readline_completions (global.w:4390-4391, wrapper
             // :3546-3561): the line-editing completion list exposed as a
             // builtin; the run arm reads the per-command candidate
@@ -9197,6 +10125,48 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::row(primitive_type(Prim::WeylElt)),
                 0,
             ),
+            // Subgroup generators are signed root indices, not ambient
+            // simple-generator indices. Validation precedes no-value.
+            domain_builtin_validate(
+                "Weyl_orbit",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    Type::row(int_type()),
+                    primitive_type(Prim::Vec),
+                ]),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_validate(
+                "Weyl_orbit",
+                Type::tuple(vec![
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::RootDatum),
+                    Type::row(int_type()),
+                ]),
+                primitive_type(Prim::Mat),
+                0,
+            ),
+            domain_builtin_validate(
+                "Weyl_orbit_ws",
+                Type::tuple(vec![
+                    primitive_type(Prim::RootDatum),
+                    Type::row(int_type()),
+                    primitive_type(Prim::Vec),
+                ]),
+                Type::row(primitive_type(Prim::WeylElt)),
+                0,
+            ),
+            domain_builtin_validate(
+                "Weyl_orbit_ws",
+                Type::tuple(vec![
+                    primitive_type(Prim::Vec),
+                    primitive_type(Prim::RootDatum),
+                    Type::row(int_type()),
+                ]),
+                Type::row(primitive_type(Prim::WeylElt)),
+                0,
+            ),
             domain_builtin(
                 "walls",
                 Type::tuple(vec![
@@ -9276,6 +10246,12 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 "cofolded",
                 primitive_type(Prim::InnerClass),
                 primitive_type(Prim::RootDatum),
+                0,
+            ),
+            domain_builtin_validate(
+                "W_refl",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
+                primitive_type(Prim::WeylElt),
                 0,
             ),
             domain_builtin(
@@ -9648,13 +10624,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Vec),
                 0,
             ),
-            domain_builtin(
+            domain_builtin_validate(
                 "fundamental_weight",
                 Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
                 primitive_type(Prim::RatVec),
                 0,
             ),
-            domain_builtin(
+            domain_builtin_validate(
                 "fundamental_coweight",
                 Type::tuple(vec![primitive_type(Prim::RootDatum), int_type()]),
                 primitive_type(Prim::RatVec),
@@ -9687,7 +10663,13 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 ]),
                 0,
             ),
-            domain_builtin(
+            domain_builtin_validate(
+                "integrality_simples",
+                Type::tuple(vec![primitive_type(Prim::RootDatum), primitive_type(Prim::RatVec)]),
+                Type::row(int_type()),
+                0,
+            ),
+            domain_builtin_validate(
                 "integrality_rank",
                 Type::tuple(vec![
                     primitive_type(Prim::RootDatum),
@@ -9696,7 +10678,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 int_type(),
                 0,
             ),
-            domain_builtin(
+            domain_builtin_validate(
                 "is_integrally_dominant",
                 Type::tuple(vec![
                     primitive_type(Prim::RootDatum),
@@ -9714,7 +10696,7 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::Row(Box::new(primitive_type(Prim::Rat))),
                 0,
             ),
-            domain_builtin(
+            domain_builtin_validate(
                 "integrality_datum",
                 Type::tuple(vec![
                     primitive_type(Prim::RootDatum),
@@ -9738,9 +10720,10 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 primitive_type(Prim::Vec),
                 0,
             ),
-            // orientation_nr (atlas-types.w:6546-6552): the orientation
-            // number of a standard parameter.
-            domain_builtin("orientation_nr", primitive_type(Prim::Param), int_type(), 0),
+            // orientation_number_wrapper (atlas-types.w:6806-6810) only
+            // computes at a value-producing level. In particular, a
+            // discarded nonstandard parameter must not call make_dominant.
+            domain_builtin_skip("orientation_nr", primitive_type(Prim::Param), int_type(), 0),
             // reducibility_points (atlas-types.w:6561-6568, installed
             // :7500-7501): the reducibility fractions of a standard
             // parameter.
@@ -10293,8 +11276,14 @@ pub fn builtin_registry() -> &'static Vec<Builtin> {
                 Type::row(Type::tuple(vec![int_type(), primitive_type(Prim::KType)])),
                 0,
             ),
-            // K_type_formula_wrapper (atlas-types.w:6121-6122): the K-type
-            // formula with a height cutoff; semifinal precondition first.
+            // Current atlas-types.w:6374-6378: raw and memoized variants
+            // both narrow to signed32 and validate before discarding.
+            domain_builtin_validate(
+                "K_type_formula_raw",
+                Type::tuple(vec![primitive_type(Prim::KType), int_type()]),
+                primitive_type(Prim::KTypePol),
+                0,
+            ),
             domain_builtin_validate(
                 "K_type_formula",
                 Type::tuple(vec![primitive_type(Prim::KType), int_type()]),
@@ -10575,14 +11564,130 @@ fn overload_variants(name: &str) -> &'static [usize] {
 
 impl TypedExpr {
     /// Evaluate at the demanded level. `NoValue` returns `None`.
+    ///
+    /// Keep the dispatcher small: the monolithic debug evaluator used about
+    /// 95 KiB per invocation and overflowed the normal test stack at only five
+    /// recursive calls (HPC3839217/3839222). Separate arm families keep unrelated
+    /// aggregate/loop temporaries out of every recursive expression's frame.
     pub fn evaluate(
         &self,
         context: &mut EvaluationContext,
         level: Level,
     ) -> Result<Option<Value>, Control> {
-        let _ = context;
+        match self {
+            Self::Denotation(_) | Self::Captured { .. }
+            | Self::GlobalIdent { .. }
+            | Self::LocalIdent { .. }
+            | Self::Closure { .. }
+            | Self::Return { .. }
+            | Self::Break { .. }
+            | Self::Dont
+            | Self::Die { .. } =>
+                self.evaluate_atom(context, level),
+            Self::TupleDisplay(_)
+            | Self::ListDisplay(_)
+            | Self::Conversion { .. }
+            | Self::Void(_)
+            | Self::UnionInject { .. }
+            | Self::TupleProject { .. } =>
+                self.evaluate_structure(context, level),
+            Self::LetGroup { .. }
+            | Self::Conditional { .. }
+            | Self::BuiltinCall { .. }
+            | Self::HungryBuiltinCall { .. }
+            | Self::FunctionCall { .. }
+            | Self::Sequence { .. }
+            | Self::Next { .. } =>
+                self.evaluate_application(context, level),
+            Self::GlobalAssignment { .. }
+            | Self::LocalAssignment { .. }
+            | Self::MultiAssignment { .. }
+            | Self::ComponentAssignment { .. }
+            | Self::ComponentTransform { .. }
+            | Self::FieldAssignment { .. }
+            | Self::FieldTransform { .. } =>
+                self.evaluate_mutation(context, level),
+            Self::Subscription { .. }
+            | Self::Slice { .. }
+            | Self::BarList { .. } =>
+                self.evaluate_container(context, level),
+            Self::While { .. }
+            | Self::Do { .. }
+            | Self::For { .. }
+            | Self::Case { .. }
+            | Self::IntCase { .. }
+            | Self::UnionCase { .. }
+            | Self::CountedFor { .. } =>
+                self.evaluate_control(context, level),
+        }
+    }
+
+    #[inline(never)]
+    fn evaluate_atom(
+        &self,
+        context: &mut EvaluationContext,
+        level: Level,
+    ) -> Result<Option<Value>, Control> {
         match self {
             Self::Denotation(value) | Self::Captured { value, .. } => Ok(at_level(level, || value.clone())),
+            Self::GlobalIdent { name, cell, span } => {
+                let value = cell.borrow().clone();
+                match value {
+                    Some(value) => Ok(at_level(level, || value.as_ref().clone())),
+                    None => Err(runtime(
+                        format!("Taking value of uninitialized variable '{name}'"),
+                        *span,
+                    )),
+                }
+            }
+            Self::LocalIdent {
+                name,
+                depth,
+                offset,
+                span,
+            } => match context.local(*depth, *offset) {
+                Some(value) => Ok(at_level(level, || value.as_ref().clone())),
+                None => Err(runtime(
+                    format!("Taking value of uninitialized variable '{name}'"),
+                    *span,
+                )),
+            },
+            Self::Closure {
+                parameters,
+                shapes,
+                recursive,
+                body,
+                span,
+                param_names,
+            } => Ok(at_level(level, || {
+                Value::Closure(Rc::new(Closure {
+                    parameters: *parameters,
+                    shapes: shapes.clone(),
+                    recursive: *recursive,
+                    body: Rc::clone(body),
+                    frame: context.capture(),
+                    span: *span,
+                    param_names: param_names.clone(),
+                }))
+            })),
+            Self::Return { value } => {
+                let value = force(value, context)?;
+                Err(Control::Return(value))
+            }
+            Self::Break { levels } => Err(Control::Break(*levels)),
+            Self::Dont => Err(Control::Dont),
+            Self::Die { span } => Err(runtime("I die", *span)),
+            _ => unreachable!("incorrect evaluator arm family"),
+        }
+    }
+
+    #[inline(never)]
+    fn evaluate_structure(
+        &self,
+        context: &mut EvaluationContext,
+        level: Level,
+    ) -> Result<Option<Value>, Control> {
+        match self {
             Self::TupleDisplay(elements) => {
                 let values = elements
                     .iter()
@@ -10606,521 +11711,36 @@ impl TypedExpr {
                 inner.evaluate(context, Level::NoValue)?;
                 Ok(at_level(level, || Value::Tuple(Vec::new())))
             }
-            Self::GlobalIdent { name, cell, span } => {
-                let value = cell.borrow().clone();
-                match value {
-                    Some(value) => Ok(at_level(level, || value.as_ref().clone())),
-                    None => Err(runtime(
-                        format!("Taking value of uninitialized variable '{name}'"),
-                        *span,
-                    )),
-                }
-            }
-            Self::LocalIdent {
-                name,
-                depth,
-                offset,
-                span,
-            } => match context.local(*depth, *offset) {
-                Some(value) => Ok(at_level(level, || value.as_ref().clone())),
-                None => Err(runtime(
-                    format!("Taking value of uninitialized variable '{name}'"),
-                    *span,
-                )),
-            },
-            Self::GlobalAssignment { cell, value } => {
-                let value = force(value, context)?;
-                *cell.borrow_mut() = Some(std::rc::Rc::new(value.clone()));
-                Ok(at_level(level, || value.clone()))
-            }
-            Self::LocalAssignment {
-                depth,
-                offset,
-                value,
+            Self::UnionInject {
+                tag,
+                injector_name,
+                payload,
             } => {
-                let value = force(value, context)?;
-                let updated = context.set_local(*depth, *offset, std::rc::Rc::new(value.clone()));
-                assert!(
-                    updated,
-                    "analysis emitted an invalid local assignment address"
-                );
-                Ok(at_level(level, || value.clone()))
-            }
-            Self::MultiAssignment { plan, value } => {
-                // No destination is touched until the complete RHS has been
-                // evaluated successfully. Distribution itself cannot fail
-                // after the static shape check.
-                let value = force(value, context)?;
-                execute_multi_assignment(plan, &value, context);
-                Ok(at_level(level, || value.clone()))
-            }
-            Self::ComponentAssignment {
-                target,
-                name,
-                index,
-                reversed,
-                value,
-                source,
-                span,
-            } => {
-                // axis.w:7940-7957: the value evaluates before the index,
-                // and the range check comes last.
-                let aggregate =
-                    read_assign_target(target, name, context, *span, "Assigning to", "component")?;
-                let value = force(value, context)?;
-                let index = force(index, context)?;
-                match aggregate {
-                    Value::List(mut values) => {
-                        let index = expect_integer(index, *span, "assignment index")?;
-                        let position = checked_index_in(
-                            &index,
-                            values.len(),
-                            *reversed,
-                            "component assignment",
-                            source,
-                            *span,
-                        )?;
-                        values[position] = value.clone();
-                        write_aggregate(target, Value::List(values), context);
-                        Ok(at_level(level, || value.clone()))
-                    }
-                    Value::Vector(Vec32(mut entries)) => {
-                        let index = expect_integer(index, *span, "assignment index")?;
-                        let position = checked_index_in(
-                            &index,
-                            entries.len(),
-                            *reversed,
-                            "component assignment",
-                            source,
-                            *span,
-                        )?;
-                        let Value::Integer(component) = &value else {
-                            panic!("analysis let a non-integer vec component through: {value}")
-                        };
-                        entries[position] = narrow_i32(component, *span)?;
-                        write_aggregate(target, Value::Vector(Vec32(entries)), context);
-                        Ok(at_level(level, || value.clone()))
-                    }
-                    Value::Matrix(mut matrix) => match index {
-                        Value::Tuple(pair) if pair.len() == 2 => {
-                            let column =
-                                expect_integer(pair[0].clone(), *span, "assignment index")?;
-                            let row = expect_integer(pair[1].clone(), *span, "assignment index")?;
-                            let column = checked_index_word(
-                                "initial index",
-                                &column,
-                                matrix.cols(),
-                                *reversed,
-                                "matrix entry assignment",
-                                source,
-                                *span,
-                            )?;
-                            let row = checked_index_word(
-                                "final index",
-                                &row,
-                                matrix.rows(),
-                                *reversed,
-                                "matrix entry assignment",
-                                source,
-                                *span,
-                            )?;
-                            let Value::Integer(component) = &value else {
-                                panic!("analysis let a non-integer mat entry through: {value}")
-                            };
-                            matrix.set_entry(row, column, narrow_i32(component, *span)?);
-                            write_aggregate(target, Value::Matrix(matrix), context);
-                            Ok(at_level(level, || value.clone()))
-                        }
-                        index => {
-                            let index = expect_integer(index, *span, "assignment index")?;
-                            let position = checked_index_in(
-                                &index,
-                                matrix.cols(),
-                                *reversed,
-                                "matrix column assignment",
-                                source,
-                                *span,
-                            )?;
-                            let Value::Vector(column) = &value else {
-                                panic!("analysis let a non-vec mat column through: {value}")
-                            };
-                            if column.0.len() != matrix.rows() {
-                                return Err(runtime(
-                                    format!(
-                                        "Cannot replace column of size {} by one of size {}",
-                                        matrix.rows(),
-                                        column.0.len()
-                                    ),
-                                    *span,
-                                ));
-                            }
-                            matrix.set_column(position, column.clone());
-                            write_aggregate(target, Value::Matrix(matrix), context);
-                            Ok(at_level(level, || value.clone()))
-                        }
-                    },
-                    other => {
-                        panic!("analysis let a non-aggregate component assignment through: {other}")
-                    }
-                }
-            }
-            Self::ComponentTransform {
-                target,
-                name,
-                index,
-                reversed,
-                operation,
-                rhs,
-                conversion,
-                selection,
-                source,
-                span,
-            } => {
-                // axis.w:7989-8035: the right operand evaluates before the
-                // index so the aggregate stays intact during its evaluation.
-                let aggregate =
-                    read_assign_target(target, name, context, *span, "Transforming", "component")?;
-                let operand = force(rhs, context)?;
-                let index = force(index, context)?;
-                match aggregate {
-                    Value::List(mut values) => {
-                        let index = expect_integer(index, *span, "transform index")?;
-                        let position = checked_index_in(
-                            &index,
-                            values.len(),
-                            *reversed,
-                            "component assignment",
-                            source,
-                            *span,
-                        )?;
-                        let old = values[position].clone();
-                        let result =
-                            apply_transform(operation, old, operand, *conversion, *span, context)?;
-                        values[position] = result.clone();
-                        write_aggregate(target, Value::List(values), context);
-                        Ok(at_level(level, || result.clone()))
-                    }
-                    Value::Vector(Vec32(mut entries)) => {
-                        // The vec range check fires on the synthetic READ, so
-                        // the oracle quotes the selection ("in subscription").
-                        let index = expect_integer(index, *span, "transform index")?;
-                        let position =
-                            checked_index(&index, entries.len(), *reversed, selection, *span)?;
-                        let old = Value::Integer(BigInt::from(entries[position]));
-                        let result =
-                            apply_transform(operation, old, operand, *conversion, *span, context)?;
-                        let Value::Integer(component) = &result else {
-                            panic!("analysis let a non-integer vec component through: {result}")
-                        };
-                        entries[position] = narrow_i32(component, *span)?;
-                        write_aggregate(target, Value::Vector(Vec32(entries)), context);
-                        Ok(at_level(level, || result.clone()))
-                    }
-                    Value::Matrix(mut matrix) => match index {
-                        Value::Tuple(pair) if pair.len() == 2 => {
-                            let column = expect_integer(pair[0].clone(), *span, "transform index")?;
-                            let row = expect_integer(pair[1].clone(), *span, "transform index")?;
-                            let column = checked_index_word(
-                                "initial index",
-                                &column,
-                                matrix.cols(),
-                                *reversed,
-                                "matrix subscription",
-                                selection,
-                                *span,
-                            )?;
-                            let row = checked_index_word(
-                                "final index",
-                                &row,
-                                matrix.rows(),
-                                *reversed,
-                                "matrix subscription",
-                                selection,
-                                *span,
-                            )?;
-                            let old = Value::Integer(BigInt::from(
-                                matrix
-                                    .entry(row, column)
-                                    .expect("range-checked matrix entry is in bounds"),
-                            ));
-                            let result = apply_transform(
-                                operation,
-                                old,
-                                operand,
-                                *conversion,
-                                *span,
-                                context,
-                            )?;
-                            let Value::Integer(component) = &result else {
-                                panic!("analysis let a non-integer mat entry through: {result}")
-                            };
-                            matrix.set_entry(row, column, narrow_i32(component, *span)?);
-                            write_aggregate(target, Value::Matrix(matrix), context);
-                            Ok(at_level(level, || result.clone()))
-                        }
-                        index => {
-                            let index = expect_integer(index, *span, "transform index")?;
-                            let position = checked_index_in(
-                                &index,
-                                matrix.cols(),
-                                *reversed,
-                                "matrix column selection",
-                                selection,
-                                *span,
-                            )?;
-                            let old = Value::Vector(matrix.column(position));
-                            let result = apply_transform(
-                                operation,
-                                old,
-                                operand,
-                                *conversion,
-                                *span,
-                                context,
-                            )?;
-                            let Value::Vector(column) = &result else {
-                                panic!("analysis let a non-vec mat column through: {result}")
-                            };
-                            if column.0.len() != matrix.rows() {
-                                return Err(runtime(
-                                    format!(
-                                        "Cannot replace column of size {} by one of size {}",
-                                        matrix.rows(),
-                                        column.0.len()
-                                    ),
-                                    *span,
-                                ));
-                            }
-                            matrix.set_column(position, column.clone());
-                            write_aggregate(target, Value::Matrix(matrix), context);
-                            Ok(at_level(level, || result.clone()))
-                        }
-                    },
-                    other => {
-                        panic!("analysis let a non-aggregate component transform through: {other}")
-                    }
-                }
-            }
-            Self::FieldAssignment {
-                target,
-                name,
-                position,
-                value,
-                span,
-            } => {
-                let mut components = read_tuple(target, name, context, *span, "Assigning to")?;
-                let value = force(value, context)?;
-                components[*position] = value.clone();
-                write_aggregate(target, Value::Tuple(components), context);
-                Ok(at_level(level, || value.clone()))
-            }
-            Self::FieldTransform {
-                target,
-                name,
-                position,
-                operation,
-                rhs,
-                conversion,
-                span,
-            } => {
-                let mut components = read_tuple(target, name, context, *span, "Transforming")?;
-                let operand = force(rhs, context)?;
-                let old = components[*position].clone();
-                let result = apply_transform(operation, old, operand, *conversion, *span, context)?;
-                components[*position] = result.clone();
-                write_aggregate(target, Value::Tuple(components), context);
-                Ok(at_level(level, || result.clone()))
-            }
-            Self::Subscription {
-                array,
-                index,
-                reversed,
-                source,
-                span,
-            } => {
-                let index = force(index, context)?;
-                match force(array, context)? {
-                    Value::List(values) => {
-                        let index = expect_integer(index, *span, "subscription index")?;
-                        let position =
-                            checked_index(&index, values.len(), *reversed, source, *span)?;
-                        Ok(at_level(level, || values[position].clone()))
-                    }
-                    // Upstream `string_subscription` (axis.w:4229-4239): the
-                    // result is the one-character string at the position.
-                    Value::String(text) => {
-                        let index = expect_integer(index, *span, "subscription index")?;
-                        let bytes = text.as_bytes();
-                        let position =
-                            checked_index(&index, bytes.len(), *reversed, source, *span)?;
-                        Ok(at_level(level, || {
-                            Value::String(
-                                String::from_utf8_lossy(&bytes[position..position + 1])
-                                    .into_owned(),
-                            )
-                        }))
-                    }
-                    Value::Vector(Vec32(entries)) => {
-                        let index = expect_integer(index, *span, "subscription index")?;
-                        let position =
-                            checked_index(&index, entries.len(), *reversed, source, *span)?;
-                        Ok(at_level(level, || {
-                            Value::Integer(BigInt::from(entries[position]))
-                        }))
-                    }
-                    Value::RatVector(ratvec) => {
-                        let index = expect_integer(index, *span, "subscription index")?;
-                        let position = checked_index(
-                            &index,
-                            ratvec.numerators().len(),
-                            *reversed,
-                            source,
-                            *span,
-                        )?;
-                        Ok(at_level(level, || {
-                            Value::Rational(BigRational::from_integers(
-                                BigInt::from(ratvec.numerators()[position]),
-                                BigInt::from(ratvec.denominator()),
-                            ))
-                        }))
-                    }
-                    Value::Matrix(matrix) => match index {
-                        // Two-index entry selection (parser.y:585-598): the
-                        // reversed form counts BOTH indices from the end.
-                        Value::Tuple(pair) if pair.len() == 2 => {
-                            let column =
-                                expect_integer(pair[0].clone(), *span, "subscription index")?;
-                            let row = expect_integer(pair[1].clone(), *span, "subscription index")?;
-                            let column = checked_index_word(
-                                "initial index",
-                                &column,
-                                matrix.cols(),
-                                *reversed,
-                                "matrix subscription",
-                                source,
-                                *span,
-                            )?;
-                            let row = checked_index_word(
-                                "final index",
-                                &row,
-                                matrix.rows(),
-                                *reversed,
-                                "matrix subscription",
-                                source,
-                                *span,
-                            )?;
-                            let entry = matrix.entry(row, column).expect("checked indices");
-                            Ok(at_level(level, || Value::Integer(BigInt::from(entry))))
-                        }
-                        index => {
-                            let index = expect_integer(index, *span, "subscription index")?;
-                            let position = checked_index_in(
-                                &index,
-                                matrix.cols(),
-                                *reversed,
-                                "matrix column selection",
-                                source,
-                                *span,
-                            )?;
-                            Ok(at_level(level, || Value::Vector(matrix.column(position))))
-                        }
-                    },
-                    other => panic!("analysis let a non-subscriptable value through: {other}"),
-                }
-            }
-            Self::Slice {
-                array,
-                lower,
-                upper,
-                column_lower,
-                column_upper,
-                flags,
-                source,
-                span,
-            } => {
-                if let (Some(column_lower), Some(column_upper)) = (column_lower, column_upper) {
-                    // Two-dimensional slice: all bounds evaluate before any
-                    // narrowing, which then runs in the upstream pop order
-                    // l, j, k, i (global.w:4719-4723); the range check fires
-                    // at every level (only the push is gated upstream).
-                    let matrix = match force(array, context)? {
-                        Value::Matrix(matrix) => matrix,
-                        other => panic!("analysis let a non-matrix slice base through: {other}"),
-                    };
-                    let row_lower =
-                        expect_integer(force(lower, context)?, *span, "slice lower bound")?;
-                    let row_upper =
-                        expect_integer(force(upper, context)?, *span, "slice upper bound")?;
-                    let column_lower = expect_integer(
-                        force(column_lower, context)?,
-                        *span,
-                        "slice column lower bound",
-                    )?;
-                    let column_upper = expect_integer(
-                        force(column_upper, context)?,
-                        *span,
-                        "slice column upper bound",
-                    )?;
-                    let l = unsigned_long(&column_upper, *span)?;
-                    let j = unsigned_long(&column_lower, *span)?;
-                    let k = unsigned_long(&row_upper, *span)?;
-                    let i = unsigned_long(&row_lower, *span)?;
-                    let packed = (u8::from(flags.lower_from_end) * 0x02)
-                        | (u8::from(flags.upper_from_end) * 0x04)
-                        | (u8::from(flags.column_lower_from_end) * 0x10)
-                        | (u8::from(flags.column_upper_from_end) * 0x20);
-                    let sliced = matreduc::swiss_matrix_knife(
-                        packed,
-                        &matreduc::PidMatrix::from_matrix(&matrix),
-                        i,
-                        k,
-                        j,
-                        l,
-                    )
-                    .map_err(|message| runtime(message, *span))?;
-                    return Ok(at_level(level, || Value::Matrix(sliced.to_matrix())));
-                }
-                let upper = expect_integer(force(upper, context)?, *span, "slice upper bound")?;
-                let lower = expect_integer(force(lower, context)?, *span, "slice lower bound")?;
-                let values = expect_typed_list(force(array, context)?, *span, "slice")?;
-                let sliced = evaluate_slice(values, lower, upper, *flags, source, *span)?;
-                Ok(at_level(level, || Value::List(sliced.clone())))
-            }
-            Self::BarList { rows, span } => {
-                // Evaluate every entry first, then narrow row by row (the
-                // per-row [int]->vec coercion precedes the rectangularity
-                // check upstream), then stack the segments as matrix ROWS
-                // (upstream: they are the columns of the `mat` cast, which
-                // the hidden transpose then flips). Both diagnostics fire at
-                // every level; only the push is gated.
-                let mut evaluated = Vec::with_capacity(rows.len());
-                for row in rows {
-                    let values = row
-                        .iter()
-                        .map(|entry| force(entry, context))
-                        .collect::<Result<Vec<_>, _>>()?;
-                    evaluated.push(list_to_vec32(values, *span)?);
-                }
-                let width = evaluated.first().map_or(0, |row| row.0.len());
-                if evaluated.iter().any(|row| row.0.len() != width) {
-                    return Err(runtime(
-                        "Vector sizes differ in conversion to matrix",
-                        *span,
-                    ));
-                }
-                let height = evaluated.len();
-                let mut data = Vec::with_capacity(width * height);
-                for column in 0..width {
-                    for row in &evaluated {
-                        data.push(row.0[column]);
-                    }
-                }
-                Ok(at_level(level, || {
-                    Value::Matrix(
-                        crate::linear_values::Matrix::from_columns(height, width, data.clone())
-                            .expect("commabarlist rows are rectangular"),
-                    )
+                let value = force(payload, context)?;
+                Ok(at_level(level, || Value::Union {
+                    tag: *tag,
+                    injector_name: injector_name.clone(),
+                    value: Box::new(value.clone()),
                 }))
             }
+            Self::TupleProject { index, inner } => {
+                let value = force(inner, context)?;
+                let Value::Tuple(components) = value else {
+                    panic!("analysis let a non-tuple projection through: {value}")
+                };
+                Ok(at_level(level, || components[*index].clone()))
+            }
+            _ => unreachable!("incorrect evaluator arm family"),
+        }
+    }
+
+    #[inline(never)]
+    fn evaluate_application(
+        &self,
+        context: &mut EvaluationContext,
+        level: Level,
+    ) -> Result<Option<Value>, Control> {
+        match self {
             Self::LetGroup {
                 initializers,
                 names,
@@ -11128,8 +11748,14 @@ impl TypedExpr {
             } => {
                 let mut slots = Vec::new();
                 for (shape, initializer) in initializers {
-                    let value = force(initializer, context)?;
-                    distribute(value, shape, &mut slots);
+                    if shape.binds_slots() {
+                        let value = force(initializer, context)?;
+                        distribute(value, shape, &mut slots);
+                    } else {
+                        // Identifier-free let lowers to sequencing upstream:
+                        // do not demand a tuple value merely to discard it.
+                        initializer.evaluate(context, Level::NoValue)?;
+                    }
                 }
                 // A group of pure discards claims no frame (empty-layer
                 // rule), exactly as analysis counted no layer for it.
@@ -11229,28 +11855,6 @@ impl TypedExpr {
                     other => other,
                 }
             }
-            Self::Closure {
-                parameters,
-                shapes,
-                recursive,
-                body,
-                span,
-                param_names,
-            } => Ok(at_level(level, || {
-                Value::Closure(Rc::new(Closure {
-                    parameters: *parameters,
-                    shapes: shapes.clone(),
-                    recursive: *recursive,
-                    body: Rc::clone(body),
-                    frame: context.capture(),
-                    span: *span,
-                    param_names: param_names.clone(),
-                }))
-            })),
-            Self::Return { value } => {
-                let value = force(value, context)?;
-                Err(Control::Return(value))
-            }
             Self::FunctionCall {
                 function,
                 argument,
@@ -11285,21 +11889,610 @@ impl TypedExpr {
                 first.evaluate(context, Level::NoValue)?;
                 second.evaluate(context, level)
             }
-            Self::While { condition, body } => {
+            Self::Next { first, second } => {
+                // The first value is retained while the second half still
+                // evaluates for effects (upstream next_expression).
+                let value = first.evaluate(context, level)?;
+                second.evaluate(context, Level::NoValue)?;
+                Ok(value)
+            }
+            _ => unreachable!("incorrect evaluator arm family"),
+        }
+    }
+
+    #[inline(never)]
+    fn evaluate_mutation(
+        &self,
+        context: &mut EvaluationContext,
+        level: Level,
+    ) -> Result<Option<Value>, Control> {
+        match self {
+            Self::GlobalAssignment { cell, value } => {
+                let value = force(value, context)?;
+                *cell.borrow_mut() = Some(std::rc::Rc::new(value.clone()));
+                Ok(at_level(level, || value.clone()))
+            }
+            Self::LocalAssignment {
+                depth,
+                offset,
+                value,
+            } => {
+                let value = force(value, context)?;
+                let updated = context.set_local(*depth, *offset, std::rc::Rc::new(value.clone()));
+                assert!(
+                    updated,
+                    "analysis emitted an invalid local assignment address"
+                );
+                Ok(at_level(level, || value.clone()))
+            }
+            Self::MultiAssignment { plan, value } => {
+                // No destination is touched until the complete RHS has been
+                // evaluated successfully. Distribution itself cannot fail
+                // after the static shape check.
+                let value = force(value, context)?;
+                execute_multi_assignment(plan, &value, context);
+                Ok(at_level(level, || value.clone()))
+            }
+            Self::ComponentAssignment {
+                target,
+                name,
+                index,
+                reversed,
+                value,
+                source,
+                span,
+            } => {
+                // axis.w:8335/8497: reject an initially unset destination
+                // before effects, but keep the CELL live while RHS and index
+                // execute. Cloning its value here would overwrite a nested
+                // component assignment or an RHS/index-side rebinding.
+                drop(read_assign_target_handle(
+                    target, name, context, *span, "Assigning to", "component")?);
+                let value = force(value, context)?;
+                let index = force(index, context)?;
+                let aggregate =
+                    read_assign_target(target, name, context, *span, "Assigning to", "component")?;
+                match aggregate {
+                    Value::Domain(mut polynomial) => {
+                        let (Value::Domain(key), Value::Domain(domain_builtins::DomainValue::Split(coefficient))) =
+                            (index, &value) else {
+                                unreachable!("analysis guarantees polynomial coefficient types")
+                            };
+                        polynomial.assign_polynomial_coefficient(&key, *coefficient, *span)
+                            .map_err(Control::Runtime)?;
+                        write_aggregate(target, Value::Domain(polynomial), context);
+                        Ok(at_level(level, || value.clone()))
+                    }
+                    Value::List(mut values) => {
+                        let index = expect_integer(index, *span, "assignment index")?;
+                        let position = checked_index_in(
+                            &index,
+                            values.len(),
+                            *reversed,
+                            "component assignment",
+                            source,
+                            *span,
+                        )?;
+                        values[position] = value.clone();
+                        write_aggregate(target, Value::List(values), context);
+                        Ok(at_level(level, || value.clone()))
+                    }
+                    Value::Vector(Vec32(mut entries)) => {
+                        let index = expect_integer(index, *span, "assignment index")?;
+                        let position = checked_index_in(
+                            &index,
+                            entries.len(),
+                            *reversed,
+                            "component assignment",
+                            source,
+                            *span,
+                        )?;
+                        let Value::Integer(component) = &value else {
+                            panic!("analysis let a non-integer vec component through: {value}")
+                        };
+                        entries[position] = narrow_i32(component, *span)?;
+                        write_aggregate(target, Value::Vector(Vec32(entries)), context);
+                        Ok(at_level(level, || value.clone()))
+                    }
+                    Value::Matrix(mut matrix) => match index {
+                        Value::Tuple(pair) if pair.len() == 2 => {
+                            // axis.w matrix-entry assignment uses (row,col),
+                            // independently of the column-major storage.
+                            let row =
+                                expect_integer(pair[0].clone(), *span, "assignment index")?;
+                            let column = expect_integer(pair[1].clone(), *span, "assignment index")?;
+                            let row = checked_index_word(
+                                "initial index",
+                                &row,
+                                matrix.rows(),
+                                *reversed,
+                                "matrix entry assignment",
+                                source,
+                                *span,
+                            )?;
+                            let column = checked_index_word(
+                                "final index",
+                                &column,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix entry assignment",
+                                source,
+                                *span,
+                            )?;
+                            let Value::Integer(component) = &value else {
+                                panic!("analysis let a non-integer mat entry through: {value}")
+                            };
+                            matrix.set_entry(row, column, narrow_i32(component, *span)?);
+                            write_aggregate(target, Value::Matrix(matrix), context);
+                            Ok(at_level(level, || value.clone()))
+                        }
+                        index => {
+                            let index = expect_integer(index, *span, "assignment index")?;
+                            let position = checked_index_in(
+                                &index,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix column assignment",
+                                source,
+                                *span,
+                            )?;
+                            let Value::Vector(column) = &value else {
+                                panic!("analysis let a non-vec mat column through: {value}")
+                            };
+                            if column.0.len() != matrix.rows() {
+                                return Err(runtime(
+                                    format!(
+                                        "Cannot replace column of size {} by one of size {}",
+                                        matrix.rows(),
+                                        column.0.len()
+                                    ),
+                                    *span,
+                                ));
+                            }
+                            matrix.set_column(position, column.clone());
+                            write_aggregate(target, Value::Matrix(matrix), context);
+                            Ok(at_level(level, || value.clone()))
+                        }
+                    },
+                    other => {
+                        panic!("analysis let a non-aggregate component assignment through: {other}")
+                    }
+                }
+            }
+            Self::ComponentTransform {
+                target,
+                name,
+                index,
+                reversed,
+                operation,
+                rhs,
+                conversion,
+                selection,
+                source,
+                span,
+            } => {
+                // axis.w:7989-8035: the right operand evaluates before the
+                // index so the aggregate stays intact during its evaluation.
+                let aggregate =
+                    read_assign_target(target, name, context, *span, "Transforming", "component")?;
+                let operand = force(rhs, context)?;
+                let index = force(index, context)?;
+                match aggregate {
+                    Value::List(mut values) => {
+                        let index = expect_integer(index, *span, "transform index")?;
+                        let position = checked_index_in(
+                            &index,
+                            values.len(),
+                            *reversed,
+                            "component assignment",
+                            source,
+                            *span,
+                        )?;
+                        let old = values[position].clone();
+                        let result =
+                            apply_transform(operation, old, operand, *conversion, *span, context)?;
+                        values[position] = result.clone();
+                        write_aggregate(target, Value::List(values), context);
+                        Ok(at_level(level, || result.clone()))
+                    }
+                    Value::Vector(Vec32(mut entries)) => {
+                        // The vec range check fires on the synthetic READ, so
+                        // the oracle quotes the selection ("in subscription").
+                        let index = expect_integer(index, *span, "transform index")?;
+                        let position =
+                            checked_index(&index, entries.len(), *reversed, selection, *span)?;
+                        let old = Value::Integer(BigInt::from(entries[position]));
+                        let result =
+                            apply_transform(operation, old, operand, *conversion, *span, context)?;
+                        let Value::Integer(component) = &result else {
+                            panic!("analysis let a non-integer vec component through: {result}")
+                        };
+                        entries[position] = narrow_i32(component, *span)?;
+                        write_aggregate(target, Value::Vector(Vec32(entries)), context);
+                        Ok(at_level(level, || result.clone()))
+                    }
+                    Value::Matrix(mut matrix) => match index {
+                        Value::Tuple(pair) if pair.len() == 2 => {
+                            let row = expect_integer(pair[0].clone(), *span, "transform index")?;
+                            let column = expect_integer(pair[1].clone(), *span, "transform index")?;
+                            let row = checked_index_word(
+                                "initial index",
+                                &row,
+                                matrix.rows(),
+                                *reversed,
+                                "matrix subscription",
+                                selection,
+                                *span,
+                            )?;
+                            let column = checked_index_word(
+                                "final index",
+                                &column,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix subscription",
+                                selection,
+                                *span,
+                            )?;
+                            let old = Value::Integer(BigInt::from(
+                                matrix
+                                    .entry(row, column)
+                                    .expect("range-checked matrix entry is in bounds"),
+                            ));
+                            let result = apply_transform(
+                                operation,
+                                old,
+                                operand,
+                                *conversion,
+                                *span,
+                                context,
+                            )?;
+                            let Value::Integer(component) = &result else {
+                                panic!("analysis let a non-integer mat entry through: {result}")
+                            };
+                            matrix.set_entry(row, column, narrow_i32(component, *span)?);
+                            write_aggregate(target, Value::Matrix(matrix), context);
+                            Ok(at_level(level, || result.clone()))
+                        }
+                        index => {
+                            let index = expect_integer(index, *span, "transform index")?;
+                            let position = checked_index_in(
+                                &index,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix column selection",
+                                selection,
+                                *span,
+                            )?;
+                            let old = Value::Vector(matrix.column(position));
+                            let result = apply_transform(
+                                operation,
+                                old,
+                                operand,
+                                *conversion,
+                                *span,
+                                context,
+                            )?;
+                            let Value::Vector(column) = &result else {
+                                panic!("analysis let a non-vec mat column through: {result}")
+                            };
+                            if column.0.len() != matrix.rows() {
+                                return Err(runtime(
+                                    format!(
+                                        "Cannot replace column of size {} by one of size {}",
+                                        matrix.rows(),
+                                        column.0.len()
+                                    ),
+                                    *span,
+                                ));
+                            }
+                            matrix.set_column(position, column.clone());
+                            write_aggregate(target, Value::Matrix(matrix), context);
+                            Ok(at_level(level, || result.clone()))
+                        }
+                    },
+                    other => {
+                        panic!("analysis let a non-aggregate component transform through: {other}")
+                    }
+                }
+            }
+            Self::FieldAssignment {
+                target,
+                name,
+                position,
+                value,
+                span,
+            } => {
+                let mut components = read_tuple(target, name, context, *span, "Assigning to")?;
+                let value = force(value, context)?;
+                components[*position] = value.clone();
+                write_aggregate(target, Value::Tuple(components), context);
+                Ok(at_level(level, || value.clone()))
+            }
+            Self::FieldTransform {
+                target,
+                name,
+                position,
+                operation,
+                rhs,
+                conversion,
+                span,
+            } => {
+                let mut components = read_tuple(target, name, context, *span, "Transforming")?;
+                let operand = force(rhs, context)?;
+                let old = components[*position].clone();
+                let result = apply_transform(operation, old, operand, *conversion, *span, context)?;
+                components[*position] = result.clone();
+                write_aggregate(target, Value::Tuple(components), context);
+                Ok(at_level(level, || result.clone()))
+            }
+            _ => unreachable!("incorrect evaluator arm family"),
+        }
+    }
+
+    #[inline(never)]
+    fn evaluate_container(
+        &self,
+        context: &mut EvaluationContext,
+        level: Level,
+    ) -> Result<Option<Value>, Control> {
+        match self {
+            Self::Subscription {
+                array,
+                index,
+                reversed,
+                polynomial,
+                source,
+                span,
+            } => {
+                if *polynomial {
+                    // atlas-types.w::K_type_pol_coefficient/module_coefficient.
+                    // Do not reuse the opposite positional-subscript order.
+                    let array = force(array, context)?;
+                    let index = force(index, context)?;
+                    let (Value::Domain(array), Value::Domain(index)) = (array, index) else {
+                        unreachable!("analysis guarantees domain polynomial and key");
+                    };
+                    return array.polynomial_coefficient(&index, level != Level::NoValue, *span)
+                        .map(|coefficient| coefficient.map(Value::Domain))
+                        .map_err(Control::Runtime);
+                }
+                let index = force(index, context)?;
+                match force(array, context)? {
+                    Value::List(values) => {
+                        let index = expect_integer(index, *span, "subscription index")?;
+                        let position =
+                            checked_index(&index, values.len(), *reversed, source, *span)?;
+                        Ok(at_level(level, || values[position].clone()))
+                    }
+                    // Upstream `string_subscription` (axis.w:4229-4239): the
+                    // result is the one-character string at the position.
+                    Value::String(text) => {
+                        let index = expect_integer(index, *span, "subscription index")?;
+                        let bytes = text.as_bytes();
+                        let position =
+                            checked_index(&index, bytes.len(), *reversed, source, *span)?;
+                        Ok(at_level(level, || {
+                            Value::String(bytes[position..position + 1].to_vec().into())
+                        }))
+                    }
+                    Value::Vector(Vec32(entries)) => {
+                        let index = expect_integer(index, *span, "subscription index")?;
+                        let position =
+                            checked_index(&index, entries.len(), *reversed, source, *span)?;
+                        Ok(at_level(level, || {
+                            Value::Integer(BigInt::from(entries[position]))
+                        }))
+                    }
+                    Value::RatVector(ratvec) => {
+                        let index = expect_integer(index, *span, "subscription index")?;
+                        let position = checked_index(
+                            &index,
+                            ratvec.numerators().len(),
+                            *reversed,
+                            source,
+                            *span,
+                        )?;
+                        Ok(at_level(level, || {
+                            Value::Rational(BigRational::from_integers(
+                                BigInt::from(ratvec.numerators()[position]),
+                                BigInt::from(ratvec.denominator()),
+                            ))
+                        }))
+                    }
+                    Value::Matrix(matrix) => match index {
+                        // Two-index entry selection (parser.y:585-598): the
+                        // pair is (row,column); the reversed form counts
+                        // BOTH indices from their respective dimension's end.
+                        Value::Tuple(pair) if pair.len() == 2 => {
+                            let row =
+                                expect_integer(pair[0].clone(), *span, "subscription index")?;
+                            let column = expect_integer(pair[1].clone(), *span, "subscription index")?;
+                            let row = checked_index_word(
+                                "initial index",
+                                &row,
+                                matrix.rows(),
+                                *reversed,
+                                "matrix subscription",
+                                source,
+                                *span,
+                            )?;
+                            let column = checked_index_word(
+                                "final index",
+                                &column,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix subscription",
+                                source,
+                                *span,
+                            )?;
+                            let entry = matrix.entry(row, column).expect("checked indices");
+                            Ok(at_level(level, || Value::Integer(BigInt::from(entry))))
+                        }
+                        index => {
+                            let index = expect_integer(index, *span, "subscription index")?;
+                            let position = checked_index_in(
+                                &index,
+                                matrix.cols(),
+                                *reversed,
+                                "matrix column selection",
+                                source,
+                                *span,
+                            )?;
+                            Ok(at_level(level, || Value::Vector(matrix.column(position))))
+                        }
+                    },
+                    other => panic!("analysis let a non-subscriptable value through: {other}"),
+                }
+            }
+            Self::Slice {
+                array,
+                lower,
+                upper,
+                column_lower,
+                column_upper,
+                flags,
+                source,
+                span,
+            } => {
+                if let (Some(column_lower), Some(column_upper)) = (column_lower, column_upper) {
+                    // Two-dimensional slice: all bounds evaluate before any
+                    // narrowing, which then runs in the upstream pop order
+                    // l, j, k, i (global.w:4719-4723); the range check fires
+                    // at every level (only the push is gated upstream).
+                    let matrix = match force(array, context)? {
+                        Value::Matrix(matrix) => matrix,
+                        other => panic!("analysis let a non-matrix slice base through: {other}"),
+                    };
+                    let row_lower =
+                        expect_integer(force(lower, context)?, *span, "slice lower bound")?;
+                    let row_upper =
+                        expect_integer(force(upper, context)?, *span, "slice upper bound")?;
+                    let column_lower = expect_integer(
+                        force(column_lower, context)?,
+                        *span,
+                        "slice column lower bound",
+                    )?;
+                    let column_upper = expect_integer(
+                        force(column_upper, context)?,
+                        *span,
+                        "slice column upper bound",
+                    )?;
+                    let l = unsigned_long(&column_upper, *span)?;
+                    let j = unsigned_long(&column_lower, *span)?;
+                    let k = unsigned_long(&row_upper, *span)?;
+                    let i = unsigned_long(&row_lower, *span)?;
+                    let packed = (u8::from(flags.lower_from_end) * 0x02)
+                        | (u8::from(flags.upper_from_end) * 0x04)
+                        | (u8::from(flags.column_lower_from_end) * 0x10)
+                        | (u8::from(flags.column_upper_from_end) * 0x20);
+                    let sliced = matreduc::swiss_matrix_knife(
+                        packed,
+                        &matreduc::PidMatrix::from_matrix(&matrix),
+                        i,
+                        k,
+                        j,
+                        l,
+                    )
+                    .map_err(|message| runtime(message, *span))?;
+                    return Ok(at_level(level, || Value::Matrix(sliced.to_matrix())));
+                }
+                // Each long_val narrowing precedes the next evaluation.
+                let upper = long_int(&expect_integer(force(upper, context)?, *span, "slice upper bound")?, *span)?;
+                let lower = long_int(&expect_integer(force(lower, context)?, *span, "slice lower bound")?, *span)?;
+                let lower = BigInt::from(lower);
+                let upper = BigInt::from(upper);
+                let sliced = match force(array, context)? {
+                    Value::List(values) => Value::List(evaluate_slice(values, lower, upper, *flags, source, *span)?),
+                    Value::String(text) => Value::String(evaluate_slice(text.into_bytes(), lower, upper, *flags, source, *span)?.into()),
+                    Value::Vector(Vec32(entries)) => Value::Vector(Vec32(evaluate_slice(entries, lower, upper, *flags, source, *span)?)),
+                    Value::RatVector(vector) => {
+                        let entries = evaluate_slice(vector.numerators().to_vec(), lower, upper, *flags, source, *span)?;
+                        Value::RatVector(RatVec::new(entries, vector.denominator()).expect("existing positive denominator"))
+                    }
+                    Value::Matrix(matrix) => {
+                        let columns: Vec<Vec32> = (0..matrix.cols()).map(|i| matrix.column(i)).collect();
+                        let columns = evaluate_slice(columns, lower, upper, *flags, source, *span)?;
+                        let count = columns.len();
+                        let data = columns.into_iter().flat_map(|column| column.0).collect();
+                        Value::Matrix(Matrix::from_columns(matrix.rows(), count, data).expect("sliced columns retain row count"))
+                    }
+                    other => panic!("analysis let a non-sliceable value through: {other}"),
+                };
+                Ok(at_level(level, || sliced))
+            }
+            Self::BarList { rows, span } => {
+                // Evaluate every entry first, then narrow row by row (the
+                // per-row [int]->vec coercion precedes the rectangularity
+                // check upstream), then stack the segments as matrix ROWS
+                // (upstream: they are the columns of the `mat` cast, which
+                // the hidden transpose then flips). Both diagnostics fire at
+                // every level; only the push is gated.
+                let mut evaluated = Vec::with_capacity(rows.len());
+                for row in rows {
+                    let values = row
+                        .iter()
+                        .map(|entry| force(entry, context))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    evaluated.push(list_to_vec32(values, *span)?);
+                }
+                let width = evaluated.first().map_or(0, |row| row.0.len());
+                if evaluated.iter().any(|row| row.0.len() != width) {
+                    return Err(runtime(
+                        "Vector sizes differ in conversion to matrix",
+                        *span,
+                    ));
+                }
+                let height = evaluated.len();
+                let mut data = Vec::with_capacity(width * height);
+                for column in 0..width {
+                    for row in &evaluated {
+                        data.push(row.0[column]);
+                    }
+                }
+                Ok(at_level(level, || {
+                    Value::Matrix(
+                        crate::linear_values::Matrix::from_columns(height, width, data.clone())
+                            .expect("commabarlist rows are rectangular"),
+                    )
+                }))
+            }
+            _ => unreachable!("incorrect evaluator arm family"),
+        }
+    }
+
+    #[inline(never)]
+    fn evaluate_control(
+        &self,
+        context: &mut EvaluationContext,
+        level: Level,
+    ) -> Result<Option<Value>, Control> {
+        match self {
+            Self::While { condition, body, mode } => {
                 let mut collected = Vec::new();
+                let mut count = BigInt::from(0);
+                let collect = level == Level::SingleValue && matches!(mode, WhileMode::Row { .. });
+                let count_iterations = level == Level::SingleValue && *mode == WhileMode::Count;
+                let body_level = if collect { Level::SingleValue } else { Level::NoValue };
                 loop {
-                    if let Some(condition) = condition {
-                        match force(condition, context)? {
-                            Value::Boolean(true) => {}
-                            Value::Boolean(false) => break,
-                            other => {
-                                panic!("analysis let a non-boolean loop condition through: {other}")
+                    // One unwind boundary covers both the flattened guard
+                    // and the body, just as for an unflattened do-tree.
+                    let iteration = (|| {
+                        if let Some(condition) = condition {
+                            match force(condition, context)? {
+                                Value::Boolean(true) => {}
+                                Value::Boolean(false) => return Err(Control::Dont),
+                                other => {
+                                    panic!("analysis let a non-boolean loop condition through: {other}")
+                                }
                             }
                         }
-                    }
-                    match body.evaluate(context, Level::SingleValue) {
-                        Ok(Some(value)) => collected.push(value),
-                        Ok(None) => unreachable!("single-value loop body yields a value"),
+                        body.evaluate(context, body_level)
+                    })();
+                    match iteration {
+                        Ok(value) => {
+                            if collect { collected.push(value.expect("single-value loop body yields a value")); }
+                            if count_iterations { count += BigInt::from(1); }
+                        }
                         // The breaking iteration contributes no value.
                         Err(Control::Break(0)) => break,
                         Err(Control::Dont) => break,
@@ -11309,7 +12502,24 @@ impl TypedExpr {
                         Err(control) => return Err(control),
                     }
                 }
-                Ok(at_level(level, || Value::List(collected.clone())))
+                Ok(at_level(level, || match mode {
+                    WhileMode::Void => Value::Tuple(Vec::new()),
+                    WhileMode::Count => Value::Integer(count),
+                    WhileMode::Row { reversed } => {
+                        if *reversed { collected.reverse(); }
+                        Value::List(collected)
+                    }
+                }))
+            }
+            Self::Do { condition, body } => {
+                if let Some(condition) = condition {
+                    match force(condition, context)? {
+                        Value::Boolean(true) => {}
+                        Value::Boolean(false) => return Err(Control::Dont),
+                        other => panic!("analysis let a non-boolean do guard through: {other}"),
+                    }
+                }
+                body.evaluate(context, level)
             }
             Self::For {
                 shape,
@@ -11317,33 +12527,40 @@ impl TypedExpr {
                 names,
                 iterable,
                 body,
+                input_reversed,
+                output_reversed,
             } => {
-                let values = match force(iterable, context)? {
-                    Value::List(values) => values,
-                    other => panic!("analysis let a non-row iterable through: {other}"),
-                };
+                let values = force(iterable, context)?;
+                // A slotless pattern is an anonymous counted loop upstream:
+                // use only the aggregate's size, not cloned component values.
+                let anonymous = names.is_empty();
+                let mut items = for_items(&values, anonymous);
+                let body_level = level;
                 let mut collected = Vec::new();
-                for (position, element) in values.into_iter().enumerate() {
+                let mut position = 0usize;
+                loop {
+                    let item = if *input_reversed { items.next_back() } else { items.next() };
+                    let Some((key, element)) = item else { break };
                     // The index slot precedes the pattern slots, matching
                     // the analysis-time layout (upstream pair wrap).
                     let mut slots = Vec::new();
                     if *index {
-                        slots.push(Rc::new(Value::Integer(BigInt::from(position))));
+                        slots.push(Rc::new(key));
                     }
-                    distribute(element, shape, &mut slots);
+                    if !anonymous { distribute(element, shape, &mut slots); }
                     let (result, frame) = if slots.is_empty() {
                         // A pure-discard layer pushes no frame, matching the
                         // analysis-time empty-layer rule.
-                        (body.evaluate(context, Level::SingleValue), None)
+                        (body.evaluate(context, body_level), None)
                     } else {
                         let (result, frame) = context.with_frame_traced(slots, |context| {
-                            body.evaluate(context, Level::SingleValue)
+                            body.evaluate(context, body_level)
                         });
                         (result, Some(frame))
                     };
                     match result {
                         Ok(Some(value)) => collected.push(value),
-                        Ok(None) => unreachable!("single-value loop body yields a value"),
+                        Ok(None) => debug_assert_eq!(body_level, Level::NoValue),
                         Err(Control::Break(0)) => break,
                         Err(Control::Break(levels)) => {
                             return Err(Control::Break(levels - 1));
@@ -11354,36 +12571,27 @@ impl TypedExpr {
                             if let Some(frame) = frame {
                                 diagnostic.trace(frame_dump(context, names, &frame));
                             }
-                            diagnostic
-                                .trace(format!("During iteration {position} of the for-loop"));
+                            let kind = if anonymous {
+                                " counted for-loop"
+                            } else {
+                                match &values {
+                                    Value::Domain(domain_builtins::DomainValue::KTypePol(_)) => "for-loop over KTypePol",
+                                    Value::Domain(domain_builtins::DomainValue::ParamPol(_)) => "for-loop over ParamPol",
+                                    _ if *input_reversed => "reversed for-loop",
+                                    _ => "for-loop",
+                                }
+                            };
+                            diagnostic.trace(format!("During iteration {position} of the {kind}"));
                             return Err(Control::Runtime(diagnostic));
                         }
                         Err(control) => return Err(control),
                     }
+                    position += 1;
                 }
-                Ok(at_level(level, || Value::List(collected.clone())))
-            }
-            Self::Break { levels } => Err(Control::Break(*levels)),
-            Self::Dont => Err(Control::Dont),
-            Self::Die { span } => Err(runtime("I die", *span)),
-            Self::UnionInject {
-                tag,
-                injector_name,
-                payload,
-            } => {
-                let value = force(payload, context)?;
-                Ok(at_level(level, || Value::Union {
-                    tag: *tag,
-                    injector_name: injector_name.clone(),
-                    value: Box::new(value.clone()),
+                Ok(at_level(level, || {
+                    if *output_reversed { collected.reverse(); }
+                    Value::List(collected)
                 }))
-            }
-            Self::TupleProject { index, inner } => {
-                let value = force(inner, context)?;
-                let Value::Tuple(components) = value else {
-                    panic!("analysis let a non-tuple projection through: {value}")
-                };
-                Ok(at_level(level, || components[*index].clone()))
             }
             Self::Case {
                 subject,
@@ -11416,13 +12624,6 @@ impl TypedExpr {
                         *span,
                     )),
                 }
-            }
-            Self::Next { first, second } => {
-                // The first value is retained while the second half still
-                // evaluates for effects (upstream next_expression).
-                let value = first.evaluate(context, level)?;
-                second.evaluate(context, Level::NoValue)?;
-                Ok(value)
             }
             Self::IntCase {
                 condition,
@@ -11473,6 +12674,7 @@ impl TypedExpr {
             Self::CountedFor {
                 name,
                 decreasing,
+                output_reversed,
                 count,
                 bound,
                 body,
@@ -11507,14 +12709,14 @@ impl TypedExpr {
                     let result = if name.is_some() {
                         context
                             .with_frame(vec![Rc::new(Value::Integer(index.clone()))], |context| {
-                                body.evaluate(context, Level::SingleValue)
+                                body.evaluate(context, level)
                             })
                     } else {
-                        body.evaluate(context, Level::SingleValue)
+                        body.evaluate(context, level)
                     };
                     match result {
                         Ok(Some(value)) => collected.push(value),
-                        Ok(None) => unreachable!("single-value loop body yields a value"),
+                        Ok(None) => debug_assert_eq!(level, Level::NoValue),
                         // The breaking iteration contributes no value.
                         Err(Control::Break(0)) => break,
                         Err(Control::Break(levels)) => return Err(Control::Break(levels - 1)),
@@ -11548,13 +12750,54 @@ impl TypedExpr {
                         index += BigInt::from(1);
                     }
                 }
-                Ok(at_level(level, || Value::List(collected.clone())))
+                Ok(at_level(level, || {
+                    if *output_reversed { collected.reverse(); }
+                    Value::List(collected)
+                }))
             }
+            _ => unreachable!("incorrect evaluator arm family"),
         }
     }
 }
 
-fn at_level(level: Level, value: impl Fn() -> Value) -> Option<Value> {
+/// Borrow the input while creating only the currently needed component/key.
+/// In particular, matrix iteration must not build a second matrix of columns,
+/// and polynomial iteration keeps its canonical term order and owning form.
+fn for_items(values: &Value, anonymous: bool)
+    -> Box<dyn DoubleEndedIterator<Item = (Value, Value)> + '_>
+{
+    if anonymous {
+        let count = match values {
+            Value::List(row) => row.len(),
+            Value::Vector(vector) => vector.0.len(),
+            Value::RatVector(vector) => vector.numerators().len(),
+            Value::String(string) => string.len(),
+            Value::Matrix(matrix) => matrix.cols(),
+            Value::Domain(domain) => domain.loop_term_count().expect("iterable domain"),
+            _ => unreachable!("analysis checked loop aggregate"),
+        };
+        return Box::new((0..count).map(|_| (Value::Tuple(Vec::new()), Value::Tuple(Vec::new()))));
+    }
+    let key = |index: usize| Value::Integer(BigInt::from(index));
+    match values {
+        Value::List(row) => Box::new(row.iter().enumerate().map(move |(i, v)| (key(i), v.clone()))),
+        Value::Vector(vector) => Box::new(vector.0.iter().enumerate()
+            .map(move |(i, v)| (key(i), Value::Integer(BigInt::from(*v))))),
+        Value::RatVector(vector) => Box::new(vector.numerators().iter().enumerate()
+            .map(move |(i, v)| (key(i), Value::Rational(BigRational::from_integers(
+                BigInt::from(*v), BigInt::from(vector.denominator())))))),
+        Value::String(string) => Box::new(string.as_bytes().iter().enumerate()
+            .map(move |(i, v)| (key(i), Value::String(vec![*v].into())))),
+        Value::Matrix(matrix) => Box::new((0..matrix.cols())
+            .map(move |i| (key(i), Value::Vector(matrix.column(i))))),
+        Value::Domain(domain) => domain.loop_terms().expect("iterable domain"),
+        _ => unreachable!("analysis checked loop aggregate"),
+    }
+}
+
+// A result is constructed zero or one times. FnOnce lets evaluators transfer
+// owned rows/counts without cloning, as at_builtin_level already does.
+fn at_level(level: Level, value: impl FnOnce() -> Value) -> Option<Value> {
     match level {
         Level::NoValue => None,
         Level::SingleValue => Some(value()),
@@ -11752,25 +12995,25 @@ fn evaluate_let_frame(
 /// The local-variable trace line of one frame (axis.w:2896-2909):
 /// `{ name=value, ... }` with the standard value printer, read after
 /// unwinding so a slot reassigned before the error prints its current value.
-fn frame_dump(context: &EvaluationContext, names: &[String], frame: &Frame) -> String {
+fn frame_dump(context: &EvaluationContext, names: &[String], frame: &Frame) -> crate::value::AtlasString {
     let slots = frame.slot_snapshot();
     debug_assert_eq!(
         names.len(),
         slots.len(),
         "analysis keeps slot names and values in step"
     );
-    let mut out = String::from("{ ");
+    let mut out = crate::value::AtlasString::from("{ ");
     for (index, (name, slot)) in names.iter().zip(slots.iter()).enumerate() {
         if index > 0 {
             out.push_str(", ");
         }
         out.push_str(name);
-        out.push('=');
+        out.push_str("=");
         match slot {
-            Some(value) => out.push_str(&trace_value_string(context, value)),
+            Some(value) => out.push_bytes(trace_value_string(context, value).as_bytes()),
             // A call frame binds every slot before the body runs; an empty
             // slot can only appear after a pilfering builtin moved it out.
-            None => out.push('*'),
+            None => out.push_str("*"),
         }
     }
     out.push_str(" }");
@@ -11780,10 +13023,10 @@ fn frame_dump(context: &EvaluationContext, names: &[String], frame: &Frame) -> S
 /// The frame-dump rendering of one slot value (axis.w:2905 prints `**it`,
 /// the standard value printer): closures use the multi-line
 /// `closure_value::print` (axis.w:3254-3271), everything else `Display`.
-fn trace_value_string(context: &EvaluationContext, value: &Value) -> String {
+fn trace_value_string(context: &EvaluationContext, value: &Value) -> crate::value::AtlasString {
     match value {
-        Value::Closure(closure) => closure_trace_string(context, closure),
-        other => other.to_string(),
+        Value::Closure(closure) => closure_trace_string(context, closure).into(),
+        other => other.atlas_text(),
     }
 }
 
@@ -11891,8 +13134,8 @@ fn execute_multi_assignment(
     }
 }
 
-fn runtime(message: impl Into<String>, span: SourceSpan) -> Control {
-    Control::Runtime(Diagnostic::new(ErrorKind::Runtime, message, Some(span)))
+fn runtime(message: impl Into<crate::value::AtlasString>, span: SourceSpan) -> Control {
+    Control::Runtime(Diagnostic::new_bytes(ErrorKind::Runtime, message.into(), Some(span)))
 }
 
 /// The upstream narrowing, exact message included (bigint.cpp:142-162).
@@ -11995,12 +13238,26 @@ fn read_assign_target(
     verb: &str,
     noun: &str,
 ) -> Result<Value, Control> {
+    Ok(read_assign_target_handle(target, name, context, span, verb, noun)?.as_ref().clone())
+}
+
+/// Check initialization without copying the aggregate or retaining a borrow
+/// across evaluation. A caller needing a live destination must reread the
+/// cell after nested effects, not keep this cheap snapshot as its value.
+fn read_assign_target_handle(
+    target: &AssignTarget,
+    name: &str,
+    context: &EvaluationContext,
+    span: SourceSpan,
+    verb: &str,
+    noun: &str,
+) -> Result<Rc<Value>, Control> {
     let value = match target {
         AssignTarget::Local { depth, offset } => context.local(*depth, *offset),
         AssignTarget::Global(cell) => cell.borrow().clone(),
     };
     match value {
-        Some(value) => Ok(value.as_ref().clone()),
+        Some(value) => Ok(value),
         None => Err(runtime(
             format!("{verb} {noun} of uninitialized variable {name}"),
             span,
@@ -12068,14 +13325,14 @@ fn apply_transform(
     }
 }
 
-fn evaluate_slice(
-    values: Vec<Value>,
+fn evaluate_slice<T: Clone>(
+    values: Vec<T>,
     lower: BigInt,
     upper: BigInt,
     flags: crate::syntax::SliceFlags,
     source: &str,
     span: SourceSpan,
-) -> Result<Vec<Value>, Control> {
+) -> Result<Vec<T>, Control> {
     let length = BigInt::from(values.len());
     let lower = if flags.lower_from_end {
         &length - lower
@@ -12119,7 +13376,15 @@ fn evaluate_slice(
         .map_err(|_| runtime("slice lower bound is not a machine index", span))?;
     let upper_index = usize::try_from(&upper)
         .map_err(|_| runtime("slice upper bound is not a machine index", span))?;
-    let mut result = values[lower_index..upper_index].to_vec();
+    // Bounds are coordinates in the chosen iterator direction, not in a
+    // forward slice that is reversed afterwards (axis.w::row_slice).
+    // The asymmetric original3839145 regression distinguishes the two.
+    let range = if flags.reverse_output {
+        values.len() - upper_index..values.len() - lower_index
+    } else {
+        lower_index..upper_index
+    };
+    let mut result = values[range].to_vec();
     if flags.reverse_output {
         result.reverse();
     }
@@ -12719,9 +13984,11 @@ mod tests {
             ("rv[0]", "1/2"),
             ("rv~[1]", "1/2"),
             ("M[0]", "[ 1, 3 ]"),
-            ("M[0,1]", "3"),
-            ("M[1,0]", "2"),
-            ("M~[1,0]", "3"),
+            // Original3845762, matrix_row_column_historical_unit:
+            // two-index entries are (row,column), despite column storage.
+            ("M[0,1]", "2"),
+            ("M[1,0]", "3"),
+            ("M~[1,0]", "2"),
         ] {
             let (_, value) = convert_and_run_with(source, &globals).expect(source);
             assert_eq!(value.to_string(), expected, "source: {source}");
@@ -12743,7 +14010,7 @@ mod tests {
             other => panic!("expected matrix, got {other:?}"),
         };
         assert_eq!(matrix.entry(0, 0), Some(1));
-        assert_eq!(matrix.entry(1, 0), Some(9));
+        assert_eq!(matrix.entry(1, 0), Some(3));
         assert_eq!(matrix.entry(0, 1), Some(9));
         assert_eq!(matrix.entry(1, 1), Some(19));
 
@@ -13399,10 +14666,10 @@ mod tests {
         // reversed form.
         let (found, value) = convert_and_run("\"abc\"[1]").expect("forward");
         assert_eq!(found, Type::Primitive(Prim::String));
-        assert_eq!(value, Value::String("b".to_owned()));
+        assert_eq!(value, Value::String("b".into()));
 
         let (_, value) = convert_and_run("\"abc\"~[0]").expect("reversed");
-        assert_eq!(value, Value::String("c".to_owned()));
+        assert_eq!(value, Value::String("c".into()));
     }
 
     #[test]
@@ -13448,6 +14715,33 @@ mod tests {
             cell.borrow().as_ref().map(|value| value.as_ref().clone()),
             Some(Value::Integer(2034.into()))
         );
+    }
+
+    #[test]
+    fn byte_string_and_nonrow_slice_values() {
+        for (source, expected) in [
+            ("(vec:[0,1,2,3,4])[1:4]", "[ 1, 2, 3 ]"),
+            ("(vec:[0,1,2,3,4])~[0:2]", "[ 4, 3 ]"),
+            ("(vec:[0,1,2,3,4])[9:2]", "[ ]"),
+            ("(ratvec:[1/2,2/3,3/4,4/5,5/6])[1:4]", "[ 40, 45, 48 ]/60"),
+            ("(ratvec:[1/2,2/3,3/4,4/5,5/6])~[0:2]", "[ 25, 24 ]/30"),
+            ("(ratvec:[1/2,2/3,3/4,4/5,5/6])[2:2]", "[ ]/1"),
+            ("(mat:[[0,1],[2,3],[4,5],[6,7],[8,9]])[2:2]", "The 2x0 matrix"),
+        ] {
+            let (_, value) = convert_and_run(source).expect(source);
+            assert_eq!(value.to_string(), expected, "{source}");
+        }
+        let (_, value) = convert_and_run("(mat:[[0,1],[2,3],[4,5],[6,7],[8,9]])~[0:2]").unwrap();
+        let Value::Matrix(matrix) = value else { panic!("matrix slice changed type") };
+        assert_eq!((matrix.rows(), matrix.cols()), (2, 2));
+        assert_eq!(matrix.column(0), Vec32(vec![8,9]));
+        assert_eq!(matrix.column(1), Vec32(vec![6,7]));
+        for source in ["\"é\"[0]", "\"é\"[:1]", "\"é\"~[1:2]"] {
+            let (_, value) = convert_and_run(source).unwrap();
+            assert_eq!(value, Value::String(vec![0xc3].into()), "{source}");
+        }
+        let (_, value) = convert_and_run("\"é\"[:1]##\"é\"[1:]").unwrap();
+        assert_eq!(value, Value::String("é".into()));
     }
 
     #[test]
@@ -13579,6 +14873,223 @@ mod tests {
     }
 
     #[test]
+    fn overload_presence_call_builds_one_view() {
+        // A named call needs a merged view for argument matching, but its
+        // preceding presence query must not build the same view again.
+        let before = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get);
+        let (type_, value) = convert_and_run("succ(1)").expect("ordinary named call");
+        let builds = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get) - before;
+        assert_eq!(type_, int_type());
+        assert_eq!(value, Value::Integer(2.into()));
+        eprintln!("OVERLOAD_PRESENCE_CALL_READY builds={builds}");
+        assert_eq!(builds, 1, "call-head presence must not construct a throwaway merged view");
+    }
+
+    #[test]
+    fn overload_view_reuse_nested_calls_build_one_view() {
+        let before = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get);
+        let (ty, value) = convert_and_run("succ(succ(1))").expect("nested calls");
+        let builds = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get) - before;
+        assert_eq!(ty, int_type());
+        assert_eq!(value, Value::Integer(3.into()));
+        eprintln!("OVERLOAD_VIEW_REUSE_CALLS_READY builds={builds}");
+        assert_eq!(builds, 1, "one immutable overload view per name and analysis");
+    }
+
+    #[test]
+    fn overload_view_reuse_negative_literals_build_one_view() {
+        let before = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get);
+        let (ty, value) = convert_and_run("(-1,-2,-3,-4)").expect("negative literal table");
+        let builds = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get) - before;
+        assert_eq!(ty, Type::tuple(vec![int_type(); 4]));
+        assert_eq!(value, Value::Tuple((1..=4).map(|n| Value::Integer(BigInt::from(-n))).collect()));
+        eprintln!("OVERLOAD_VIEW_REUSE_MINUS_READY builds={builds}");
+        assert_eq!(builds, 1, "negative table literals reuse their ordered overload view");
+    }
+
+    #[test]
+    fn overload_view_reuse_bare_cast_and_call_share_one_view() {
+        let before = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get);
+        let (ty, value) = convert_and_run("let f=succ,g=succ@int in (f(1),g(2),succ(3))")
+            .expect("bare capture, operator cast and call");
+        let builds = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get) - before;
+        assert_eq!(ty, Type::tuple(vec![int_type(); 3]));
+        assert_eq!(value, Value::Tuple((2..=4).map(|n| Value::Integer(BigInt::from(n))).collect()));
+        eprintln!("OVERLOAD_VIEW_REUSE_CAPTURE_READY builds={builds}");
+        assert_eq!(builds, 1, "capture, cast and call share an immutable ordered view");
+    }
+
+    fn view_reuse_with_analysis(source: &str, analysis: &Analysis<'_>) -> Result<(Type, Value), Diagnostic> {
+        let Command::Expression(expression) = command(source) else { panic!("expression control") };
+        let mut ty = Type::Undetermined;
+        let converted = convert_expr(&expression, &mut ty, analysis)?;
+        let value = converted.evaluate(&mut EvaluationContext::new(), Level::SingleValue)
+            .expect("control evaluation").expect("single value");
+        Ok((ty, value))
+    }
+
+    #[test]
+    fn overload_view_reuse_cloned_analysis_checks_overload_identity() {
+        let mut left = TypedContext::new();
+        let mut right = TypedContext::new();
+        left.execute(&command("set view_dispatch(int n)=n+10")).unwrap();
+        right.execute(&command("set view_dispatch(bool b)=if b then 21 else 22 fi")).unwrap();
+        let analysis = Analysis::new(&left.types, &left.globals, &left.overloads);
+        assert_eq!(view_reuse_with_analysis("view_dispatch(1)", &analysis).unwrap().1, Value::Integer(11.into()));
+        let mut other = analysis.clone();
+        // Deliberately keep the SAME type table: overload identity alone
+        // changes, using Analysis's public rebinding API.
+        other.overloads = &right.overloads;
+        assert_eq!(view_reuse_with_analysis("view_dispatch(true)", &other).unwrap().1, Value::Integer(21.into()));
+        assert_eq!(view_reuse_with_analysis("view_dispatch(2)", &analysis).unwrap().1, Value::Integer(12.into()));
+    }
+
+    #[test]
+    fn overload_view_reuse_cloned_analysis_checks_type_table_identity() {
+        let mut types = TypeTable::new();
+        types.add_alias("ViewNamed", bool_type());
+        let number = types.lookup("ViewNamed").expect("named type");
+        let mut other_types = types.clone();
+        other_types.update(number, int_type(), vec![]);
+        let globals = IdTable::new();
+        let mut overloads = OverloadState::default();
+        overloads.forgotten = vec![("succ".into(), Type::Tabled(number))];
+        let analysis = Analysis::new(&types, &globals, &overloads);
+        assert_eq!(view_reuse_with_analysis("let f=succ@int in f(7)", &analysis).unwrap().1, Value::Integer(8.into()));
+        let mut other = analysis.clone();
+        // Same overload state, different type expansion: forget(ViewNamed)
+        // hides no succ in the first table, but hides succ@int in the second.
+        // An operator cast bypasses the separate call-head presence query,
+        // so a stale cached view would incorrectly accept this capture.
+        other.types = &other_types;
+        assert!(view_reuse_with_analysis("succ@int", &other).is_err());
+        assert_eq!(view_reuse_with_analysis("let f=succ@int in f(8)", &analysis).unwrap().1, Value::Integer(9.into()));
+    }
+
+    #[test]
+    fn overload_view_reuse_keeps_polymorphic_trials_scopes_and_history() {
+        let (_, value) = convert_and_run("(#([1]),#([true]),#([\"x\"]),#([[false]]))").unwrap();
+        assert_eq!(value, Value::Tuple(vec![Value::Integer(1.into()); 4]));
+        let (_, value) = convert_and_run("(any_type T ((T x):(#([x]),#([true]))))(7)").unwrap();
+        assert_eq!(value, Value::Tuple(vec![Value::Integer(1.into()); 2]));
+        let (_, value) = convert_and_run("((int n):succ(succ(n)))(1)").unwrap();
+        assert_eq!(value, Value::Integer(3.into()));
+        overload_presence_keeps_shadow_forget_rebind_and_error_priority();
+    }
+
+    #[test]
+    fn overload_command_reuse_separate_calls_build_one_view() {
+        let context = TypedContext::new();
+        let before = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get);
+        for (source, expected) in [("succ(1)", 2), ("succ(2)", 3), ("succ(3)", 4)] {
+            // A genuinely independent Analysis for each command, not a
+            // lexical child sharing the already accepted per-analysis cache.
+            let analysis = Analysis::new(&context.types, &context.globals, &context.overloads);
+            let (ty, value) = view_reuse_with_analysis(source, &analysis).unwrap();
+            assert_eq!(ty, int_type());
+            assert_eq!(value, Value::Integer(expected.into()));
+        }
+        let builds = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get) - before;
+        eprintln!("OVERLOAD_COMMAND_REUSE_CALLS_READY builds={builds}");
+        assert_eq!(builds, 1, "unchanged commands must reuse one ordered view");
+    }
+
+    #[test]
+    fn overload_command_reuse_fresh_polymorphic_commands_build_one_view() {
+        let context = TypedContext::new();
+        let before = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get);
+        for source in ["#([1])", "#([true])", "#([\"x\"])"] {
+            let analysis = Analysis::new(&context.types, &context.globals, &context.overloads);
+            let (ty, value) = view_reuse_with_analysis(source, &analysis).unwrap();
+            assert_eq!(ty, int_type());
+            assert_eq!(value, Value::Integer(1.into()));
+        }
+        let builds = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get) - before;
+        eprintln!("OVERLOAD_COMMAND_REUSE_POLY_READY builds={builds}");
+        assert_eq!(builds, 1, "share signatures, never polymorphic substitutions");
+    }
+
+    #[test]
+    fn overload_command_reuse_same_length_type_mutation() {
+        let mut types = TypeTable::new();
+        types.add_alias("CommandNamed", bool_type());
+        let number = types.lookup("CommandNamed").unwrap();
+        let globals = IdTable::new();
+        let mut overloads = OverloadState::default();
+        overloads.forgotten = vec![("succ".into(), Type::Tabled(number))];
+        // The table address, binding count and TypeNumber remain unchanged.
+        // A new analysis must nevertheless see the newly hidden int variant.
+        for definition in [bool_type(), int_type(), bool_type()] {
+            let hidden = definition == int_type();
+            types.update(number, definition, vec![]);
+            let analysis = Analysis::new(&types, &globals, &overloads);
+            let result = view_reuse_with_analysis("let f=succ@int in f(7)", &analysis);
+            if hidden {
+                assert!(result.is_err(), "updated type must hide the overload");
+            } else {
+                assert_eq!(result.unwrap().1, Value::Integer(8.into()));
+            }
+        }
+    }
+
+    #[test]
+    fn overload_command_reuse_cloned_states_keep_independent_mutation() {
+        let left = TypedContext::new();
+        let analysis = Analysis::new(&left.types, &left.globals, &left.overloads);
+        assert_eq!(view_reuse_with_analysis("succ(1)", &analysis).unwrap().1, Value::Integer(2.into()));
+        let mut right = TypedContext::new();
+        right.types = left.types.clone();
+        right.overloads = left.overloads.clone();
+        right.execute(&command("set succ(int n)=n+10")).unwrap();
+        let other = Analysis::new(&right.types, &right.globals, &right.overloads);
+        assert_eq!(view_reuse_with_analysis("succ(1)", &other).unwrap().1, Value::Integer(11.into()));
+        assert_eq!(view_reuse_with_analysis("succ(1)", &analysis).unwrap().1, Value::Integer(2.into()));
+        right.execute(&command("forget succ @ int")).unwrap();
+        let other = Analysis::new(&right.types, &right.globals, &right.overloads);
+        assert!(view_reuse_with_analysis("succ@int", &other).is_err());
+        assert_eq!(view_reuse_with_analysis("succ(2)", &analysis).unwrap().1, Value::Integer(3.into()));
+    }
+
+    #[test]
+    fn overload_presence_type_collision_builds_no_view() {
+        let mut context = TypedContext::new();
+        let declaration = command("set_type [succ=int]");
+        let before = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get);
+        let error = context.execute(&declaration).expect_err("active builtin is a type-name conflict");
+        let builds = OVERLOAD_VIEW_BUILD_COUNT.with(std::cell::Cell::get) - before;
+        assert_eq!(error.kind, ErrorKind::Program);
+        assert_eq!(error.message, "Cannot define 'succ' as a type; it is in use as function");
+        eprintln!("OVERLOAD_PRESENCE_TYPE_READY builds={builds}");
+        assert_eq!(builds, 0, "type-name collision needs presence, not a merged view");
+    }
+
+    #[test]
+    fn overload_presence_keeps_shadow_forget_rebind_and_error_priority() {
+        for (source, expected) in [("let succ(int n)=n in succ(3)", 3),
+                                   ("let succ=17 in succ(3)", 4)] {
+            let (type_, value) = convert_and_run(source).expect("local shadowing control");
+            assert_eq!(type_, int_type());
+            assert_eq!(value, Value::Integer(expected.into()));
+        }
+        let mut context = TypedContext::new();
+        context.execute(&command("set succ(int n)=n+10")).expect("replace builtin");
+        let result = context.execute(&command("succ(1)")).expect("user replacement");
+        assert!(matches!(&result[..], [TypedCommandEvent::Value { value: Value::Integer(n), .. }]
+                        if n == &BigInt::from(11)));
+        context.execute(&command("forget succ @ int")).expect("forget replacement");
+        let error = context.execute(&command("succ(1)")).expect_err("forget must not resurrect builtin");
+        assert_eq!(error.kind, ErrorKind::Name);
+        assert_eq!(error.message, "Undefined identifier 'succ'");
+        context.execute(&command("set succ(int n)=n+20")).expect("rebind after forget");
+        let result = context.execute(&command("succ(1)")).expect("new active user definition");
+        assert!(matches!(&result[..], [TypedCommandEvent::Value { value: Value::Integer(n), .. }]
+                        if n == &BigInt::from(21)));
+        let error = convert_and_run("not_a_function(not_a_value)").expect_err("callee checked first");
+        assert_eq!(error.kind, ErrorKind::Name);
+        assert_eq!(error.message, "Undefined identifier 'not_a_function'");
+    }
+
+    #[test]
     fn scalar_registry_matches_the_upstream_operator_surface() {
         let cases = [
             ("/2", "1/2"),
@@ -13662,10 +15173,10 @@ mod tests {
             // string concatenation of a row (global.w:4387).
             ("##([\"ab\",\"\",\"cd\"])", "\"abcd\""),
             // ascii both ways (global.w:4388-4389).
-            ("ascii(\"A\")", "65"),
-            ("ascii(\"\")", "-1"),
-            ("ascii(65)", "\"A\""),
-            ("ascii(10)", "\"\n\""),
+            ("ASCII(\"A\")", "65"),
+            ("ASCII(\"\")", "-1"),
+            ("ASCII(65)", "\"A\""),
+            ("ASCII(10)", "\"\n\""),
             // size-of instances (global.w:4392-4395).
             ("#\"hello\"", "5"),
             ("#\"\"", "0"),
@@ -13697,9 +15208,9 @@ mod tests {
                 "row(null(2,3), -1)",
                 "Negative integer where unsigned is required",
             ),
-            ("ascii(31)", "Value 31 out of printable ASCII range"),
-            ("ascii(127)", "Value 127 out of printable ASCII range"),
-            ("ascii(2147483648)", "Integer value to big for conversion"),
+            ("ASCII(31)", "Value 31 out of printable ASCII range"),
+            ("ASCII(127)", "Value 127 out of printable ASCII range"),
+            ("ASCII(2147483648)", "Integer value to big for conversion"),
         ] {
             match convert_and_run(source) {
                 Err(error) => assert_eq!(error.message, expected, "source: {source}"),
@@ -14522,9 +16033,13 @@ mod tests {
             "simply connected adjoint root datum of empty Lie type"
         );
 
-        let error = convert_and_run("adjoint(Lie_type(\"A1.T1\"), false)")
-            .expect_err("Atlas rejects adjoint construction with a torus factor");
-        assert_eq!(error.message, "Sub-lattice matrix should have size 2x2");
+        // Original3840488 accepts this exact A1.T1/false/adjoint case.
+        // The historical rejection was disproved by the complete matrices
+        // retained in torus_radical_shapes, not by the repaired Rust output.
+        let (type_, value) = convert_and_run("adjoint(Lie_type(\"A1.T1\"), false)")
+            .expect("original accepts adjoint construction with a torus factor");
+        assert_eq!(type_, primitive_type(Prim::RootDatum));
+        assert_eq!(value.to_string(), "root datum of Lie type 'A1.T1'");
 
         for (source, expected) in [
             (
@@ -16257,6 +17772,23 @@ mod tests {
     }
 
     #[test]
+    fn result_level_consumes_owned_values_only_when_requested() {
+        let called = std::cell::Cell::new(false);
+        let owned = Value::List(vec![Value::Integer(7.into())]);
+        assert_eq!(at_level(Level::NoValue, || {
+            called.set(true);
+            owned
+        }), None);
+        assert!(!called.get());
+        let owned = Value::List(vec![Value::Integer(11.into())]);
+        assert_eq!(at_level(Level::SingleValue, || {
+            called.set(true);
+            owned
+        }), Some(Value::List(vec![Value::Integer(11.into())])));
+        assert!(called.get());
+    }
+
+    #[test]
     fn loops_evaluate_and_collect_rows() {
         // The eight B4 fixture shapes against the frozen reference events.
         for (source, expected) in [
@@ -16323,40 +17855,40 @@ mod tests {
 
     #[test]
     fn break_levels_match_the_oracle() {
-        // `break N` needs N+1 lexically enclosing loops (parser.y:385-386,
-        // axis.w:673-685 layer::may_break); the check runs during analysis.
-        let error = convert_and_run("for i:2 do break 1 od").expect_err("shallow break 1");
+        // Current original3838675 re-captures the exact historical values
+        // and depth messages with repeated BREAK tokens. Numeric inputs are
+        // retained separately in break_levels_legacy_rejected.atlas.
+        let error = convert_and_run("for i:2 do break break od").expect_err("shallow double break");
         assert_eq!(error.kind, ErrorKind::Type);
         assert_eq!(
             error.message,
-            "Using 'break 1' requires 2 nested levels of loops"
+            "Using 'break break' requires 2 nested levels of loops"
         );
 
-        let error = convert_and_run("break 2").expect_err("top-level break 2");
+        let error = convert_and_run("break break break").expect_err("top-level triple break");
         assert_eq!(error.kind, ErrorKind::Type);
         assert_eq!(
             error.message,
-            "Using 'break 2' requires 3 nested levels of loops"
+            "Using 'break break break' requires 3 nested levels of loops"
         );
 
-        // `break 0` is exactly `break`, including the plain-break message.
-        let error = convert_and_run("break 0").expect_err("top-level break 0");
+        let error = convert_and_run("break").expect_err("top-level break");
         assert_eq!(error.kind, ErrorKind::Type);
         assert_eq!(error.message, "Using 'break' not in the reach of any loop");
 
-        // With enough depth, `break 2` unwinds all three loops; the
+        // With enough depth, three BREAK tokens unwind all three loops; the
         // already-completed i=0 rows survive, the breaking iterations
         // contribute nothing (eval/break_levels fixture).
         let (_, value) = convert_and_run(
-            "for i:2 do for j:2 do for k:2 do begin if i=1 then break 2 fi; (i,j,k) end od od od",
+            "for i:2 do for j:2 do for k:2 do begin if i=1 then break break break fi; (i,j,k) end od od od",
         )
-        .expect("break 2 inside three loops");
+        .expect("triple break inside three loops");
         assert_eq!(value.to_string(), "[[[(0,0,0),(0,0,1)],[(0,1,0),(0,1,1)]]]");
 
-        // `break 1` unwinds both loops; only the completed i=0 row survives.
+        // Double break unwinds both loops; only the completed i=0 row survives.
         let (_, value) =
-            convert_and_run("for i:2 do for j:2 do begin if i=1 then break 1 fi; (i,j) end od od")
-                .expect("break 1 inside two loops");
+            convert_and_run("for i:2 do for j:2 do begin if i=1 then break break fi; (i,j) end od od")
+                .expect("double break inside two loops");
         assert_eq!(value.to_string(), "[[(0,0),(0,1)]]");
     }
 
@@ -16472,7 +18004,7 @@ mod tests {
             }] => names
                 .iter()
                 .map(|name| match name {
-                    Value::String(name) => name.clone(),
+                    Value::String(name) => name.as_utf8().expect("completion name is UTF-8").to_owned(),
                     other => panic!("non-string completion {other:?}"),
                 })
                 .collect(),
@@ -16482,24 +18014,11 @@ mod tests {
 
     #[test]
     fn startup_completion_names_cover_the_registry() {
-        // buffer.w:1175-1192 with the oracle capture: every registered
-        // builtin appears in the startup completion list, and from index
-        // 55 on (after the 34 keywords and 21 type names) every startup
-        // name is a registered builtin except the two deliberately
-        // unregistered hidden copies (registry batch-4 comment).
-        assert_eq!(STARTUP_COMPLETION_NAMES.len(), 294, "oracle startup count");
+        // Current original3839492 supersedes the retained historical294-name
+        // capture. Completion coverage must NOT claim missing builtins work.
+        assert_eq!(STARTUP_COMPLETION_NAMES.len(), 309, "current oracle startup count");
         let startup: BTreeSet<&str> = STARTUP_COMPLETION_NAMES.iter().copied().collect();
         for builtin in builtin_registry() {
-            // The variadic specials are special operators upstream
-            // (axis.w:1798-1816, 2504), never installed into the overload
-            // table, so the oracle's startup completions contain none of
-            // them (probes: `readline_completions("print")` lists the
-            // print_* domain printers but no `print`/`prints`;
-            // `readline_completions("to_")` and `("err")` likewise lack
-            // `to_string`/`error`).
-            if matches!(builtin.name, "print" | "prints" | "to_string" | "error") {
-                continue;
-            }
             assert!(
                 startup.contains(builtin.name),
                 "registry builtin '{}' missing from STARTUP_COMPLETION_NAMES",
@@ -16510,12 +18029,13 @@ mod tests {
             .iter()
             .map(|builtin| builtin.name)
             .collect();
-        for &name in &STARTUP_COMPLETION_NAMES[55..] {
-            assert!(
-                registry.contains(name) || name == "transpose " || name == "matrix slicer",
-                "startup completion name '{name}' is not a registered builtin"
-            );
-        }
+        let missing: Vec<_> = STARTUP_COMPLETION_NAMES[56..].iter().copied()
+            .filter(|name| !registry.contains(name)).collect();
+        assert_eq!(missing, [
+            "transpose ", "matrix slicer", "query", "system",
+            "stored_full_deform", "stored_twisted_full_deform",
+            "stored_KL_sum_at_s", "stored_KL_Q_polynomials",
+        ], "retain exact latest-registry gaps until their implementations are verified");
         // The three system variables are session globals, not static
         // startup names.
         for name in SYSTEM_VARIABLE_NAMES {
@@ -16558,7 +18078,7 @@ mod tests {
             }] => items
                 .iter()
                 .map(|item| match item {
-                    Value::String(line) => line.clone(),
+                    Value::String(line) => line.as_utf8().expect("this trace fixture is UTF-8").to_owned(),
                     other => panic!("non-string trace line {other:?}"),
                 })
                 .collect(),
@@ -16836,19 +18356,19 @@ mod tests {
     #[test]
     fn readline_completions_tracks_the_session_state() {
         let mut context = TypedContext::new();
-        // Fresh session: the 294 startup names plus the three system
+        // Current original3839492:309startup names plus the three system
         // variables (main.w:408-435), in that order.
         let all = completion_values(&mut context, "");
-        assert_eq!(all.len(), 297);
+        assert_eq!(all.len(), 312);
         assert_eq!(&all[..3], &["quit", "set", "let"]);
-        assert_eq!(&all[294..], &["input_path", "prelude_log", "back_trace"]);
+        assert_eq!(&all[309..], &["input_path", "prelude_log", "back_trace"]);
 
         // Prefix filtering keeps the startup order; unknown prefixes
         // complete to nothing.
         let print_names = completion_values(&mut context, "pri");
-        assert_eq!(print_names.len(), 19);
-        assert_eq!(print_names[0], "print_block");
-        assert_eq!(print_names[18], "print_W_graph");
+        assert_eq!(print_names.len(), 21);
+        assert_eq!(&print_names[..3], &["print", "prints", "print_block"]);
+        assert_eq!(print_names[20], "print_W_graph");
         assert!(completion_values(&mut context, "zzz").is_empty());
 
         // Session definitions append in definition order.
@@ -16862,7 +18382,7 @@ mod tests {
             .execute(&command("set apple=\"hi\""))
             .expect("define apple");
         let all = completion_values(&mut context, "");
-        assert_eq!(&all[297..], &["myvar", "zfun", "apple"]);
+        assert_eq!(&all[312..], &["myvar", "zfun", "apple"]);
         assert_eq!(completion_values(&mut context, "z"), &["zfun"]);
         assert_eq!(completion_values(&mut context, "my"), &["myvar"]);
         assert_eq!(completion_values(&mut context, "app"), &["apple"]);
@@ -16877,7 +18397,7 @@ mod tests {
             .execute(&command("set myvar=7"))
             .expect("redefine myvar");
         let all = completion_values(&mut context, "");
-        assert_eq!(&all[297..], &["myvar", "zfun", "apple"]);
+        assert_eq!(&all[312..], &["myvar", "zfun", "apple"]);
         assert_eq!(completion_values(&mut context, "my"), &["myvar"]);
     }
 

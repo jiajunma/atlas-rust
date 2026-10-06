@@ -96,6 +96,87 @@ impl ModTwoVector {
     }
 }
 
+/// The original `BinaryMap::section` election, restricted to its image.
+///
+/// Keep the first independent input columns and carry their preimages
+/// through image-space elimination. Dependent image columns are discarded,
+/// even when their source markers would be independent in an augmented
+/// space. This distinction fixes observable real-form seed representatives.
+/// The packed source coordinates are limited to 64; target vectors remain
+/// dynamically sized. One factorization serves every target of the same map.
+pub(crate) struct CanonicalModTwoSection {
+    pivots: Vec<Option<(ModTwoVector, u64)>>,
+}
+
+impl CanonicalModTwoSection {
+    pub(crate) fn new(
+        dimension: usize,
+        columns: &[ModTwoVector],
+    ) -> Result<Self, StructureError> {
+        if columns.len() > u64::BITS as usize {
+            return Err(StructureError::ResourceLimitExceeded {
+                limit: u64::BITS as usize,
+            });
+        }
+        let mut pivots: Vec<Option<(ModTwoVector, u64)>> = Vec::new();
+        pivots.try_reserve_exact(dimension).map_err(|_| {
+            StructureError::AllocationFailed { requested: dimension }
+        })?;
+        pivots.resize_with(dimension, || None);
+        for (index, column) in columns.iter().enumerate() {
+            if column.dimension() != dimension {
+                return Err(StructureError::RankMismatch {
+                    expected: dimension,
+                    actual: column.dimension(),
+                });
+            }
+            let mut image = column.clone();
+            let mut preimage = 1_u64 << index;
+            for (row, entry) in pivots.iter().enumerate() {
+                if let Some((basis, lift)) = entry {
+                    if image.bit(row) == Some(true) {
+                        image.xor_assign(basis)?;
+                        preimage ^= lift;
+                    }
+                }
+            }
+            let Some(pivot) = lowest_set_bit(&image) else {
+                // A kernel relation is not an extra pivot. Forget it, exactly
+                // as bitvector.cpp:section forgets a zero reduced column.
+                continue;
+            };
+            for (basis, lift) in pivots.iter_mut().flatten() {
+                if basis.bit(pivot) == Some(true) {
+                    basis.xor_assign(&image)?;
+                    *lift ^= preimage;
+                }
+            }
+            pivots[pivot] = Some((image, preimage));
+        }
+        Ok(Self { pivots })
+    }
+
+    pub(crate) fn solve(&self, target: &ModTwoVector) -> Result<Option<u64>, StructureError> {
+        if target.dimension() != self.pivots.len() {
+            return Err(StructureError::RankMismatch {
+                expected: self.pivots.len(),
+                actual: target.dimension(),
+            });
+        }
+        let mut remainder = target.clone();
+        let mut solution = 0;
+        for (row, entry) in self.pivots.iter().enumerate() {
+            if let Some((image, preimage)) = entry {
+                if remainder.bit(row) == Some(true) {
+                    remainder.xor_assign(image)?;
+                    solution ^= preimage;
+                }
+            }
+        }
+        Ok(remainder.is_zero().then_some(solution))
+    }
+}
+
 /// An ambient map between dynamic mod-two spaces.
 ///
 /// Domain layers can implement this directly when a dense matrix would be an
@@ -686,5 +767,52 @@ mod tests {
             ModTwoSubspace::new(usize::MAX),
             Err(StructureError::AllocationFailed { .. })
         ));
+    }
+
+    #[test]
+    fn canonical_sections_match_exhaustive_three_by_four_maps() {
+        // Independent oracle: enumerate every source mask in numeric order.
+        // The earliest independent columns give the least mask in each fiber:
+        // a later dependent bit is replaceable by strictly earlier bits.
+        for encoding in 0_u64..(1 << 12) {
+            let images: Vec<u64> = (0..4).map(|j| (encoding >> (3 * j)) & 7).collect();
+            let columns: Vec<_> = images.iter().map(|image| {
+                ModTwoVector::from_ones(3, (0..3).filter(|bit| image & (1 << bit) != 0)).unwrap()
+            }).collect();
+            let section = CanonicalModTwoSection::new(3, &columns).unwrap();
+            for target in 0_u64..8 {
+                let expected = (0_u64..16).find(|mask| {
+                    images.iter().enumerate().fold(0, |image, (j, column)| {
+                        image ^ if mask & (1 << j) != 0 { *column } else { 0 }
+                    }) == target
+                });
+                let vector = ModTwoVector::from_ones(3, (0..3).filter(|bit| target & (1 << bit) != 0)).unwrap();
+                assert_eq!(section.solve(&vector).unwrap(), expected, "map={encoding}, target={target}");
+            }
+        }
+    }
+
+    #[test]
+    fn canonical_section_source_masks_are_checked_at_sixty_four_columns() {
+        let mut columns = vec![ModTwoVector::zero(1).unwrap(); 64];
+        columns[63] = ModTwoVector::from_ones(1, [0]).unwrap();
+        let section = CanonicalModTwoSection::new(1, &columns).unwrap();
+        assert_eq!(section.solve(&columns[63]).unwrap(), Some(1_u64 << 63));
+        columns.push(ModTwoVector::zero(1).unwrap());
+        assert!(matches!(CanonicalModTwoSection::new(1, &columns),
+            Err(StructureError::ResourceLimitExceeded { limit: 64 })));
+    }
+
+    #[test]
+    fn canonical_section_retains_dynamic_target_coordinates() {
+        let first = ModTwoVector::from_ones(130, [0, 129]).unwrap();
+        let second = ModTwoVector::from_ones(130, [64]).unwrap();
+        let mut sum = first.clone();
+        sum.xor_assign(&second).unwrap();
+        let section = CanonicalModTwoSection::new(130, &[first, second, sum.clone()]).unwrap();
+        assert_eq!(section.solve(&sum).unwrap(), Some(3));
+        assert_eq!(section.solve(&ModTwoVector::from_ones(130, [0]).unwrap()).unwrap(), None);
+        assert_eq!(section.solve(&ModTwoVector::zero(129).unwrap()),
+            Err(StructureError::RankMismatch { expected: 130, actual: 129 }));
     }
 }

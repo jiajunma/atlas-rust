@@ -310,8 +310,8 @@ impl RealFormSeed {
         }
 
         // Grading-shift solve: fiber-basis columns paired mod 2 against the
-        // fixed simple roots; augmented elimination elects the same
-        // particular solution as upstream's section().
+        // fixed simple roots; the section retains the first independent
+        // image columns, as in upstream's section().
         let fiber_dimension = ambient.dimension();
         let mut shift_columns = try_capacity(fiber_dimension)?;
         for basis in ambient.basis_representatives() {
@@ -683,55 +683,14 @@ fn bool_vector(bits: &[bool]) -> Result<ModTwoVector, StructureError> {
     ModTwoVector::from_ones(bits.len(), ones)
 }
 
-/// Solve `sum_j x_j * columns[j] = target` over `F_2` by the augmented
-/// marker elimination, electing the same particular solution as upstream
-/// `BinaryMap::section()` (greedy lowest-pivot in index order, solution
-/// supported on pivot columns). Returns the solution as a column mask, or
-/// `None` when the target is outside the span. This is the shared home the
-/// design names; migrating the three older elimination copies onto it is
-/// recorded follow-up.
+/// Solve over `F_2` with upstream's canonical section election. The solution
+/// uses the first independent input columns, not an arbitrary preimage from
+/// full augmented-space reduction. Return `None` outside the image.
 pub(crate) fn solve_mod_two(
     columns: &[ModTwoVector],
     target: &ModTwoVector,
 ) -> Result<Option<u64>, StructureError> {
-    let dimension = target.dimension();
-    let augmented = dimension
-        .checked_add(columns.len())
-        .ok_or(StructureError::ArithmeticOverflow)?;
-    let mut span = crate::ModTwoSubspace::new(augmented)?;
-    for (index, column) in columns.iter().enumerate() {
-        if column.dimension() != dimension {
-            return Err(StructureError::RankMismatch {
-                expected: dimension,
-                actual: column.dimension(),
-            });
-        }
-        let mut ones = try_capacity(augmented)?;
-        for bit in 0..dimension {
-            if column.bit(bit) == Some(true) {
-                ones.push(bit);
-            }
-        }
-        ones.push(dimension + index);
-        span.insert(ModTwoVector::from_ones(augmented, ones)?)?;
-    }
-    let mut ones = try_capacity(augmented)?;
-    for bit in 0..dimension {
-        if target.bit(bit) == Some(true) {
-            ones.push(bit);
-        }
-    }
-    let remainder = span.quotient_representative(ModTwoVector::from_ones(augmented, ones)?)?;
-    if (0..dimension).any(|bit| remainder.bit(bit) == Some(true)) {
-        return Ok(None);
-    }
-    let mut mask = 0_u64;
-    for (index, _) in columns.iter().enumerate() {
-        if remainder.bit(dimension + index) == Some(true) {
-            mask |= 1_u64 << index;
-        }
-    }
-    Ok(Some(mask))
+    crate::mod_two::CanonicalModTwoSection::new(target.dimension(), columns)?.solve(target)
 }
 
 /// The nonnegative fractional part of a rational: `value - floor(value)`.
@@ -1013,5 +972,73 @@ mod tests {
         .unwrap();
         let coweights = fundamental_coweights(&datum).unwrap();
         assert_eq!(coweights, vec![vec![Rational::ONE, Rational::ZERO]]);
+    }
+}
+
+#[cfg(test)]
+mod canonical_section_regression_tests {
+    use super::*;
+
+    fn bits(dimension: usize, mask: u64) -> ModTwoVector {
+        ModTwoVector::from_ones(
+            dimension,
+            (0..dimension).filter(|&bit| mask & (1_u64 << bit) != 0),
+        )
+        .unwrap()
+    }
+
+    // Original bitvector.cpp:346-405 retains the first independent image
+    // columns. Kernel directions must not become additional elimination
+    // pivots that change this elected preimage (D8/E7 metadata3841698).
+    #[test]
+    fn duplicate_columns_keep_the_first_preimage() {
+        assert_eq!(
+            solve_mod_two(&[bits(1, 1), bits(1, 1)], &bits(1, 1)).unwrap(),
+            Some(1),
+            "canonical section must keep the first independent column"
+        );
+    }
+
+    #[test]
+    fn dependent_column_does_not_replace_two_earlier_pivots() {
+        assert_eq!(
+            solve_mod_two(&[bits(2, 3), bits(2, 2), bits(2, 1)], &bits(2, 1)).unwrap(),
+            Some(3),
+            "canonical section must retain earlier independent image columns"
+        );
+    }
+
+    #[test]
+    fn pivot_rows_need_not_arrive_in_increasing_order() {
+        assert_eq!(
+            solve_mod_two(&[bits(2, 2), bits(2, 1), bits(2, 3)], &bits(2, 3)).unwrap(),
+            Some(3),
+            "canonical section must preserve input column priority"
+        );
+    }
+
+    #[test]
+    fn independent_columns_reconstruct_and_reject_targets_outside_the_image() {
+        let columns = [bits(3, 3), bits(3, 6)];
+        for (target, expected) in [(0, 0), (3, 1), (6, 2), (5, 3)] {
+            assert_eq!(solve_mod_two(&columns, &bits(3, target)).unwrap(), Some(expected));
+        }
+        assert_eq!(solve_mod_two(&columns, &bits(3, 1)).unwrap(), None);
+    }
+
+    #[test]
+    fn zero_columns_and_empty_maps_have_zero_sections() {
+        assert_eq!(solve_mod_two(&[], &bits(0, 0)).unwrap(), Some(0));
+        assert_eq!(solve_mod_two(&[], &bits(2, 1)).unwrap(), None);
+        assert_eq!(solve_mod_two(&[bits(2, 0), bits(2, 0)], &bits(2, 0)).unwrap(), Some(0));
+        assert_eq!(solve_mod_two(&[bits(2, 0), bits(2, 0)], &bits(2, 1)).unwrap(), None);
+    }
+
+    #[test]
+    fn mismatched_dimensions_are_rejected() {
+        assert_eq!(
+            solve_mod_two(&[bits(2, 1)], &bits(1, 1)),
+            Err(StructureError::RankMismatch { expected: 1, actual: 2 })
+        );
     }
 }

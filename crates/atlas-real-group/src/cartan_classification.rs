@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use malachite::base::num::arithmetic::traits::DivisibleBy;
 use malachite::{Integer, Rational};
@@ -26,14 +26,16 @@ pub struct CartanId(pub(crate) usize);
 
 /// Owned budgets for building one full Cartan classification.
 ///
-/// Each scalar threads to exactly one existing knob: the Weyl enumeration,
-/// the per-Cartan fiber-element cap, and the decomposition peeling bound;
-/// the nested budgets feed the fiber chains. No new limit kinds exist here.
+/// By default the partition uses the legacy full-Weyl enumeration budget.
+/// `with_generated_involutions` selects canonical representative discovery
+/// with its own exact twisted-involution count limit. The Weyl budget remains available
+/// for other consumers (including the longest-action walk).
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CartanClassificationBudget {
     integer_lattice: IntegerLatticeBudget,
     adjoint_fiber: AdjointFiberBudget,
     weyl_budget: usize,
+    involution_budget: Option<usize>,
     max_fiber_elements: usize,
     max_peeling_steps: usize,
 }
@@ -42,6 +44,18 @@ impl CartanClassificationBudget {
     /// The Weyl-enumeration limit (part of the classification cache key).
     pub fn weyl_budget(&self) -> usize {
         self.weyl_budget
+    }
+
+    /// Direct-generation mode and its distinct count limit (cache key).
+    pub const fn involution_budget(&self) -> Option<usize> {
+        self.involution_budget
+    }
+
+    /// Select direct classification, counting twisted involutions including the
+    /// identity. Does not alter `weyl_budget` or the legacy constructor mode.
+    pub const fn with_generated_involutions(mut self, limit: usize) -> Self {
+        self.involution_budget = Some(limit);
+        self
     }
 
     /// The integer-lattice budget of the per-Cartan fiber chains (cache key).
@@ -75,6 +89,7 @@ impl CartanClassificationBudget {
             integer_lattice,
             adjoint_fiber,
             weyl_budget,
+            involution_budget: None,
             max_fiber_elements,
             max_peeling_steps,
         }
@@ -110,9 +125,44 @@ impl CartanClassification {
         let datum = inner_class.datum();
         let root_system = inner_class.root_system();
         let delta = inner_class.distinguished_involution().involution();
-        let partition =
-            std::sync::Arc::new(inner_class.twisted_conjugacy_partition(budget.weyl_budget)?);
-        let class_count = partition.classes().len();
+        // Keep the legacy full-Weyl budget/API unchanged. Direct mode needs
+        // only canonical representatives, not every member of every orbit.
+        // Preserve the old unsupported root-permutation-width path, including
+        // its budget/error precedence, until that separate limit is repaired.
+        let enumerated = match budget.involution_budget {
+            Some(limit) if root_system.roots().len() > 256 =>
+                Some(inner_class.generated_twisted_conjugacy_partition(limit)?),
+            Some(limit) => {
+                // Retain transducer rank/type and twist validation, without
+                // generating its potentially hundreds of thousands of members.
+                crate::weyl_transducer::CompactWeyl::new(datum.cartan_matrix())?;
+                inner_class.generator_twist()?;
+                if limit == 0 {
+                    return Err(StructureError::ResourceLimitExceeded { limit });
+                }
+                None
+            }
+            None => Some(inner_class.twisted_conjugacy_partition(budget.weyl_budget)?),
+        };
+        let full_order = if enumerated.is_none() {
+            Some(crate::weyl_size::weyl_order_of_cartan(datum.cartan_matrix())?)
+        } else {
+            None
+        };
+        let mut counted = 0_usize;
+        let mut class_size = |twisted: &TwistedInvolution| -> Result<usize, StructureError> {
+            if let Some(partition) = &enumerated {
+                return Ok(partition.classes()[partition.class_of(twisted)?].twisted_involution_count());
+            }
+            let size = crate::real_weyl::twisted_orbit_size(root_system,
+                twisted.root_involution(), full_order.as_ref().expect("direct mode order"))?;
+            let limit = budget.involution_budget.expect("direct mode limit");
+            if size > limit - counted {
+                return Err(StructureError::ResourceLimitExceeded { limit });
+            }
+            counted += size;
+            Ok(size)
+        };
 
         // Atlas Cartan order (innerclass.cpp:218-291, task 1): BFS discovery.
         // Cartan[0] is the fundamental class at the identity twisted
@@ -132,25 +182,17 @@ impl CartanClassification {
         // the same representative.
         let identity_twisted =
             TwistedInvolution::new(datum, root_system, delta, WeylAction::identity(datum)?)?;
-        let fundamental_raw = partition.class_of(&identity_twisted)?;
-        let mut representatives = try_capacity(class_count)?;
-        let mut raw_of_position = try_capacity(class_count)?;
-        let mut position_of_raw = try_capacity(class_count)?;
-        position_of_raw.resize(class_count, usize::MAX);
+        let mut sizes = vec![class_size(&identity_twisted)?];
+        let mut position_by_key = BTreeMap::new();
+        position_by_key.insert(identity_twisted.root_involution().image_permutation().to_vec(), 0);
+        let mut representatives = vec![];
         representatives.push(identity_twisted);
-        raw_of_position.push(fundamental_raw);
-        position_of_raw[fundamental_raw] = 0;
 
         // The Cayley-link relation, filled as the BFS discovers it (upstream
         // `Cartan[ii].below.insert(i)`), then an order-independent transitive
         // closure: the BFS number of a more-split class need not exceed its
         // parent's, so the incremental upstream scheme would under-close.
-        let mut below = try_capacity(class_count)?;
-        for _ in 0..class_count {
-            let mut row = try_capacity(class_count)?;
-            row.resize(class_count, false);
-            below.push(row);
-        }
+        let mut below = vec![vec![false]];
         let mut cursor = 0_usize;
         while cursor < representatives.len() {
             let twisted = representatives[cursor].clone();
@@ -184,13 +226,20 @@ impl CartanClassification {
                         }
                     })?;
                 let (canonical, _conjugator) = inner_class.canonicalize(successor)?;
-                let raw = partition.class_of(&canonical)?;
-                if position_of_raw[raw] == usize::MAX {
-                    position_of_raw[raw] = representatives.len();
-                    raw_of_position.push(raw);
+                let key = canonical.root_involution().image_permutation().to_vec();
+                let target_position = if let Some(&position) = position_by_key.get(&key) {
+                    position
+                } else {
+                    let position = representatives.len();
+                    sizes.push(class_size(&canonical)?);
+                    position_by_key.insert(key, position);
                     representatives.push(canonical);
-                }
-                let target_position = position_of_raw[raw];
+                    for row in &mut below {
+                        row.push(false);
+                    }
+                    below.push(vec![false; position + 1]);
+                    position
+                };
                 if target_position == cursor {
                     return Err(StructureError::CartanClassificationInvariantViolation {
                         invariant: "Cayley successor",
@@ -200,18 +249,24 @@ impl CartanClassification {
             }
             cursor += 1;
         }
-        if representatives.len() != class_count {
-            return Err(StructureError::CartanClassificationInvariantViolation {
-                invariant: "Cartan discovery completeness",
-            });
+        let class_count = representatives.len();
+        if let Some(partition) = &enumerated {
+            let raw = representatives.iter().map(|twisted| partition.class_of(twisted))
+                .collect::<Result<BTreeSet<_>, _>>()?;
+            if raw.len() != class_count || class_count != partition.classes().len() {
+                return Err(StructureError::CartanClassificationInvariantViolation {
+                    invariant: "Cartan discovery completeness",
+                });
+            }
         }
         let mut class_infos = try_capacity(class_count)?;
-        for (representative, &raw) in representatives.into_iter().zip(&raw_of_position) {
-            class_infos.push(TwistedConjugacyClass::new(
-                representative,
-                partition.classes()[raw].twisted_involution_count(),
-            ));
+        for (representative, size) in representatives.into_iter().zip(sizes) {
+            class_infos.push(TwistedConjugacyClass::new(representative, size));
         }
+        let partition = std::sync::Arc::new(match enumerated {
+            Some(partition) => partition,
+            None => crate::TwistedConjugacyPartition::from_canonical_classes(inner_class, class_infos.clone())?,
+        });
 
         // Phase 1: the fiber chain and decomposition at every representative.
         struct PartialClass {
@@ -642,6 +697,175 @@ mod tests {
     use crate::{BasedRootDatum, Coweight, LatticeInvolution, Weight};
 
     use super::*;
+
+    fn partition_rank1_inner(complex: bool, adjoint: bool) -> InnerClass {
+        let rank = if complex { 2 } else { 1 };
+        let diagonal = |entry: i32| (0..rank).map(|i|
+            (0..rank).map(|j| if i == j { entry } else { 0 }).collect::<Vec<_>>()
+        ).collect::<Vec<_>>();
+        let datum = BasedRootDatum::from_simple_data(
+            rank, diagonal(2),
+            diagonal(if adjoint { 1 } else { 2 }).into_iter().map(Weight::new).collect(),
+            diagonal(if adjoint { 2 } else { 1 }).into_iter().map(Coweight::new).collect(),
+        ).expect("rank1 datum");
+        let delta = if complex {
+            let swap = vec![vec![0, 1], vec![1, 0]];
+            LatticeInvolution::new(&datum, swap.clone(), swap).expect("complex rank1 twist")
+        } else {
+            LatticeInvolution::identity(&datum).expect("real rank1 twist")
+        };
+        InnerClass::new(datum, delta, 4).expect("rank1 inner class")
+    }
+
+    #[test]
+    fn partition_rank1_real_classification_avoids_eager_partition() {
+        let inner = partition_rank1_inner(false, false);
+        let before = crate::inner_class::GENERATED_PARTITION_BUILD_COUNT.with(std::cell::Cell::get);
+        let actual = CartanClassification::build(&inner, &budget(1).with_generated_involutions(2))
+            .expect("two real rank1 involutions");
+        let builds = crate::inner_class::GENERATED_PARTITION_BUILD_COUNT.with(std::cell::Cell::get) - before;
+        assert_eq!(actual.cartan_classes().len(), 2);
+        assert_eq!(actual.twisted_involution_count(), 2);
+        assert_eq!(actual.cartan_classes().iter().map(CartanClass::twisted_involution_count).collect::<Vec<_>>(), vec![1, 1]);
+        assert_eq!(actual.is_below(CartanId(0), CartanId(1)), Some(true));
+        eprintln!("PARTITION_RANK1_REAL_READY builds={builds}");
+        assert_eq!(builds, 0, "classification must not enumerate the full generated partition");
+    }
+
+    #[test]
+    fn partition_rank1_complex_classification_avoids_eager_partition() {
+        let inner = partition_rank1_inner(true, false);
+        let before = crate::inner_class::GENERATED_PARTITION_BUILD_COUNT.with(std::cell::Cell::get);
+        let actual = CartanClassification::build(&inner, &budget(1).with_generated_involutions(2))
+            .expect("two complex rank1 involutions");
+        let builds = crate::inner_class::GENERATED_PARTITION_BUILD_COUNT.with(std::cell::Cell::get) - before;
+        assert_eq!(actual.cartan_classes().len(), 1);
+        assert_eq!(actual.weak_real_form_count(), 1);
+        assert_eq!(actual.twisted_involution_count(), 2);
+        assert_eq!(actual.cartan_classes()[0].twisted_involution_count(), 2);
+        eprintln!("PARTITION_RANK1_COMPLEX_READY builds={builds}");
+        assert_eq!(builds, 0, "complex classification must not enumerate the full generated partition");
+    }
+
+    #[test]
+    fn partition_rank1_retains_exact_budgets_labels_and_lookup_provenance() {
+        for complex in [false, true] {
+            for adjoint in [false, true] {
+                let inner = partition_rank1_inner(complex, adjoint);
+                let weyl_order = if complex { 4 } else { 2 };
+                let legacy = CartanClassification::build(&inner, &budget(weyl_order)).expect("legacy reference");
+                let actual = CartanClassification::build(&inner, &budget(1).with_generated_involutions(2)).expect("exact involution budget");
+                assert_eq!(actual.below, legacy.below);
+                assert_eq!(actual.cartan_sets, legacy.cartan_sets);
+                assert_eq!(actual.most_split, legacy.most_split);
+                assert_eq!(actual.twisted_involution_count, legacy.twisted_involution_count);
+                assert_eq!(actual.cartan_classes.len(), legacy.cartan_classes.len());
+                for (a, b) in actual.cartan_classes.iter().zip(&legacy.cartan_classes) {
+                    assert_eq!(a.representative(), b.representative());
+                    assert_eq!(a.twisted_involution_count(), b.twisted_involution_count());
+                    assert_eq!(a.labels(), b.labels());
+                    assert_eq!(a.decomposition(), b.decomposition());
+                }
+                assert!(matches!(CartanClassification::build(&inner, &budget(weyl_order - 1)),
+                    Err(StructureError::ResourceLimitExceeded { limit }) if limit == weyl_order - 1));
+                for limit in [0, 1] {
+                    assert!(matches!(CartanClassification::build(&inner, &budget(1).with_generated_involutions(limit)),
+                        Err(StructureError::ResourceLimitExceeded { limit: actual }) if actual == limit));
+                }
+                let partition = actual.twisted_partition();
+                let members = inner.twisted_involutions(weyl_order).expect("independent complete small Weyl enumeration");
+                let mut counts = vec![0; partition.classes().len()];
+                for member in &members {
+                    counts[partition.class_of(member).expect("every member located")] += 1;
+                }
+                assert_eq!(counts, partition.classes().iter().map(TwistedConjugacyClass::twisted_involution_count).collect::<Vec<_>>());
+                let foreign = partition_rank1_inner(complex, !adjoint);
+                let foreign_member = TwistedInvolution::new(foreign.datum(), foreign.root_system(),
+                    foreign.distinguished_involution().involution(), WeylAction::identity(foreign.datum()).unwrap()).unwrap();
+                assert_eq!(partition.class_of(&foreign_member), Err(StructureError::DatumMismatch));
+                let wrong_delta = if complex {
+                    LatticeInvolution::identity(inner.datum()).unwrap()
+                } else {
+                    LatticeInvolution::new(inner.datum(), vec![vec![-1]], vec![vec![-1]]).unwrap()
+                };
+                let wrong_member = TwistedInvolution::new(inner.datum(), inner.root_system(), &wrong_delta,
+                    WeylAction::identity(inner.datum()).unwrap()).unwrap();
+                assert_eq!(partition.class_of(&wrong_member), Err(StructureError::DistinguishedInvolutionMismatch));
+            }
+        }
+    }
+
+    #[test]
+    fn partition_rank1_retains_dual_cartan_incidence() {
+        for complex in [false, true] {
+            for adjoint in [false, true] {
+                let inner = partition_rank1_inner(complex, adjoint);
+                let dual = crate::dual_inner_class(&inner, 8, 8).unwrap();
+                let selected = budget(8).with_generated_involutions(2);
+                let a = CartanClassification::build(&inner, &selected).unwrap();
+                let b = CartanClassification::build(&dual, &selected).unwrap();
+                let forward = crate::dual_cartan_correspondence(&inner, &a, &dual, &b, 8).unwrap();
+                let backward = crate::dual_cartan_correspondence(&dual, &b, &inner, &a, 8).unwrap();
+                let expected = if complex { vec![(CartanId(0), 1)] }
+                    else { vec![(CartanId(1), 1), (CartanId(0), 2)] };
+                assert_eq!(forward, expected);
+                for (i, (dual_id, _)) in forward.iter().enumerate() {
+                    assert_eq!(backward[dual_id.0].0, CartanId(i));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn generated_classification_preserves_the_legacy_budget_contract() {
+        let datum = BasedRootDatum::standard(vec![vec![2,-1],vec![-1,2]]).unwrap();
+        let inner = InnerClass::new(datum.clone(),LatticeInvolution::identity(&datum).unwrap(),6).unwrap();
+        let legacy = budget(5);
+        assert_eq!(legacy.involution_budget(),None);
+        assert!(matches!(CartanClassification::build(&inner,&legacy),
+            Err(StructureError::ResourceLimitExceeded { limit: 5 })));
+        let direct = legacy.clone().with_generated_involutions(4);
+        assert_eq!(direct.weyl_budget(),5);
+        assert_eq!(direct.involution_budget(),Some(4));
+        assert_eq!(CartanClassification::build(&inner,&direct).unwrap().twisted_involution_count(),4);
+        for limit in [0,3] {
+            assert!(matches!(CartanClassification::build(&inner,
+                &legacy.clone().with_generated_involutions(limit)),
+                Err(StructureError::ResourceLimitExceeded { limit: actual }) if actual==limit));
+        }
+    }
+
+    #[test]
+    fn generated_classification_preserves_canonical_classes_and_real_form_labels() {
+        for cartan in [
+            vec![vec![2,-1],vec![-1,2]],
+            vec![vec![2,-2],vec![-1,2]],
+            vec![vec![2,-1],vec![-2,2]],
+            vec![vec![2,-3],vec![-1,2]],
+            vec![vec![2,-1,0,0],vec![-1,2,-1,-1],vec![0,-1,2,0],vec![0,-1,0,2]],
+            vec![vec![2,-1,0,0],vec![-1,2,-2,0],vec![0,-1,2,-1],vec![0,0,-1,2]],
+        ] {
+            let datum = BasedRootDatum::standard(cartan).unwrap();
+            let dual = crate::dual_datum(&datum).unwrap();
+            for datum in [datum,dual] {
+                let inner = InnerClass::new(datum.clone(),LatticeInvolution::identity(&datum).unwrap(),256).unwrap();
+                let legacy = CartanClassification::build(&inner,&budget(2_000)).unwrap();
+                let direct = CartanClassification::build(&inner,
+                    &budget(2_000).with_generated_involutions(legacy.twisted_involution_count())).unwrap();
+                assert_eq!(direct.below,legacy.below);
+                assert_eq!(direct.cartan_sets,legacy.cartan_sets);
+                assert_eq!(direct.most_split,legacy.most_split);
+                assert_eq!(direct.twisted_involution_count,legacy.twisted_involution_count);
+                assert_eq!(direct.cartan_classes.len(),legacy.cartan_classes.len());
+                for (actual,expected) in direct.cartan_classes.iter().zip(&legacy.cartan_classes) {
+                    assert_eq!(actual.representative(),expected.representative());
+                    assert_eq!(actual.twisted_involution_count(),expected.twisted_involution_count());
+                    assert_eq!(actual.decomposition(),expected.decomposition());
+                    assert_eq!(actual.labels(),expected.labels());
+                }
+            }
+        }
+    }
 
     fn budget(weyl: usize) -> CartanClassificationBudget {
         CartanClassificationBudget::new(

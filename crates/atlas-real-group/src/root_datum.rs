@@ -110,13 +110,10 @@ impl BasedRootDatum {
     /// The coradical basis (rootdata.cpp:858 `lattice::perp`): a basis of
     /// the weights orthogonal to all simple coroots — the kernel of the
     /// matrix whose rows are the coroots. The `root_coradical` wrapper
-    /// prints these rows after the simple roots.
+    /// exports these basis vectors as columns after the simple roots.
     pub fn coradical_basis(&self) -> Result<Vec<Weight>, StructureError> {
         let basis = crate::integer_lattice::saturated_kernel(
-            &crate::integer_lattice::IntegerMatrix::from_i32_rows(
-                &self.coroot_rows(),
-                &self.budget(),
-            )?,
+            &self.annihilator_matrix(&self.coroot_rows())?,
             &self.budget(),
         )?;
         let mut result = Vec::with_capacity(basis.rank());
@@ -134,14 +131,11 @@ impl BasedRootDatum {
     /// The radical basis (rootdata.cpp:859 `lattice::perp` of the
     /// coroots): a basis of the coweights orthogonal to all simple roots
     /// — the kernel of the matrix whose rows are the roots. The
-    /// `coroot_radical` wrapper prints these rows after the simple
+    /// `coroot_radical` wrapper exports these columns after the simple
     /// coroots.
     pub fn radical_basis(&self) -> Result<Vec<Coweight>, StructureError> {
         let basis = crate::integer_lattice::saturated_kernel(
-            &crate::integer_lattice::IntegerMatrix::from_i32_rows(
-                &self.root_rows(),
-                &self.budget(),
-            )?,
+            &self.annihilator_matrix(&self.root_rows())?,
             &self.budget(),
         )?;
         let mut result = Vec::with_capacity(basis.rank());
@@ -154,6 +148,19 @@ impl BasedRootDatum {
             result.push(Coweight::new(coordinates));
         }
         Ok(result)
+    }
+
+    fn annihilator_matrix(
+        &self,
+        rows: &[Vec<i32>],
+    ) -> Result<crate::integer_lattice::IntegerMatrix, StructureError> {
+        if rows.is_empty() {
+            // No equations means the full ambient lattice is the kernel.
+            // Inferring the column count from empty rows would lose its rank.
+            crate::integer_lattice::IntegerMatrix::zero(0, self.lattice_rank, &self.budget())
+        } else {
+            crate::integer_lattice::IntegerMatrix::from_i32_rows(rows, &self.budget())
+        }
     }
 
     /// The simple-coroot rows (the coradical annihilator matrix).
@@ -497,5 +504,40 @@ mod tests {
             .expect("a torus has no roots but has positive lattice rank");
         assert_eq!(datum.lattice_rank(), 3);
         assert_eq!(datum.semisimple_rank(), 0);
+    }
+}
+
+#[cfg(test)]
+mod torus_radical_regression_tests {
+    use super::*;
+
+    fn expected_columns(rank: usize) -> Vec<Vec<i32>> {
+        (0..rank)
+            .map(|column| (0..rank).map(|row| i32::from(row == column)).collect())
+            .collect()
+    }
+
+    #[test]
+    fn root_free_coradical_retains_the_ambient_lattice() {
+        for rank in [0, 1, 2, 4] {
+            let datum = BasedRootDatum::from_simple_data(rank, vec![], vec![], vec![])
+                .expect("valid root-free datum");
+            let actual: Vec<Vec<i32>> = datum.coradical_basis().unwrap().iter()
+                .map(|weight| weight.as_slice().to_vec()).collect();
+            assert_eq!(actual, expected_columns(rank),
+                "root-free coradical must span the full ambient lattice");
+        }
+    }
+
+    #[test]
+    fn root_free_radical_retains_the_ambient_lattice() {
+        for rank in [0, 1, 2, 4] {
+            let datum = BasedRootDatum::from_simple_data(rank, vec![], vec![], vec![])
+                .expect("valid root-free datum");
+            let actual: Vec<Vec<i32>> = datum.radical_basis().unwrap().iter()
+                .map(|weight| weight.as_slice().to_vec()).collect();
+            assert_eq!(actual, expected_columns(rank),
+                "root-free radical must span the full ambient lattice");
+        }
     }
 }

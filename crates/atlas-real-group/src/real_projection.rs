@@ -323,8 +323,10 @@ fn gcd_sweep(
                 survivors.push(j);
                 continue;
             }
-            // C++ `arithmetic::divide` truncates toward zero.
-            let quotient = local_row[j] / pivot;
+            // Upstream arithmetic::divide uses Euclidean division by the
+            // positive pivot. A negative remainder would elect a negative
+            // next pivot and reverse the canonical image-basis orientation.
+            let quotient = local_row[j].div_euclid(pivot);
             // ops: column j -= q * column current.
             for r in 0..limit {
                 ops[r][j] = ops[r][j]
@@ -488,4 +490,77 @@ fn invert_integer_matrix(matrix: &[Vec<i64>]) -> Result<Vec<Vec<i64>>, Structure
         }
     }
     Ok(inverse)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{BasedRootDatum, Coweight, Weight};
+
+    #[test]
+    fn signed_gcd_sweep_matches_original_column_operations() {
+        // Original3840186: echelon([[8,-12],[4,-6]]) has lift [4,2]
+        // and column matrix [[2,-3],[1,-2]] after moving its kernel column.
+        // Checking factorization alone cannot distinguish the wrong sign.
+        let mut image = vec![vec![8, -12], vec![4, -6]];
+        let mut columns = identity_matrix(2).unwrap();
+        let pivot = gcd_sweep(&mut image, &mut columns, 1, 2).unwrap();
+        assert_eq!(
+            (pivot, image, columns),
+            (2, vec![vec![0, 4], vec![0, 2]], vec![vec![-3, 2], vec![-2, 1]]),
+            "signed echelon pivot and column operations must match original3840186"
+        );
+    }
+
+    #[test]
+    fn skew_torus_projection_matches_original_image_basis() {
+        let datum = BasedRootDatum::from_simple_data(2, vec![], vec![], vec![]).unwrap();
+        let theta = LatticeInvolution::new(
+            &datum, vec![vec![-7, 12], vec![-4, 7]],
+            vec![vec![-7, -4], vec![12, 7]],
+        ).unwrap();
+        let projection = RealProjection::build(&theta).unwrap();
+        assert_eq!(projection.lift_mat, vec![vec![4], vec![2]]);
+        // The first row of the inverse of the original echelon column matrix.
+        assert_eq!(projection.m_real, vec![vec![2, -3]]);
+        assert_eq!(projection.coordinates(&Weight::new(vec![0, 1])).unwrap(), vec![-3]);
+        assert_eq!(projection.lift(&[-3]).unwrap(), vec![-12, -6]);
+        projection.check_against(&theta).unwrap();
+    }
+
+    #[test]
+    fn skew_product_projection_matches_original_image_basis() {
+        let datum = BasedRootDatum::from_simple_data(
+            3, vec![vec![2]], vec![Weight::new(vec![2, 0, 0])],
+            vec![Coweight::new(vec![1, 0, 0])],
+        ).unwrap();
+        let theta = LatticeInvolution::new(
+            &datum, vec![vec![1, 0, 0], vec![0, -7, 12], vec![0, -4, 7]],
+            vec![vec![1, 0, 0], vec![0, -7, -4], vec![0, 12, 7]],
+        ).unwrap();
+        let projection = RealProjection::build(&theta).unwrap();
+        assert_eq!(projection.lift_mat, vec![vec![0], vec![4], vec![2]]);
+        assert_eq!(projection.m_real, vec![vec![0, 2, -3]]);
+        projection.check_against(&theta).unwrap();
+    }
+
+    #[test]
+    fn projection_zero_and_full_image_boundaries() {
+        for rank in [0, 2] {
+            let datum = BasedRootDatum::from_simple_data(rank, vec![], vec![], vec![]).unwrap();
+            let identity = LatticeInvolution::identity(&datum).unwrap();
+            let zero = RealProjection::build(&identity).unwrap();
+            assert_eq!(zero.image_rank(), 0);
+            assert_eq!(zero.lift_mat, vec![Vec::<i64>::new(); rank]);
+            assert_eq!(zero.lift(&[]).unwrap(), vec![0; rank]);
+            let negative: Vec<Vec<i32>> = (0..rank).map(|i|
+                (0..rank).map(|j| -i32::from(i == j)).collect()).collect();
+            let theta = LatticeInvolution::new(&datum, negative.clone(), negative).unwrap();
+            let full = RealProjection::build(&theta).unwrap();
+            assert_eq!(full.image_rank(), rank);
+            assert_eq!(full.m_real, identity_matrix(rank).unwrap());
+            assert_eq!(full.lift_mat, (0..rank).map(|i|
+                (0..rank).map(|j| 2 * i64::from(i == j)).collect::<Vec<_>>()).collect::<Vec<_>>());
+        }
+    }
 }

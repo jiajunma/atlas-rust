@@ -13,10 +13,13 @@ use crate::StructureError;
 
 pub(crate) type Generator = usize;
 pub(crate) type EltPiece = u16;
-/// A Weyl element as a fixed stack array (rank <= 8, one byte per piece) -
+/// Original utilities/constants.h RANK_MAX. Complex rank6 uses 12 pieces;
+/// this representation bound is not an element-enumeration budget.
+const WEYL_MAX_RANK: usize = 32;
+/// A Weyl element as a fixed stack array (one byte per piece) -
 /// the C++ `std::array<unsigned char, RANK_MAX>` equivalent, zero heap
 /// allocation in the enumeration/twisted scan.
-pub(crate) type WeylElt = [u8; 8];
+pub(crate) type WeylElt = [u8; WEYL_MAX_RANK];
 
 const UNDEF_PIECE: EltPiece = u16::MAX;
 const UNDEF_GEN: u16 = u16::MAX;
@@ -236,6 +239,9 @@ impl CompactWeyl {
     pub fn new(cartan: &[Vec<i32>]) -> Result<Self, StructureError> {
         let rank = cartan.len();
         let comps = crate::dynkin::classify(cartan)?;
+        if rank > WEYL_MAX_RANK {
+            return Err(StructureError::ResourceLimitExceeded { limit: WEYL_MAX_RANK });
+        }
         let mut d_out = vec![0_usize; rank];
         let mut upper = vec![0_usize; rank];
         for comp in &comps {
@@ -301,9 +307,6 @@ impl CompactWeyl {
                     .collect()
             })
             .collect();
-        if rank > 8 {
-            return Err(StructureError::ResourceLimitExceeded { limit: 8 });
-        }
         Ok(Self {
             transducers,
             d_in,
@@ -371,8 +374,8 @@ impl CompactWeyl {
         }
     }
 
-    fn identity(&self) -> WeylElt {
-        [0_u8; 8]
+    pub(crate) fn identity(&self) -> WeylElt {
+        [0_u8; WEYL_MAX_RANK]
     }
 
     /// The inverse of `w` (weyl.cpp:751-763): right-multiply by the
@@ -418,6 +421,73 @@ impl CompactWeyl {
         wi == tw
     }
 
+    /// Generate twisted involutions without enumerating the ambient Weyl group.
+    ///
+    /// `twist` must be the diagram involution of a validated based root datum.
+    /// Original weyl.cpp:1312-1354 proves that every nonidentity twisted
+    /// involution has a simple descent by either `s*w` (twisted commutation)
+    /// or `s*w*twist(s)` (otherwise). These moves are reversible, so closure
+    /// from identity is the complete set. Keep discovery order explicitly;
+    /// HashSet iteration must not determine representatives.
+    ///
+    /// This NEW budget counts twisted involutions, including identity. It is
+    /// independent of `enumerate`'s legacy full-Weyl-element budget.
+    pub(crate) fn generate_twisted_involutions(
+        &self,
+        twist: &[usize],
+        involution_budget: usize,
+    ) -> Result<Vec<WeylElt>, StructureError> {
+        let rank = self.transducers.len();
+        if twist.len() != rank
+            || twist.iter().enumerate().any(|(s, &t)| twist.get(t) != Some(&s))
+        {
+            return Err(StructureError::InvalidBasedAutomorphism);
+        }
+        if involution_budget == 0 {
+            return Err(StructureError::ResourceLimitExceeded { limit: 0 });
+        }
+        let mut simple = crate::grading::try_capacity(rank)?;
+        for s in 0..rank {
+            let mut reflection = self.identity();
+            self.inner_mult(&mut reflection, s);
+            simple.push(reflection);
+        }
+        let initial_capacity = involution_budget.min(1024);
+        let mut pending = crate::grading::try_capacity(initial_capacity)?;
+        let mut seen = HashSet::new();
+        seen.try_reserve(initial_capacity).map_err(|_| StructureError::AllocationFailed {
+            requested: initial_capacity,
+        })?;
+        pending.push(self.identity());
+        seen.insert(self.identity());
+        let mut cursor = 0;
+        while cursor < pending.len() {
+            let w = pending[cursor];
+            cursor += 1;
+            for s in 0..rank {
+                let mut left = simple[s];
+                self.multiply(&mut left, &w);
+                let mut conjugate = left;
+                self.inner_mult(&mut conjugate, twist[s]);
+                let next = if conjugate == w { left } else { conjugate };
+                if seen.contains(&next) {
+                    continue;
+                }
+                if pending.len() == involution_budget {
+                    return Err(StructureError::ResourceLimitExceeded {
+                        limit: involution_budget,
+                    });
+                }
+                let requested = pending.len() + 1;
+                pending.try_reserve(1).map_err(|_| StructureError::AllocationFailed { requested })?;
+                seen.try_reserve(1).map_err(|_| StructureError::AllocationFailed { requested })?;
+                seen.insert(next);
+                pending.push(next);
+            }
+        }
+        Ok(pending)
+    }
+
     /// The word (local generators, left to right) of one piece, from the
     /// precomputed table (no allocation).
     pub(crate) fn word_of_piece(&self, i: usize, x: u8) -> &[usize] {
@@ -431,7 +501,7 @@ impl CompactWeyl {
     /// words are concatenated in increasing piece order with letters mapped
     /// back through `d_out`; the result depends only on the element.
     pub fn canonical_word(&self, external_word: &[usize]) -> Vec<usize> {
-        let mut elt: WeylElt = [0; 8];
+        let mut elt = self.identity();
         for &generator in external_word {
             self.inner_mult(&mut elt, generator);
         }
@@ -557,7 +627,7 @@ impl CompactWeyl {
             seen.insert(id);
             pending.push_back(id);
             while let Some(w) = pending.pop_front() {
-                let mut bytes = [0_u8; 8];
+                let mut bytes = self.identity();
                 for i in 0..rank {
                     bytes[i] = ((w >> (8 * i)) & 0xff) as u8;
                 }
@@ -579,7 +649,7 @@ impl CompactWeyl {
             Ok(seen
                 .into_iter()
                 .map(|w| {
-                    let mut bytes = [0_u8; 8];
+                    let mut bytes = self.identity();
                     for i in 0..rank {
                         bytes[i] = ((w >> (8 * i)) & 0xff) as u8;
                     }
@@ -612,6 +682,141 @@ impl CompactWeyl {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn disconnected_a1_cartan(rank: usize) -> Vec<Vec<i32>> {
+        (0..rank).map(|i| (0..rank).map(|j| if i == j { 2 } else { 0 }).collect()).collect()
+    }
+
+    #[test]
+    fn compact_width_boundary_retains_high_generators() {
+        // Original constants.h fixes RANK_MAX=32. Width and the number of
+        // generated elements are different limits; do not enumerate 2^32.
+        for rank in [8, 9, 12, 32] {
+            let group = CompactWeyl::new(&disconnected_a1_cartan(rank)).unwrap();
+            let last = rank - 1;
+            let mut high = group.identity();
+            assert_eq!(group.inner_mult(&mut high, last), 1);
+            assert_eq!(high[last], 1);
+            assert_eq!(group.inverse(&high), high);
+            let mut square = high;
+            group.multiply(&mut square, &high);
+            assert_eq!(square, group.identity());
+            assert_eq!(group.canonical_word(&[last, 0, last]), vec![0]);
+            assert_eq!(group.canonical_word(&[last, 0]), vec![0, last]);
+        }
+        assert!(matches!(CompactWeyl::new(&disconnected_a1_cartan(33)),
+            Err(StructureError::ResourceLimitExceeded { limit: 32 })));
+    }
+
+    #[test]
+    fn compact_wide_enumeration_matches_independent_a1_bitsets() {
+        // Exact C2^9, including every high-piece bit; this exercises the
+        // non-u64 enumeration branch rather than only successful creation.
+        let rank = 9;
+        let group = CompactWeyl::new(&disconnected_a1_cartan(rank)).unwrap();
+        let expected: HashSet<_> = (0..(1_usize << rank)).map(|mask| {
+            let mut element = group.identity();
+            for (i, piece) in element.iter_mut().take(rank).enumerate() {
+                *piece = ((mask >> i) & 1) as u8;
+            }
+            element
+        }).collect();
+        let elements = group.enumerate(512).unwrap();
+        assert_eq!(elements.len(), 512);
+        assert_eq!(elements.iter().copied().collect::<HashSet<_>>(), expected);
+        assert_eq!(group.enumerate(511), Err(StructureError::ResourceLimitExceeded { limit: 511 }));
+        let twist: Vec<_> = (0..rank).rev().collect();
+        for element in elements {
+            assert_eq!(group.inverse(&element), element);
+            let mut twisted = group.identity();
+            for i in 0..rank { twisted[i] = element[rank - 1 - i]; }
+            assert_eq!(group.apply_twist(&element, &twist), twisted);
+            for s in 0..rank {
+                let mut actual = element;
+                assert_eq!(group.inner_mult(&mut actual, s), if element[s] == 0 { 1 } else { -1 });
+                let mut expected = element;
+                expected[s] ^= 1;
+                assert_eq!(actual, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn compact_wide_noncommuting_twist_matches_complete_product() {
+        // A1^6.A2.A2, real rank10. Swap the two A2 factors and pair the
+        // A1 factors: all twisted involutions are (b,b,c,c,d,d,w,w^-1).
+        let mut cartan = disconnected_a1_cartan(10);
+        for a in [6, 8] { cartan[a][a + 1] = -1; cartan[a + 1][a] = -1; }
+        let group = CompactWeyl::new(&cartan).unwrap();
+        let twist = [1, 0, 3, 2, 5, 4, 8, 9, 6, 7];
+        let words: &[&[usize]] = &[&[], &[0], &[1], &[0, 1], &[1, 0], &[0, 1, 0]];
+        let mut expected = HashSet::new();
+        for mask in 0..8 {
+            for word in words {
+                let mut element = group.identity();
+                for pair in 0..3 {
+                    if mask & (1 << pair) != 0 {
+                        group.inner_mult(&mut element, 2 * pair);
+                        group.inner_mult(&mut element, 2 * pair + 1);
+                    }
+                }
+                for &s in *word { group.inner_mult(&mut element, 6 + s); }
+                for &s in word.iter().rev() { group.inner_mult(&mut element, 8 + s); }
+                assert!(expected.insert(element));
+            }
+        }
+        assert_eq!(expected.len(), 48);
+        let generated = group.generate_twisted_involutions(&twist, 48).unwrap();
+        assert_eq!(generated.len(), 48);
+        assert_eq!(generated.iter().copied().collect::<HashSet<_>>(), expected);
+        assert_eq!(group.generate_twisted_involutions(&twist, 48).unwrap(), generated);
+        let all = group.enumerate(2304).unwrap();
+        assert_eq!(all.len(), 2304);
+        assert_eq!(all.iter().copied().filter(|w| group.is_twisted_involution(w, &twist))
+            .collect::<HashSet<_>>(), expected);
+        for w in &all {
+            let inverse = group.inverse(w);
+            let mut right_product = *w;
+            group.multiply(&mut right_product, &inverse);
+            assert_eq!(right_product, group.identity());
+            let mut left_product = inverse;
+            group.multiply(&mut left_product, w);
+            assert_eq!(left_product, group.identity());
+            assert_eq!(group.apply_twist(&group.apply_twist(w, &twist), &twist), *w);
+        }
+        assert_eq!(group.canonical_word(&[8, 9, 8]), group.canonical_word(&[9, 8, 9]));
+        assert_ne!(group.canonical_word(&[8, 9]), group.canonical_word(&[9, 8]));
+        assert_eq!(group.generate_twisted_involutions(&twist, 47),
+            Err(StructureError::ResourceLimitExceeded { limit: 47 }));
+        assert_eq!(group.generate_twisted_involutions(&twist, 0),
+            Err(StructureError::ResourceLimitExceeded { limit: 0 }));
+        for invalid in [vec![0; 10], (0..9).collect(), vec![1, 2, 0, 3, 4, 5, 6, 7, 8, 9]] {
+            assert_eq!(group.generate_twisted_involutions(&invalid, 48),
+                Err(StructureError::InvalidBasedAutomorphism));
+        }
+    }
+
+    #[test]
+    fn compact_wide_root_permutations_match_independent_signs() {
+        // Root-pair labels are independent of transducer words: s_i swaps
+        // exactly roots 2*i and 2*i+1. Compare all 4096 rank12 elements.
+        let rank = 12;
+        let group = CompactWeyl::new(&disconnected_a1_cartan(rank)).unwrap();
+        let reflections: Vec<Vec<u8>> = (0..rank).map(|s| {
+            let mut permutation: Vec<u8> = (0..2 * rank).map(|r| r as u8).collect();
+            permutation.swap(2 * s, 2 * s + 1);
+            permutation
+        }).collect();
+        let pieces = group.piece_root_permutations(&reflections);
+        let elements = group.enumerate(4096).unwrap();
+        let permutations = group.element_root_permutations(&elements, &pieces);
+        assert_eq!(permutations.len(), 4096);
+        for (element, actual) in elements.iter().zip(permutations) {
+            let expected: Vec<u8> = (0..2 * rank).map(|root|
+                (root ^ usize::from(element[root / 2])) as u8).collect();
+            assert_eq!(actual, expected);
+        }
+    }
 
     fn compact_order(cartan: &[Vec<i32>]) -> usize {
         CompactWeyl::new(cartan)
