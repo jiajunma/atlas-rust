@@ -31,6 +31,29 @@ production repair, bind this failure as predecessor, rerun the full gate.
 (Operational lesson recorded: this cluster's sacct 21.08.8 rejects `-h` and
 prints a 166-line usage page; never count usage text as jobs.)
 
+## V4 PREPARATION (in progress) — 2026-10-06
+
+Completed locally (no builds run): `hpc/patches/weyl_context_core_repair.patch`
+gained a third hunk migrating `domain_builtins/weyl_subgroup.rs`'s two stale
+`context.system` accesses to `context.kernel.system` (the file exists only in
+the frozen archive, still untracked in git).  Validated by reverting the two
+lines and re-applying: result is byte-identical to the local fixed file.
+New constants for the v4 harness:
+
+- `REPAIR_PATCH_BYTES` 29430 → **30047**
+- `REPAIR_PATCH_HASH` 246cd2d0… →
+  **`1ad07e8fedf17162c8282c168d423b7f3dfcfb6e847b0d883b4fb8497dea59f7`**
+- `REPAIRED_SOURCE_HASHES` gains
+  `crates/atlas-core/src/domain_builtins/weyl_subgroup.rs` =
+  **`86d52b4f7228b300ad7ed0a38c526fd14f14003dfa034e4edf4f0e0102c63780`**
+
+Still to do: reconstruct the full v3 source tree from the campaign CAS base
+object + both patches locally, recompute `AFTER_SOURCE_MANIFEST_SHA256` (this
+also verifies the hunk against the real archive bytes), then the v3→v4 harness
+migration (stager/driver/sbatch labels, new `validate_after_v3_failure` gate
+binding job 3899303, checker label regression, payload build, static review,
+submit).
+
 Parallel local lane (no HPC needed): the KB source-packet sweep through
 `kb/sources/` continues via the verified Kimi probe route (full-bytes
 prompt, maintainer claim-by-claim verification, per-packet snapshot JSON

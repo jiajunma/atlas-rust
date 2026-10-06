@@ -670,3 +670,15 @@
                  Ok(at_builtin_level(level, || {
                      Value::Boolean(match relation {
                          Relation::Equal => first == second,
+--- a/crates/atlas-core/src/domain_builtins/weyl_subgroup.rs
++++ b/crates/atlas-core/src/domain_builtins/weyl_subgroup.rs
+@@ -254,7 +254,7 @@
+     for word in orbit {
+-        let mut element = WeylElement::identity(&context.system)
++        let mut element = WeylElement::identity(&context.kernel.system)
+             .map_err(|e| runtime(span, e.to_string()))?;
+         for s in word {
+-            element = element.right_multiply_simple(&context.system, s)
++            element = element.right_multiply_simple(&context.kernel.system, s)
+                 .map_err(|e| runtime(span, e.to_string()))?.0;
+         }
