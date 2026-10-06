@@ -3329,7 +3329,7 @@ PREDECESSOR_STATE = {
     "schema": "atlas-stage-creation-predecessor-v14",
     "stage": PREDECESSOR_STAGE,
     "stage_device": 3431958692,
-    "stage_inode": 162130669815079167,
+    "stage_inode": 162130669806415232,
     "stage_tree_sha256":
         "4d8b6518f49629af5456de6ececf65eab93159684457e2c473d043f49fc0a8a4",
     "stage_tree_files": 196,
