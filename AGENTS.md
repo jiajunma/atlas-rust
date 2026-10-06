@@ -543,26 +543,25 @@ ceiling and default one focused job; do not trade correctness for speed.
   a build gate one stage later is the only thing that catches it.
   The AFTER-v4 successor completes the migration; never resubmit3899303.
 
-- UPDATE Weyl AFTER-v4 failure2026-10-06: job3899885 FINAL `FAILED 1:0`
-  with all13 commands exit0 — checkers, release-build (now green with
-  weyl_subgroup.rs migrated), 632-test inventory, both regressions PASS,
-  four goldens matched on stdout, ladder control.  The classification is
-  `WEYL_CONTEXT_AFTER_REGRESSIONS_PASS`; the only failing check is
-  `full_stderr_equal` on the prewarmed REJECT capture: both engines reject
-  at the same8 commands with the same ordered error summaries
-  (6x`Weyl group mismatch`, `Illegal Weyl word entry 1`,
-  `Negative integer where unsigned is required`), but the oracle's
-  `Runtime error:\n  …\nEvaluation aborted.` envelope and the Rust CLI's
-  `Runtime error at <stdin>:L:C: …` + caret format are different runtimes'
-  presentations, so byte-equality was unattainable.  This is the
-  documented negative-diagnostic-presentation boundary, not mathematics
-  and not a production defect.  Failure evidence
-  `tests/reference/hpc/math_weyl_context_core_after_v4_failure_2026_10_06.json`,
-  report SHA `479ddd84…`.  Lesson: a byte-equality gate must never span
-  two different diagnostic renderers for REJECT intents — bind the ordered
-  error-summary content (messages + positions) for reject cases and keep
-  byte-equality for accept cases.  The AFTER-v5 successor makes that
-  comparison-mode change; never resubmit3899885.
+- UPDATE Weyl AFTER-v5 acceptance2026-10-06: job3900050 is FINAL
+  `COMPLETED 0:0` on cu006, report status `WEYL_CONTEXT_AFTER_REGRESSIONS_PASS`.
+  Independent inspection accepts the bounded A1 semantic gate: all13
+  commands exit0 (127 checker tests, release-build, 632-test inventory,
+  both regressions, ladder control); the source manifest is exactly
+  `84a3fbfd…` (1567 files, proving the build/tests ran on the completed
+  kernel-system migration); cold_dual fully byte-equal; prewarmed_dual
+  matches on stdout/exit/ordered error summaries under the v5 classifier
+  change.  Report SHA `3288480d…`; acceptance evidence
+  `tests/reference/hpc/math_weyl_context_core_after_v5_acceptance_2026_10_06.json`.
+  The report keeps every release flag FALSE and the review releases nothing
+  either: no cache/performance/memory/rank/broader mathematical release.
+  The gate chain from v8's confirmed Rust semantic mismatch to acceptance
+  ran eight HPC jobs (v8 BEFORE + after-v1 harness constant bug + after-v2
+  sbatch labels + after-v3 incomplete repair migration + after-v4 gate
+  over-assertion + after-v5 pass).  Next: the focused production commit of
+  the completed repair, then the progressive semantic AFTER gates (G2,
+  B2/C2, reverse operands, inner-class-dual, no-value) before any cache
+  work-count BEFORE or production cache edit.
 - UPDATE Weyl AFTER-v1 preparation2026-10-03: advancing a campaign stager's
   direct `PREDECESSOR` silently breaks every inherited validator that still
   compares a frozen historical evidence record against bare
