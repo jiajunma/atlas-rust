@@ -2955,6 +2955,9 @@ BEFORE_V4_PREDECESSOR = {
 }
 # The frozen after-v1 identity, retained for validate_after_v1_failure after
 # PREDECESSOR advanced to the failed after-v2 stage.
+AFTER_V1_ERA_SOURCE_MANIFEST_SHA256 = (
+    "3f8cf4753f29d33df8273086254a4f09170ada46f05e9c13acfdac2f5ab85c33"
+)
 AFTER_V1_PREDECESSOR_STAGE = (
     "/public/home/majj/atlas-rust-campaign-20260930/"
     "stages/weyl-context-core-after-v1"
@@ -7027,8 +7030,10 @@ def validate_after_v1_failure(root, inputs):
     """Bind the immutable after-v1 harness failure (job 3890328)."""
     # This validator was added in the after-v2 module, where the module-level
     # PREDECESSOR named the after-v1 stage.  Here PREDECESSOR is the failed
-    # after-v2 stage, so rebind the two names locally to the frozen after-v1
-    # identity; the body below is unchanged.
+    # after-v3 stage, so rebind the two names locally to the frozen after-v1
+    # identity; the body below is unchanged except that the reconstruction
+    # manifest comparison uses the frozen v1-era manifest (the source changed
+    # at after-v4).
     PREDECESSOR = AFTER_V1_PREDECESSOR
     PREDECESSOR_STAGE = AFTER_V1_PREDECESSOR_STAGE
     reference = AFTER_V1_FAILURE_EVIDENCE
@@ -7058,9 +7063,9 @@ def validate_after_v1_failure(root, inputs):
             or value.get("mathematical_regression_required") is not False
             or not isinstance(reconstruction, dict)
             or reconstruction.get("computed_manifest_sha256")
-               != AFTER_SOURCE_MANIFEST_SHA256
+               != AFTER_V1_ERA_SOURCE_MANIFEST_SHA256
             or reconstruction.get("expected_after_manifest_sha256")
-               != AFTER_SOURCE_MANIFEST_SHA256
+               != AFTER_V1_ERA_SOURCE_MANIFEST_SHA256
             or reconstruction.get("match") is not True
             or value.get("submission_record")
                != ("tests/reference/hpc/"
