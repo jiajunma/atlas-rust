@@ -913,3 +913,13 @@ wiki/concepts/ 现有 38 页，剩余候选 495。
 canonical_involution_expr 的 external-least 选举与 signed-entry 编码、
 枚举族四分工（稳定列表/轨道/分区/生成元闭包版预算差异）——全部忠实。
 8 页批准；wiki/concepts/ 现有 46 页，剩余候选 487。
+
+## 2026年10月9日 第七批候选审查：cartan-classification.md 的 7 页
+
+对照 110 行来源包逐页核验：四类聚合事实与 Arc 共享分区、CartanId 的 Atlas
+编号顺序（height→simple 坐标逆字典序、比较存储前先 canonicalize）、分层预算
+六字段与 direct-classification 切换的语义边界（计数含 identity、不动
+weyl_budget）、严格 Cayley 偏序的 is_below 语义与不可反身不变量、
+real_form_of 的 complex-only 行走与 grading 偶整数规则、coch 不返回的理由、
+real_form_of_detailed 的扩展用途——全部忠实。7 页批准；wiki/concepts/ 现有
+53 页，剩余候选 480。

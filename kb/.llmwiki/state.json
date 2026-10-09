@@ -83,6 +83,19 @@
         "根-involution-的-innerclass-构造与-weyl-因子"
       ],
       "compiledAt": "2026-10-09T15:41:25.100Z"
+    },
+    "cartan-classification.md": {
+      "hash": "2f240501a21fdd11a726e1c64c37b88a050bcb6a2401a53e30f6f79ecf552e52",
+      "concepts": [
+        "cartan-分类构造与共享分区",
+        "cartan-分类的分层预算",
+        "cartanid-的-atlas-编号顺序",
+        "twistedconjugacyclass-与-cartanclass-的职责划分",
+        "严格-cayley-偏序",
+        "弱实形式的-cartan-集与唯一-most-split-类",
+        "强对合数据的弱实形式归属"
+      ],
+      "compiledAt": "2026-10-09T15:43:33.906Z"
     }
   }
 }

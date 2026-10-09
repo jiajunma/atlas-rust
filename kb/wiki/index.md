@@ -4,7 +4,10 @@
 
 - **[[based-involution-验证与生成元-twist|Based involution 验证与生成元 twist]]** — based_involution_twist 要求 involution 置换根系、正确传输余根且将简单根映为简单根；generator_twist 给出 distinguished involution 诱导的简单生成元置换。
 - **[[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]** — 区分格秩与半单秩，按固定顺序验证 Cartan 矩阵、根与余根的数量、维度及配对，支持中心环面和纯环面且不设全局秩上限。
+- **[[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]** — CartanClassification::build 构造 inner class 的全部 Cartan 类，聚合各实形式的 Cartan 集、most-split 类、twisted-involution 总数与严格偏序，并共享 twisted 共轭分区供对偶侧复用。
+- **[[cartan-分类的分层预算|Cartan 分类的分层预算]]** — CartanClassificationBudget 分别约束整数格、fiber、Weyl 枚举、对合发现与 peeling；generated-involutions 模式以含 identity 的精确计数上限控制代表元发现，各预算值参与分类缓存键。
 - **[[cartan-矩阵的精确有理有限型检查|Cartan 矩阵的精确有理有限型检查]]** — 以精确有理数沿连通分量传播对称化比例，再通过 LDLᵀ 式分解检查正主元；其与有限型的等价性在来源中仅为代码意图，未经数学验收。
+- **[[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]** — fundamental class 编为 0，其余按父类编号与上游正虚根顺序进行 BFS 发现；Cayley successor 在比较和存储前先 canonicalize，以保持 Atlas 编号语义。
 - **[[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]** — 链接按元素与生成元平铺存储：Cayley 适用于非紧致 imaginary，逆 Cayley 适用于 real，后者区分单前像 II 型与双前像 I 型，并在编号标准化后按升序安装。
 - **[[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]** — canonical dual 仅在目标尚未建立 WeylGroup 时共享源群身份，已预热目标保持独立，因此 Weyl 元素兼容性取决于对象生命周期和构造历史。
 - **[[innerclass-对偶构造与生命周期保持|InnerClass 对偶构造与生命周期保持]]** — original InnerClass 构造立即取得 canonical dual 并强持有 primal 与 dual，Rust 对齐需覆盖该隐式对偶路径及其生命周期，显式 dual 修复不足以证明完整兼容。
@@ -22,6 +25,7 @@
 - **[[twisted-involution-枚举与共轭轨道分区|Twisted involution 枚举与共轭轨道分区]]** — twisted_involutions 提供稳定的对合列表，twisted_conjugacy_partition 构建带成员查询的完整 Weyl twisted-conjugacy 分区，classes 接口是其薄封装；轨道代表不保证 Atlas-canonical，且结果不等同于 Cartan classes。
 - **[[twisted-involution-的三阶段规范化|Twisted involution 的三阶段规范化]]** — canonicalize 依次使正实根与正虚根之和 dominant、限制到与两者正交的简单生成元、确保残余 complex subsystem 的 positivity，并按执行顺序返回 twisted conjugation 生成元；受限版本全程结合 active 集合。
 - **[[twisted-involution-的规范约化表达式|Twisted involution 的规范约化表达式]]** — canonical_involution_expr 按外部生成元编号选择字典序最小的约化 twisted-involution expression，以 s 编码 cross、!s 编码 twisted conjugation，其终止性依赖输入确为当前 inner class 的 twisted involution 的 Weyl part。
+- **[[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]** — TwistedConjugacyClass 保存确定性轨道代表元和对合计数，分类阶段将代表元重建为 Atlas-canonical 形式；CartanClass 拥有该值并承载分解、fiber、实形式标签与实 Cartan 分量数据。
 - **[[weyl-上下文共享的性能与内存证据边界|Weyl 上下文共享的性能与内存证据边界]]** — 重复上下文构造和采样热点支持优化调查，但构建次数假设与探针计时不证明加速；共享可能延长内核存活，需独立测量构建数、分配及 time/CPU/RSS。
 - **[[weyl-元素的可失败关系与跨坐标运算|Weyl 元素的可失败关系与跨坐标运算]]** — Weyl 元素的等于、不等于和乘法须先检查群身份，包括 no_value 路径；兼容但坐标不同的值通过在左侧重放右侧外部生成元词运算，乘积保留左 owner。
 - **[[weyl-元素的扭曲共轭|Weyl 元素的扭曲共轭]]** — twisted_conjugate 计算 s_gen·w·s_twist(gen)，要求 twist 为生成子对合置换，其与 distinguished involution 的一致性由调用方保证。
@@ -30,6 +34,7 @@
 - **[[weylaction-的对偶全格作用|WeylAction 的对偶全格作用]]** — 在 character 与 cocharacter 全格上维护反射矩阵及复合作用，反射构造使用检查算术，但矩阵复合包含未经检查的 i32 收窄。
 - **[[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]** — 源码 derive 等值逐字段比较且包含 datum 值，因此“相等即矩阵作用相等”的概述须限定于 datum 值相同的情形。
 - **[[weylelement-的置换表示与长度下降不变量|WeylElement 的置换表示与长度下降不变量]]** — 以正向置换、逆向量和缓存长度支持常数时间长度及左右 descent 查询，乘法重算长度，而单一 ambient RootSystem 的一致性由调用方保证。
+- **[[严格-cayley-偏序|严格 Cayley 偏序]]** — is_below 描述非空 single-root Cayley links 链的 more-compact 方向，fundamental class 位于其他类之下，有效类的自比较恒为 Some(false)。
 - **[[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]** — 惰性 cell 只发布完整成功结果，构造失败后应允许重试，且不能缓存首次调用的 Diagnostic 或 SourceSpan，以保留当前调用的错误定位。
 - **[[伴随-cartan-纤维的构建与下降验证|伴随 Cartan 纤维的构建与下降验证]]** — AdjointCartanFiber 在检查 datum、对合与预算后构造伴随半单商上的有限 F₂ 纤维，并通过 validate_induced_map 验证源纤维映射的下降条件；来源仅为结构性阅读，不代表数学验收。
 - **[[伴随纤维映射的测试证据与覆盖边界|伴随纤维映射的测试证据与覆盖边界]]** — 九项测试锚定中心核、可加性、矩阵字面量、逐坐标基交织关系、出处拒绝、rank-33 动态秩及部分预算拒绝路径，但多个错误分支和接口直接调用仍未覆盖，本次阅读未运行测试。
@@ -42,6 +47,8 @@
 - **[[对偶实形式的分层计数管线|对偶实形式的分层计数管线]]** — dual_real_form_count 依次构造对偶内类、Cartan fiber、伴随 fiber、分次数据和弱实形式划分，再返回类数；来源仅转录测试断言，未执行测试或验收数学正确性。
 - **[[对偶根数据与对偶内类构造|对偶根数据与对偶内类构造]]** — 对偶根数据转置 Cartan 并交换根与余根后复用构造校验，对偶内类以 −(q·W0)ᵗ 和 −(q·W0) 分别构造权与余权作用，并分配最长元和根系闭包预算。
 - **[[带基数预算的-weyl-群作用枚举|带基数预算的 Weyl 群作用枚举]]** — enumerate_actions 通过 CompactWeyl 枚举并并行物化矩阵，使用显式基数预算；来源描述了字典序输出，但未提供排序测试或独立性能验证。
+- **[[弱实形式的-cartan-集与唯一-most-split-类|弱实形式的 Cartan 集与唯一 most-split 类]]** — 弱实形式数量来自 fundamental partition，每个形式关联一个升序 Cartan 类集合及唯一的 most-split Cartan 类。
+- **[[强对合数据的弱实形式归属|强对合数据的弱实形式归属]]** — real_form_of 将 twisted 与 theta-fixed rational coweight factor 归属到弱实形式，通过 complex simple roots 的 cross 行走定位 Cartan 代表元，再以 simple-imaginary root 配对为偶数整数判定 noncompact grading；详细接口同时返回 Cartan 类。
 - **[[权与余权的简单反射及算术保护|权与余权的简单反射及算术保护]]** — reflect_weight 与 reflect_coweight 按根余根配对公式实施反射，先校验维度和生成元下标，再以 i128 中间值及受检运算处理溢出。
 - **[[根-involution-的-innerclass-构造与-weyl-因子|根 involution 的 InnerClass 构造与 Weyl 因子]]** — 构造入口在调用方根枚举预算内验证根与余根的传输，并可通过左复合 Weyl word 将任意合格的根 involution 转为保持基的 involution；不同入口保留或丢弃所得 Weyl 因子。
 - **[[根对合诱导的伴随余权作用|根对合诱导的伴随余权作用]]** — 根像的单根坐标构成根作用矩阵；由于根作用已验证为对合，其对偶作用的逆转置等于转置，因而伴随余权作用由转置矩阵给出。
@@ -49,4 +56,4 @@
 - **[[源余权格到伴随余权格的整数投影|源余权格到伴随余权格的整数投影]]** — 整数投影 Y → P∨ 按源单根顺序计算 pair(root, y) 作为目标坐标，保持可加性且可能具有中心核，因此不应视为同构。
 - **[[跨对偶的-cartan-类对应与扭曲代表元|跨对偶的 Cartan 类对应与扭曲代表元]]** — Cartan 类对应以对偶根像置换定位共轭类，查找失败视为不变量错误；内部代表元构造则在对偶 datum 上重放原 Weyl 字以保留两种格作用及来源信息。
 
-_46 pages | Generated 2026-10-09T15:41:25.355Z_
+_53 pages | Generated 2026-10-09T15:43:34.174Z_

@@ -6,6 +6,11 @@
 
 ## Cartan分类
 
+- [[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]
+- [[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]
+- [[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]
+- [[严格-cayley-偏序|严格 Cayley 偏序]]
+- [[弱实形式的-cartan-集与唯一-most-split-类|弱实形式的 Cartan 集与唯一 most-split 类]]
 - [[跨对偶的-cartan-类对应与扭曲代表元|跨对偶的 Cartan 类对应与扭曲代表元]]
 
 ## Cartan矩阵
@@ -20,6 +25,7 @@
 ## Cayley变换
 
 - [[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]
+- [[严格-cayley-偏序|严格 Cayley 偏序]]
 
 ## HPC验证
 
@@ -49,7 +55,9 @@
 ## Rust设计
 
 - [[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]
+- [[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]
 - [[kgb-图的混合自包含存储|KGB 图的混合自包含存储]]
+- [[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]
 - [[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]
 - [[余权坐标的投影出处绑定|余权坐标的投影出处绑定]]
 
@@ -95,6 +103,10 @@
 
 - [[源余权格到伴随余权格的整数投影|源余权格到伴随余权格的整数投影]]
 
+## 偏序
+
+- [[严格-cayley-偏序|严格 Cayley 偏序]]
+
 ## 元素编号
 
 - [[tau-packet-与-kgb-元素编号标准化|tau packet 与 KGB 元素编号标准化]]
@@ -129,6 +141,10 @@
 
 - [[twisted-involution-枚举与共轭轨道分区|Twisted involution 枚举与共轭轨道分区]]
 
+## 分类算法
+
+- [[cartan-分类的分层预算|Cartan 分类的分层预算]]
+
 ## 分类计数
 
 - [[对偶实形式的分层计数管线|对偶实形式的分层计数管线]]
@@ -155,11 +171,16 @@
 
 ## 基线对齐
 
+- [[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]
 - [[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]
 
 ## 实形式
 
 - [[对偶实形式的分层计数管线|对偶实形式的分层计数管线]]
+
+## 实形式归属
+
+- [[强对合数据的弱实形式归属|强对合数据的弱实形式归属]]
 
 ## 实现边界
 
@@ -201,10 +222,15 @@
 ## 弱实形式
 
 - [[kgb-图与弱实形式|KGB 图与弱实形式]]
+- [[弱实形式的-cartan-集与唯一-most-split-类|弱实形式的 Cartan 集与唯一 most-split 类]]
 
 ## 弱驻留
 
 - [[rootdatum-弱驻留与规范活对象身份|RootDatum 弱驻留与规范活对象身份]]
+
+## 强对合
+
+- [[强对合数据的弱实形式归属|强对合数据的弱实形式归属]]
 
 ## 性能分析
 
@@ -225,6 +251,7 @@
 ## 扭曲共轭
 
 - [[twisted-involution-枚举与共轭轨道分区|Twisted involution 枚举与共轭轨道分区]]
+- [[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]
 - [[weyl-元素的扭曲共轭|Weyl 元素的扭曲共轭]]
 - [[基于生成元闭包的-twisted-共轭分区|基于生成元闭包的 twisted 共轭分区]]
 
@@ -241,6 +268,10 @@
 ## 数学对象
 
 - [[kgb-图与弱实形式|KGB 图与弱实形式]]
+
+## 数据共享
+
+- [[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]
 
 ## 数据布局
 
@@ -279,6 +310,10 @@
 ## 根分类
 
 - [[kgb-生成元状态与下降判定|KGB 生成元状态与下降判定]]
+
+## 根分级
+
+- [[强对合数据的弱实形式归属|强对合数据的弱实形式归属]]
 
 ## 根数据
 
@@ -340,6 +375,10 @@
 
 - [[weylaction-的对偶全格作用|WeylAction 的对偶全格作用]]
 
+## 确定性编号
+
+- [[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]
+
 ## 等值语义
 
 - [[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]
@@ -379,6 +418,7 @@
 
 ## 缓存
 
+- [[cartan-分类的分层预算|Cartan 分类的分层预算]]
 - [[weyl-上下文共享的性能与内存证据边界|Weyl 上下文共享的性能与内存证据边界]]
 
 ## 置换表示
@@ -423,6 +463,7 @@
 
 ## 资源预算
 
+- [[cartan-分类的分层预算|Cartan 分类的分层预算]]
 - [[伴随纤维的资源预算与可恢复错误|伴随纤维的资源预算与可恢复错误]]
 - [[带基数预算的-weyl-群作用枚举|带基数预算的 Weyl 群作用枚举]]
 
