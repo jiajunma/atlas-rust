@@ -273,6 +273,14 @@ remote reconcile (step 3) still runs fresh at submission time.  Drill
 tempdirs (`/tmp/g2-payload-build`, `/tmp/g2_names.txt`) removed; nothing was
 registered as a transport.
 
+### Payload rebuild drill 2 at HEAD `72491eb6` (2026-10-09, tunnel-down)
+
+Same drill after the day's fixture/KB commits: the 65 inputs are byte-stable
+(the new transposed-prewarm fixture is unwired and NOT among the inputs),
+manifest reproduces `bcc09dbc…`, sentinel rehearsal reached
+`PRE_FLIGHT_PARENT_OBJECTS_BOUNDARY`.  Resumption remains pre-verified at
+current HEAD.  Tempdirs removed again.
+
 ### B2/C2 fixture drafts (2026-10-09, PROVISIONAL, unwired)
 
 Next arc gate after G2 is the cross-type dual witness: dual(B2)=C2 crosses
