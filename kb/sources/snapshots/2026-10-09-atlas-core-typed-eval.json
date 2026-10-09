@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of typed.rs lines 11565-13741 for the atlas-core-typed-eval packet: evaluate's six-family partition (same shapes as convert_expr, #[inline(never)]), the iterator borrow discipline (no second matrix of columns; polynomial iteration keeps canonical term order and owning form), the call machinery (apply_function's variadic tuple unwrap, apply_closure's one-value argument distribution with the empty-layer rule and the recursive self slot, return unwinding to the call boundary, the frame-dump trace line on runtime errors with named slots), and the back-trace rendering (parsetree.w:173-180's at NAME:LINE:COL-COL with the doubled dash across lines). The 133 tests are NOT covered.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/typed.rs",
+   "sha256": "614975c5e2d49357b4d9ffff80145a6c69db2fd5aeef23f033faf03f594acc95",
+   "bytes": 770895,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  }
+ ]
+}

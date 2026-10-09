@@ -755,3 +755,11 @@ DomainNoValue 的 Skip/Validate/BuildAndDrop 无值门策略：补全名清单�
 补码走、flex 修剪、convolve、ratvec LCD）、321 条目/170 名字的启动清单
 （相对上游不全，缺口由 REMAINING_BUILTINS 跟踪）。维护者直接撰写
 （无 Kimi）；索引与 log 已同步。
+
+新增 `sources/atlas-core-typed-eval.md` 与快照
+`2026-10-09-atlas-core-typed-eval.json`：typed.rs 11565–13741——evaluate 的
+六族划分（与 convert_expr 同形）、迭代借用纪律（矩阵不再造列矩阵、多项式
+保 canonical 项序与属主）、调用机器（变参元组解开、单值参数分发、空层
+规则、递归 0 号槽自绑、新帧不入捕获链保无环、return 解到调用边界、带名
+槽的错误附帧转储迹行）、回溯渲染（parsetree.w 的 at NAME:LINE:COL 形式）。
+维护者直接撰写（无 Kimi）；索引与 log 已同步。
