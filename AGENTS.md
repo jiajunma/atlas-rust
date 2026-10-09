@@ -606,11 +606,11 @@ ceiling and default one focused job; do not trade correctness for speed.
   none is wired into any contract/stager/catalog, predictions wait for the
   G2 numbering-convention answer; see `docs/HANDOFF.md`.  An eighth
   follow-up fixture
-  (`weyl_context_g2_prewarmed_transposed_dual.atlas` sha `7ed86be0…`)
+  (`weyl_context_g2_prewarmed_transposed_dual.atlas` sha `5c207025…`)
   implements the genuine prewarmed-rejection vehicle identified by the
   upstream reading (the frozen G2 prewarmed dual-side triplet is vacuous
   by construction); it belongs to a later arc stage.  A ninth draft
-  (`weyl_context_novalue_dual_family.atlas` sha `ba5bf666…`) probes the
+  (`weyl_context_novalue_dual_family.atlas` sha `cfff7ac8…`) probes the
   no-value dual-family BuildAndDrop-vs-Skip candidate divergence found by
   the typed.rs registration audit (docs/slices Part 4); capture before any
   registration fix.

@@ -5,7 +5,7 @@
   observably change later state, while the invalid-index control must still
   error (validation precedes the gate).  Candidate Rust divergence under
   capture: typed.rs registers all four as BuildAndDrop (the dual(InnerClass)
-  comment itself says "so skip"), so a discarded call runs the build —
+  comment itself says "so skip"), so a discarded call runs the build -
   observable where the build errors (e.g. budget stress), wasted work
   otherwise.  Provisional until complete original behavior is captured on
   HPC.  No atlas scripts. }

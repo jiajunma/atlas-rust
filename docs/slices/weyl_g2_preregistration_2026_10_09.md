@@ -104,7 +104,7 @@ any DIFFERED is a genuine Rust defect signal:
   `root_datum(id_mat(2), mat:[[2,-3],[-1,2]], false)` before
   `dual(SC(G2,true))`.  DRAFTED 2026-10-09 as
   `tests/math/generics/weyl_context_g2_prewarmed_transposed_dual.atlas`
-  (sha `7ed86be0a46080a9d7954e1bd203a1f2c5dc1adfe28f1f93f805c7dae79a2730`;
+  (sha `5c207025ba12c99b2cbe6ef47764b88324f36852a215f3e1dfaedcce35811a44`;
   prefix `WGT_`, recovery 737): the explicit construction hits the canonical
   dual's exact content (roots I2, coroot columns = primal Cartan rows
   [2,-1] and [-3,2]), `WGT_SLOT` proves the hit (interned-pointer equality
@@ -219,7 +219,7 @@ difference is wasted work only (still relevant to the performance lane).
 Per hard rules 3/7 this is a source-level CANDIDATE: no production edit
 until an original-backed capture.  Probe fixture drafted:
 `tests/math/generics/weyl_context_novalue_dual_family.atlas` (sha
-`ba5bf6662a89f70a5af7cd4a73771e9a89d611c1afa2a0fd82d12d37ebef2f3e`, prefix
+`cfff7ac87ca8a070576ede8089f53492cac8f438caf852ddad6adf96e38fe81a`, prefix
 `XN_`, recovery 738) — discarded `dual(ic)` / `dual_quasisplit_form(ic)` /
 `central_fiber` must print 41, the invalid-index `dual_real_form(ic,99)`
 must still error (validation precedes the gate), and

@@ -306,7 +306,7 @@ value, so "Rational division/modulo by zero" never fires at `7e1b958c`
 (upstream fix `509f584c`); plus the `repr.cpp` `reducibility_points`
 restructure (85+/35-, may change unitarity-lane outputs at refresh) and the
 `basic.at` `status(vec,KGBElt)` root_index fix.  Provisional probe fixture
-`tests/math/generics/rat_int_zero_division.atlas` (sha `adb48086…`, prefix
+`tests/math/generics/rat_int_zero_division.atlas` (sha `7380908e…`, prefix
 `RZ_`, int/int control first for signal-safety) drafted, unwired; capture
 belongs to the tunnel-blocked queue.  The defect is a labeled
 original-defect candidate: never port its pinned behavior as a golden.
@@ -451,7 +451,7 @@ original-backed capture; if confirmed, the fix is the one-word registration
 change plus the regression.  Full table and analysis:
 `docs/slices/weyl_g2_preregistration_2026_10_09.md` Part 4.  Probe fixture
 `tests/math/generics/weyl_context_novalue_dual_family.atlas` (sha
-`ba5bf6662a89f70a5af7cd4a73771e9a89d611c1afa2a0fd82d12d37ebef2f3e`, prefix
+`cfff7ac87ca8a070576ede8089f53492cac8f438caf852ddad6adf96e38fe81a`, prefix
 `XN_`, recovery 738) drafted, provisional, unwired; belongs to the no-value
 arc stage.
 
@@ -483,6 +483,29 @@ re-reading the file.  Lesson: for single-shot probe prompts of this size
 300s, and treat a zero-output timeout as retryable once before falling
 back to a local review.  Evidence dirs `/tmp/kimi-fixture-review-*` and the
 prompt file were removed after hashing (not registered transports).
+
+### Kimi structural review round 2 — the three later drafts (2026-10-09)
+
+Same probe-profile route for the three fixtures drafted after round 1
+(WGT_ transposed-prewarm, XN_ dual-family, RZ_ zero-division).  Frozen
+prompt 9284 bytes sha
+`02c51099d9144f119e9e5cdee331b6ee49fbb0bcf89c97e66131c42737b51937`.
+Attempt 1 (`--timeout 300`) again produced zero output (banner only) —
+the recorded lesson's retry path fired: attempt 2 (`--timeout 420`)
+completed exit0 in 252s, stdout.jsonl sha
+`55b40ddec531a721e8261770212b9dd7e5152386155554c86baeb7ae1aa34ef2e`.
+Result: all three drafts CLEAN; three non-blocking observations.
+Independent verification (grep -P non-ASCII): CONFIRMED observation 17 —
+each new header had exactly one em-dash (the same class round 1 caught);
+fixed in all three, new shas pinned in this file and AGENTS.md (WGT
+`5c207025…`, XN `cfff7ac8…`, RZ `7380908e…`).  Observations 16 (rat%int
+vs the idiom list's literal "int%int" wording — the probe's whole point)
+and 18 (WGT AFTER-payload asymmetry, within reference shape) were
+verified and intentionally not acted on; nothing rejected blindly.
+Lesson addendum: zero-output timeouts on this model are recurrent today
+— the first 300s attempt also failed; budget 420s and keep the
+retry-once rule.  Evidence dirs `/tmp/kimi-fixture-review2-*` and the
+prompt file removed after hashing (not registered transports).
 
 ### Coxeter cross-check of fixture group predictions (2026-10-09, local math)
 

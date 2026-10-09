@@ -2,7 +2,7 @@
   fixed rat_divide_int_wrapper/rat_modulo_int_wrapper comparing the
   shared_ptr (i==0) instead of the value (i->val.is_zero()), so at the pin
   the "Rational division by zero" / "Rational modulo zero" guards never
-  fire.  Discovery question: what does the PINNED oracle actually do — a
+  fire.  Discovery question: what does the PINNED oracle actually do - a
   deeper arithmetic error, a wrong value, or a signal?  The known-clean
   int/int control (RZ_INV) runs FIRST so it survives in the capture even if
   a probe terminates the process.  Rust is captured alongside; whichever way

@@ -24,7 +24,7 @@ value, or signal) — a labeled original-defect candidate in the sense of the
 named-update UB precedent (the oracle defines behavior, but known original
 defects are recorded as exceptions, never ported as goldens).  Probe fixture
 drafted: `tests/math/generics/rat_int_zero_division.atlas` (sha
-`adb480863a582295e138b352f64e1039a7b0aac09e2cc6c7054a606f8cfda07b`, prefix
+`7380908e0f9c9d1b2536bcf3677e5d07f6ea9bdefbe9881cc62870a86ae80a65`, prefix
 `RZ_`, recovery 739; nonconstant zero via `rz_n+:=0` defeats the static
 fold — the constant-folded `(literal)/0` rejects statically per the
 void-boundary lessons; the known-clean int/int control `1/rz_n` runs FIRST

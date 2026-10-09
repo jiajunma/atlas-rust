@@ -1,7 +1,7 @@
 { G2 Weyl prewarmed TRANSPOSED-dual rejection witness.  The canonical dual
   of SC(G2,true) has the transposed content: simple roots I2, simple coroots
   [[2,-3],[-1,2]] (columns [2,-1] and [-3,2], the primal Cartan rows),
-  preference false — no simply_connected/adjoint constructor produces it
+  preference false - no simply_connected/adjoint constructor produces it
   (docs/slices/weyl_g2_preregistration_2026_10_09.md).  Prewarming THAT exact
   content with an explicit root_datum fills the canonical dual's identity
   slot with an independent owner, so the later dual() cannot cold-share and
