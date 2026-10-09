@@ -1271,3 +1271,19 @@ presentation 四状态位判定（ms_tau 逐元素比 ±1、quasisplit 只按 ex
 CartanClassification 是否调用不可见的诚实声明、测试锚点（A4=120 至空系统
 =1；sc A1/adjoint A1/sc B2 三展示案例）与未覆盖清单——全部忠实。7 页批准；
 wiki/concepts/ 现有 259 页，剩余候选 274。
+
+## 2026年10月10日 第三十六批候选审查：mod-two.md 的 7 页
+
+对照 108 行来源包逐页核验：ModTwoVector 与 Malachite 层刻意分离、填充位
+清零支撑派生 Ord 的健全性（仅 map 键、非数学序）、from_ones 重复下标偶次
+抵消（[0,63,64,127,128,63] 锚点）、dot 的逐字 parity 折叠与 pub(crate)
+可见性、ModTwoSubspace 的最低置位 pivot（沿用 BitVector::firstBit()）、
+insert 先约化再消旧行保持序无关 RREF、reduce 升序扫描对齐 normalSpanAdd
+的注释、right_kernel 的 v_f=e_f+Σe_p 规则与其重新约化同 pivot_rows 直接
+供 real_weyl R-group 读位的接口差异、CanonicalModTwoSection 保留首批独立
+列而丢弃依赖列（固定可观测实形种子代表）、u64 掩码 64 列上限、
+solve 的 then_some 语义与 2^12×8 穷举"解=数值最小源掩码"、
+ModTwoSubquotient 的 crate 私有定位与四道构造校验、validate_induced_map_to
+的分子/分母双查与"只查商基代表会看似成立"的注释论据、12 测试锚点与未
+覆盖清单（5 处不变量违规/两个 relation/dot 无直接测试/文件内无调用方）
+——全部忠实。7 页批准；wiki/concepts/ 现有 266 页，剩余候选 267。

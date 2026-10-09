@@ -470,6 +470,19 @@
         "结构性源码阅读的验证与覆盖限制"
       ],
       "compiledAt": "2026-10-09T16:54:37.000Z"
+    },
+    "mod-two.md": {
+      "hash": "b48cb0917b1ae8f678bb9994a3e3a14d6bd47bc5e7f025a29136e7d84e1963d1",
+      "concepts": [
+        "f₂-上的位打包向量modtwovector",
+        "f₂-商空间的确定性代表元与陪集判定",
+        "f₂-子商的低主元坐标modtwosubquotient",
+        "保留首批独立列的典范截面canonicalmodtwosection",
+        "最低主元索引的典范-rref-子空间",
+        "由自由坐标构造-f₂-右核",
+        "线性映射下降到子商的条件验证"
+      ],
+      "compiledAt": "2026-10-09T16:56:15.095Z"
     }
   }
 }

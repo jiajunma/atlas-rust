@@ -33,6 +33,9 @@
 - **[[descvalue-扩展下降分类|DescValue 扩展下降分类]]** — DescValue 以 One、Two、Three 三族组织 32 种下降类型，通过奇偶枚举值、类型谓词、生成元长度与链接数描述局部结构。
 - **[[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]** — canonical dual 仅在目标尚未建立 WeylGroup 时共享源群身份，已预热目标保持独立，因此 Weyl 元素兼容性取决于对象生命周期和构造历史。
 - **[[dynkin-图分支形状与-weyl-群阶识别|Dynkin 图分支形状与 Weyl 群阶识别]]** — component_order 按边重数、节点度数和分支长度识别 A、B/C、D、E、F、G 型的群阶，其中 B/C 同阶而无需区分取向。
+- **[[f₂-上的位打包向量modtwovector|F₂ 上的位打包向量（ModTwoVector）]]** — 以动态 u64 数组表示有限维 F₂ 向量，支持异或与奇偶内积；重复下标偶次抵消，填充位保持为零，与无界整数表示分离。
+- **[[f₂-商空间的确定性代表元与陪集判定|F₂ 商空间的确定性代表元与陪集判定]]** — 将向量按子空间典范基约化得到确定性商类代表元，并通过两向量之差是否属于子空间判断是否同陪集。
+- **[[f₂-子商的低主元坐标modtwosubquotient|F₂ 子商的低主元坐标（ModTwoSubquotient）]]** — 在共同环境空间中校验分母包含于分子，以分母缺失主元对应的补基建立典范商坐标，并通过 crate 私有实现服务 CartanFiber。
 - **[[fiber-grading-与-r-群核生成元|fiber grading 与 R-群核生成元]]** — fiber_side 通过基 grading 和模二平移区分紧根与非紧根，从强正交非紧根的 m_alpha 数据求核，并按自由列升序产生 R-群位向量；real_r 属于对偶侧。
 - **[[fiber-元素的模型来源绑定与规范代表|Fiber 元素的模型来源绑定与规范代表]]** — 元素相等要求 Arc 模型指针与坐标同时相等，独立构造的同坐标元素不相等；商坐标选取基代表的 XOR 给出 low-pivot 约定下的确定性 ambient 代表。
 - **[[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]** — StrongRealClassification 预计算各 form 的 KGB 大小及全局总量；fiber_size(form, cartan) 在 form 不属于指定 Cartan 时返回 Some(0)，使跨全部 Cartan 的求和保持正确。
@@ -133,6 +136,7 @@
 - **[[伴随纤维的资源预算与可恢复错误|伴随纤维的资源预算与可恢复错误]]** — AdjointFiberBudget 限制整数格、持久条目和投影工作量，以受检算术检测溢出；运行期投影预算逐次独立检查，分配失败等情况返回显式错误。
 - **[[余权坐标的投影出处绑定|余权坐标的投影出处绑定]]** — AmbientCoweight 与 AdjointCoweight 将坐标绑定到 Arc<AdjointProjectionModel>，以指针身份和坐标共同判等，并拒绝跨独立投影实例复用坐标。
 - **[[余特征作用的负特征整数子格|余特征作用的负特征整数子格]]** — negative_coweight_eigenspace 直接计算 ker_Z(I + θ_Y)，由于 coweight_matrix() 已存储余特征上的对偶作用，无需再次转置。
+- **[[保留首批独立列的典范截面canonicalmodtwosection|保留首批独立列的典范截面（CanonicalModTwoSection）]]** — 保留首批独立输入列并丢弃依赖列，以至多 64 位源掩码对动态目标求解；同一分解可复用，源文所述 3×4 穷举测试锚定数值最小解掩码。
 - **[[偶数指数的虚数单位幂计算|偶数指数的虚数单位幂计算]]** — exp_i 为偶数 n 返回 i^n 对应的 ±1，但偶数前置条件仅由 debug_assert! 检查，release 下奇数输入会落入 −1 分支。
 - **[[公共上下文的生成元操作commoncontext|公共上下文的生成元操作（CommonContext）]]** — 将 KGB 生成元作用转运到共轭父单根，实现状态判定、cross、奇偶判定及双向 Cayley 变换，并处理参数修正与奇异标志。
 - **[[公共块对偶变换及-kl-递归的闭合限制|公共块对偶变换及 KL 递归的闭合限制]]** — dual 反转元素顺序、交换 x/y、反射长度并映射下降状态与链接，返回 BareBlock；部分块的未定义链接保持缺失，可能使对偶不满足 KL 递归的链接闭合要求。
@@ -141,6 +145,7 @@
 - **[[关系格封装与构造预检|关系格封装与构造预检]]** — RelationMatrix、RelationBasis 和 RelationGenerator 封装关系格操作，在分配、复制、推进迭代器或收集生成元之前执行相应形状与预算检查。
 - **[[典范整数据驻留|典范整数据驻留]]** — IntegralDatumTable 以按 upstream 正根序排列的典范正根表为键，追加分配 id 并复用已有 IntegralDatumItem；典范数据依赖 gamma 所在 alcove，而不只依赖整根系，且跨调用必须保持同一 RootSystem。
 - **[[典范纤维与-k-型等价判定|典范纤维与 K 型等价判定]]** — to_canonical_fiber 沿 canonicalize 给出的词进行复单根 cross；equivalent 先检查 Cartan 类，再比较双方典范纤维中的结果。
+- **[[最低主元索引的典范-rref-子空间|最低主元索引的典范 RREF 子空间]]** — ModTwoSubspace 通过升序消元及插入后的旧行消元保持与插入顺序无关的典范既约行阶梯基，支持秩与成员判定。
 - **[[最小环面算法的测试覆盖边界|最小环面算法的测试覆盖边界]]** — 现有四个测试锚点均为 rank 2 紧致内类，正例均满足 coch == factor，未以可区分断言刻画非平凡运输，也未覆盖非紧致 distinguished、多数错误分支和秩上限门控。
 - **[[最小环面部分的-grading-轨道搜索|最小环面部分的 grading 轨道搜索]]** — 算法用 LIFO 栈与 BTreeSet<u64> 遍历 grading 轨道，在置位方向施加余根奇偶平移和 grading 翻转，筛选满足目标约束的候选并按位向量整数序取最小值。
 - **[[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]** — longest_action 从源码计算的 2ρ 出发，按生成元顺序选择正配对反射并左合成，目标为 −2ρ，超预算或无法推进时报不变量错误；数学与复杂度声明尚未验收。
@@ -242,11 +247,13 @@
 - **[[正根集的单根提取|正根集的单根提取]]** — pos_simples 要求输入按 upstream 正根序排序，通过 bracket(β, α) 的正性及反射像的正负判断 α 或 β 是否非单根，其配对符号判据对应 simpleBasis 的论证。
 - **[[源余权格到伴随余权格的整数投影|源余权格到伴随余权格的整数投影]]** — 整数投影 Y → P∨ 按源单根顺序计算 pair(root, y) 作为目标坐标，保持可加性且可能具有中心核，因此不应视为同构。
 - **[[环面部分的模二表示与余权提升|环面部分的模二表示与余权提升]]** — 初始环面部分由 factor − coch 的整数坐标奇偶性编码，下降后以 coch + lift(tp) 提升为余权，供虚单根紧致性配对使用。
+- **[[由自由坐标构造-f₂-右核|由自由坐标构造 F₂ 右核]]** — right_kernel 为每个自由坐标结合对应主元系数构造核向量，再插入新子空间形成重新约化的典范核基。
 - **[[种子下方的-bruhat-区间生成|种子下方的 Bruhat 区间生成]]** — bruhat_below 经 Bruhat_generator::block_below 生成种子下方的标准模参数区间，作为部分公共块构造的输入。
 - **[[积分块范围与奇异集|积分块范围与奇异集]]** — IntegralBlockScope 根据 coroot 与 gamma 的整配对区分 Singleton、Full 和 ProperSubsystem，并结合奇异集确定计算范围；源文对真积分子系统的显式失败要求与后续 partial 支持描述存在适用边界不清。
 - **[[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]** — 由 integrality_simples 构造积分子系统的单根数据，提供按生成元编号的访问器，满足公共上下文需求而无需完整根闭包。
 - **[[精确整数矩阵与-bézout-幺模变换|精确整数矩阵与 Bézout 幺模变换]]** — IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。
 - **[[精确有理矩阵求逆|精确有理矩阵求逆]]** — invert_rational 使用 first-nonzero pivot 的精确有理高斯消元，按列返回逆矩阵；此处秩有界的消元不设置 budget knob。
+- **[[线性映射下降到子商的条件验证|线性映射下降到子商的条件验证]]** — 诱导映射必须同时将源分子映入目标分子、源分母映入目标分母；仅检查商基代表不足以保证映射良定义。
 - **[[结构性源码阅读的验证与覆盖限制|结构性源码阅读的验证与覆盖限制]]** — 来源记录源码快照和已有测试锚点，但本次未执行测试或数学验收，亦未核对上游字节；例外型部分分支、错误路径及若干实形情形仍缺少测试覆盖。
 - **[[虚根的-noncompact-grading|虚根的 noncompact grading]]** — simple_grading 按 offset[s] XOR ⟨alpha_s mod 2, torus bits⟩ 判断简单虚根的非紧性，须由调用方守卫根类型；任意虚根的 grading 使用 conjugate-to-simple 循环，非虚根返回 None。
 - **[[表示参数代表元归一化|表示参数代表元归一化]]** — lambda_unique、real_unique 与 gamma_lambda 规范化代表元，其中欧几里得除法 div_euclid(2) 避免负奇数截断导致代表元选择不一致及公式项无法合并。
@@ -262,4 +269,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_259 pages | Generated 2026-10-09T16:54:37.562Z_
+_266 pages | Generated 2026-10-09T16:56:15.693Z_
