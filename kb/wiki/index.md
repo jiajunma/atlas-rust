@@ -54,6 +54,9 @@
 - **[[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]** — cayley 以 s·w 的置换查表寻找邻居，目标 Cartan 未添加时返回 None；stage e 要求预先添加该 form 的向上封闭 Cartan 集合。
 - **[[cayley-链的双层无效性与-partialblock-适配|Cayley 链的双层无效性与 PartialBlock 适配]]** — 外层 None 表示无效格子，内层 None 表示未定义链；PartialBlock 适配交换生成元与元素参数，并按下降状态将不可用的 Cayley 链编码为 Some((None, None))。
 - **[[cayleycross-的下降剥离算法|Cayley/Cross 的下降剥离算法]]** — 验证 datum 与 w∘δ 的一致性后，按生成器升序选择首个下降，依据 Real 或 Complex 根类执行不同反射步骤，并在步进前检查剥离预算；终止性论证仅为源码声明。
+- **[[clean-标志与-cli-退出状态|clean 标志与 CLI 退出状态]]** — CLI 退出状态遵循会话的 clean 标志：语法、类型和运行时错误导致非零退出，缺失包含文件本身不使 clean 失效。
+- **[[cli-事件输出与源码诊断|CLI 事件输出与源码诊断]]** — print_events 将文本和原始字节事件分别输出到 stdout，并通过 frame.describe_bytes 将含出处、源行和 caret 的诊断输出到 stderr；值通常已由帧渲染为文本。
+- **[[cli-兼容性的证据边界|CLI 兼容性的证据边界]]** — 本包仅完成结构性阅读，不声称语言验收；上游行号引用属于移植方陈述，CLI 兼容性以 HPC 语料门为准，快照哈希仅标识字节。
 - **[[compactweyl-构造与生成元编号映射|CompactWeyl 构造与生成元编号映射]]** — CompactWeyl 从 Cartan 矩阵分类 Dynkin 图，反转 B/C/D 型的生成元次序，再逐内部生成元构造 transducer；d_out 与 piece_offset 分别处理内外编号及局部到全局内部编号的映射。
 - **[[convertexpr-的-inout-类型模式与单遍转换|convert_expr 的 in/out 类型模式与单遍转换]]** — convert_expr 将 required 封装为共享 ConversionType 并在转换后写回，一遍完成检查与合成；conform_types 依次尝试特化、强转和类型错误。
 - **[[coxeter-矩阵的分型查表|Coxeter 矩阵的分型查表]]** — coxeter_entry 根据连通 Dynkin 分型及 Bourbaki 生成元编号计算 Coxeter 矩阵项，在线性图中按编号距离与类型分派，并为 D/E 型采用分叉规则。
@@ -118,6 +121,7 @@
 - **[[primitivisation-索引与符号传播|Primitivisation 索引与符号传播]]** — 针对每个 descent mask 递减遍历元素，沿首个 good ascent 的 cross 链接继承 primitive 索引并依 epsilon 更新符号，遇到 like-nonparity 或 partial-block 边界则标记 DEAD_END。
 - **[[quasisplit-规范化与-grading-的仿射线性求值|Quasisplit 规范化与 grading 的仿射线性求值]]** — Quasisplit 规范化令零 adjoint fiber 元素的 grading 为全一，其余元素通过 canonical ambient representative 与单根奇性向量配对后取反求值。
 - **[[rankflags简单生成元位集|RankFlags：简单生成元位集]]** — RankFlags 使用非 Copy 的 u32 位集表示至多 32 个简单生成元，提供超集判定、交集、差集和最低置位查询，set/is_set 自身不检查边界。
+- **[[rayon-工作线程栈配置|Rayon 工作线程栈配置]]** — CLI 将 Rayon 工作线程栈设为 2 MiB，源码说明其依据是相关并行算法采用迭代实现并意在降低 RSS；该说明不构成实测性能结论。
 - **[[realformseed-的封装与构造不变量|RealFormSeed 的封装与构造不变量]]** — RealFormSeed 在共享 append-only 表的编号下绑定 grading offset、square-class cocharacter 与种子元素，以私有字段保证 grading_offset 等于 grading_of_simples(cocharacter)。
 - **[[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]** — build 检查 inner class、fundamental class 归一化、强层计数一致性降级及 form id 边界；custom 要求显式 cocharacter 的 simple pairings 为整数且 torus part 复现该 form 的 compact pattern。
 - **[[reducedparamkey-与-reduced-键控块复用|ReducedParamKey 与 reduced 键控块复用]]** — 使用姿态传输后的 KGB 元素、规范整数据编号和 Smith codec 余数构成私有稳定键，使 Weyl 姿态下匹配的查询复用已存公共块。
@@ -199,11 +203,13 @@
 - **[[中心环面的商对合分类|中心环面的商对合分类]]** — 通过根格的 Smith 适配基计算商对合，对 inv + I 分类得到 compact、complex、split 秩并依序追加环面字母；IntegerLatticeBudget 仅约束此处的 Smith 基计算。
 - **[[中心陪集表驱动的根格移位枚举|中心陪集表驱动的根格移位枚举]]** — shifts(fix, pos, neg) 利用陪集匹配、分数部借位与子集筛选，枚举 fw(fix+A)−fw(B) 的单根坐标，其中 A⊆pos、B⊆neg。
 - **[[二进制补码的置位索引|二进制补码的置位索引]]** — nth_set_bit 按零基序号查找二进制补码串的置位，非负数置位不足时返回 -1，负数则通过其补码的有限清位处理无限置位。
+- **[[交互式与非交互式输入分流|交互式与非交互式输入分流]]** — CLI 根据 stdin 是否为终端选择批量读取执行或 run_interactive；交互模式显示版本横幅与 atlas> 提示符，且禁用 readline。
 - **[[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]** — 惰性 cell 只发布完整成功结果，构造失败后应允许重试，且不能缓存首次调用的 Diagnostic 或 SourceSpan，以保留当前调用的错误定位。
 - **[[从根数据对合构造内类|从根数据对合构造内类]]** — build_inner_class 以转置得到 coweight 部并构造格对合；文档引用的上游行为接受任意根数据对合，再通过左合成转为 distinguished 对合。
 - **[[代表元归因与-tits-搬运的职责边界|代表元归因与 Tits 搬运的职责边界]]** — 归因 helper 仅接受分类已存储的代表元；一般 twisted involution 的归约需借助 table-backed Tits cross actions 同步搬运 torus factor，后续 minimal_torus_part 下降仍依赖分离的 inverse-Cayley 操作。
 - **[[代表元级弱实形式归因|代表元级弱实形式归因]]** — weak_real_form_at_representative 通过 dual fixed-point projection v↦(v+vθ)/2、配对奇偶性和虚根 grading 确定局部轨道，再经 RealFormLabels 映射为全局弱实形式编号。
 - **[[会话-clean-标志与诊断分流|会话 clean 标志与诊断分流]]** — 语法、类型、求值及真正的词法错误使会话变脏，而文件打开失败、Io 诊断、词法警告和 abandon 级联本身不改变 clean 状态。
+- **[[会话帧驱动的-cli-执行模型|会话帧驱动的 CLI 执行模型]]** — CLI 通过 atlas-core 会话帧在共享会话中执行文件参数或 stdin；文件参数按普通命令流处理，不实现上游 prelude-capture 语义，quit 可提前结束。
 - **[[会话循环与文件会话帧的职责边界|会话循环与文件会话帧的职责边界]]** — session.rs 负责命令循环并对文件包含指令产生 Io 诊断，文件包含与输出重定向由 session_frame.rs 管理，转换与求值则交给 typed.rs。
 - **[[伴随-cartan-fiber-的对合作用构造|伴随 Cartan fiber 的对合作用构造]]** — 伴随 fiber 构造先核对 datum 与源对合，再按列提取 simple-root 作用并转置得到余特征作用，复用 CartanFiber 构造并验证投影下降；转置等于逆转置的理由来自对合性注释。
 - **[[伴随-cartan-纤维的构建与下降验证|伴随 Cartan 纤维的构建与下降验证]]** — AdjointCartanFiber 在检查 datum、对合与预算后构造伴随半单商上的有限 F₂ 纤维，并通过 validate_induced_map 验证源纤维映射的下降条件；来源仅为结构性阅读，不代表数学验收。
@@ -249,6 +255,7 @@
 - **[[列表显示的行转换选择|列表显示的行转换选择]]** — row_coercion 在非行目标上下文中选取首个从行类型转入目标的注册项并返回元素分量类型，因此 mat 上下文选择 vec 而非 [int]。
 - **[[利用饱和核与模二秩计算整对合分类|利用饱和核与模二秩计算整对合分类]]** — 令 plus_rank = rank − rank(ker(θ+I))，以 (θ+I) mod 2 的行空间秩得到 complex，再求 compact 与 split；内部函数要求调用方保证对合前提。
 - **[[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]** — lookup 使用前向根置换作为完整相等性键；跨系统输入受调用方契约约束，种子插入不检查键碰撞，依赖不同 Cartan 轨道的键互不重叠。
+- **[[包含文件的搜索路径解析|包含文件的搜索路径解析]]** — CLI 将可重复的 --path=DIR 参数收集为搜索路径，<file 包含依次按这些目录前缀及工作目录解析。
 - **[[单位上三角整数矩阵求逆|单位上三角整数矩阵求逆]]** — inverse_upper_triangular 通过回代及 wrapping i32 运算求单位上三角矩阵的逆，并对非方阵或存在非 1 对角元的输入报错。
 - **[[单反射下的图像基传送|单反射下的图像基传送]]** — 沿单反射 s 更新 L′=sL、M′=Ms，保持 L′M′=1−θ′；传送使用 checked i64 算术，其结果可与重新归约所得基存在列符号或列次序差异。
 - **[[单命令输出重定向的执行纪律|单命令输出重定向的执行纪律]]** — >file 与 >>file 的命令体按表达式先解析，再打开 sink 并求值；解析失败不创建文件，求值失败可保留部分输出，打开失败仅报告且保持 clean。
@@ -397,6 +404,7 @@
 - **[[整数矩阵算法的逐操作保真移植|整数矩阵算法的逐操作保真移植]]** — 欠定整数系统的被选解及其坐标奇偶性会影响下游 same_sign，因此 matreduc 复现上游幺模操作序列、符号簿记和 wrapping i32 算术，而不只返回任意正确解。
 - **[[整数线性系统求解与像判定|整数线性系统求解与像判定]]** — has_solution 对角化后检查变换右端的逐坐标可除性，find_solution 无解时返回 None，in_left_image 与 in_right_image 提供像判定，而右端长度不匹配会触发 panic。
 - **[[文件命令兼容性的证据边界|文件命令兼容性的证据边界]]** — 文件内的单元测试提供行为锚点，结构性阅读与移植陈述不构成端到端兼容性或数学验收，文件命令兼容仍需 HPC 差分语料验证。
+- **[[文件输入的有损-utf-8-解码|文件输入的有损 UTF-8 解码]]** — FsProvider 以有损 UTF-8 方式提供文件内容，避免将游离的非 UTF-8 字节误判为文件打开失败。
 - **[[普通全形变的递推关系|普通全形变的递推关系]]** — 遍历每个可约点，使用 F(z)=L(z)+Σ_t c_t·(1-s)·F(t)，并通过 (1-s)²=2(1-s) 对应原版整数递推。
 - **[[普通根系的确定性枚举|普通根系的确定性枚举]]** — RootSystem 从 BasedRootDatum 播种正负简单根并以 BFS 求反射闭包，最终按环境坐标字典序排列根，结果顺序独立于发现顺序。
 - **[[有序强制转换注册表|有序强制转换注册表]]** — coercions.rs 通过 OnceLock 构建含 29 条注册的转换表，保留上游顺序和转换标签，以首中即返的线性扫描判断适用性，转换节点由类型化管线提供。
@@ -522,4 +530,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_519 pages | Generated 2026-10-09T18:07:35.100Z_
+_527 pages | Generated 2026-10-09T18:09:38.132Z_

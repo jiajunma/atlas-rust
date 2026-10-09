@@ -1895,3 +1895,15 @@ row_coercion 取第一个 from 为行的条目、is_close 三比特与相等先�
 检查/void 与 * 只与自己邻近/Tabled/Applied 递归名返 0、broader_eq 平衡序
 （void 最宽、* 最窄、原始吸收可转入者、函数要求参数相等）——全部忠实。
 7 页批准；wiki/concepts/ 现有 519 页，剩余候选 14。
+
+## 2026年10月10日 第七十二批候选审查：atlas-cli-main.md 的 8 页
+
+对照 45 行来源包（维护者直接撰写、175 行全覆盖）逐页核验：FsProvider
+有损 UTF-8 的动机（游离字节不得变成打开失败）、FsSink 的 OpenOptions
+模式、print_events 分流（Output/ReportLine 走 print!、字节事件写原始
+字节到 stdout、诊断经 describe_bytes 到 stderr、Value 分支防御性）、
+rayon 2MiB 工作栈配置及其动机如实标注为源码说明而非实测、--path 可重复
+与文件参数按普通命令流喂入（prelude-capture 明确 non-goal）、stdin
+终端分流与横幅逐字内容、退出状态=clean 标志与缺包含文件不置脏、quit
+提前结束、本文件无测试由 HPC 语料门覆盖——全部忠实。8 页批准；
+wiki/concepts/ 现有 527 页，剩余候选 6。
