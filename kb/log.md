@@ -1589,3 +1589,15 @@ vertex_orbit 的模变体沿 label>1 扩展、convert_to_words 的反射词左�
 reflection_word 的首个下降降到单根再逆序回溯、word_act_root/
 word_act_weight 均为最后一个字母先作用、与 subgroup 包见证序的约定配对
 ——全部忠实。7 页批准；wiki/concepts/ 现有 384 页，剩余候选 149。
+
+## 2026年10月10日 第五十四批候选审查：atlas-core-domain-scc-root-table.md 的 6 页
+
+对照 45 行来源包（维护者直接撰写）逐页核验：strong_components 的迭代
+Tarjan 形（rank/class_of/partition/induced 与 active 四元组、nil=size/
+infinity=size+1 哨兵）、ByLastCoordinate 的 iter().rev() 与上游
+root_compare 一致、integer_matrix_product 的 i128 宽累积只喂扭曲兼容等值
+测试的限定用途如实保留、对合构造器先检查值再适配成行（Vec<Vec<_>> 的
+0xN 维数不可恢复、Atlas 以行数为期望秩）、RootTable::build 的
+prefer_coroots 转置-生成-换回、components/express/length_flags 分工——
+全部忠实（本包为头部精读，候选均如实声明未展开细节）。6 页批准；
+wiki/concepts/ 现有 390 页，剩余候选 143。

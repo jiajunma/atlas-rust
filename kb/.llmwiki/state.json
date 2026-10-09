@@ -703,6 +703,18 @@
         "陪集树到-weyl-词的转换"
       ],
       "compiledAt": "2026-10-09T17:29:34.575Z"
+    },
+    "atlas-core-domain-scc-root-table.md": {
+      "hash": "343742d922dfc6159d8a9727f615309845cee1c82c7417ae7dae997a0578ac4e",
+      "concepts": [
+        "bylastcoordinate-逆坐标字典序",
+        "roottable-的根与余根构建",
+        "块图的迭代式强连通分量算法",
+        "对合构造器的矩阵维数校验",
+        "整数矩阵乘积的宽累积",
+        "根向量到环境格基的表达"
+      ],
+      "compiledAt": "2026-10-09T17:30:49.351Z"
     }
   }
 }

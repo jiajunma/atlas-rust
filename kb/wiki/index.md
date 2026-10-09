@@ -26,6 +26,7 @@
 - **[[bourbaki-顶点排序与置换语义|Bourbaki 顶点排序与置换语义]]** — 各型通过端点选择、E 型长臂交换及 D 型剩余短臂追加生成 position，bourbaki_permutation 按分量顺序拼接，result[i] 表示 Bourbaki 位置 i 对应的 datum 顶点。
 - **[[bruhat-偏序的-hasse-图构造|Bruhat 偏序的 Hasse 图构造]]** — bruhat_hasse 通过首个严格良下降的 cross 或逆 Cayley 像及上升扩展生成直接下邻，无此下降时收集 RealTypeII 的第一逆 Cayley 分量；索引和 expect 依赖构造不变量。
 - **[[buildanddrop-领域内建验证策略|BuildAndDrop 领域内建验证策略]]** — validate 仅构造并丢弃 Subgroup，不计算轨道，同时确保非法根号、非 Cartan 矩阵及整数窄化问题在丢弃前得到诊断。
+- **[[bylastcoordinate-逆坐标字典序|ByLastCoordinate 逆坐标字典序]]** — ByLastCoordinate 通过 iter().rev() 从末坐标向前进行字典序比较，来源称其与 C++ root_compare 的顺序一致，但兼容性仍须 HPC 差分验证。
 - **[[cartan-fiber-的先分母后分子构造|Cartan fiber 的先分母后分子构造]]** — 构造先计算整数负特征格并模二约化作为分母，再按余特征作用矩阵的行计算 I+θ_Y 的有限域右核作为分子，最后建立子商；整数预算与有限域分配防护分别生效。
 - **[[cartan-fiber-的有限域子商模型|Cartan fiber 的有限域子商模型]]** — CartanFiber 采用 ker_F2(I+θ_Y)/red_2 ker_Z(I+θ_Y) 的子商坐标与 low-pivot 归约基；其与 Y^θ/(I+θ_Y)Y 的同构仅作为代码注释声明记录，未获本包数学验收。
 - **[[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]** — CartanClassification::build 构造 inner class 的全部 Cartan 类，聚合各实形式的 Cartan 集、most-split 类、twisted-involution 总数与严格偏序，并共享 twisted 共轭分区供对偶侧复用。
@@ -116,6 +117,7 @@
 - **[[rootid-与根系索引对齐|RootId 与根系索引对齐]]** — RootId 同时索引根、余根和简单坐标三张对齐表；公开访问器通过 Option 或 Result 处理越界，简单根 ID 则保持生成器顺序。
 - **[[rootnumbering-根编号与-rootnbr-顺序|RootNumbering 根编号与 RootNbr 顺序]]** — 正根按坐标和及从末坐标向前的比较排序，prefer_coroots 选择坐标系，并通过正负根配对与 signed(nbr)=nbr−npos 提供编号转换。
 - **[[rootset-只读位图集合|RootSet 只读位图集合]]** — RootSet 以稳定根序上的位图存储成员，公开 contains 对越界返回 false、iter 按索引升序遍历，构造与插入仅供内部使用。
+- **[[roottable-的根与余根构建|RootTable 的根与余根构建]]** — RootTable::build 在 prefer_coroots 模式下先转置 Cartan 矩阵生成正（余）根再换回，并通过 components 划分分量、length_flags 分别标记根与余根的长根属性。
 - **[[rust-ladder-成员查询的选择性溢出处理|Rust ladder 成员查询的选择性溢出处理]]** — build_ladder_bottoms 仅将 root/coroot 成员查询中的 ArithmeticOverflow 解释为 false，独立执行两类查询并传播其他错误，同时保持底层减法、排序、布局和公共 API 不变。
 - **[[rust-weyl-内核与抽象群的无环所有权模型|Rust Weyl 内核与抽象群的无环所有权模型]]** — 分离 datum 坐标内核与抽象 Weyl 群身份可表达共享语义并避免 handle 与 context 的强引用环；核心身份修复已落地，后续缓存共享设计仍需独立验证。
 - **[[specialgrading-的-bourbaki-序拉回与因子切片|specialGrading 的 Bourbaki 序拉回与因子切片]]** — form_type_name 通过 pulled[k] = grading[perm[k]] 将非紧虚根位集拉回 Bourbaki 序并逐因子消费，其中复型条目消费两个因子，环面因子不消费 grading 位。
@@ -226,6 +228,7 @@
 - **[[坐标边界修复的-tests-first-验证链|坐标边界修复的 tests-first 验证链]]** — BEFORE-v3 确认未修复代码出现两条 kernel 失败和一条完整流失败，AFTER-v3 验证其通过，并结合完整 Rust 测试套件、保留门禁及源码完整性检查限定修复证据。
 - **[[块修正子的相对化与标准参数恢复|块修正子的相对化与标准参数恢复]]** — make_relative_to 先逆合成定位器，再用更新后的 Weyl 元素变换并计算整正交平移；sr_with_modifier 依次平移、逆向变换和标准化，来源记录了 SL(3,R) 的精确往返测试锚点但未声称数学验收。
 - **[[块图的直接与逆-cayley-变换|块图的直接与逆 Cayley 变换]]** — 直接与逆 Cayley 访问器共享两个像槽并按 weak descent 互补开放；i1 构建单值直接像，i2 构建双值直接像，同时回填逆像并检查槽容量。
+- **[[块图的迭代式强连通分量算法|块图的迭代式强连通分量算法]]** — strong_components 使用迭代式 Tarjan 形算法处理块图，以显式 active 条目记录顶点、父位置、下一边索引和最小秩；来源仅完成结构性阅读。
 - **[[块的-bruhat-hasse-图与可比对计数|块的 Bruhat Hasse 图与可比对计数]]** — Bruhat Hasse 图沿首个严格 good descent 递归构造直接下邻，在 split principal series 处使用 type-II 实下降的逆 Cayley 像；含自身的可比对计数要求 Hasse 行按拓扑序排列。
 - **[[基于-alcove-的整数据定位流程|基于 alcove 的整数据定位流程]]** — int_item 依次进行根格顶点平移、dominant 化、基本 alcove 墙检测、逆序处理非整反射、典范闭包驻留和单根像置换构造；factor_dominant 贪心选取最低下标负配对生成元且无迭代上限。
 - **[[基于-cartan-矩阵识别的-weyl-群阶计算|基于 Cartan 矩阵识别的 Weyl 群阶计算]]** — weyl_order_of_cartan 通过方形检查、连通分量 BFS 拆分及分量阶乘积计算群阶，环面因子贡献 1，并使用精确 Integer 算术避免固定宽度整数溢出。
@@ -265,6 +268,7 @@
 - **[[对偶根映射与-cartan-矩阵转置|对偶根映射与 Cartan 矩阵转置]]** — 对偶根通过 primal 余根向量映回 primal RootId，而实根及实紧根子系统使用转置 Cartan 矩阵确定类型，由此体现 B/C 类型互换。
 - **[[对合下的虚根实根与复根分类|对合下的虚根、实根与复根分类]]** — 按 θ(α)=α、θ(α)=−α、其余情形依次将根分类为 Imaginary、Real、Complex，并提供按 RootId 升序遍历及越界返回 None 的查询。
 - **[[对合分类的资源预算与验证顺序|对合分类的资源预算与验证顺序]]** — classify_involution 依次检查形状、执行并释放临时矩阵预算记账、验证对合性，再构造 θ+I；内部 classify_plus_identity 由调用方保证对合前提。
+- **[[对合构造器的矩阵维数校验|对合构造器的矩阵维数校验]]** — 对合构造器包装侧先校验保留原始维数的 mat，再适配为行向量，以保留 0×N 等形状信息，并以矩阵行数作为独立情形的期望秩。
 - **[[对合查表实现的证据范围与测试缺口|对合查表实现的证据范围与测试缺口]]** — 来源提供结构性源码阅读和测试断言记录，未执行测试或完成数学验收，也未独立核对上游字节；非方阵换基、非恒等排列下的复因子交换及空输入等仍缺少测试覆盖。
 - **[[对合的-1θx-图像基对|对合的 (1−θ)X* 图像基对]]** — 以 n×r 的 lift_mat 与 r×n 的 m_real 表示图像基及坐标映射，满足 lift_mat·m_real = 1−θ。
 - **[[对合的反不变秩|对合的反不变秩]]** — 通过精确整数公式 (rank−trace(θ))/2 计算 −1 特征空间及 X*/ker(1−θ) 的秩，避免浮点计算，并检查算术溢出与结果合法性。
@@ -317,6 +321,7 @@
 - **[[整数对合的-compactcomplexsplit-分类|整数对合的 compact/complex/split 分类]]** — 整数对合的恒等、交换对及取负因子数量唯一确定；以 plus_rank=rank−dim ker(θ+I) 和 complex=rank_F₂((θ+I) mod 2) 推出 compact 与 split，无须选取或存储具体分解。
 - **[[整数格计算预算integerlatticebudget|整数格计算预算（IntegerLatticeBudget）]]** — 以矩阵维数、存活工作条目总量、初等操作次数和中间系数位长限制单次精确计算；这些约束属于计算预算，不代表数学秩限制。
 - **[[整数消元中的下取整除法与-gcd-主元选择|整数消元中的下取整除法与 gcd 主元选择]]** — divide 对正除数实现下取整并避开 i32::MIN 取负；gcd 使用 wrapping_abs 选择主元，通过除法消元、负主元归一和列交换记录相应符号变化。
+- **[[整数矩阵乘积的宽累积|整数矩阵乘积的宽累积]]** — integer_matrix_product 使用 i128 累积用户矩阵乘积，并将结果用于扭曲兼容检查的等值测试；来源未给出任意输入规模下的溢出保证。
 - **[[整数矩阵的幺模对角化|整数矩阵的幺模对角化]]** — diagonalise 返回满足 row * m * col 为对角矩阵的幺模变换及对角元素，通过交替行列 gcd 消元和主元列重排，使除首项外的对角元素为正，并对空形状提前返回。
 - **[[整数矩阵移植的-oracle-回归锚点与证据边界|整数矩阵移植的 oracle 回归锚点与证据边界]]** — C++ oracle 字面量锚定精确变换矩阵、对角符号及秩亏系统被选解，但 wrapping 溢出、部分像判定、空形状和 panic 路径仍缺少测试，源包也未重跑其引用的 HPC 验证。
 - **[[整数矩阵算法的逐操作保真移植|整数矩阵算法的逐操作保真移植]]** — 欠定整数系统的被选解及其坐标奇偶性会影响下游 same_sign，因此 matreduc 复现上游幺模操作序列、符号簿记和 wrapping i32 算术，而不只返回任意正确解。
@@ -336,6 +341,7 @@
 - **[[标准模参数的约化表示standardreprmod|标准模参数的约化表示（StandardReprMod）]]** — 以 KGB 元素 x 和经 (1−θ)X* 约化、规范化的 gamma_lambda 表示标准模参数，提供 build 与 mod_reduce 两条构造路径。
 - **[[根-involution-的-innerclass-构造与-weyl-因子|根 involution 的 InnerClass 构造与 Weyl 因子]]** — 构造入口在调用方根枚举预算内验证根与余根的传输，并可通过左复合 Weyl word 将任意合格的根 involution 转为保持基的 involution；不同入口保留或丢弃所得 Weyl 因子。
 - **[[根与余根的梯子底表|根与余根的梯子底表]]** — min_roots 与 min_coroots 为每个 α 预计算满足 β−α 非根或非余根的 β 集合，分别使用有序根表二分查找和余根坐标映射判定成员。
+- **[[根向量到环境格基的表达|根向量到环境格基的表达]]** — RootTable 构建中的 express 将单坐标向量表达到环境格基，明确根表所用向量表达的基底。
 - **[[根子集的非正交连通分量及顺序|根子集的非正交连通分量及顺序]]** — root_components 按非正交关系划分根子集，分量内部按 RootNbr 升序，最终分量按最大 RootNbr 排列，该顺序影响 FPP 乘积向量及 Weyl 见证。
 - **[[根对合数据rootinvolutiondata|根对合数据（RootInvolutionData）]]** — 在格对合之上验证根置换及逐根余根运输；后者排除仅保持配对却错误移动余根中心环面坐标的作用。
 - **[[根对合诱导的伴随余权作用|根对合诱导的伴随余权作用]]** — 根像的单根坐标构成根作用矩阵；由于根作用已验证为对合，其对偶作用的逆转置等于转置，因而伴随余权作用由转置矩阵给出。
@@ -387,4 +393,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_384 pages | Generated 2026-10-09T17:29:35.184Z_
+_390 pages | Generated 2026-10-09T17:30:50.052Z_
