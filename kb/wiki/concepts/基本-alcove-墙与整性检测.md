@@ -1,0 +1,57 @@
+---
+title: 基本 alcove 墙与整性检测
+summary: fundamental_alcove_walls 由全部单根和逐 Dynkin 分量最高余根对应的负根构成，int_item 分别以分子配对值等于 0 或负分母判定 gamma 是否落墙。
+sources:
+  - locator.md
+kind: concept
+createdAt: "2026-10-09T14:59:44.308Z"
+updatedAt: "2026-10-09T14:59:44.308Z"
+tags:
+  - Alcove
+  - 余根
+  - 整性判定
+aliases:
+  - 基本-alcove-墙与整性检测
+  - 基A墙
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+---
+
+# 基本 alcove 墙与整性检测
+
+基本 alcove 墙与整性检测是 `locator.rs` 中整数据定位流程的一部分：先将查询参数 \(\gamma\) 约化到优势位置，再检测其命中的基本 alcove 墙，构造典范整子系统，并恢复查询的 Weyl 姿态。该模块在所述源码状态下尚未接入 `RepTable::lookup`。^[locator.md:16-25, locator.md:48-66]
+
+## 基本 alcove 的墙集
+
+`fundamental_alcove_walls` 的墙集由全部单根与每个 Dynkin 分量的最高余根所对应的负根组成。实现通过求所有单根的 `min_coroots_for` 梯子底表之交、取其中的负根，再并入全部单根来构造墙集。这里的最高性依据余根，而非直接取最高根。^[locator.md:68-69]
+
+## 墙命中与整性判定
+
+定位首先调用 `root_vertex_of_alcove(system, gamma)`，取得 \(\gamma\) 所在 alcove 的根格顶点；随后从参数分子中逐坐标减去 `denominator * vertex`，使用受检算术。`factor_dominant` 再反复选择在单余根上取负值的最低下标生成元进行反射，直到参数优势化，并按施加顺序记录反射词。相关流程见 [[Alcove 根格顶点与基本 Alcove 约化]]。^[locator.md:50-54]
+
+设参数分母为 \(d\)。对优势化后的参数逐墙求值时，正墙即单根墙，其命中条件是求值等于 \(0\)；负墙即各分量最高余根对应的负墙，其命中条件是求值等于 \(-d\)。满足相应等式的墙加入 `on_wall`。^[locator.md:55-57]
+
+墙命中之后，算法逆序遍历已记录的反射词。若当前字母对应的求值满足 `rem_euclid(denominator) != 0`，即该求值非整，则把该字母左乘进 `w`，并从分子中消去该反射。最终 `w(dominant gamma)` 给出所求姿态；墙命中的等式检测与此处的余数检测分别承担不同步骤的判定。^[locator.md:58-60]
+
+## 从命中墙生成典范整数据
+
+`on_wall` 决定典范整数据的驻留键：算法按**余根坐标**计算加法闭包，取正部，再按 upstream 正根序排序并驻留；已有相同键时直接复用。闭包将生成元及其负根一并纳入，然后反复求两两余根坐标和，直至不动点。此处不能以根坐标加法替代余根坐标加法，因为整余根所对应的根集合不必对根加法封闭。^[locator.md:61-62, locator.md:70-71]
+
+B2 回归锚点体现了这一区别：根加法会错误地只得到四个长根，而余根加法得到全部八个根。墙集及其闭包因此是 [[典范整数据驻留]] 的关键输入，而不只是几何边界的记录。^[locator.md:61-62, locator.md:82-83]
+
+姿态恢复后，算法逐个计算典范单根的 `w.image(alpha)`，要求像存在且为正根；缺失像触发 `"provenance"` 违规，非正像触发 `"integral image positivity"` 违规。像的排序副本构成 `simp_int`，各像在其中的位置构成 `simple_pi`，供 [[Weyl 姿态定位器]] 使用。^[locator.md:63-66]
+
+## 证据与适用边界
+
+典范数据不能仅由查询的整根系来理解：A2 测试记录了两个切片参数驻留不同 A1 item 的行为，并明确指出典范数据依赖 \(\gamma\) 所在的 alcove。其他锚点包括 Weyl 共轭参数共享 item、零参数对应全系统与恒等姿态，以及 F4 半积分定位器的正根像集合检查。^[locator.md:84-89]
+
+本来源是结构性阅读，不构成数学或正确性验收。`factor_dominant` 与 `additive_closure` 没有迭代或规模预算；分母非零且不为 `i64::MIN` 依赖 `RationalWeight` 的构造不变量。测试仅覆盖 A2、B2、F4，可约根系、rank-0 边界及多条错误路径尚未覆盖。^[locator.md:10-12, locator.md:98-105]
+
+## Sources
+
+- [locator.md](locator.md) — 典范整数据驻留与 Weyl 姿态定位器（locator.rs）

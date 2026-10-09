@@ -1139,3 +1139,19 @@ is_involution → checked_add(1)）与 compact+2·complex+split=n 恒等式、
 奇偶测试矩阵字面量、fiber_rank 的 saturating_sub vs checked_sub 阅读观察
 及其零测试状态——全部忠实。7 页批准；wiki/concepts/ 现有 199 页，
 剩余候选 334。
+
+## 2026年10月10日 第二十八批候选审查：locator.md 的 8 页
+
+对照 113 行来源包逐页核验：三类型分工与"纯、未接线移植"状态、int_item
+六步流程（alcove 根格顶点平移 checked 算术 → factor_dominant 无迭代上限、
+终止性依赖根系理论的如实标注 → 正墙对 0/负墙对 −denominator 的命中检测 →
+逆序遍历反射词、rem_euclid 非整字母左乘并消去 → 余根坐标加法闭包取正部
+作驻留键 → w.image 的 provenance/positivity 两道不变量）、upstream
+RootNbr 序（高度+简单坐标反字典序）与 crate RootId 环境字典序的刻意存储
+偏差（作者声明语义无偏差）、make_relative_to 的右乘逆与
+simple_pi[j]=old[inv[j]]（手算 [2,1,0]∘[1,2,0]⁻¹=[0,2,1] 复核一致）、
+usize::MAX 哨兵、B2 余根闭包回归（根加法 4 vs 余根加法 8，
+LOCATOR_COROOT_REGRESSION）、A2 两切片驻留不同 item 的"典范性依赖 alcove
+而非仅整根系"记录、IntegralDatumTable 不持有 RootSystem 的未定义风险与
+debug_assert 仅 debug 生效等边界——全部忠实。8 页批准；
+wiki/concepts/ 现有 207 页，剩余候选 326。
