@@ -37,6 +37,15 @@ Native layout:
   changes with the pages they describe. Embeddings and runtime locks are local.
 - index.md: the manually maintained entry point for the whole vault;
   wiki/index.md and generated maps belong to the compiler.
+  Compiler-managed page frontmatter tags occasionally introduce case or
+  near-synonym splits in the MOC groupings (observed 2026-10-10: Alcove/
+  alcove, hpc/HPC, rust/Rust regrown after refreshes; 资源限制/资源预算
+  etc.). A curated consolidation pass is acceptable: retag the minority
+  pages to the majority casing/wording page by page (dedup if the target
+  tag is already present), merge the MOC minority sections, verify no page
+  loses all tags and every page stays MOC-linked, and log the pass. The
+  compiler has retained the unified casing across later refreshes. Do not
+  merge single-page tags mechanically — most are legitimately specific.
 
 The initial wiki/math/, wiki/algorithms/, wiki/systems/ and wiki/comparisons/
 pages retain their existing source snapshots and metadata. They are curated
@@ -121,6 +130,18 @@ explanation. Hashes identify bytes; they do not prove those bytes correct.
    sibling pages already use), re-verify the edited draft against its source
    packet, then approve. Scan a packet's whole candidate set for this pattern
    before starting its review loop.
+   A second observed cause (2026-10-10, twice): the candidate links to a
+   sibling concept by a variant title that differs from the sibling's actual
+   approved page title (e.g. `[[Do 控制树的共享词法帧]]` when the approved
+   page is `[[Do 守卫体的共享词法作用域]]`; `[[整对合的预算门与检查顺序]]`
+   vs 《整对合分类的预算门与检查顺序》). When the referent page clearly
+   exists under a different title and the linking sentence is content-neutral
+   ("可结合/参见"), retarget the link inside the candidate JSON `body` to the
+   approved page's exact title, re-verify, then approve; if no suitable page
+   exists, do not approve — regenerate or leave held. Note for tooling:
+   candidate `body` currently carries TWO frontmatter blocks (compiler
+   metadata, then the page draft's own); strip both before diffing against
+   the live page or extracting cited claims.
 6. Source removal requires explicit review of all dependent pages and citations.
    Review-only compilation does not complete all retirement/orphan processing.
    Do not run rm, non-review refresh/compile, watch, quickstart or query --save
