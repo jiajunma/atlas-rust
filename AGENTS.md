@@ -1092,6 +1092,22 @@ only that bounded claim durable and does not broaden its scope.
   unitarity/Hodge/KLV/AV-ann scripts. Preserve those historical pins and later
   append a complete HPC replay against current master; never relabel them in
   place. Inventory: `tests/reference/hpc/upstream_compare_2026_10_01.json`.
+  UPDATE upstream moved2026-10-09: a fresh `ls-remote` at
+  2026-10-09T13:14:20Z resolves HEAD/master to
+  `5ae51193cbb8faa022847701195bba81702b1605`, ten commits ahead of the oracle
+  pin (`7e1b958c`).  The compare inventory (20 files: atlas-types.w 19+/12-,
+  rootdata.cpp 1+/1- const-only, repr.cpp 85+/35- integer-0 wrapper fixes,
+  matrix.cpp/h empty-vector UB robustness, new cell_graph.at, kgb.cpp/h,
+  gradings, basic.at, readline/macOS main.w) is
+  `tests/reference/hpc/upstream_compare_2026_10_09.json`; receipt
+  `tests/reference/hpc/upstream_head_2026_10_09.json`.  Hunk-by-hunk check:
+  none of the sections cited by the G2 pre-registration slice
+  (`docs/slices/weyl_g2_preregistration_2026_10_09.md`) is in the diff, so
+  the pin-level reading stands.  The pin stays `7e1b958c`; a refresh is a
+  separate reviewed transition requiring a complete HPC replay against
+  current master — never relabel historical pins.  The KGB_cross/Cayley/
+  status integer-0 fixes mean a future refresh CAN change edge-case oracle
+  outputs: existing goldens stay bound to their pin.
 
 - UPDATE language-corpus manifest2026-10-01: the frozen transition inventory
   contains353 `.atlas` fixtures but exactly346 executable fixture/event/meta

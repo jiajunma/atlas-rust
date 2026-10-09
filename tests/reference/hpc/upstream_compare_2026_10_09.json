@@ -1,0 +1,181 @@
+{
+ "ahead_by": 10,
+ "base_pin": "7e1b958c7aa9456769cc9cf09ac1542814b4800a",
+ "commits": [
+  {
+   "sha": "509f584c38c85e7b7fa1118eadc84febf1260c43",
+   "subject": "Fix tests for integer 0 in wrapper functions that forgot to call |is_zero|"
+  },
+  {
+   "sha": "71fc4c4c8db90f0a7a198104b789cac5e7f7d6e3",
+   "subject": "Make matrix code more robust against undefined behaviour for empty vectors."
+  },
+  {
+   "sha": "780f88dee1964911e1611c6add5a6652bd44ee69",
+   "subject": "Improve documentation of |reducibility_points|, both for users and C++ readers"
+  },
+  {
+   "sha": "0da00694d737468085090356376bdfdc7170de8c",
+   "subject": "Use a linked list rather than a vector in |root_coradical| and |coroot_radical|"
+  },
+  {
+   "sha": "e041f5a7c9d4ef856367491acaf3b0e42f9d1bdd",
+   "subject": "Improve some script comments; add versions of |from_no_Cplus| and 'minus' friend."
+  },
+  {
+   "sha": "bed33656755cbba4d9ce0aeadfbb84affbd8a53d",
+   "subject": "Added cell_graph.at"
+  },
+  {
+   "sha": "255eeab474e3b40d98023bd834c878555dd49fe8",
+   "subject": "Clarify that built-in |status@(int,KGBElt)| works with arbitrary roots"
+  },
+  {
+   "sha": "79258f3440bbd8812fc3591a83c8c7a949cfe135",
+   "subject": "Wrap |add_history| so atlas builds with GNU readline don't choke on macOS libedit"
+  },
+  {
+   "sha": "ccf6c37f987b3557f487a9f34add1c45326ce33d",
+   "subject": "Add forgotten |const| qualifiers to a number of |operator()| instances."
+  },
+  {
+   "sha": "5ae51193cbb8faa022847701195bba81702b1605",
+   "subject": "Merge branch 'latest' with some fixes that matter for Mac's into 'master'"
+  }
+ ],
+ "compared_at_utc": "2026-10-09T13:14:20Z",
+ "files": [
+  {
+   "additions": 41,
+   "deletions": 1,
+   "path": "atlas-scripts/Levi_subgroups.at",
+   "status": "modified"
+  },
+  {
+   "additions": 2,
+   "deletions": 1,
+   "path": "atlas-scripts/Weylgroup.at",
+   "status": "modified"
+  },
+  {
+   "additions": 1,
+   "deletions": 0,
+   "path": "atlas-scripts/all.at",
+   "status": "modified"
+  },
+  {
+   "additions": 20,
+   "deletions": 6,
+   "path": "atlas-scripts/atlas-functions.help",
+   "status": "modified"
+  },
+  {
+   "additions": 2,
+   "deletions": 2,
+   "path": "atlas-scripts/basic.at",
+   "status": "modified"
+  },
+  {
+   "additions": 75,
+   "deletions": 0,
+   "path": "atlas-scripts/cell_graph.at",
+   "status": "added"
+  },
+  {
+   "additions": 2,
+   "deletions": 1,
+   "path": "atlas-scripts/exp-generating-series.at",
+   "status": "modified"
+  },
+  {
+   "additions": 3,
+   "deletions": 3,
+   "path": "sources/error/error.cpp",
+   "status": "modified"
+  },
+  {
+   "additions": 3,
+   "deletions": 3,
+   "path": "sources/error/error.h",
+   "status": "modified"
+  },
+  {
+   "additions": 4,
+   "deletions": 1,
+   "path": "sources/gkmod/kgb.cpp",
+   "status": "modified"
+  },
+  {
+   "additions": 3,
+   "deletions": 1,
+   "path": "sources/gkmod/kgb.h",
+   "status": "modified"
+  },
+  {
+   "additions": 85,
+   "deletions": 35,
+   "path": "sources/gkmod/repr.cpp",
+   "status": "modified"
+  },
+  {
+   "additions": 19,
+   "deletions": 12,
+   "path": "sources/interpreter/atlas-types.w",
+   "status": "modified"
+  },
+  {
+   "additions": 3,
+   "deletions": 3,
+   "path": "sources/interpreter/global.w",
+   "status": "modified"
+  },
+  {
+   "additions": 22,
+   "deletions": 2,
+   "path": "sources/interpreter/main.w",
+   "status": "modified"
+  },
+  {
+   "additions": 1,
+   "deletions": 1,
+   "path": "sources/structure/gradings.cpp",
+   "status": "modified"
+  },
+  {
+   "additions": 1,
+   "deletions": 1,
+   "path": "sources/structure/gradings.h",
+   "status": "modified"
+  },
+  {
+   "additions": 1,
+   "deletions": 1,
+   "path": "sources/structure/rootdata.cpp",
+   "status": "modified"
+  },
+  {
+   "additions": 17,
+   "deletions": 16,
+   "path": "sources/utilities/matrix.cpp",
+   "status": "modified"
+  },
+  {
+   "additions": 32,
+   "deletions": 15,
+   "path": "sources/utilities/matrix.h",
+   "status": "modified"
+  }
+ ],
+ "head": "5ae51193cbb8faa022847701195bba81702b1605",
+ "impact_notes": [
+  "atlas-types.w (19+/12-): hunks touch root_coradical/coroot_radical (vector->sl_list container, output-invariant) and KGB_cross/KGB_Cayley/KGB_status (integer-0/evaluation fixes + 'works with arbitrary roots' clarification). The sections cited by docs/slices/weyl_g2_preregistration_2026_10_09.md (root_datum_value interning 977-1152, dual wrappers 1370/1713/3424, W_elt 2459-2613, dual_real_form 3962, dual_quasisplit_form 3977, central_fiber 4083) are NOT in the diff: the pre-registration remains valid AT THE PIN, and these upstream lines are unchanged in content at the new HEAD (line numbers shift only after hunk positions).",
+  "rootdata.cpp (1+/1-): adds a missing const to root_compare::operator() (line 113); no semantic change; the pre-registration's rootdata.cpp citations (820, 867-873) unaffected.",
+  "repr.cpp (85+/35-): reducibility_points documentation plus integer-0 wrapper fixes (509f584c) \u2014 zero-valued integer handling in some wrapper functions changed upstream; existing goldens pinned at 7e1b958c stay as published, and any pin refresh must replay against 5ae51193 on HPC.",
+  "matrix.cpp/h (17+/16-, 32+/15-): robustness against undefined behaviour for empty vectors (71fc4c4c) \u2014 upstream-side UB fix theme, compare the project's own named-update UB lesson.",
+  "basic.at (2+/2-), all.at +cell_graph.at (new 75-line script), Levi_subgroups.at (41+/1-, from_no_Cplus/minus friends), Weylgroup.at, exp-generating-series.at, atlas-functions.help, error.cpp/h, main.w (readline/macOS), gradings.cpp/h, kgb.cpp/h.",
+  "This inventory is read-only evidence; it does not change the oracle pin, any golden, or any acceptance state."
+ ],
+ "schema": "atlas-upstream-compare-v1",
+ "status": "ahead",
+ "total_commits": 10
+}

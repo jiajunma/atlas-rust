@@ -281,6 +281,24 @@ manifest reproduces `bcc09dbc…`, sentinel rehearsal reached
 `PRE_FLIGHT_PARENT_OBJECTS_BOUNDARY`.  Resumption remains pre-verified at
 current HEAD.  Tempdirs removed again.
 
+### Upstream HEAD moved (2026-10-09, read-only finding)
+
+A fresh `git ls-remote` at 2026-10-09T13:14:20Z resolves upstream
+HEAD/master to `5ae51193cbb8faa022847701195bba81702b1605` — **ten commits
+ahead of the oracle pin `7e1b958c`** (verified current as late as
+2026-10-01).  Receipt `tests/reference/hpc/upstream_head_2026_10_09.json`;
+20-file compare inventory
+`tests/reference/hpc/upstream_compare_2026_10_09.json`.  Hunk-by-hunk:
+atlas-types.w changes are root_coradical/coroot_radical container swaps and
+KGB_cross/Cayley/status integer-0 fixes; rootdata.cpp is a const qualifier;
+repr.cpp has reducibility_points doc + integer-0 wrapper changes; matrix.*
+gains empty-vector UB robustness; new `cell_graph.at`.  None of the sections
+cited by the G2 pre-registration slice is in the diff, so the pin-level
+reading stands at the pin.  The oracle pin STAYS `7e1b958c`; a refresh is a
+separate reviewed transition requiring a complete HPC replay against current
+master (never relabel historical pins), and the KGB integer-0 fixes mean a
+refresh can change edge-case oracle outputs.  Also blocked on the tunnel.
+
 ### B2/C2 fixture drafts (2026-10-09, PROVISIONAL, unwired)
 
 Next arc gate after G2 is the cross-type dual witness: dual(B2)=C2 crosses

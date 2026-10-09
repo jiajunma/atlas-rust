@@ -9,6 +9,16 @@ expected outcomes so the capture's interpretation is immediate, and it
 identifies one miscalibrated prediction set and one vacuous test before they
 cost analysis time.
 
+Pin-validity follow-up (same day): upstream master moved to `5ae51193`
+(10 commits ahead; receipt `tests/reference/hpc/upstream_head_2026_10_09.json`,
+inventory `upstream_compare_2026_10_09.json`).  Hunk-by-hunk, the diff does
+not touch any section cited below (the atlas-types.w hunks are
+root_coradical/coroot_radical containers and KGB_cross/Cayley/status
+integer-0 fixes; the rootdata.cpp hunk is a const qualifier), so every
+citation here stands at the pin, and the cited lines are content-unchanged
+at the new HEAD.  Existing goldens remain bound to `7e1b958c`; a pin refresh
+is a separate HPC-replay transition.
+
 ## Upstream facts (file:line at the pin)
 
 1. **Interning is by PreRootDatum content.** `root_datum_entry::hashCode`

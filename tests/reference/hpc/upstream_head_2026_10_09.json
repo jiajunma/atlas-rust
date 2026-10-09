@@ -1,0 +1,11 @@
+{
+ "checked_at_utc": "2026-10-09T13:14:20Z",
+ "command": "git ls-remote https://github.com/jeffreyadams/atlasofliegroups.git HEAD refs/heads/master",
+ "head": "5ae51193cbb8faa022847701195bba81702b1605",
+ "master": "5ae51193cbb8faa022847701195bba81702b1605",
+ "oracle_pin": "7e1b958c7aa9456769cc9cf09ac1542814b4800a",
+ "repository": "https://github.com/jeffreyadams/atlasofliegroups.git",
+ "result": "HEAD MOVED: upstream master is now 5ae51193, ten commits ahead of the oracle pin 7e1b958c (last verified current 2026-10-01). Historical pins stay as published; a pin refresh is a separate reviewed transition requiring a complete HPC replay against current master (2026-10-01 precedent). No local source or oracle binary changed by this read-only check.",
+ "schema": "atlas-upstream-head-check-v1",
+ "scope": "Read-only GitHub revision check; no fetch into any local checkout, no execution."
+}
