@@ -401,6 +401,9 @@ Codex terminal tools and the existing local Kimi account.
 - `crates/atlas-core`: lexer, parser, AST, values, evaluator, domain traits,
   diagnostics, and compatible file primitives.
 - `crates/atlas-cli`: batch and interactive command-line behavior.
+- `crates/atlas-real-group`: structural data for real reductive groups — root
+  data, Weyl groups, Cartan classes, KGB, blocks, KL polynomials and
+  deformation machinery consumed by the language layer.
 - `tests/fixtures`: Atlas source programs, expected events, and negative cases.
 - `tests/reference`: oracle metadata and checksums; large outputs stay on HPC.
 - `hpc`: SLURM jobs and synchronization helpers.
@@ -593,6 +596,19 @@ ceiling and default one focused job; do not trade correctness for speed.
   the reviewed upgrade to llm-wiki-compiler 1.4.2 (its #266).  First compile
   succeeded: 73/73 packets, 533 candidates, ALL held for review; approvals
   proceed per the hold-all discipline, never bulk.
+  UPDATE wiki review sweep 2026-10-10: all 533 candidates reviewed
+  individually against their packets and approved across 49 recorded batches
+  (kb/log.md).  Two packet miscounts were caught and corrected against the
+  pinned-base AND current bytes (atlas-core-root 15→14 pub mod;
+  atlas-core-lex 20→21 primitive names; types.rs Prim::ALL genuinely has 20,
+  no Void — not a defect).  Bare `[[…]]` matrix literals collide with
+  wiki-link syntax and fail approval; backticked code spans are exempt
+  (kb/AGENTS.md rule 5).  A final `refresh --stale` (dry-run first)
+  recompiled the 2 corrected packets and its 8 regenerated candidates were
+  re-approved.  End state: 535 pages, Fresh, zero pending candidates, zero
+  red links across the vault; HANDOFF.md carries the "Wiki review sweep
+  COMPLETE" section.  Pages remain structural-reading records, not
+  mathematical acceptance.
 - After the G2 capture: B2/C2, reverse operand orders, inner-class-dual
   and no-value gates, each with its own original-backed capture; only after
   all of them pass comes the cache work-count BEFORE and any production
