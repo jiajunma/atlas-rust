@@ -38,19 +38,49 @@ production cache edit.
 
 ## G2 WITNESS ARC (started) — 2026-10-06
 
-First case: G2, the asymmetric interface-order witness.  Provisional
-fixture `tests/math/generics/weyl_context_g2_dual_draft.atlas` mirrors the
-A1 cold_dual structure for G2's two-generator presentation and adds the
-noncommuting word checks A1 could not provide (`WG_NONCOMMUTE` — G2's
-Weyl group is the nonabelian D6): same-owner/alias/equal relations, dual
-construction in both directions (SC→adjoint and adjoint→SC), the
-`wg_dual=adjoint(Lie_type("G2"),false)` value-equality witness for the
-dual datum's generator order, rebound-lifetime checks and a recovery
-marker.  Status: **PROVISIONAL — never truth until the original's complete
-behavior is captured on HPC** (the A1 rule).  Next: a new capture stage
-for the original-backed G2 capture, then regressions, then its own
-BEFORE/AFTER chain.  B2/C2, reverse operand orders, inner-class-dual and
-no-value follow the same shape after G2's gate is accepted.
+First case: G2, the asymmetric interface-order witness.  Two provisional
+fixtures now mirror the A1 cold/prewarmed pair for G2's two-generator
+presentation, adding the witnesses A1 could not provide: `WG_NONCOMMUTE`
+(G2's Weyl group is the nonabelian D6) and `WG_BRAID` (the order-6 braid
+relation, longest element length 6):
+
+- `tests/math/generics/weyl_context_g2_cold_dual.atlas` — SHA256
+  `70c3e09e3678d149f46d844d2a47c3024050452a1383116784e577d953fa8c50`
+  (1928 bytes): same-owner/alias/equal relations, cold dual construction in
+  both directions (SC→adjoint and adjoint→SC), the
+  `wg_dual=adjoint(Lie_type("G2"),false)` value-equality witness for the
+  dual datum's generator order, rebound-lifetime checks, recovery 727.
+- `tests/math/generics/weyl_context_g2_prewarmed_dual.atlas` — SHA256
+  `06d3816d4636f2d25d46f96f1efa5417c598c4b6511d42f37d2fec61c8e05921`
+  (1454 bytes): the two numberings as incompatible owners, an independently
+  prewarmed canonical dual rejecting cross-owner equality/inequality/
+  product, high (`[2]`) and negative word rejections, after-markers proving
+  saved elements survive, recovery 733.  Expected error set: 6×"Weyl group
+  mismatch", "Illegal Weyl word entry 2 (should be <2)", "Negative integer
+  where unsigned is required".
+
+Status: **PROVISIONAL — never truth until the original's complete behavior
+is captured on HPC** (the A1 rule).  The pair supersedes the
+`weyl_context_g2_dual_draft.atlas` draft (commit `a81db81c`).
+
+Design decisions for the capture stage (2026-10-09): the capture runs as a
+new `weyl-context-g2-v1` stage migrating the existing capture pair
+(`hpc/stage_weyl_context_core_capture.py` + `hpc/math_weyl_context_core_capture.py`
+— the before chain is closed, so in-place migration follows the v8→before-v1
+precedent), predecessor = before-v4 job 3886748.  Source binding reuses the
+after-v5 identity: parent-seal CAS object `5133bb32…` + the hash-pinned
+repair patch, plus a new overlay carrying the two G2 fixtures.  The contract
+(`hpc/weyl_context_core_contract.py`) keeps the A1 content (the regression
+contract suite depends on it) and gains G2 cases with provisional
+source-derived predictions; the G2 high-word message is new
+("Illegal Weyl word entry 2 (should be <2)").  The stage completes
+regardless of prediction match (COMPLETE_CAPTURE_STATUSES); the independent
+inspection afterwards pins the truth.  If Rust matches the oracle on G2, the
+witness closes with an acceptance record and the oracle streams become the
+goldens; on mismatch, add regression tests first (hard rule 7), then repair,
+then G2's own BEFORE/AFTER chain.  B2/C2, reverse operand orders,
+inner-class-dual and no-value follow the same shape after G2's gate is
+accepted.
 
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 

@@ -1,0 +1,29 @@
+{ G2 Weyl prewarmed-dual rejection/history discovery: the two numberings are
+  incompatible owners, an independently prewarmed canonical dual rejects
+  cross-owner relations, and every error recovers. Provisional until complete
+  original behavior is captured on HPC. No atlas scripts. }
+set wgn_true=simply_connected(Lie_type("G2"),true)
+set wgn_false=simply_connected(Lie_type("G2"),false)
+set wgn_false_w=W_elt(wgn_false,[0])
+set wgn_target=adjoint(Lie_type("G2"),false)
+set wgn_target_w=W_elt(wgn_target,[1])
+set wgn_dual=dual(wgn_true)
+set wgn_saved=W_elt(wgn_true,[0])
+set wgn_dual_w=W_elt(wgn_dual,[0])
+prints("WGN_OWNER_EQ|",wgn_saved=wgn_false_w)
+prints("WGN_AFTER_OWNER_EQ|",word(wgn_saved),"|",length(wgn_saved))
+prints("WGN_OWNER_NEQ|",wgn_saved!=wgn_false_w)
+prints("WGN_AFTER_OWNER_NEQ|",word(wgn_saved),"|",length(wgn_saved))
+wgn_saved*wgn_false_w
+prints("WGN_AFTER_OWNER_MUL|",word(wgn_saved),"|",length(wgn_saved))
+W_elt(wgn_true,[2])
+prints("WGN_AFTER_HIGH|",word(wgn_saved))
+W_elt(wgn_true,[-1])
+prints("WGN_AFTER_NEGATIVE|",word(wgn_saved))
+prints("WGN_DUAL_PREWARM_EQ|",wgn_saved=wgn_dual_w)
+prints("WGN_AFTER_DUAL_EQ|",word(wgn_target_w),"|",wgn_dual=wgn_target)
+prints("WGN_DUAL_PREWARM_NEQ|",wgn_saved!=wgn_dual_w)
+prints("WGN_AFTER_DUAL_NEQ|",word(wgn_target_w),"|",wgn_dual=wgn_target)
+wgn_saved*wgn_dual_w
+prints("WGN_AFTER_DUAL_MUL|",word(wgn_saved),"|",word(wgn_target_w),"|",wgn_dual=wgn_target)
+prints("WGN_RECOVERY|",733)

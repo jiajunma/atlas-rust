@@ -1,11 +1,12 @@
-{ G2 Weyl owner/dual witness: asymmetric interface order + noncommuting words.
-  Provisional draft until complete original behavior is captured on HPC.
-  No atlas scripts. }
+{ G2 Weyl owner/dual cold witness: asymmetric interface order, noncommuting
+  words and the braid relation. Provisional until complete original behavior
+  is captured on HPC. No atlas scripts. }
 set wg_rd=simply_connected(Lie_type("G2"),true)
 set wg_s0=W_elt(wg_rd,[0])
 set wg_s1=W_elt(wg_rd,[1])
 prints("WG_SAME|",word(wg_s0),"|",length(wg_s0),"|",length(wg_s1),"|",word(W_elt(wg_rd,[0,1])))
 prints("WG_NONCOMMUTE|",word(wg_s0*wg_s1),"|",word(wg_s1*wg_s0))
+prints("WG_BRAID|",wg_s0*wg_s1*wg_s0*wg_s1*wg_s0*wg_s1=wg_s1*wg_s0*wg_s1*wg_s0*wg_s1*wg_s0,"|",length(wg_s0*wg_s1*wg_s0*wg_s1*wg_s0*wg_s1))
 set wg_alias=wg_rd
 set wg_alias_w=W_elt(wg_alias,[0,1])
 prints("WG_ALIAS|",wg_alias=wg_rd,"|",wg_s0*wg_s1=wg_alias_w)
@@ -29,4 +30,4 @@ prints("WG_REVERSE_MUL|",word(wg_reverse_target_w*wg_reverse_source_w),"|",root_
 set wg_rd=simply_connected(Lie_type("G2"),false)
 set wg_rebound_w=W_elt(wg_rd,[1])
 prints("WG_REBOUND|",prefers_coroots(wg_rd),"|",root_datum(wg_s0)=wg_alias,"|",root_datum(wg_s0)=wg_rd,"|",word(wg_s0),"|",word(wg_rebound_w))
-prints("WG_RECOVERY|",733)
+prints("WG_RECOVERY|",727)

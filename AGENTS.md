@@ -548,9 +548,11 @@ ceiling and default one focused job; do not trade correctness for speed.
   job3900050, FINAL `COMPLETED 0:0` — bounded A1 Weyl owner/dual semantics
   only; every release flag stays FALSE. The validated tree is landed as
   production commit `690c2b92`. See the 2026-10-06 UPDATE entries below.
-- Next gate: the G2 asymmetric-interface witness. Provisional fixture
-  `tests/math/generics/weyl_context_g2_dual_draft.atlas` (commit `a81db81c`)
-  is NOT truth until the original's complete behavior is captured on HPC;
+- Next gate: the G2 asymmetric-interface witness. Provisional fixtures
+  `tests/math/generics/weyl_context_g2_cold_dual.atlas` and
+  `tests/math/generics/weyl_context_g2_prewarmed_dual.atlas` (superseding the
+  `a81db81c` draft) are NOT truth until the original's complete behavior is
+  captured on HPC;
   the capture runs as a new `weyl-context-g2-v1` stage whose predecessor is
   before-v4 job3886748. Then B2/C2, reverse operand orders, inner-class-dual
   and no-value gates, each with its own original-backed capture; only after
