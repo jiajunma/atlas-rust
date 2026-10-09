@@ -4,6 +4,11 @@
 
 - **[[a1-加中心环面边界-fixture-与历史-oracle|A1 加中心环面边界 fixture 与历史 oracle]]** — 11 个 A1+torus case 覆盖 root/coroot 交换、两种编号及 i32 边界，Rust 完整输出与历史 original-backed capture 比较；AFTER 作业未重跑原版，证据不推广至更高 rank 或一般根系。
 - **[[a1-迁移原型层与对偶格类型设计|A1 迁移原型层与对偶格类型设计]]** — crate 私有的 A1 原型层处于待替换状态，其中无校验的 LatticeVector(Vec<i32>) 计划由 Weight/Coweight 的编译期对偶格区分取代；原型 RootDatum 与 BasedRootDatum 是不同类型。
+- **[[alcove-分母界守卫|Alcove 分母界守卫]]** — denominator_exceeds_alcove_bound 判断 denominator > 2^rank，并在 rank ≥ 63 时返回 false，以避免有符号 i64 移位导致阈值失真。
+- **[[alcove-墙集与整值墙选择|Alcove 墙集与整值墙选择]]** — wall_set 依据根的分数求值分层选择墙，并用 coroot 差关系筛除候选；负根整值求值改记为分母，最终整值墙集包含于墙集。
+- **[[alcove-根格顶点与基本-alcove-约化|Alcove 根格顶点与基本 Alcove 约化]]** — root_vertex_of_alcove 使用朴素有理下取整逐分量求根格顶点，借助转置 Cartan 矩阵求逆及系数为 1 的墙重试整性，使 gamma 减去顶点落入基本 alcove 的 Weyl 轨道。
+- **[[alcove-算法中的精确有理线性代数|Alcove 算法中的精确有理线性代数]]** — 有理方程求解与矩阵求逆通过精确消元处理唯一性和奇异性，并结合 checked 运算、最小公倍数通分及整个有理数的精确整数转换控制溢出与符号错误。
+- **[[alcove-重心计算与标准参数重建|Alcove 重心计算与标准参数重建]]** — alcove_center 通过墙方程与 radical_basis 约束求唯一有理解，保留 KGB 坐标和 lambda_rho，并在修正子空间校验后通过 sr_gamma 重建参数；来源仅支持结构性说明，未作数学验收。
 - **[[ambient-映射的子商下降验证|Ambient 映射的子商下降验证]]** — validate_induced_map 一次性验证 ambient 映射保持分子与分母关系，失败时区分两类关系错误，使高层能够按需应用映射而不缓存稠密商坐标矩阵。
 - **[[atlas-real-group-的-crate-门面与数学值边界|atlas-real-group 的 crate 门面与数学值边界]]** — lib.rs 通过 60 个模块声明、5 个公开模块与 52 条根部再导出组织接口，专注实约化群的数学值，不承担 Atlas 语法或输出策略，并作为未来解释器 domain values 的适配边界。
 - **[[based-cross-action-的闭式实现|Based cross action 的闭式实现]]** — cross 使用单一逐元素闭式映射，实现 sigma_mult(s, .) 后接 mult_sigma_inv(., twist(s)) 并加入 offset 修正的作用，结果在目标处归约。
@@ -201,6 +206,8 @@
 - **[[基本-alcove-墙与整性检测|基本 alcove 墙与整性检测]]** — fundamental_alcove_walls 由全部单根和逐 Dynkin 分量最高余根对应的负根构成，int_item 分别以分子配对值等于 0 或负分母判定 gamma 是否落墙。
 - **[[基本余权的精确构造|基本余权的精确构造]]** — fundamental_coweights 将 Cartan 矩阵逆的各列按实际 simple coroot 展开，得到满足根配对为 Kronecker δ、radical 分量为零的 full lattice-rank 有理坐标。
 - **[[基本虚根-grading-的位置约束|基本虚根 grading 的位置约束]]** — 算法在基本虚单根基上构造紧致性起始位与 datum-单根目标约束，按位置匹配 crate 的根序；与上游前导段配对的一致性依赖其排序不变量，尚属注释声明。
+- **[[墙分量的本原-coroot-关系|墙分量的本原 Coroot 关系]]** — labels_for_component 对墙 coroot 列矩阵作 Gauss-Jordan 消元，要求恰有一个自由列，再通过通分、最大公约数约化及符号调整生成本原整数关系。
+- **[[墙连通分量与重心分数约束|墙连通分量与重心分数约束]]** — root_components 以非零 bracket 关系通过并查集划分墙，barycentre_eq 将整值墙分数固定为零，并按非整值墙数量及本原关系系数设置其余约束。
 - **[[复根子系统选择与扭曲轨道大小|复根子系统选择与扭曲轨道大小]]** — simple_complex 从同时正交于正虚根和及正实根和的根中选择对合配对分量之一，twisted_orbit_size 用虚、实、复子系统 Weyl 阶计算稳定子并检查轨道大小的整除性。
 - **[[多项式池与-primitivisation-符号分离|多项式池与 primitivisation 符号分离]]** — 共享 KlHashTable 类型存储 i32 系数的 KlPol，索引不打包符号；独立 prim_flip 位图记录符号翻转，kl_pol_index 返回索引与翻转标志对。
 - **[[完整块图的对偶数据变换|完整块图的对偶数据变换]]** — BlockGraph::dual 通过反转元素编号、交换两侧坐标、反射长度及映射状态和链接生成对偶块，其中长度反射依赖末元素长度最大，双值 Cayley 像保持原顺序。
@@ -286,6 +293,7 @@
 - **[[根数据的-radical-与-coradical-饱和核基|根数据的 radical 与 coradical 饱和核基]]** — 实现分别对简单根和简单余根坐标矩阵求饱和整数核，并在无根时保留 ambient 格维度；radical_basis 文档首行与实现的措辞差异尚待核对。
 - **[[根系枚举的显式资源预算|根系枚举的显式资源预算]]** — RootSystemBudget 限制格秩、根数、坐标条目和反射步数，区分静态预算检查与运行时根数拒绝，且预算不存入 RootSystem。
 - **[[根系的-bfs-反射闭包枚举|根系的 BFS 反射闭包枚举]]** — RootDatum::roots 从正负单根出发以 FIFO BFS 求反射闭包，使用 i128 中间运算并检查 i32 收窄溢出，第 4097 个互异向量触发 RootSystemTooLarge，最终按坐标字典序输出。
+- **[[根编号与负根镜像排序|根编号与负根镜像排序]]** — RootNumbering 按 level 和反向字典序排列正根，以反序镜像编号负根；实现依赖正负根配对，缺键或编号越界存在 panic 路径。
 - **[[根编号排序兼容与生成元置换|根编号排序兼容与生成元置换]]** — upstream 正根按高度及简单坐标反字典序排列，而 crate RootId 使用环境字典序；locator 对外列表统一采用 upstream 顺序，使 simple_pi 可与 oracle 直接比较。
 - **[[根论工具的整数算术与失败语义|根论工具的整数算术与失败语义]]** — 三个工具模块分别采用 checked、checked/saturating/普通算术混用及 wrapping 策略，产生错误返回、钳零、潜在 debug 溢出 panic 或静默回绕等不同失败行为；这些差异是否为有意分层尚未确定。
 - **[[格坐标的固定宽度检查算术|格坐标的固定宽度检查算术]]** — 格坐标刻意采用 checked 固定宽度存储，精确解释器值在领域边界转换；坐标加减检查溢出，按输入长度分配向量时通常显式处理分配失败，但部分 clone 操作例外。
@@ -323,4 +331,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_320 pages | Generated 2026-10-09T17:12:36.059Z_
+_328 pages | Generated 2026-10-09T17:15:24.386Z_

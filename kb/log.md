@@ -1425,3 +1425,27 @@ dot_coroot 返回已约分 (i64,i64)、两处错误字段怪癖如实保留
 调用点因分母恒正而安全但已漂移）、RationalCoweight 无算术无 Hash 与
 malachite 不进公开 API——全部忠实。7 页批准；wiki/concepts/ 现有 320 页，
 剩余候选 213。
+
+## 2026年10月10日 第四十五批候选审查：alcove.md 的 8 页
+
+对照 190 行来源包逐页核验：分母界守卫（rank<63 且 denominator>2^rank；
+rank≥63 一律 false 的移位理由与 rank62/63/64 测试边界）、RootNumbering
+（level 升序+从末坐标向前的反向字典序、正根占 [npos,total) 负根镜像占
+[0,npos)、positive_index 缺键即 panic 与 id 越界 panic、unwrap_or 静默
+兜底 vs ok_or? 的风格差异如实标注未确认）、wall_set（负根整值改写为
+denominator 的不对称约定、integrals⊆walls、α∨−β∨ 是 coroot 则丢弃 β 的
+逐层筛除与 n_min saturating_sub）、barycentre_eq（整值墙保持 (0,1)、
+非整值墙 (1, n_off*label)）、labels_for_component（恰一个自由列否则
+"alcove wall component must have one coroot relation"、首元素为负才取负
+而首元素为 0 不翻）、alcove_center 六步（墙行系数 coroot×scale、radical
+行、None→"no unique solution"、checked_lcm 通分、i64::try_from(&scaled)
+对整个有理数转换而非 numerator_ref——signed-rational 教训落点、−θ 不动
+子空间校验、sr_gamma 重建）、root_vertex_of_alcove 显式忽略 integrals 且
+用朴素 div_euclid（注释强调非负根修正版 floor_eval）、root_vertex_simple
+（丢第一面系数 1 墙、转置子 Cartan、C^{-T}·floors、labels_1 重试循环、
+"outside the root lattice"）、solve_rational_system/rational_inverse 的
+None/Ok(None) 语义与 d>0 未断言、潜在 panic 路径清单与测试稀薄如实——
+全部忠实。注意：候选 ada058cd 把 wall_set 链向了解释器层的
+[[Alcove 墙集与整值墙筛选]]（另一包页面），内容无误但链接指向邻层，
+记录为观察留待该包批次复核。8 页批准；wiki/concepts/ 现有 328 页，
+剩余候选 219（另 7 页属 atlas-core-root-numbering-alcove.md，随其批次审）。
