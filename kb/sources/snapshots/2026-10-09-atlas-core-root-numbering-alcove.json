@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of domain_builtins.rs lines 5005-5924 for the atlas-core-root-numbering-alcove packet: RootNumbering's RootNbr assignment (positives by (level, root_compare from the last coordinate down), negatives via rootMinus npos-1-p, signed=nbr-npos), and the alcove machinery (wall_set with min_coroots_for membership, root_components' component order by LARGEST RootNbr — observable in FPP product vectors, labels_for_component's unique primitive positive relation, sorted_by_label decreasing-label order, from_fundamental_alcove's set-aside unit wall + to_positive_system, the rank+components wall count, exact Cartan inverse).",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/domain_builtins.rs",
+   "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+   "bytes": 959480,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  }
+ ]
+}

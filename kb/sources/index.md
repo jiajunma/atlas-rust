@@ -655,6 +655,17 @@ print_real_Weyl 臂内先查防静默翻译、`involution_expression` 的
 [阅读快照](snapshots/2026-10-09-atlas-core-domain-validate-print.json)；
 维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
 
+[根编号与 alcove 机器](atlas-core-root-numbering-alcove.md)记录
+`domain_builtins.rs` 5005–5924：`RootNumbering` 的 RootNbr 序（正根按
+`(level, root_compare)`——末坐标向前比；负根 `npos-1-p`；
+`signed=nbr-npos`）与 alcove 机器（`wall_set` 只留余根不能被减去的根、
+`root_components` 分量按**最大** RootNbr 序——FPP 乘积向量可观察、
+`labels_for_component` 的唯一原始正关系、`sorted_by_label` 降序+RootNbr
+并列、`from_fundamental_alcove` 留一单位墙+`to_positive_system`、
+秩+分量的墙数只以大小可观察、精确 Cartan 逆）。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-root-numbering-alcove.json)；
+维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

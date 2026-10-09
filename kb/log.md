@@ -786,3 +786,12 @@ init 匹配、located_ 的共享查找、partial 的调用方 gamma survives）�
 print_text 与各打印机（print_KGB 同形式选择、print_gradings 的
 sigma.pull_back 位约定、print_real_Weyl 的臂内先查）。维护者直接撰写
 （无 Kimi）；索引与 log 已同步。
+
+新增 `sources/atlas-core-root-numbering-alcove.md` 与快照
+`2026-10-09-atlas-core-root-numbering-alcove.json`：RootNumbering 的
+RootNbr 序（正根按 (level, 末坐标向前) 、负根 rootMinus npos-1-p、
+signed=nbr-npos）与 alcove 机器（wall_set 的 min_coroots_for 成员、
+root_components 按**最大** RootNbr 的分量序——FPP 可观察、
+labels_for_component 的唯一原始正关系、sorted_by_label 降序、
+from_fundamental_alcove 的留一单位墙+to_positive_system、秩+分量墙数、
+精确 Cartan 逆）。维护者直接撰写（无 Kimi）；索引与 log 已同步。
