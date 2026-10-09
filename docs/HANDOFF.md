@@ -308,6 +308,33 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
   upstream delta analysis.  All drafted witness fixtures are now
   re-verified against the pre-registration records.
 
+  Pre-staged FINAL inspection checklist (for the collection turn):
+  1. Scheduler/report integrity first: FINAL status via sacct; report SHA
+     recorded; durable stage inputs 0444/single-link (excluding results/),
+     `.incoming` empty, ledger exactly 25 records, ephemeral workspace absent,
+     `.out` present and hash-recorded.  Do not read mathematical content
+     before these pass.
+  2. Contract layer: all checker suites pass (expected 129 tests; the one
+     known local-only 0444-env case is green on HPC by precedent), the four
+     G2 arms all COMPLETE (COMPLETE_CAPTURE_STATUSES tolerates prediction
+     mismatches without failing), and the retained A1 regression controls
+     still pass unchanged.
+  3. Marker-by-marker against the pre-registration: WG_DUAL_EQ=true /
+     WG_DUAL_NEQ=false / WG_DUAL_MUL succeeds; WG_DUAL_OWNER and
+     WG_REVERSE_OWNER print **false** in BOTH engines (the frozen contract's
+     `true` predictions are the recorded miscalibration — a match on false
+     is the expected outcome, not a discrepancy); WGN_DUAL_PREWARM_* print
+     without throwing (3 mismatches, not 6; `wgn_dual=wgn_target` false) —
+     this confirms the vacuity reading and defers the genuine
+     prewarmed-rejection gate to the WGT_ transposed fixture in a later
+     stage.
+  4. Disposition: if Rust matches the oracle on every G2 marker, the witness
+     closes: the oracle streams become the goldens, an acceptance record is
+     written, and B2/C2/reverse/inner-class-dual/no-value stages follow the
+     same shape.  Any genuine DIFFERED marker → hard rule 7 first (regression
+     with the preserved input and an independently justified expectation),
+     then G2's own BEFORE/AFTER chain; never repair from the Rust output.
+
 ### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
 
 Audited the root guide's current-state prose while the tunnel is down. Two
