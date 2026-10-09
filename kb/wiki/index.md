@@ -18,6 +18,7 @@
 - **[[atlas-类型模型与递归类型图|Atlas 类型模型与递归类型图]]** — 类型子系统包含 axis 类型模型、二阶类型机器及递归 typedef 图安装，后者优先使用命名 RHS 槽位并保留环上匿名后代的身份。
 - **[[atlas-词法-token-模型|Atlas 词法 Token 模型]]** — TokenKind 区分关键字、原始类型、标识符、运算符、指令等类别，Token 同时保存精确源拼写 lexeme、词法解码值 value 与位置 span。
 - **[[atlas-语法前端与运算符优先级归约|Atlas 语法前端与运算符优先级归约]]** — 语法前端结合 LALRPOP 文法与独立的带位置 token 流适配层，formula 模块负责对结构解析器产生的交错序列进行运算符优先级归约。
+- **[[atlas-core-回归测试库的家族组织|atlas-core 回归测试库的家族组织]]** — 语言层回归库按 session、typed、domain_builtins 与 session_fixture_tests 四个模块组织，并以测试名前缀呈现功能家族；本来源仅完成结构性阅读。
 - **[[atlas-core-语言门面与兼容契约|atlas-core 语言门面与兼容契约]]** — atlas-core 以可观察的语言边界组织模块，并导出兼容版本 atlas-language-v0；公开模块共 14 个。
 - **[[atlas-real-group-的-crate-门面与数学值边界|atlas-real-group 的 crate 门面与数学值边界]]** — lib.rs 通过 60 个模块声明、5 个公开模块与 52 条根部再导出组织接口，专注实约化群的数学值，不承担 Atlas 语法或输出策略，并作为未来解释器 domain values 的适配边界。
 - **[[atlasstring-字节保留串与原始字节打印|AtlasString 字节保留串与原始字节打印]]** — AtlasString 使用 Vec<u8> 保存字节，Display 仅提供 Unicode 预览；atlas_text 与 append_atlas_text 在不经过 Unicode 转换的边界上递归输出值。
@@ -81,6 +82,7 @@
 - **[[globalkgb-的回归测试与证据边界|GlobalKgb 的回归测试与证据边界]]** — 源码包含 A1/B2 的逐字节打印测试及 B2 结构不变量测试，但未覆盖错误分支和半单秩零；源包此次未运行测试，且上游字节未核对，不能据此宣称数学验收。
 - **[[grading-shifts-的忠实性不变量|Grading shifts 的忠实性不变量]]** — 构造期检查 grading shift 列线性无关，遇到相关列或零列即拒绝，从而保证可实现 grading 对应的 adjoint fiber 元素唯一。
 - **[[grading-的位向量类型纪律|Grading 的位向量类型纪律]]** — Grading 以 newtype 将 simple-imaginary 根位置与 ambient coweight 坐标区分，置位表示非紧致，根索引遵循确定性根序。
+- **[[hpc-验收证据链|HPC 验收证据链]]** — 验收证据由 tests/reference/hpc/ 的分阶段 JSON、只追加的 math_acceptance_index_2026_10_01.json 账本及 docs/HANDOFF.md 衔接记录组成，知识库不改写验收账本。
 - **[[idtable-与-typecell-的绑定身份和类型精化|IdTable 与 TypeCell 的绑定身份和类型精化]]** — IdTable 为新定义分配新鲜 cell，使旧代码保留原绑定；TypeCell 按定义处词法下限解释类型，克隆共享精化单元而导入用例不得写入。
 - **[[innerclass-对偶构造与生命周期保持|InnerClass 对偶构造与生命周期保持]]** — original InnerClass 构造立即取得 canonical dual 并强持有 primal 与 dual，Rust 对齐需覆盖该隐式对偶路径及其生命周期，显式 dual 修复不足以证明完整兼容。
 - **[[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]** — twisted_from_involution 在调用方已完成 square 与 involutive 检查的前提下，验证输入属于当前 inner class，并返回分解 θ = w·δ 中的 Weyl 元素 w，失败时报 InvalidBasedAutomorphism。
@@ -209,6 +211,7 @@
 - **[[代表元归因与-tits-搬运的职责边界|代表元归因与 Tits 搬运的职责边界]]** — 归因 helper 仅接受分类已存储的代表元；一般 twisted involution 的归约需借助 table-backed Tits cross actions 同步搬运 torus factor，后续 minimal_torus_part 下降仍依赖分离的 inverse-Cayley 操作。
 - **[[代表元级弱实形式归因|代表元级弱实形式归因]]** — weak_real_form_at_representative 通过 dual fixed-point projection v↦(v+vθ)/2、配对奇偶性和虚根 grading 确定局部轨道，再经 RealFormLabels 映射为全局弱实形式编号。
 - **[[会话-clean-标志与诊断分流|会话 clean 标志与诊断分流]]** — 语法、类型、求值及真正的词法错误使会话变脏，而文件打开失败、Io 诊断、词法警告和 abandon 级联本身不改变 clean 状态。
+- **[[会话全流程回归测试|会话全流程回归测试]]** — session_fixture_tests 的 17 个测试经 session::run_source 联合覆盖命令恢复、类型转换与求值，刻意不保留已移除的动态求值器作为第二实现。
 - **[[会话帧驱动的-cli-执行模型|会话帧驱动的 CLI 执行模型]]** — CLI 通过 atlas-core 会话帧在共享会话中执行文件参数或 stdin；文件参数按普通命令流处理，不实现上游 prelude-capture 语义，quit 可提前结束。
 - **[[会话循环与文件会话帧的职责边界|会话循环与文件会话帧的职责边界]]** — session.rs 负责命令循环并对文件包含指令产生 Io 诊断，文件包含与输出重定向由 session_frame.rs 管理，转换与求值则交给 typed.rs。
 - **[[伴随-cartan-fiber-的对合作用构造|伴随 Cartan fiber 的对合作用构造]]** — 伴随 fiber 构造先核对 datum 与源对合，再按列提取 simple-root 作用并转置得到余特征作用，复用 CartanFiber 构造并验证投影下降；转置等于逆转置的理由来自对合性注释。
@@ -294,6 +297,7 @@
 - **[[基于-piece-的根置换预组合|基于 Piece 的根置换预组合]]** — piece_root_permutations 为每个 transducer 的各个 piece 预组合简单反射的根置换，再以这些置换的复合构造元素的根作用，无需矩阵表示。
 - **[[基于位掩码的-wim-轨道枚举|基于位掩码的 W_im 轨道枚举]]** — walk_mask_orbits 按掩码升序播种并用 LIFO 栈遍历，依据 FiberAction 的非紧判定执行 m_alpha_masks 平移，以首次出现的掩码作为轨道代表元。
 - **[[基于保留类型定义的投影解析|基于保留类型定义的投影解析]]** — resolve_projector 使用保留的类型定义进行匹配，支持复制或泛型定义，因此仅凭具名接收方无法唯一确定字段选择。
+- **[[基于原版金标的差分回归|基于原版金标的差分回归]]** — HPC 差分发现的差异须固化为回归，使用 tests/math/generics/ 中的 fixture 与原版完整捕获的 .oracle.* 金标逐字节比较，禁止以 Rust 输出制作金标。
 - **[[基于图结构的-dynkin-单分量分类|基于图结构的 Dynkin 单分量分类]]** — 分类器结合秩、顶点度数、分叉点与有向多重边判定 A/B/C/D/E/F/G 型，并对环、过高度数及不支持的多重边结构报告错误。
 - **[[基于左下降剥离的规范约化词|基于左下降剥离的规范约化词]]** — canonical_word 按 WeylInterface 的内部生成子序逐次剥离最小左 descent，获得该序下字典序最小的约化词，并检查每步长度恰减一。
 - **[[基于生成元闭包的-twisted-共轭分区|基于生成元闭包的 twisted 共轭分区]]** — generated_twisted_conjugacy_partition 通过生成元闭包构造完整分区，以 twisted involutions 数量计预算、每类仅实例化一个 lattice involution，并使用紧凑根置换查询成员；外部 Cartan 编号仍由 CartanClassification 选举。
@@ -446,6 +450,7 @@
 - **[[求值兼容性的证据边界|求值兼容性的证据边界]]** — 该来源只声明结构性阅读完成，上游行号属于实现方移植陈述，字节哈希只标识快照；求值兼容性仍以 HPC 语料门为准，帧上下文与 133 个测试待另包覆盖。
 - **[[求值器的-value-值模型|求值器的 Value 值模型]]** — Value 统一表示数值、字节串、容器、线性代数载荷、带标签联合、领域值及函数值；实际求值语义由 typed.rs 承担。
 - **[[活跃类型环境与跨行增量命令解析|活跃类型环境与跨行增量命令解析]]** — 命令解析使用活跃 TypeTable；片段解析在 allow_more 且解析器持有未闭合虚拟类型分组时返回 Ok(None)，保留前缀跨行重试，完整前不求值 AST。
+- **[[测试结构清单与可执行正确性的证据边界|测试结构清单与可执行正确性的证据边界]]** — 测试数量与家族统计仅描述 git base 964f0033 所对应的快照字节；测试可执行正确性须由 HPC 门验收，结构性阅读不构成测试通过声明。
 - **[[源余权格到伴随余权格的整数投影|源余权格到伴随余权格的整数投影]]** — 整数投影 Y → P∨ 按源单根顺序计算 pair(root, y) 作为目标坐标，保持可加性且可能具有中心核，因此不应视为同构。
 - **[[源文本身份与-unicode-位置映射|源文本身份与 Unicode 位置映射]]** — SourceText 保存源身份、文本和行首字节索引，将字节偏移钳到文本范围并退到字符边界，计算从 1 开始的行号和 Unicode 标量列号，生成含头不含尾的源跨度。
 - **[[源码位置与局部帧的回溯渲染|源码位置与局部帧的回溯渲染]]** — trace_location 按上游格式渲染行一基、列零基的位置，单行结束位置为 exclusive、跨行使用双破折号；frame_dump 按绑定序打印 let 组被追踪帧的槽名。
@@ -501,6 +506,7 @@
 - **[[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]** — inverse_cayley 先执行 sigma_inv_mult，再以首个配对非平凡的源 mod-space 基向量修复重构出的紧根 grading，随后在虚根目标归约并复核；缺少修复向量时报不变量错误，源根非实或向下 Cartan 类缺失时返回 None。
 - **[[递归-twisted-deformation-与取消语义|递归 twisted deformation 与取消语义]]** — twisted_deformation 无记忆化地递归处理 final、delta-fixed 参数，返回 KType 分裂系数项与 net flip；rank-0 不调用 lookup，可取消变体返回 Ok(None) 且不发布部分多项式。
 - **[[递归类型定义的图级安装|递归类型定义的图级安装]]** — 递归 typedef 安装优先保留命名右侧槽位，并为环上的匿名后代保留身份；调用方将类型表与全部生成成员共同暂存。
+- **[[通过-includestr-绑定回归测试夹具|通过 include_str! 绑定回归测试夹具]]** — 语言层使用 244 处 include_str! 将 fixture 直接绑定到测试，使测试代码引用固定的输入与原版输出证据。
 - **[[通过增广消元反求-grading-对应元素|通过增广消元反求 grading 对应元素]]** — element_from_grading 对 target XOR base 进行携带基索引标记位的增广消元，检测不可实现的 grading，并按解的标记位异或组合伴随基代表。
 - **[[部分公共块上的扩展块构造与-cofold|部分公共块上的扩展块构造与 cofold]]** — build_partial 使用 x + gamma_lambda 形式测试不动点，在子系统上折叠生成元，并在构造后处理 cofold；当前仅支持恒等生成元姿态，非恒等 bm.simple_pi 显式失败。
 - **[[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]** — 通过 Option 表达元素或链接缺失，区分 imaginary ascent 的前向 Cayley 像与 real descent 的逆像，并以奇异生成元的下降状态判定 survives。
@@ -530,4 +536,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_527 pages | Generated 2026-10-09T18:09:38.132Z_
+_533 pages | Generated 2026-10-09T18:10:54.005Z_

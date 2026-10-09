@@ -1,0 +1,47 @@
+---
+title: 通过 include_str! 绑定回归测试夹具
+summary: 语言层使用 244 处 include_str! 将 fixture 直接绑定到测试，使测试代码引用固定的输入与原版输出证据。
+sources:
+  - atlas-core-regression-library.md
+kind: concept
+createdAt: "2026-10-09T14:32:10.647Z"
+updatedAt: "2026-10-09T14:32:10.647Z"
+tags:
+  - Rust
+  - 测试夹具
+  - 回归测试
+aliases:
+  - 通过-includestr-绑定回归测试夹具
+  - 通I绑
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+---
+
+# 通过 include_str! 绑定回归测试夹具
+
+atlas-core 的语言层回归测试通过 `include_str!` 直接绑定测试夹具（fixture）。所述源码快照中共有 244 处 `include_str!`；原版背书回归的典型做法是载入 `tests/math/generics/` 下的夹具，并将输出与 `.oracle.stdout`、`.oracle.stderr` 金标逐字节比对。^[atlas-core-regression-library.md:17-22, atlas-core-regression-library.md:36-39]
+
+## 夹具与金标
+
+这种绑定方式将回归输入与预期输出纳入测试。`session.rs` 中的 `weyl_context_core_cold_dual_original` 是所列示例，体现了读取夹具并逐字节核对标准输出和标准错误的模式，可参见 [[原版背书的语言层回归测试]]。^[atlas-core-regression-library.md:17-22]
+
+每个 HPC 差分发现的差异都须先在测试库中形成回归；对应夹具和 `.oracle.*` 金标存放于 `tests/math/generics/`。金标只能来自原版的完整捕获，例如 Weyl A1 的 v8 冻结 goldens，不能使用 Rust 输出作为金标。这是 [[基于原版金标的差分回归]] 的证据来源约束。^[atlas-core-regression-library.md:36-38]
+
+## 会话全流程回归
+
+在相关测试库中，`session_fixture_tests.rs` 的 17 个测试通过 `session::run_source` 执行完整会话路径，将命令恢复、类型转换和求值一起纳入回归。该模块刻意不保留已移除的动态求值器作为第二实现；其组织背景见 [[atlas-core 回归测试库的家族组织]]，执行范围见 [[会话全流程回归测试]]。^[atlas-core-regression-library.md:30-32]
+
+## 证据范围
+
+夹具绑定数量和测试清单计数只描述 git base `964f0033` 对应的快照字节，不能据此断言测试通过。源材料属于结构性阅读，不包含逐测试内容；测试的可执行正确性须由 HPC 门验收，例如 632 项清单与 `atlas-core-test-inventory`。^[atlas-core-regression-library.md:9-13, atlas-core-regression-library.md:43-45]
+
+相关 [[HPC 验收证据链]] 包括 `tests/reference/hpc/` 中的分阶段证据 JSON、仅追加的验收账本 `tests/reference/hpc/math_acceptance_index_2026_10_01.json`，以及 `docs/HANDOFF.md` 中的衔接记录。知识库不改写该验收账本。^[atlas-core-regression-library.md:40-42]
+
+## Sources
+
+- [atlas-core-regression-library.md](atlas-core-regression-library.md)

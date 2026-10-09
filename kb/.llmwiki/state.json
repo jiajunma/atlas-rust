@@ -960,6 +960,18 @@
         "文件输入的有损-utf-8-解码"
       ],
       "compiledAt": "2026-10-09T18:09:37.254Z"
+    },
+    "atlas-core-regression-library.md": {
+      "hash": "4a2b45791d18d43ec38079dc0f8be209e4d9a4622478f4a84f2bbd16662f90c4",
+      "concepts": [
+        "atlas-core-回归测试库的家族组织",
+        "hpc-验收证据链",
+        "会话全流程回归测试",
+        "基于原版金标的差分回归",
+        "测试结构清单与可执行正确性的证据边界",
+        "通过-includestr-绑定回归测试夹具"
+      ],
+      "compiledAt": "2026-10-09T18:10:53.066Z"
     }
   }
 }

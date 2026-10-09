@@ -1907,3 +1907,16 @@ rayon 2MiB 工作栈配置及其动机如实标注为源码说明而非实测、
 终端分流与横幅逐字内容、退出状态=clean 标志与缺包含文件不置脏、quit
 提前结束、本文件无测试由 HPC 语料门覆盖——全部忠实。8 页批准；
 wiki/concepts/ 现有 527 页，剩余候选 6。
+
+## 2026年10月10日 第七十三批（最终批）候选审查：atlas-core-regression-library.md 的 6 页
+
+对照 55 行来源包（维护者直接撰写）逐页核验：四模块测试计数（session
+201/typed 133/domain_builtins 92/session_fixture_tests 17）与各家族前缀
+统计、原版背书范式（include_str!+逐字节 oracle 比对、金标永不来自 Rust
+输出、244 处 include_str!）、session_fixture_tests 走 run_source 全程且
+刻意不保留已移除的动态求值器、验收证据链组成（分阶段证据 JSON+
+append-only 账本+HANDOFF.md，KB 不改写账本）、"计数只标识快照字节、不
+声称任何测试通过"的边界——全部忠实。枢纽页 [[HPC 验收证据链]] 上线，
+消解了此前数十批候选的前向引用。6 页批准。**至此 533 个候选全部审完，
+wiki/concepts/ 共 533 页上线（533 = 533 候选全部入库；早前 73 包编译
+产生的全部候选已清零）**。
