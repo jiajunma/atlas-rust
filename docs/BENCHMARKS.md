@@ -1,5 +1,63 @@
 # Benchmark — Rust vs the real Atlas C++ (fair, same machine)
 
+## Authoritative accepted HPC baseline — 2026-09-30
+
+Job3868782 on one `cu315` node is the current controlled end-to-end baseline:
+four fresh serial repetitions per arm, alternating order, identical inputs,
+full result preservation,46 checker tests,13 focused tests, all629 core tests,
+26 complete original histories,72 retained streams and final source/artifact
+integrity. Times include startup and library loading.
+
+| Complete input | Rust median | C++ median | Rust/C++ | Rust median RSS | C++ median RSS |
+|---|---:|---:|---:|---:|---:|
+| Rank1 unitarity parameters | 2.538780s | 0.277168s | 9.15971x | 44,118KiB | 12,192KiB |
+| Finite AV-ann/cycle anchor | 3.208666s | 0.425888s | 7.53406x | 53,912KiB | 14,338KiB |
+
+The accepted optimization improved the prior Rust medians by21.67% and25.52%
+respectively, while RSS changed only+0.41%/+0.51%. Rust remains substantially
+slower and uses about3.62x/3.76x the oracle RSS on these two inputs. These are
+small-rank, loading-inclusive serial measurements—not kernel, multicore or
+60--600s workload evidence. Ratios from older machines/nodes must not be
+multiplied with them. Exact report:
+`tests/reference/hpc/math_overload_command_after_r2_2026_09_30.json`, SHA
+`fbc615d23c5d111aeea83ece1fecb6c67f7b37d6c0435c6af21e062a86d787fc`.
+
+The next accepted measurement must wait for the parent seal and the
+original-backed root-ladder BEFORE/repair/AFTER sequence, then reprofile the
+same rank1 source. Current attribution points to repeated Weyl-context
+construction during exceptional library initialization; this is a measured
+lead, not yet an accepted optimization or parallel speedup.
+UPDATE 2026-10-10: the named preconditions have since been met — the parent
+seal (job3872554) and the root-ladder AFTER-v3 (job3875239) are both FINAL
+and independently accepted — so the rank1 reprofile is unblocked by that
+sequence.  It is still queued behind the current Weyl-semantic arc (G2-v1
+capture) and the HPC tunnel; no new measurement exists yet.
+
+## Diagnostic minute-scale KLV observation — not an accepted A/B
+
+The complete complex-A6 regular-KLV fixture in job3851324 is a useful future
+60--600s workload, but currently has only one loading/output-inclusive
+observation per implementation:
+
+| Input | Rust | C++ | Rust/C++ | Rust RSS | C++ RSS | RSS ratio |
+|---|---:|---:|---:|---:|---:|---:|
+| complex A6 complete raw/dual KLV | 69.806s | 26.983s | 2.587x | 1,403,840KiB | 413,876KiB | 3.392x |
+
+The fixture also emits about341MB of output. Source review shows that Rust's
+`raw_KL` matrix packing can hold three i32 `n*n` payloads concurrently; at
+`n=5040` their payload alone is290.70MiB. This is a hypothesis boundary, not
+an attribution: table storage, rendering and output buffering overlap, and the
+run was neither repeated nor arm-alternated. Before optimizing, collect
+per-phase timing/RSS plus table pool/index/clone/rebuild counts with probe-on/
+off output equality. See `KL_CHAIN_TRACE.md` for the required counters and
+candidate order.
+
+## Historical local baseline — 2026-08-04
+
+The remainder of this file is preserved as historical evidence. It predates
+the current HPC source, workload and acceptance protocol and is not the current
+Rust-versus-C++ ratio.
+
 Method (2026-08-04): identical `.atlas` scripts, one machine (macOS,
 Apple Silicon), `target/release/atlas-cli` (cargo release) vs the locally
 built Atlas C++ (`-Wall -O3 -DNDEBUG`, `/Users/hoxide/mycodes/atlasofliegroups/atlas`).
