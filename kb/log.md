@@ -795,3 +795,10 @@ root_components 按**最大** RootNbr 的分量序——FPP 可观察、
 labels_for_component 的唯一原始正关系、sorted_by_label 降序、
 from_fundamental_alcove 的留一单位墙+to_positive_system、秩+分量墙数、
 精确 Cartan 逆）。维护者直接撰写（无 Kimi）；索引与 log 已同步。
+
+新增 `sources/atlas-core-center-classifier.md` 与 `sources/atlas-core-domain-scc-root-table.md`
+及对应快照：CenterClassifier 的中心陪集 tabulation（adjugate/det 与
+C_denom 一致）+ adjoint 轨道 BFS（尾部递减、完成层反转）+ 词转换与
+反射词约定（末字母先作用）；块图迭代 SCC + ByLastCoordinate 逆坐标序 +
+宽累积矩阵积 + RootTable::build。维护者直接撰写（无 Kimi）；索引与 log
+已同步。至此 domain_builtins.rs 全区域均有来源包（逐臂数学内容除外）。

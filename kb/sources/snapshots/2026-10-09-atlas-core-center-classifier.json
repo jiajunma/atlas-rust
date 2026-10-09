@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of domain_builtins.rs lines 6102-7992 for the atlas-core-center-classifier packet: the CenterClassifier's tabulation of fundamental-weight subsets whose sum lies in the root lattice (grouped by adjoint-coordinate fractional part, all arithmetic on the adjugate/determinant representation matching upstream's C_denom), the adjoint-orbit machinery (adjoint_orbit_bfs' decreasing tail with levels reversed to increasing, basic_orbit_adjoint, vertex_orbit's modular variant), convert_to_words' left-multiplication through the coset tree, and the reflection-word/word-action conventions (descend the first descent then retrace; the last letter acts first).",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/domain_builtins.rs",
+   "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+   "bytes": 959480,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  }
+ ]
+}

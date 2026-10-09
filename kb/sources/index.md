@@ -666,6 +666,16 @@ print_real_Weyl 臂内先查防静默翻译、`involution_expression` 的
 [阅读快照](snapshots/2026-10-09-atlas-core-root-numbering-alcove.json)；
 维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
 
+[块图 SCC 与根表](atlas-core-domain-scc-root-table.md)记录
+`domain_builtins.rs` 3022–5005 + 7992–9606：`strong_components` 的迭代
+Tarjan 形 SCC（块图消费者）、`ByLastCoordinate` 的**坐标逆序**字典序
+（同 root_compare）、矩阵辅助（`integer_matrix_product` 用 i128 宽累积、
+只喂等值测试）、对合构造器的包装侧校验（`mat` 保留 0xN 维；行数为期望
+秩）、`RootTable::build`（prefer_coroots 时先转置再换回、express 到环境
+格基、长度旗）。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-domain-scc-root-table.json)；
+维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
