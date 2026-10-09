@@ -1685,3 +1685,20 @@ span（Newline 列+1）、drain_failed_printed 先排空已打印再发诊断
 （ext_kl.cpp:947 顺序的移植陈述）、201 测试家族统计与
 include_str!+oracle.stdout/stderr 逐字节范式、硬规则 7 的原版背书回归
 ——全部忠实。8 页批准；wiki/concepts/ 现有 429 页，剩余候选 104。
+
+## 2026年10月10日 第六十批候选审查：atlas-core-session-frame.md 的 7 页
+
+对照 99 行来源包（维护者直接撰写）逐页核验：FileProvider 有损 UTF-8
+（游离字节不得变成打开失败）、sink 只在解析成功后求值前打开（语法错误
+不留文件、求值失败留部分输出）、search_path 空前缀最后试与 .at 补名、
+包含判定链（typed 名 completed 静默跳过→resolve 失败 Io+Abort→已在
+active 静默跳过算成功→超深 64 Io+Abort→Starting/压栈/Finished 才记
+completed 打 Completely）、clean 纪律（语法/类型/求值错误置脏、打开失败
+与 abandon 刻意不弄脏、missing_file 测试断言 is_clean 仍真）、quit 在
+包含内结束整个会话、Value:/void 抑制、按深度每层两空格缩进、重定向体先
+按表达式解析（parser.y TOFILE expr 与 file_commands_b9 的 '=' 拒绝形状）、
+打开失败只留裸 stderr 且保持 clean、abandon 的 offset()-1+line_map 与
+最内层先读、preprocess 先剥尾空白再拼接 \ 续行（foo\ 仍续行）、
+describe_bytes 输出形状与无 span 裸头、18 测试锚点清单与 eval/
+file_commands_b9 唯一允许写 /tmp——全部忠实。7 页批准；wiki/concepts/
+现有 436 页，剩余候选 97。

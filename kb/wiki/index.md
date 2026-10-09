@@ -126,6 +126,7 @@
 - **[[rust-ladder-成员查询的选择性溢出处理|Rust ladder 成员查询的选择性溢出处理]]** — build_ladder_bottoms 仅将 root/coroot 成员查询中的 ArithmeticOverflow 解释为 false，独立执行两类查询并传播其他错误，同时保持底层减法、排序、布局和公共 API 不变。
 - **[[rust-weyl-内核与抽象群的无环所有权模型|Rust Weyl 内核与抽象群的无环所有权模型]]** — 分离 datum 坐标内核与抽象 Weyl 群身份可表达共享语义并避免 handle 与 context 的强引用环；核心身份修复已落地，后续缓存共享设计仍需独立验证。
 - **[[sessionevent-与字节保留输出|SessionEvent 与字节保留输出]]** — SessionEvent 统一承载值、文本、原始字节和诊断；输出构造器将合法 UTF-8 转为文本，将非法 UTF-8 保留为 AtlasString，值事件另保留 void 类型标志。
+- **[[sessionframe-会话帧与文件包含语义|SessionFrame 会话帧与文件包含语义]]** — SessionFrame 管理包含栈、include-once 簿记与文件搜索顺序，支持强制重读、循环静默跳过、64 层深度限制及包含内 quit 终止整个会话。
 - **[[settype-命令的词法终止符跨度重建|SetType 命令的词法终止符跨度重建]]** — SetType 的 SourceSpan 根据真实词法终止符重建，并在换行终止时将列号加一，以保留上游将命令换行计入跨度的行为。
 - **[[specialgrading-的-bourbaki-序拉回与因子切片|specialGrading 的 Bourbaki 序拉回与因子切片]]** — form_type_name 通过 pulled[k] = grading[perm[k]] 将非紧虚根位集拉回 Bourbaki 序并逐因子消费，其中复型条目消费两个因子，环面因子不消费 grading 位。
 - **[[specialgrading-的分区代表与位集编码|specialGrading 的分区代表与位集编码]]** — special_grading_key 全枚举 fiber 下标，在最大 popcount 候选中取最高下标，于 fiber 秩内取补后映射到 twist-fixed 简单生成元位集，生成元 0 对应最低位，枚举宽度受 MAX_MASK_BITS 限制。
@@ -184,6 +185,7 @@
 - **[[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]** — 惰性 cell 只发布完整成功结果，构造失败后应允许重试，且不能缓存首次调用的 Diagnostic 或 SourceSpan，以保留当前调用的错误定位。
 - **[[代表元归因与-tits-搬运的职责边界|代表元归因与 Tits 搬运的职责边界]]** — 归因 helper 仅接受分类已存储的代表元；一般 twisted involution 的归约需借助 table-backed Tits cross actions 同步搬运 torus factor，后续 minimal_torus_part 下降仍依赖分离的 inverse-Cayley 操作。
 - **[[代表元级弱实形式归因|代表元级弱实形式归因]]** — weak_real_form_at_representative 通过 dual fixed-point projection v↦(v+vθ)/2、配对奇偶性和虚根 grading 确定局部轨道，再经 RealFormLabels 映射为全局弱实形式编号。
+- **[[会话-clean-标志与诊断分流|会话 clean 标志与诊断分流]]** — 语法、类型、求值及真正的词法错误使会话变脏，而文件打开失败、Io 诊断、词法警告和 abandon 级联本身不改变 clean 状态。
 - **[[会话循环与文件会话帧的职责边界|会话循环与文件会话帧的职责边界]]** — session.rs 负责命令循环并对文件包含指令产生 Io 诊断，文件包含与输出重定向由 session_frame.rs 管理，转换与求值则交给 typed.rs。
 - **[[伴随-cartan-fiber-的对合作用构造|伴随 Cartan fiber 的对合作用构造]]** — 伴随 fiber 构造先核对 datum 与源对合，再按列提取 simple-root 作用并转置得到余特征作用，复用 CartanFiber 构造并验证投影下降；转置等于逆转置的理由来自对合性注释。
 - **[[伴随-cartan-纤维的构建与下降验证|伴随 Cartan 纤维的构建与下降验证]]** — AdjointCartanFiber 在检查 datum、对合与预算后构造伴随半单商上的有限 F₂ 纤维，并通过 validate_induced_map 验证源纤维映射的下降条件；来源仅为结构性阅读，不代表数学验收。
@@ -221,6 +223,7 @@
 - **[[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]** — lookup 使用前向根置换作为完整相等性键；跨系统输入受调用方契约约束，种子插入不检查键碰撞，依赖不同 Cartan 轨道的键互不重叠。
 - **[[单位上三角整数矩阵求逆|单位上三角整数矩阵求逆]]** — inverse_upper_triangular 通过回代及 wrapping i32 运算求单位上三角矩阵的逆，并对非方阵或存在非 1 对角元的输入报错。
 - **[[单反射下的图像基传送|单反射下的图像基传送]]** — 沿单反射 s 更新 L′=sL、M′=Ms，保持 L′M′=1−θ′；传送使用 checked i64 算术，其结果可与重新归约所得基存在列符号或列次序差异。
+- **[[单命令输出重定向的执行纪律|单命令输出重定向的执行纪律]]** — >file 与 >>file 的命令体按表达式先解析，再打开 sink 并求值；解析失败不创建文件，求值失败可保留部分输出，打开失败仅报告且保持 clean。
 - **[[单连通群基本权基上的逐字母对合表|单连通群基本权基上的逐字母对合表]]** — layout_involution 通过恒等块、A 型反对角、D 型末两顶点交换、E6 特定顶点交换、T 型负恒等及复因子交换构造对合矩阵，不涉及 root datum 或 Weyl group 管线。
 - **[[原型-rootdatum-的构造校验与配对约定|原型 RootDatum 的构造校验与配对约定]]** — RootDatum::new 依次检查空根数据、调用 BasedRootDatum::standard、检查方阵与 Cartan 符号条件；单根取 e_i，单余根取 Cartan 列，from_basis 另按秩及行主序校验根与余根配对。
 - **[[原型-weyl-群的作用像枚举|原型 Weyl 群的作用像枚举]]** — PrototypeWeylGroup 以元素对全部单根的作用像为键进行 BFS 枚举，成功阶数至多 65_536，超限返回 WeylGroupTooLarge；act_on_root 按词的逆序施加反射。
@@ -296,6 +299,7 @@
 - **[[对角化的行列式符号簿记|对角化的行列式符号簿记]]** — row_minus 与 col_minus 的覆盖、异或及稳定列排列奇偶性决定首个对角元素的符号；源码注释对行变换行列式的保证不一致，源包以测试约束 |det(row)|=1、det(col)=1 为准。
 - **[[局部扩展类型识别与全父块构造|局部扩展类型识别与全父块构造]]** — extended_type 在父块上进行纯组合局部类型识别，ExtBlock::build 在平凡 block modifier 下结合 complete_construction 与 induced 完成全父块构造。
 - **[[局部标签到外部编号的类型组合|局部标签到外部编号的类型组合]]** — RealFormLabels 输出与 ExternalFormOrder 输入同属 fundamental 分区的 WeakRealFormId，因而可推断局部类到内部编号再到外部编号的串联在类型上可行，但两文件互不导入且没有组合代码或测试验证。
+- **[[嵌套包含的-abandon-级联|嵌套包含的 abandon 级联]]** — 包含流中止时，各层从最内层向外报告放弃读取的位置，通过 lexer 偏移回退和 line_map 将当前位置换算为物理行号。
 - **[[带基数预算的-weyl-群作用枚举|带基数预算的 Weyl 群作用枚举]]** — enumerate_actions 通过 CompactWeyl 枚举并并行物化矩阵，使用显式基数预算；来源描述了字典序输出，但未提供排序测试或独立性能验证。
 - **[[带源码跨度的表达式抽象语法树|带源码跨度的表达式抽象语法树]]** — Expr 的所有变体都携带 span，覆盖容器、赋值、函数和控制流，并以独立节点保留 BarList 等结构；语义判定由 typed.rs 承担。
 - **[[平方类编号与换基不变量|平方类编号与换基不变量]]** — SquareClassId 是商群 (adjoint fiber group)/im(toAdjoint) 在 crate echelon 基下的陪集坐标整数；来源报告其目前与上游编号一致，该一致性依赖共享的 low-pivot RREF 约定，而换基只置换标签，不改变分划结构及大小。
@@ -348,6 +352,7 @@
 - **[[整数矩阵移植的-oracle-回归锚点与证据边界|整数矩阵移植的 oracle 回归锚点与证据边界]]** — C++ oracle 字面量锚定精确变换矩阵、对角符号及秩亏系统被选解，但 wrapping 溢出、部分像判定、空形状和 panic 路径仍缺少测试，源包也未重跑其引用的 HPC 验证。
 - **[[整数矩阵算法的逐操作保真移植|整数矩阵算法的逐操作保真移植]]** — 欠定整数系统的被选解及其坐标奇偶性会影响下游 same_sign，因此 matreduc 复现上游幺模操作序列、符号簿记和 wrapping i32 算术，而不只返回任意正确解。
 - **[[整数线性系统求解与像判定|整数线性系统求解与像判定]]** — has_solution 对角化后检查变换右端的逐坐标可除性，find_solution 无解时返回 None，in_left_image 与 in_right_image 提供像判定，而右端长度不匹配会触发 panic。
+- **[[文件命令兼容性的证据边界|文件命令兼容性的证据边界]]** — 文件内的单元测试提供行为锚点，结构性阅读与移植陈述不构成端到端兼容性或数学验收，文件命令兼容仍需 HPC 差分语料验证。
 - **[[普通根系的确定性枚举|普通根系的确定性枚举]]** — RootSystem 从 BasedRootDatum 播种正负简单根并以 BFS 求反射闭包，最终按环境坐标字典序排列根，结果顺序独立于发现顺序。
 - **[[有状态的逐命令会话执行|有状态的逐命令会话执行]]** — 会话外层循环按命令消费和执行 token，使后续词法分类继承此前命令的状态，并支持全新或调用方持有的 TypedContext，禁止预切分整个源文件。
 - **[[有状态词法分析与逐命令执行|有状态词法分析与逐命令执行]]** — Atlas 词法分类受先前命令改变的状态影响，因此会话逐命令执行且不预切分整个文件；词法器支持嵌套注释和逐 token 消费。
@@ -402,6 +407,7 @@
 - **[[线性映射下降到子商的条件验证|线性映射下降到子商的条件验证]]** — 诱导映射必须同时将源分子映入目标分子、源分母映入目标分母；仅检查商基代表不足以保证映射良定义。
 - **[[结构性源码阅读的验证与覆盖限制|结构性源码阅读的验证与覆盖限制]]** — 来源记录源码快照和已有测试锚点，但本次未执行测试或数学验收，亦未核对上游字节；例外型部分分支、错误路径及若干实形情形仍缺少测试覆盖。
 - **[[继承正系中的子系统单根提取|继承正系中的子系统单根提取]]** — 分别从虚根与实根中选取简单坐标全非负的候选，通过候选与集合内其他成员之差的正坐标判定筛选子系统单根，输出保持 RootId 升序。
+- **[[续行预处理与物理行映射|续行预处理与物理行映射]]** — preprocess 先去除行尾空白，再将反斜杠结尾的行与下一行直接拼接，并记录重写行到首个物理行的映射以支持诊断和 abandon 定位。
 - **[[虚根上的基-grading-扩展|虚根上的基 grading 扩展]]** — base_grading_extension 精确求解转置的 bracket 索引子 Cartan 系统，以虚单根坐标系数和的奇偶扩展 grading，并显式检查虚根性，因为坐标整性不足以判定虚根。
 - **[[虚根的-noncompact-grading|虚根的 noncompact grading]]** — simple_grading 按 offset[s] XOR ⟨alpha_s mod 2, torus bits⟩ 判断简单虚根的非紧性，须由调用方守卫根类型；任意虚根的 grading 使用 conjugate-to-simple 循环，非虚根返回 None。
 - **[[补全标识符的首次使用顺序|补全标识符的首次使用顺序]]** — next_session_token 在实际消费 token 时记录标识符，使被包含文件和后续命令中的补全项保持原始首次使用顺序。
@@ -428,8 +434,9 @@
 - **[[限制根系的纤维聚合与有序查询|限制根系的纤维聚合与有序查询]]** — RestrictedRootSystem 校验 datum 与格秩后，跳过限制为零的根并按限制权聚合纤维，以坐标字典序存储供二分查询；其 rank 取对合的反不变秩。
 - **[[陪集树到-weyl-词的转换|陪集树到 Weyl 词的转换]]** — convert_to_words 沿陪集树展开，每一步将反射词左乘到父段条目上，并与子群见证序及词对权的作用约定配对。
 - **[[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]** — DepthTables 预计算正虚根及基非紧奇偶，depth 按既定根顺序贪心选取极大正交非紧根集，移除非正交候选并翻转与所选根正交但和仍为根的候选的紧性。
+- **[[顶层会话事件的输出规则|顶层会话事件的输出规则]]** — 框架层为非 void 值添加 Value: 前缀、抑制空元组输出，并按当前包含深度为报告添加每层两空格缩进，同时保留字节事件的原始字节。
 - **[[领域内建桥接与上下文句柄|领域内建桥接与上下文句柄]]** — domain_builtins 连接语言层与 atlas-real-group，派发命名函数应用，并通过 Arc 上下文束、急切种子校验、可失败惰性属主和结构比较表达句柄行为；兼容性描述属于实现方陈述。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_429 pages | Generated 2026-10-09T17:43:40.308Z_
+_436 pages | Generated 2026-10-09T17:45:26.227Z_
