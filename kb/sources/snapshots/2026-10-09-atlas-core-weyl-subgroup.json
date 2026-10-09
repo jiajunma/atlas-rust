@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of weyl_subgroup.rs for the atlas-core-weyl-subgroup packet: the header discipline (BitMap ordering, dominance actually using the supplied generators — the R3 counterexample repair), Subgroup::new's validation (narrow-then-check root numbers, i128 Cartan pairing, infer_lie_type with the original's exact error text), the coset tree in exact simple-(co)root pairing coordinates (positive-scaling invariance), dominance event order (weights right-to-left, coweights left-to-right), the orbit-matrix vs witness-word outputs, the BuildAndDrop validate, and the 4 test anchors (empty subgroup identity, independent closure equality with witness reconstruction, full-group order, invalid diagnostics before discarding, safe overflow errors).",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/domain_builtins/weyl_subgroup.rs",
+   "sha256": "86d52b4f7228b300ad7ed0a38c526fd14f14003dfa034e4edf4f0e0102c63780",
+   "bytes": 19573,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  }
+ ]
+}

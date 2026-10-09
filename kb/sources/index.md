@@ -574,6 +574,17 @@ constructors+`revision: Arc<()>` 非语义快照身份；`matching_bindings` 查
 维护者直接撰写（无 Kimi 调用）。166 臂的逐臂数学不在本包。结构性阅读，
 不声称语言或数学验收。
 
+[反射子群轨道与 ambient Weyl 见证](atlas-core-weyl-subgroup.md)记录
+`domain_builtins/weyl_subgroup.rs`（433 行，after-v3 教训涉事文件、R3 反例
+修复落点）：头部纪律（BitMap `basic_orbit` 序而非 alcove 分层；初始
+dominance **真用**给定生成元——原版 rootdata.h 转发时忽略 g）、构造校验
+（收窄再查根号、i128 配对、原版逐字 Cartan 错误文本）、**精确单（余）根
+配对坐标**的陪集树（正缩放使符号/相等/边不变；有限 Cartan 可逆使限制
+单射）、见证序（权右到左、余权左到右）、BuildAndDrop。4 个测试锚点
+（空子群恒等、独立闭包等值 + 见证重建、全群序、丢弃前原版诊断、安全
+溢出）。对应[阅读快照](snapshots/2026-10-09-atlas-core-weyl-subgroup.json)；
+维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

@@ -731,3 +731,10 @@ share_group_into_if_cold、按内容弱 interning）、RootDatumHandle 结构相
 逐臂校验顺序契约、coerce 的逐标签转换（KpolK 的 finals_for、PolP 的
 expand_final，canonical 项序）、build_real_form 的规范弱缓存。维护者
 直接撰写（无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。
+
+新增 `sources/atlas-core-weyl-subgroup.md` 与快照
+`2026-10-09-atlas-core-weyl-subgroup.json`：weyl_subgroup.rs 全读——头部纪律
+（dominance 真用给定生成元，R3 反例修复）、构造校验（收窄再查根号、i128
+配对、原版逐字 Cartan 错误）、精确配对坐标的陪集树（正缩放不变性）、
+见证作用序（权右到左、余权左到右）、BuildAndDrop、4 个测试锚点。
+after-v3 教训涉事文件。维护者直接撰写（无 Kimi）；索引与 log 已同步。
