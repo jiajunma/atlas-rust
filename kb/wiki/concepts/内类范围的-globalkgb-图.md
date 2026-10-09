@@ -7,7 +7,7 @@ kind: concept
 createdAt: "2026-10-09T14:49:10.247Z"
 updatedAt: "2026-10-09T14:49:10.247Z"
 tags:
-  - KGB图
+  - KGB
   - 强实形
   - Rust移植
 aliases:

@@ -8,7 +8,7 @@ createdAt: "2026-10-09T14:30:07.277Z"
 updatedAt: "2026-10-09T22:16:07.922Z"
 tags:
   - KGB
-  - 实形
+  - 实形式
   - 打印契约
 aliases:
   - kgb-打印与实形一致性

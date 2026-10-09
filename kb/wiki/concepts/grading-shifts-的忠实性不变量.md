@@ -8,7 +8,7 @@ createdAt: "2026-10-09T14:50:18.916Z"
 updatedAt: "2026-10-09T22:31:16.925Z"
 tags:
   - 紧致分级
-  - 构造不变量
+  - 不变量
 aliases:
   - grading-shifts-的忠实性不变量
   - GS的

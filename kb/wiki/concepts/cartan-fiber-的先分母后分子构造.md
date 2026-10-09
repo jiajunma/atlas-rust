@@ -8,7 +8,7 @@ createdAt: "2026-10-09T14:42:41.552Z"
 updatedAt: "2026-10-09T22:26:04.219Z"
 tags:
   - Cartan纤维
-  - 构造不变量
+  - 不变量
 aliases:
   - cartan-fiber-的先分母后分子构造
   - CF的

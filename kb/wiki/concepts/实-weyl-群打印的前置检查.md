@@ -8,7 +8,7 @@ createdAt: "2026-10-09T14:30:11.117Z"
 updatedAt: "2026-10-09T14:30:11.117Z"
 tags:
   - Weyl群
-  - 实形
+  - 实形式
   - 参数校验
 aliases:
   - 实-weyl-群打印的前置检查

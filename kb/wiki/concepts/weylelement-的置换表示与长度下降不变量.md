@@ -8,7 +8,7 @@ createdAt: "2026-10-09T15:18:03.389Z"
 updatedAt: "2026-10-09T22:54:02.468Z"
 tags:
   - Weyl群
-  - 算法不变量
+  - 不变量
 aliases:
   - weylelement-的置换表示与长度下降不变量
 confidence: 1

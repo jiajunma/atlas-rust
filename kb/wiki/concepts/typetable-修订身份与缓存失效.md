@@ -7,7 +7,7 @@ kind: concept
 createdAt: "2026-10-09T14:38:15.589Z"
 updatedAt: "2026-10-09T22:22:27.409Z"
 tags:
-  - 缓存失效
+  - 缓存
   - Rust设计
 aliases:
   - typetable-修订身份与缓存失效
