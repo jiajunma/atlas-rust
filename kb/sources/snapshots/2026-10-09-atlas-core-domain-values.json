@@ -1,0 +1,21 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of domain_builtins.rs's upper regions for the atlas-core-domain-values packet: the Weyl identity machinery (WeylIdentityCell's success-only lazy initialization, DatumWeylKernel/AbstractWeylGroup, share_group_into_if_cold, the weak content interning DATUM_WEYL_IDENTITIES), RootDatumHandle's structural equality deliberately ignoring the identity cache, the *Value structs (WeylEltContext's abstract-group Arc identity rule, WeylEltValue's frozen canonical word, SplitValue's wrapping dual arithmetic), DomainValue's structural equality with same_real_form/same_real_form_owner, the Weyl compatibility gate (require_weyl_compatible before the no-value gate, replay-in-left cross-coordinate equality), the polynomial coefficient contracts, and the dispatch entries with the hungry products. This region is the landed Weyl repair; its semantics are HPC-accepted within the bounded A1 gate.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/domain_builtins.rs",
+   "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+   "bytes": 959480,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry"
+  },
+  {
+   "path": "crates/atlas-core/src/domain_builtins/weyl_subgroup.rs",
+   "sha256": "86d52b4f7228b300ad7ed0a38c526fd14f14003dfa034e4edf4f0e0102c63780",
+   "note": "referenced by mod weyl_subgroup; its own packet is pending",
+   "bytes": 19573
+  }
+ ]
+}

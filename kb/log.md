@@ -715,3 +715,12 @@ type_floor）、IdTable/TypeCell 定义处下限纪律、OverloadState 的修订
 合并视图与 add_user 上游重放、TypedCommandEvent、TypedContext 字段面与
 启动播种。convert_expr/内建注册表/TypedExpr impl/测试**不在本包**。
 维护者直接撰写（无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。
+
+新增 `sources/atlas-core-domain-values.md` 与快照
+`2026-10-09-atlas-core-domain-values.json`：domain_builtins.rs 上部——Weyl
+身份机器（成功才落定的 WeylIdentityCell、无环 DatumWeylIdentity、
+share_group_into_if_cold、按内容弱 interning）、RootDatumHandle 结构相等
+忽略身份缓存、Weyl 兼容 = 抽象群 Arc 身份 + 左系统重放、SplitValue 回绕
+对偶算术、DomainValue 结构等值、多项式系数契约、派发入口与饥饿乘积。
+本区域是 Weyl 修复落点；语义由 after-v5 限定验收，结构性阅读不授予验收。
+维护者直接撰写（无 Kimi）；字节数实测；索引与 log 已同步。

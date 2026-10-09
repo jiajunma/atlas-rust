@@ -549,6 +549,20 @@ constructors+`revision: Arc<()>` 非语义快照身份；`matching_bindings` 查
 （无 Kimi 调用）。`convert_expr`、内建注册表、`TypedExpr` impl 与测试各待
 分包。结构性阅读，不声称语言或数学验收。
 
+[领域值与 Weyl 身份](atlas-core-domain-values.md)记录 `domain_builtins.rs`
+上部（**Weyl 修复的落点**）：`WeylIdentityCell` 只在成功时落定、
+`DatumWeylIdentity`（惰性坐标 kernel + 抽象群身份，无所有权环）、
+`share_group_into_if_cold`（冷 canonical dual 才共享，预热目标永不覆盖）、
+`DATUM_WEYL_IDENTITIES` 按完整内容弱 interning；`RootDatumHandle` 结构相等
+刻意忽略身份缓存；`WeylEltContext` 的**抽象群 Arc 身份即兼容**规则与
+跨坐标重放比较；`SplitValue` 的回绕对偶算术与 `(e±|f|s)` 打印；
+`DomainValue` 结构等值（`same_real_form` vs `same_real_form_owner` 指针）；
+多项式系数契约（只替换 final 键、丢弃也校验、先拒外来属主）；派发入口与
+三个饥饿乘积。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-domain-values.json)；维护者直接
+撰写（无 Kimi 调用）。本区域语义由 A1 限定 HPC 门验收（after-v5）；
+结构性阅读本身不授予验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
