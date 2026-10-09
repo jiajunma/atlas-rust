@@ -1,5 +1,14 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
+**2026-10-10 status pointer**: the G2-v1 capture is fully prepared
+(byte-frozen payload + verified fixtures + runbook in §G2-V1 SUBMISSION) and
+BLOCKED on the SSH tunnel (`majj@10.26.14.64` connection timed out for >1
+day; retry cron fires hourly at :23).  The wiki review sweep is complete
+(536 concept pages, Fresh, zero pending candidates, zero red links;
+§"Wiki review sweep COMPLETE").  The three-commit owner-content sweep
+incident is recorded below (§"Uncommitted-owner-content sweeps"); the
+owner's remaining pending files stay untouched.
+
 ## CURRENT: Weyl repair landed as production commit 690c2b92 — 2026-10-06
 
 Job 3900050 is FINAL `COMPLETED 0:0` on cu006 with report status
