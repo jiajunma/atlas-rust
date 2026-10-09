@@ -111,6 +111,7 @@
 - **[[stablelog选举的稳定对数|stable_log：选举的稳定对数]]** — 通过非负 mod 1 归约与 adapted-basis 坐标选举，构造恰好位于 ξᵀ 的 +1 特征空间的对数；要求归约后尾部 adapted-basis 坐标为整数。
 - **[[standardrepr-标准表示参数|StandardRepr 标准表示参数]]** — 以 x、打包挠部分、无穷小特征 gamma 和派生 height 表示标准参数；相等性不比较 height，未定义参数的操作受不变量检查约束。
 - **[[staroracle-注入与符号调整调试门|StarOracle 注入与符号调整调试门]]** — tune_signs 通过 StarOracle 注入后续切片的 star 与 ext_param 计算，并在 debug_assertions 下运行 check_quadratic 和 check_braid 调试验证。
+- **[[structureerror-统一错误分类学|StructureError 统一错误分类学]]** — atlas-real-group 以 53 个 StructureError 变体统一表达输入验证、不变量违例、资源限制及算术错误，并通过固定英文 Display 文案呈现错误上下文。
 - **[[tau-packet-与-kgb-元素编号标准化|tau packet 与 KGB 元素编号标准化]]** — 实现按 involution 长度、Weyl 长度和 WeylElt::pieces 字典序排列 involution，再以稳定计数排序组织 tau packet 并保留包内 BFS 顺序；源码声明此编号复现上游，但本包未独立验证。
 - **[[titscoset-的-grading-offset-与完整-inner-class-门控|TitsCoset 的 grading offset 与完整 inner-class 门控]]** — TitsCoset 从 inner class 一次性建表，接受调用方指定的 grading offset，并要求完整 inner-class 相等，以防同一 datum 下不同 distinguished involution 的 twist 与 transport 被混用。
 - **[[titscoset-逐步约化的类映射依据|TitsCoset 逐步约化的类映射依据]]** — Rust 在每个中间目标对合处约化而上游仅在末尾约化，其最终约化类不变的依据是操作在模二商上为类映射；本包仅记录该注释论据，未进行数学验收。
@@ -136,6 +137,7 @@
 - **[[weyl-元素的规范词|Weyl 元素的规范词]]** — canonical_word 接受外部编号的任意词，包括非约化词，经 inner_mult 重建元素后按 piece 递增顺序拼接选定词并映射回外部编号，得到仅依赖元素的规范词。
 - **[[weyl-姿态变换与典范约化词|Weyl 姿态变换与典范约化词]]** — transform_srm 使用典范最左下降约化词，按 Complex、Real 或 Imaginary 状态执行交叉与反射或报错，最后归一化；双向共用同一词以形成逐字母逆变换。
 - **[[weyl-姿态定位器|Weyl 姿态定位器]]** — BlockLocator 用 int_sys 标识典范数据，以 Weyl 元素 w 将典范整子系统映到查询姿态并保持整正性，再用 simp_int 和 simple_pi 记录排序后的整单根像及生成元位置；模块尚未接入 RepTable::lookup。
+- **[[weyl-字的前向交叉作用顺序|Weyl 字的前向交叉作用顺序]]** — crossed_word 按切片顺序折叠单生成元交叉作用，顺序可能影响结果，非法生成元在执行到对应位置时才触发错误。
 - **[[weyl-群生成元的规范词构造|Weyl 群生成元的规范词构造]]** — 根反射、按 orth 坐标升序右乘的 R-群元素及复根反射乘积共同构成生成元，打印直接使用 canonical_word，无需移植上游词转换机制。
 - **[[weyl-群的矩阵作用与词级元素双层结构|Weyl 群的矩阵作用与词级元素双层结构]]** — WeylAction 表示携带根 datum 的全格矩阵作用，WeylElement 表示枚举根的置换，两层通过 action_permutation 与 from_action 桥接互查。
 - **[[weyl-群的紧凑-transducer-表示|Weyl 群的紧凑 Transducer 表示]]** — 采用 du Cloux / van Leeuwen 的抛物子商表示，以固定栈数组的各项索引 W_{i-1}\W_i 的极小陪集代表元，并通过逐生成元 transducer 实现乘法；文档标注复杂度为 O(length)，本包不提供性能验收。
@@ -161,6 +163,9 @@
 - **[[余特征作用的负特征整数子格|余特征作用的负特征整数子格]]** — negative_coweight_eigenspace 直接计算 ker_Z(I + θ_Y)，由于 coweight_matrix() 已存储余特征上的对偶作用，无需再次转置。
 - **[[保留首批独立列的典范截面canonicalmodtwosection|保留首批独立列的典范截面（CanonicalModTwoSection）]]** — 保留首批独立输入列并丢弃依赖列，以至多 64 位源掩码对动态目标求解；同一分解可复用，源文所述 3×4 穷举测试锚定数值最小解掩码。
 - **[[偶数指数的虚数单位幂计算|偶数指数的虚数单位幂计算]]** — exp_i 为偶数 n 返回 i^n 对应的 ±1，但偶数前置条件仅由 debug_assert! 检查，release 下奇数输入会落入 −1 分支。
+- **[[全局-tits-传输的上下文一致性校验|全局 Tits 传输的上下文一致性校验]]** — 构造及交叉作用通过 validate_context 检查根数据一致性，并核对 w·δ 的权与余权矩阵是否匹配存储对合，分别以 DatumMismatch 和 DistinguishedInvolutionMismatch 表达失败。
+- **[[全局-tits-传输的测试锚点与证据边界|全局 Tits 传输的测试锚点与证据边界]]** — 源码列出的 10 个测试涵盖规范化、根类型分支、非交换执行顺序、余根方向及中心坐标等行为，但部分错误路径未覆盖，结构性阅读不构成测试执行或数学验收。
+- **[[全局-tits-元素的精确有理环面表示|全局 Tits 元素的精确有理环面表示]]** — GlobalTitsElement 保存完整有理余特征和扭曲对合，将含中心坐标的环面分量规范化到 [0, 2)，向纤维 mod-two 商的规约留待后续处理。
 - **[[公共上下文的生成元操作commoncontext|公共上下文的生成元操作（CommonContext）]]** — 将 KGB 生成元作用转运到共轭父单根，实现状态判定、cross、奇偶判定及双向 Cayley 变换，并处理参数修正与奇异标志。
 - **[[公共块对偶变换及-kl-递归的闭合限制|公共块对偶变换及 KL 递归的闭合限制]]** — dual 反转元素顺序、交换 x/y、反射长度并映射下降状态与链接，返回 BareBlock；部分块的未定义链接保持缺失，可能使对偶不满足 KL 递归的链接闭合要求。
 - **[[公共块的构造与元素编号partialblock|公共块的构造与元素编号（PartialBlock）]]** — build_full 构造完整公共块，build 消费按 x 排序的 Bruhat 区间并最终按 (length, x, y) 排序，使编号对应 oracle 打印行号。
@@ -263,6 +268,7 @@
 - **[[扭曲对合的-cayleycross-分解|扭曲对合的 Cayley/Cross 分解]]** — 以 Cayley 根、生成器下标组成的 cross word 及其 WeylAction 表示扭曲对合，并通过重放验证输入；分解在不同实现间不唯一，应比较重放不变量或标签结果。
 - **[[承载可观测量的适配基adaptedbasis|承载可观测量的适配基（adapted_basis）]]** — adapted_basis 同步跟踪左变换的逆并保留上游主元与重排策略，因为选定的基固定 stable_log 代表元及下游 g_rho_check、torus_factor 有理量。
 - **[[折叠生成元与-foldorbits|折叠生成元与 fold_orbits]]** — ExtGen 表示折叠生成元，fold_orbits 根据 Cartan 矩阵和 δ 诱导的简单根置换生成有序轨道，并拒绝非对合 twist。
+- **[[按根类型划分的单生成元交叉作用|按根类型划分的单生成元交叉作用]]** — crossed_generator 对复根执行余根方向反射，对虚根要求根配对为整数并加上 (1−pairing) 倍余根，对实根保持环面坐标不变，随后规范化并重建扭曲对合。
 - **[[挠部分打包与-involution-图像基|挠部分打包与 involution 图像基]]** — y_pack 使用 M_real 坐标模 2 打包挠部分，y_lift 恢复 (1−theta)lambda_rho；精确图像基保存在 involution 表中并沿 cross-action BFS 传送。
 - **[[换基失败的统一不兼容格语义|换基失败的统一不兼容格语义]]** — on_basis 将非方阵、奇异基、非整结果及 i32 转换失败统一折叠为 None，包装器再将其标记为不兼容格，调用方无法区分具体失败原因。
 - **[[整子系统的余根加法闭包|整子系统的余根加法闭包]]** — additive_closure 将墙根及其负根纳入集合，以余根坐标两两相加直到不动点；文档中的 B2 回归锚点说明误用根坐标加法只得到四个长根，而余根加法得到全部八个根。
@@ -284,6 +290,7 @@
 - **[[有理权的矩阵作用整性检查与余根配对|有理权的矩阵作用、整性检查与余根配对]]** — RationalWeight 的 apply_matrix 仅作用分子并保持分母，integral_coordinates 显式检查整性，dot_coroot 返回约分后的有理配对值，并保留源码中维度错误字段的填报差异。
 - **[[有理运算实现的整数矩阵精确换基|有理运算实现的整数矩阵精确换基]]** — on_basis 以有理逆和两次矩阵乘法计算 basis^-1 * matrix * basis，仅在结果各项均为整数且可转换为 i32 时返回矩阵。
 - **[[有限域线性求解的规范截面|有限域线性求解的规范截面]]** — solve_mod_two 在 F₂ 上采用上游 canonical section，以前 d 个输入列选举解；输入不在像空间中时返回 None。
+- **[[未移植代码路径的显式失败语义|未移植代码路径的显式失败语义]]** — NotYetImplemented 表示上游 oracle 已定义但 Rust crate 尚未移植的功能，要求显式报错，避免以错误近似继续计算。
 - **[[本原索引表的惰性构建|本原索引表的惰性构建]]** — prepare_prim_index 按下降集幂等地降序扫描，记录本原位置、沿唯一上升像继承索引并转换 DEAD_END 哨兵；读取相关索引前必须 prepare，上升像序号更大仅为未显式防护的阅读假设。
 - **[[权与余权的典范配对|权与余权的典范配对]]** — pair 先检查权与余权的秩一致，再通过 i128 checked 累加计算坐标配对并检查收窄至 i32；内部 pair_coordinates 的 zip 截断风险由调用方控制。
 - **[[权与余权的简单反射及算术保护|权与余权的简单反射及算术保护]]** — reflect_weight 与 reflect_coweight 按根余根配对公式实施反射，先校验维度和生成元下标，再以 i128 中间值及受检运算处理溢出。
@@ -337,4 +344,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_334 pages | Generated 2026-10-09T17:17:28.470Z_
+_341 pages | Generated 2026-10-09T17:19:40.444Z_

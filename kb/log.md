@@ -1469,3 +1469,20 @@ anti_invariant_rank 而非纤维计数、is_multipliable 判二倍类、三测�
 互不调用与并行消费者关系如实标注为推断——全部忠实。6 页批准；
 wiki/concepts/ 现有 334 页，剩余候选 199。另：随本批提交第四十五批
 log 行的计数更正（219→205）。
+
+## 2026年10月10日 第四十七批候选审查：error-global-tits.md 的 7 页
+
+对照 162 行来源包逐页核验：StructureError 53 变体（22 无字段+31 带字段）
+与六大家族划分、invariant 家族 14 变体的子系统前缀清单与 Display 模板、
+IntegerLatticeResourceLimit 的 limit 为 u64 全家唯一、RootPairingMismatch
+唯一含 i32、SimpleCorootImageMismatch 唯一含 Weight 且 Display 用 Debug
+格式、NotYetImplemented 唯一带文档注释的"大声报错而非错误近似"语义、
+error.rs 无构造点/无测试的声明；GlobalTitsElement 的完整有理余特征保留
+（含中心坐标）与 [0,2) 典范代表、new 的三步门序、validate_context 的
+datum→w·δ 矩阵比较顺序、crossed_generator 每次重验上下文与三分支更新
+（Complex 反射/Imaginary 整性门槛 InvalidStrongTorusFactor/Real 不变）、
+Weyl 侧 s_i∘w∘s_{δ(i)} 重建、crossed_word 前向顺序与不预检生成元、
+规范化式 x−2⌊x/2⌋ 与全部数值锚点手算复核（(−1/2,9/2)→(3/2,1/2)、
+(0,7/3)→(1,1/3)、A2 (1/3,1/2)→(5/6,3/2)+s1∘s0∘s1）、10 测试与未覆盖
+清单、潜在 panic 面阅读观察——全部忠实。7 页批准；wiki/concepts/ 现有
+341 页，剩余候选 192。
