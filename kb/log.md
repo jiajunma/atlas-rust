@@ -1054,3 +1054,14 @@ has_identity_generator_attitude 门控、两个 lookup 入口的语义差异、
 with_kl_table 的全回调持锁与 ActiveKlCallback 重入禁令、k_type_formula 的
 严格身份键/更高截断复用/锁外计算提交复核（并与 with_kl_table 的锁范围明确
 区分）——全部忠实。6 页批准；wiki/concepts/ 现有 147 页，剩余候选 386。
+
+## 2026年10月10日 第二十一批候选审查：block-access-modifier.md 的 8 页
+
+对照 115 行来源包逐页核验：BlockTopology 的密封模式与四项结构不变量
+（rank≤32、非降长度、格子存在、链接目标<size）、双层 None 语义、
+PartialBlock 的参数交换与下降门控编码、bruhat_hasse 三个分支的分量取舍、
+transform_srm 的逐字母分派与偏移规则（Complex offset=0、Real offset=分母、
+Imaginary 报错）、reduced_word 有意偏差与逐字母互逆性、make_relative_to/
+sr_with_modifier 的顺序、simple_reflect_numerator 的 checked 算术、
+BlockModifier 字段语义与 u32::MAX 哨兵、两个集成测试细节——全部忠实。
+8 页批准；wiki/concepts/ 现有 155 页，剩余候选 378。

@@ -7,6 +7,9 @@
 - **[[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]** — 区分格秩与半单秩，按固定顺序验证 Cartan 矩阵、根与余根的数量、维度及配对，支持中心环面和纯环面且不设全局秩上限。
 - **[[blockdescent-八值状态体系|BlockDescent 八值状态体系]]** — BlockDescent 根据两侧根类型及 cross 行为区分八种状态，以索引位 0x4 标识 weak descent，并提供对偶状态映射与 Atlas 语言码转换。
 - **[[blockgraph-存储布局与坐标定位不变量|BlockGraph 存储布局与坐标定位不变量]]** — BlockGraph 以 x 外层、y 内层编号，分别按元素优先和生成元优先平铺 descent 与 cross，并依赖 xs 弱增、区间索引及连续 y 偏移实现带校验的坐标定位。
+- **[[blockmodifier-块修正子|BlockModifier 块修正子]]** — BlockModifier 组合 BlockLocator 与有理权平移，提供恒等构造、无校验包装及保留整根系定位信息的重置操作；该功能切片尚未接入现存消费方。
+- **[[blocktopology-只读块拓扑接口|BlockTopology 只读块拓扑接口]]** — 以密封 trait 提供 KL 所需的最小只读块表面，并依赖秩、长度排序、格子存在性和链接范围等结构不变量；支持引用及 Arc 包装的动态 trait 对象。
+- **[[bruhat-偏序的-hasse-图构造|Bruhat 偏序的 Hasse 图构造]]** — bruhat_hasse 通过首个严格良下降的 cross 或逆 Cayley 像及上升扩展生成直接下邻，无此下降时收集 RealTypeII 的第一逆 Cayley 分量；索引和 expect 依赖构造不变量。
 - **[[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]** — CartanClassification::build 构造 inner class 的全部 Cartan 类，聚合各实形式的 Cartan 集、most-split 类、twisted-involution 总数与严格偏序，并共享 twisted 共轭分区供对偶侧复用。
 - **[[cartan-分类的分层预算|Cartan 分类的分层预算]]** — CartanClassificationBudget 分别约束整数格、fiber、Weyl 枚举、对合发现与 peeling；generated-involutions 模式以含 identity 的精确计数上限控制代表元发现，各预算值参与分类缓存键。
 - **[[cartan-矩阵的精确有理有限型检查|Cartan 矩阵的精确有理有限型检查]]** — 以精确有理数沿连通分量传播对称化比例，再通过 LDLᵀ 式分解检查正主元；其与有限型的等价性在来源中仅为代码意图，未经数学验收。
@@ -15,6 +18,7 @@
 - **[[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]** — fundamental class 编为 0，其余按父类编号与上游正虚根顺序进行 BFS 发现；Cayley successor 在比较和存储前先 canonicalize，以保持 Atlas 编号语义。
 - **[[cayley-变换与目标模空间归约|Cayley 变换与目标模空间归约]]** — cayley 执行裸 sigma_mult，再在目标增大的 mod-space 中归约；若目标 Cartan 类尚未加入表，则返回 None。
 - **[[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]** — cayley 以 s·w 的置换查表寻找邻居，目标 Cartan 未添加时返回 None；stage e 要求预先添加该 form 的向上封闭 Cartan 集合。
+- **[[cayley-链的双层无效性与-partialblock-适配|Cayley 链的双层无效性与 PartialBlock 适配]]** — 外层 None 表示无效格子，内层 None 表示未定义链；PartialBlock 适配交换生成元与元素参数，并按下降状态将不可用的 Cayley 链编码为 Some((None, None))。
 - **[[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]** — 链接按元素与生成元平铺存储：Cayley 适用于非紧致 imaginary，逆 Cayley 适用于 real，后者区分单前像 II 型与双前像 I 型，并在编号标准化后按升序安装。
 - **[[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]** — canonical dual 仅在目标尚未建立 WeylGroup 时共享源群身份，已预热目标保持独立，因此 Weyl 元素兼容性取决于对象生命周期和构造历史。
 - **[[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]** — StrongRealClassification 预计算各 form 的 KGB 大小及全局总量；fiber_size(form, cartan) 在 form 不属于指定 Cartan 时返回 Some(0)，使跨全部 Cartan 的求和保持正确。
@@ -67,6 +71,7 @@
 - **[[weyl-上下文共享的性能与内存证据边界|Weyl 上下文共享的性能与内存证据边界]]** — 重复上下文构造和采样热点支持优化调查，但构建次数假设与探针计时不证明加速；共享可能延长内核存活，需独立测量构建数、分配及 time/CPU/RSS。
 - **[[weyl-元素的可失败关系与跨坐标运算|Weyl 元素的可失败关系与跨坐标运算]]** — Weyl 元素的等于、不等于和乘法须先检查群身份，包括 no_value 路径；兼容但坐标不同的值通过在左侧重放右侧外部生成元词运算，乘积保留左 owner。
 - **[[weyl-元素的扭曲共轭|Weyl 元素的扭曲共轭]]** — twisted_conjugate 计算 s_gen·w·s_twist(gen)，要求 twist 为生成子对合置换，其与 distinguished involution 的一致性由调用方保证。
+- **[[weyl-姿态变换与典范约化词|Weyl 姿态变换与典范约化词]]** — transform_srm 使用典范最左下降约化词，按 Complex、Real 或 Imaginary 状态执行交叉与反射或报错，最后归一化；双向共用同一词以形成逐字母逆变换。
 - **[[weyl-群的矩阵作用与词级元素双层结构|Weyl 群的矩阵作用与词级元素双层结构]]** — WeylAction 表示携带根 datum 的全格矩阵作用，WeylElement 表示枚举根的置换，两层通过 action_permutation 与 from_action 桥接互查。
 - **[[weyl-语义回归的递进验证门禁|Weyl 语义回归的递进验证门禁]]** — 以独立进程原版捕获和 BEFORE/fix/AFTER 回归验证语义；已落地 A1 验收仅覆盖限定输入，G2 非对称编号、B2/C2、操作数顺序及独占元素生命周期等仍需后续见证。
 - **[[weylaction-的对偶全格作用|WeylAction 的对偶全格作用]]** — 在 character 与 cocharacter 全格上维护反射矩阵及复合作用，反射构造使用检查算术，但矩阵复合包含未经检查的 i32 收窄。
@@ -95,6 +100,7 @@
 - **[[图像基接口的维度与算术安全边界|图像基接口的维度与算术安全边界]]** — 源码阅读指出短 weight 被静默补零式处理、过长提升坐标会 panic、传送仅检查方阵性且不自行复核分解，以及求逆算术和内存分配检查的不对称。
 - **[[图像基的典范播种与轨道传送纪律|图像基的典范播种与轨道传送纪律]]** — 图像基不由 θ 唯一决定：在 canonical involution 处进行列 echelon 归约播种，再沿 cross-action BFS 传送，以保持代表元与 y_lift 所依赖的精确基选择。
 - **[[图像基算法的测试锚点与证据范围|图像基算法的测试锚点与证据范围]]** — 源码列出带符号 gcd、斜环面与斜乘积基字面量及零/满像边界的测试锚点，但传送无测试，本包的结构性阅读未执行测试或构成数学验收。
+- **[[块修正子的相对化与标准参数恢复|块修正子的相对化与标准参数恢复]]** — make_relative_to 先逆合成定位器，再用更新后的 Weyl 元素变换并计算整正交平移；sr_with_modifier 依次平移、逆向变换和标准化，来源记录了 SL(3,R) 的精确往返测试锚点但未声称数学验收。
 - **[[块图的直接与逆-cayley-变换|块图的直接与逆 Cayley 变换]]** — 直接与逆 Cayley 访问器共享两个像槽并按 weak descent 互补开放；i1 构建单值直接像，i2 构建双值直接像，同时回填逆像并检查槽容量。
 - **[[块的-bruhat-hasse-图与可比对计数|块的 Bruhat Hasse 图与可比对计数]]** — Bruhat Hasse 图沿首个严格 good descent 递归构造直接下邻，在 split principal series 处使用 type-II 实下降的逆 Cayley 像；含自身的可比对计数要求 Hasse 行按拓扑序排列。
 - **[[基于位掩码的-wim-轨道枚举|基于位掩码的 W_im 轨道枚举]]** — walk_mask_orbits 按掩码升序播种并用 LIFO 栈遍历，依据 FiberAction 的非紧判定执行 m_alpha_masks 平移，以首次出现的掩码作为轨道代表元。
@@ -126,6 +132,7 @@
 - **[[整数列阶梯归约与带符号-gcd-扫描|整数列阶梯归约与带符号 gcd 扫描]]** — build 自底向上扫描并跟踪列操作；gcd_sweep 选最小绝对值主元、记录负主元取正的符号操作，并使用 div_euclid 保持典范像基定向。
 - **[[整数基的模-2-归约|整数基的模 2 归约]]** — reduce_basis_mod_two 将整数基归约为其在 Y/2Y 中张成的子空间信息。
 - **[[整数格计算预算integerlatticebudget|整数格计算预算（IntegerLatticeBudget）]]** — 以矩阵维数、存活工作条目总量、初等操作次数和中间系数位长限制单次精确计算；这些约束属于计算预算，不代表数学秩限制。
+- **[[有理权分子的-checked-仿射反射|有理权分子的 checked 仿射反射]]** — simple_reflect_numerator 在分母不变时以全程 checked 算术执行 v -= alpha_s * (<v, coroot_s> + offset)，支持普通简单反射及带偏移的仿射反射。
 - **[[有限域线性求解的规范截面|有限域线性求解的规范截面]]** — solve_mod_two 在 F₂ 上采用上游 canonical section，以前 d 个输入列选举解；输入不在像空间中时返回 None。
 - **[[权与余权的简单反射及算术保护|权与余权的简单反射及算术保护]]** — reflect_weight 与 reflect_coweight 按根余根配对公式实施反射，先校验维度和生成元下标，再以 i128 中间值及受检运算处理溢出。
 - **[[标准模参数的约化表示standardreprmod|标准模参数的约化表示（StandardReprMod）]]** — 以 KGB 元素 x 和经 (1−θ)X* 约化、规范化的 gamma_lambda 表示标准模参数，提供 build 与 mod_reduce 两条构造路径。
@@ -140,6 +147,7 @@
 - **[[精确有理矩阵求逆|精确有理矩阵求逆]]** — invert_rational 使用 first-nonzero pivot 的精确有理高斯消元，按列返回逆矩阵；此处秩有界的消元不设置 budget knob。
 - **[[虚根的-noncompact-grading|虚根的 noncompact grading]]** — simple_grading 按 offset[s] XOR ⟨alpha_s mod 2, torus bits⟩ 判断简单虚根的非紧性，须由调用方守卫根类型；任意虚根的 grading 使用 conjugate-to-simple 循环，非虚根返回 None。
 - **[[表示参数代表元归一化|表示参数代表元归一化]]** — lambda_unique、real_unique 与 gamma_lambda 规范化代表元，其中欧几里得除法 div_euclid(2) 避免负奇数截断导致代表元选择不一致及公式项无法合并。
+- **[[表示参数差的整根系正交化|表示参数差的整根系正交化]]** — make_diff_integral_orthogonal 借助整根子系统编码和 theta_1_preimage 减去差在 (1-θ)X* 中的固定原像，使结果与指定参数的整根系正交，并对零差短路。
 - **[[表示参数构造与权重恢复|表示参数构造与权重恢复]]** — 通过 sr_gamma 和 sr 构造标准参数，恢复 lambda-rho、lambda 与 nu，并支持 K-type 转换；lambda-rho 的减半步骤要求坐标和为偶数。
 - **[[表示参数的奇偶判定与朝向数|表示参数的奇偶判定与朝向数]]** — is_parity 结合 KGB 状态转运与根配对比较奇偶，orientation_number 则先作 dominant 化，再利用 real 正根相关权重计算朝向数。
 - **[[跨对偶的-cartan-类对应与扭曲代表元|跨对偶的 Cartan 类对应与扭曲代表元]]** — Cartan 类对应以对偶根像置换定位共轭类，查找失败视为不变量错误；内部代表元构造则在对偶 datum 上重放原 Weyl 字以保留两种格作用及来源信息。
@@ -150,4 +158,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_147 pages | Generated 2026-10-09T16:17:58.894Z_
+_155 pages | Generated 2026-10-09T16:20:54.288Z_

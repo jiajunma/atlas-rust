@@ -268,6 +268,20 @@
         "共享-kl-表的惰性构造与回调并发约定"
       ],
       "compiledAt": "2026-10-09T16:17:58.487Z"
+    },
+    "block-access-modifier.md": {
+      "hash": "79d094275987ce6fb664bc2e2397a774cee5a0adae2ee1b58dc45480d6926666",
+      "concepts": [
+        "blockmodifier-块修正子",
+        "blocktopology-只读块拓扑接口",
+        "bruhat-偏序的-hasse-图构造",
+        "cayley-链的双层无效性与-partialblock-适配",
+        "weyl-姿态变换与典范约化词",
+        "块修正子的相对化与标准参数恢复",
+        "有理权分子的-checked-仿射反射",
+        "表示参数差的整根系正交化"
+      ],
+      "compiledAt": "2026-10-09T16:20:53.818Z"
     }
   }
 }
