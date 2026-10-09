@@ -14,6 +14,20 @@
         "源余权格到伴随余权格的整数投影"
       ],
       "compiledAt": "2026-10-09T15:28:26.828Z"
+    },
+    "weyl-context-identity-and-sharing.md": {
+      "hash": "6d155018197b21f11ec920b78f9b0ed0d6920b65024d3165cb1b3f37c9aa8101",
+      "concepts": [
+        "dual-预热历史与-weyl-群兼容性",
+        "innerclass-对偶构造与生命周期保持",
+        "rootdatum-弱驻留与规范活对象身份",
+        "rust-weyl-内核与抽象群的无环所有权模型",
+        "weyl-上下文共享的性能与内存证据边界",
+        "weyl-元素的可失败关系与跨坐标运算",
+        "weyl-语义回归的递进验证门禁",
+        "仅成功发布的惰性初始化"
+      ],
+      "compiledAt": "2026-10-09T15:31:16.075Z"
     }
   }
 }
