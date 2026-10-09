@@ -345,6 +345,12 @@ modifications to `.gitignore`, `README.md`, `docs/DEFORM_DESIGN.md`,
 `tests/math/generics/catalog.json` remain UNTOUCHED and uncommitted.
 Prevention adopted: before staging any path I did not create, diff it
 against HEAD and confirm the delta is only my own edit.
+Scope audit (same day): the three sweeps above are the complete set.  The
+key earlier-window commits (`690c2b92` repair, `964f0033` G2 migration,
+`9f0be600`/`041aad85` payload, `e0bf7358` wiki unblock) are each scoped to
+their declared files, and none of the owner's other pending paths
+(`tests/math/*/catalog.json`, `hpc/math_suite*`, `README.md`, `.gitignore`,
+…) appears in any of my commits this session.
 
 ### Payload rebuild drill at HEAD `7e40ddd7` (2026-10-09, tunnel-down)
 
