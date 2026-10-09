@@ -1,0 +1,56 @@
+---
+title: TitsElement 的元素表示与正规形契约
+summary: TitsElement 以 (involution, torus bits) 表示元素，依赖 InvolutionTable 的链接而不携带逐元素 Weyl 数据；new 仅检查编号和维数，不自动归约，RAW bits 的派生排序仅对 reduced 代表元具有语义。
+sources:
+  - tits-element.md
+kind: concept
+createdAt: "2026-10-09T15:13:06.117Z"
+updatedAt: "2026-10-09T15:13:06.117Z"
+tags:
+  - Tits群
+  - Rust设计
+  - 正规形
+aliases:
+  - titselement-的元素表示与正规形契约
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+---
+
+# TitsElement 的元素表示与正规形契约
+
+`TitsElement` 是 KGB stage c 中用于 torus 部分与 Tits 群操作的元素类型，表示为二元组 `(involution, torus bits)`。其核心契约是：构造器检查编号与维数，但不自动归约；`reduce` 产生正规形，而派生序关系仅在已归约的代表元上具有语义。^[tits-element.md:19-22, tits-element.md:32-34]
+
+## 元素表示
+
+这一二元组沿用上游持久化时的逐元素形状，Rust 实现也在构造期采用它。由于 stage (b) 的 `InvolutionTable` 已提供 O(1) 的 cross 链接与 Cayley 边，元素本身无需携带逐元素 Weyl 数据；相关表结构见 [[Twisted involution 表与 Cartan 轨道存储]]。^[tits-element.md:19-22]
+
+## 构造与正规形
+
+`TitsElement::new` 是受门控的裸构造器，检查 involution 编号与 torus 维数，但**不自动执行 `reduce`**。因此，成功构造只表明通过了这些检查，并不保证 torus bits 已是正规代表元。^[tits-element.md:32-34]
+
+`reduce` 将元素的 torus bits 化为表内正规形，且操作幂等。派生的序关系先按 involution 分组，再比较原始位串（RAW bits）；只有在已归约的代表元上，这种比较才具有语义。因此，依赖该序关系时，需要满足已归约的正规形前提。^[tits-element.md:32-34, tits-element.md:63-63]
+
+## 群操作中的归约位置
+
+`cross` 实现 [[Based cross action 的闭式实现|based cross action]]，并在目标处归约结果。`cayley` 执行裸的 `sigma_mult`，随后在目标处扩大的 mod-space 中归约；若目标 Cartan 类尚未加入表，则返回 `None`。这些操作将归约放在目标处，使结果采用目标模空间中的代表元。^[tits-element.md:50-53]
+
+`inverse_cayley` 的过程还包含 grading 修复：先执行裸的 `sigma_inv_mult`；若重建出的根为 compact，则使用第一个与该根配对非平凡的源 mod-space 基向量进行修复，找不到这样的基向量时报告 `TitsCosetInvariantViolation`。最后，在 imaginary 目标处通过 `quotient_representative` 归约，并复核目标的 simple grading。根不是 real，或向下的 Cartan 类未加入表时，返回 `None`。相关过程见 [[Cayley 变换与目标模空间归约]]。^[tits-element.md:54-60]
+
+## 上下文与使用前提
+
+正规形之外，操作还依赖正确的 `TitsCoset` 上下文。其来源校验要求完整 inner class 相等，仅 datum 相等不足以保证兼容：同一 datum 上，不同 distinguished involution 对应的 inner class 可以具有不同的 twist 与 transport。详见 [[TitsCoset 的 grading offset 与完整 inner-class 门控]]。^[tits-element.md:38-43]
+
+归约也不能替代根类型检查。`simple_grading(s, element)` 仅在简单根 `s` 于该元素的 involution 处为 IMAGINARY 时有意义，调用方必须使用 `InvolutionTable::simple_root_kind` 守卫；任意根的 `grading` 查询则在根非 imaginary 时返回 `None`。^[tits-element.md:47-49, tits-element.md:61-62]
+
+## 证据范围
+
+本页依据对 `tits_element.rs` 的结构性阅读材料，其快照记录的是 dirty 工作区字节。该材料未执行构建、测试或原版运行，不提供数学验收、性能或并行结论；元素操作的正确性仍属于其自身的 HPC 证据链。^[tits-element.md:9-15, tits-element.md:67-72]
+
+## Sources
+
+- [tits-element.md](tits-element.md) — Tits 元素：torus 部分与 Tits 群操作（KGB stage c）

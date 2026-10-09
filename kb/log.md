@@ -954,3 +954,13 @@ mod_reduce/build_srm、is_parity 与 orientation_number 的步骤、
 reducibility_points 的"分子/分母对升序"措辞保留、deformation_terms 两个
 边界与逆向累积顺序——全部忠实。8 页批准；wiki/concepts/ 现有 77 页，
 剩余候选 456。
+
+## 2026年10月9日 第十一批候选审查：tits-element.md 的 7 页
+
+对照 77 行来源包逐页核验：元素形状与不携带逐元素 Weyl 数据的理由、裸构造器
+不自动归约、序关系仅对 REDUCED 代表元有意义、reduce 幂等、grading offset 的
+两种来源（stage d 的 square-class cocharacter 与 adjoint 约定）、FULL
+inner-class 门控而非 datum-only、simple_grading 公式与 IMAGINARY 守卫、
+cross 闭式映射的两步分解加 offset 修正、cayley/inverse_cayley 的目标/源
+mod-space 分工与修复机制、三处上游行号转述限制——全部忠实。7 页批准；
+wiki/concepts/ 现有 84 页，剩余候选 449。

@@ -20,6 +20,10 @@
 
 - [[cartan-矩阵的精确有理有限型检查|Cartan 矩阵的精确有理有限型检查]]
 
+## Cartan类
+
+- [[cayley-变换与目标模空间归约|Cayley 变换与目标模空间归约]]
+
 ## Cartan纤维
 
 - [[伴随-cartan-纤维的构建与下降验证|伴随 Cartan 纤维的构建与下降验证]]
@@ -27,6 +31,7 @@
 
 ## Cayley变换
 
+- [[cayley-变换与目标模空间归约|Cayley 变换与目标模空间归约]]
 - [[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]
 - [[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]
 - [[严格-cayley-偏序|严格 Cayley 偏序]]
@@ -65,9 +70,20 @@
 - [[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]
 - [[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]
 - [[kgb-图的混合自包含存储|KGB 图的混合自包含存储]]
+- [[titselement-的元素表示与正规形契约|TitsElement 的元素表示与正规形契约]]
 - [[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]
 - [[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]
 - [[余权坐标的投影出处绑定|余权坐标的投影出处绑定]]
+
+## Tits群
+
+- [[based-cross-action-的闭式实现|Based cross action 的闭式实现]]
+- [[titscoset-的-grading-offset-与完整-inner-class-门控|TitsCoset 的 grading offset 与完整 inner-class 门控]]
+- [[titselement-的元素表示与正规形契约|TitsElement 的元素表示与正规形契约]]
+
+## Weyl作用
+
+- [[torus-部分的模二矩阵传输|Torus 部分的模二矩阵传输]]
 
 ## Weyl群
 
@@ -111,6 +127,7 @@
 
 ## 交叉作用
 
+- [[based-cross-action-的闭式实现|Based cross action 的闭式实现]]
 - [[单反射下的图像基传送|单反射下的图像基传送]]
 - [[图像基的典范播种与轨道传送纪律|图像基的典范播种与轨道传送纪律]]
 
@@ -183,6 +200,15 @@
 ## 分类计数
 
 - [[对偶实形式的分层计数管线|对偶实形式的分层计数管线]]
+
+## 分级
+
+- [[titscoset-的-grading-offset-与完整-inner-class-门控|TitsCoset 的 grading offset 与完整 inner-class 门控]]
+- [[虚根的-noncompact-grading|虚根的 noncompact grading]]
+
+## 分级修复
+
+- [[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]
 
 ## 参数建模
 
@@ -435,6 +461,10 @@
 
 - [[表示参数构造与权重恢复|表示参数构造与权重恢复]]
 
+## 来源校验
+
+- [[titscoset-的-grading-offset-与完整-inner-class-门控|TitsCoset 的 grading offset 与完整 inner-class 门控]]
+
 ## 构建验证
 
 - [[伴随-cartan-纤维的构建与下降验证|伴随 Cartan 纤维的构建与下降验证]]
@@ -485,10 +515,19 @@
 ## 模二运算
 
 - [[mod-2-投影与纤维商上的诱导映射|mod-2 投影与纤维商上的诱导映射]]
+- [[torus-部分的模二矩阵传输|Torus 部分的模二矩阵传输]]
+
+## 模空间
+
+- [[cayley-变换与目标模空间归约|Cayley 变换与目标模空间归约]]
 
 ## 欧几里得消元
 
 - [[幺模矩阵求逆与分解自校验|幺模矩阵求逆与分解自校验]]
+
+## 正规形
+
+- [[titselement-的元素表示与正规形契约|TitsElement 的元素表示与正规形契约]]
 
 ## 测试覆盖
 
@@ -565,10 +604,16 @@
 ## 算法不变量
 
 - [[weylelement-的置换表示与长度下降不变量|WeylElement 的置换表示与长度下降不变量]]
+- [[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]
 
 ## 算法兼容性
 
 - [[图像基的典范播种与轨道传送纪律|图像基的典范播种与轨道传送纪律]]
+
+## 算法设计
+
+- [[based-cross-action-的闭式实现|Based cross action 的闭式实现]]
+- [[torus-部分的模二矩阵传输|Torus 部分的模二矩阵传输]]
 
 ## 算法顺序
 
@@ -607,6 +652,10 @@
 ## 置换表示
 
 - [[weylelement-的置换表示与长度下降不变量|WeylElement 的置换表示与长度下降不变量]]
+
+## 虚根
+
+- [[虚根的-noncompact-grading|虚根的 noncompact grading]]
 
 ## 表示论
 
@@ -675,6 +724,10 @@
 
 - [[形变项计算的边界情形与输出顺序|形变项计算的边界情形与输出顺序]]
 
+## 逆Cayley变换
+
+- [[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]
+
 ## 错误处理
 
 - [[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]
@@ -693,6 +746,10 @@
 ## 阶梯归约
 
 - [[整数列阶梯归约与带符号-gcd-扫描|整数列阶梯归约与带符号 gcd 扫描]]
+
+## 非紧性
+
+- [[虚根的-noncompact-grading|虚根的 noncompact grading]]
 
 ## 预算控制
 
