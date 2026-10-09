@@ -3117,8 +3117,8 @@ BEFORE_V4_PREDECESSOR = {
     "stage_tree_directories": 18,
     "stage_tree_bytes": 4151738,
     "campaign_ledger_sha256":
-        "6bdf33d7c1e4dcad1515632000a966223bed50537f25ebb7cdc672bc02401f99",
-    "campaign_ledger_records": 24,
+        "5381b3b3a8ffcf8ae1566eb63640719ddec13955f681dbeca5361bbf9321cd5a",
+    "campaign_ledger_records": 19,
 }
 BEFORE_V4_PREDECESSOR_REFERENCE = BEFORE_V4_PREDECESSOR
 
@@ -7042,8 +7042,13 @@ def validate_before_v1_failure(root, inputs):
         "regression_patch_or_fixture_change_allowed": False,
         "source_manifest_change_allowed": False,
         "expected_test_counts_after": {
-            **EXPECTED_TEST_COUNTS,
-            "total": CHECKER_TESTS,
+            "test-campaign-stage-creation": 32,
+            "test-progressive-submit": 17,
+            "test-weyl-context-core-contract": 18,
+            "test-weyl-context-core-regression-contract": 17,
+            "test-math-weyl-context-core-capture": 28,
+            "test-stager-allowlist": 7,
+            "total": 119,
         },
         "changed_input_successor_required": True,
         "successor_stage": "weyl-context-core-before-v2",
@@ -7303,7 +7308,15 @@ def validate_before_v2_failure(root, inputs):
         "bytes": PREDECESSOR_STATE["stage_tree_bytes"],
         "stable_double_scan_and_independent_rescan_match": True,
     }
-    expected_counts = dict(EXPECTED_TEST_COUNTS, total=CHECKER_TESTS)
+    expected_counts = {
+            "test-campaign-stage-creation": 32,
+            "test-progressive-submit": 17,
+            "test-weyl-context-core-contract": 18,
+            "test-weyl-context-core-regression-contract": 17,
+            "test-math-weyl-context-core-capture": 28,
+            "test-stager-allowlist": 7,
+            "total": 119,
+        }
     remediation = value.get("remediation_contract")
     if (not isinstance(value, dict) or set(value) != expected_keys
             or value.get("schema")
@@ -7435,7 +7448,15 @@ def validate_before_v3_failure(root, inputs):
     root_cause = value.get("root_cause")
     remediation = value.get("remediation_contract")
     review = value.get("independent_review")
-    expected_counts = dict(EXPECTED_TEST_COUNTS, total=CHECKER_TESTS)
+    expected_counts = {
+            "test-campaign-stage-creation": 32,
+            "test-progressive-submit": 17,
+            "test-weyl-context-core-contract": 18,
+            "test-weyl-context-core-regression-contract": 17,
+            "test-math-weyl-context-core-capture": 28,
+            "test-stager-allowlist": 7,
+            "total": 119,
+        }
     if (not isinstance(value, dict) or set(value) != expected_keys
             or value.get("schema")
                != "atlas-weyl-context-core-before-failure-v3"
@@ -7928,7 +7949,7 @@ def validate_after_v5_result(root, inputs):
                 "after_v3": (
                     "job 3899303 (E0609, repair missed weyl_subgroup.rs)"),
                 "after_v4": (
-                    "job 3899885 (math passed; gate over-assertion on "
+                    "job 3899885 (math passed; gate over-asserted on "
                     "prewarmed stderr presentation)"),
             }):
         raise ValueError("Weyl core after-v5 result evidence changed")
