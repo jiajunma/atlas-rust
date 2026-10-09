@@ -1,0 +1,33 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Organization map of atlas-core's four test modules for the atlas-core-regression-library packet: session.rs's 201 tests (family map; the include_str!-plus-oracle-golden regression pattern), typed.rs's 133 tests, domain_builtins.rs's 92 tests, and session_fixture_tests.rs's 17 full-pipeline tests. Test content is not covered; their executability is HPC-gated and this packet claims no pass/fail state.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/session.rs",
+   "sha256": "969cdb27ccae61ca4fe3e36219801037d475517bee3614fead553024818307e7",
+   "bytes": 191393,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/typed.rs",
+   "sha256": "614975c5e2d49357b4d9ffff80145a6c69db2fd5aeef23f033faf03f594acc95",
+   "bytes": 770895,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/domain_builtins.rs",
+   "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+   "bytes": 959480,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/session_fixture_tests.rs",
+   "sha256": "8f64b207a7427e1bb1cb66246e98f828138ccaa64737ebe616fb0143d218e190",
+   "bytes": 14966,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  }
+ ]
+}

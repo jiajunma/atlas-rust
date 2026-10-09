@@ -808,3 +808,11 @@ CLI 前端全读（FsProvider 有损 UTF-8、字节保留 print_events、rayon 2
 工作栈、--path= 解析、文件按普通命令流喂、clean 退出状态——缺包含不弄脏）。
 维护者直接撰写（无 Kimi）。至此 crates/ 全部三个 crate 的每个模块均有
 来源包或明确交叉引用（两测试模块的组织按引用覆盖）。
+
+新增 `sources/atlas-core-regression-library.md` 与快照
+`2026-10-09-atlas-core-regression-library.json`：四个测试模块的组织地图
+（session 201 / typed 133 / domain 92 / fixture 17）、原版背书范式
+（include_str! + oracle 金标）与证据链位置。不含逐测试内容；不声称通过。
+维护者直接撰写（无 Kimi）。**至此 atlas-core + atlas-cli 全模块来源包
+齐备**（crate 根、语言层各模块、typed.rs 四区、domain_builtins.rs 六区 +
+weyl_subgroup、CLI、测试库地图）。

@@ -684,6 +684,17 @@ Tarjan 形 SCC（块图消费者）、`ByLastCoordinate` 的**坐标逆序**字�
 对应[阅读快照](snapshots/2026-10-09-atlas-cli-main.json)；维护者直接撰写
 （无 Kimi 调用）。本文件无测试；行为由 HPC 语料门覆盖。结构性阅读。
 
+[回归测试库地图](atlas-core-regression-library.md)记录四个测试模块的组织
+（**不含**逐测试内容）：`session.rs` 201 个（家族地图 + `include_str!` fixture
++ `.oracle.*` 逐字节金标的原版背书范式）、`typed.rs` 133 个
+（`convert*`/`overload*`/`evaluate*` 族）、`domain_builtins.rs` 92 个
+（`as_*`/`build_*`/`block*`/`print*`/`weyl*`…）、`session_fixture_tests.rs`
+17 个（经 `session::run_source` 的全程回归，不留第二实现）。证据链：
+`tests/reference/hpc/` 分阶段证据 + append-only 验收账本 + HANDOFF。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-regression-library.json)；维护者
+直接撰写（无 Kimi 调用）。本包不声称任何测试通过——可执行性以 HPC 门为准。
+结构性阅读。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
