@@ -77,11 +77,13 @@ python3 tools/kimi_subagent.py \
   single-shot probe prompt (reference files embedded verbatim) produced
   ONLY the version banner in 180s (`stdout.jsonl` 58 bytes, nothing to
   salvage). Treat a zero-output timeout as retryable once with a longer
-  deadline (the retry at 300s completed in 291s); budget >=300s for
-  single-shot probes of that size on `kimi-code/k3-256k`, and fall back to
-  a local review if the retry also yields nothing.  The probe profile is a
-  good fit for structural fixture reviews: findings were limited to one
-  dead binding and one non-ASCII header character, both independently
+  deadline and fall back to a local review if the retry also yields nothing.
+  Same-day round 2 sharpened the budget: a 9.3KB probe produced nothing in
+  300s, then completed in 252s under a 420s deadline — budget >=420s for
+  probe reviews on `kimi-code/k3-256k` when the model is slow.  The probe
+  profile is a good fit for structural fixture reviews: round 1 found one
+  dead binding and one non-ASCII header character, round 2 found the same
+  em-dash class reintroduced in three later drafts — all independently
   verified by grep before applying.
 - Do not SIGKILL the wrapper itself: no process can execute its cleanup after
   SIGKILL. The verified cleanup covers its process group, not independently
