@@ -1,0 +1,13 @@
+{
+ "checked_at_utc": "2026-10-09T23:54:57Z",
+ "command": "git ls-remote https://github.com/jeffreyadams/atlasofliegroups.git HEAD refs/heads/master",
+ "head": "5ae51193cbb8faa022847701195bba81702b1605",
+ "master": "5ae51193cbb8faa022847701195bba81702b1605",
+ "oracle_pin": "7e1b958c7aa9456769cc9cf09ac1542814b4800a",
+ "repository": "https://github.com/jeffreyadams/atlasofliegroups.git",
+ "result": "UNCHANGED: upstream HEAD/master still resolves to 5ae51193, matching the 2026-10-09T13:14:20Z check (upstream_head_2026_10_09.json). The known ten-commit delta over the oracle pin 7e1b958c neither grew nor shrank. Historical pins stay as published; a pin refresh remains a separate reviewed transition requiring a complete HPC replay against current master (2026-10-01 precedent). No local source or oracle binary changed by this read-only check.",
+ "schema": "atlas-upstream-head-check-v1",
+ "scope": "Read-only GitHub revision check; no fetch into any local checkout, no execution.",
+ "supersedes": null,
+ "previous_check": "tests/reference/hpc/upstream_head_2026_10_09.json"
+}
