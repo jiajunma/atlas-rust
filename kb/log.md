@@ -1408,3 +1408,20 @@ from_basis 行主序配对核对、roots() 的 FIFO BFS/i128 收窄/4096 上限/
 刻意窄于 real rank、3 测试锚点（i32::MAX 恰报 ArithmeticOverflow 间接
 要求 StructureError: PartialEq）——全部忠实。7 页批准；wiki/concepts/
 现有 313 页，剩余候选 220。
+
+## 2026年10月10日 第四十四批候选审查：lattice-types.md 的 7 页
+
+对照 93 行来源包逐页核验：四格类型（Weight/Coweight 独立 newtype 不可
+互换、RationalWeight 公共分母 Vec<i64>+i64、RationalCoweight 逐坐标
+Rational）、checked 固定宽度存储+领域边界转换的设计决策、pair 先秩查再
+委托 pair_coordinates（i128 累加 i32 收窄、zip 截断靠调用方）、
+checked_mul(sign) 拦截 i32::MIN*-1、try_reserve_exact 预算纪律与
+halve/normalized/to_rationals 的裸 clone 例外、构造即 gcd 归一与拒绝
+非正分母（上游 normalize 只拒零的对照保留）、halve 刻意不归一、
+apply_matrix 保持分母只作用分子、integral_coordinates 的断言可检查化、
+dot_coroot 返回已约分 (i64,i64)、两处错误字段怪癖如实保留
+（dot_coroot 的 expected/actual 反序、apply_matrix 的 actual=matrix.len()）、
+防御性溢出口不可达的备注、gcd_u64 两处实现漂移（gcd(0,0)=1 vs 0，各自
+调用点因分母恒正而安全但已漂移）、RationalCoweight 无算术无 Hash 与
+malachite 不进公开 API——全部忠实。7 页批准；wiki/concepts/ 现有 320 页，
+剩余候选 213。

@@ -268,11 +268,16 @@
 - **[[整数矩阵算法的逐操作保真移植|整数矩阵算法的逐操作保真移植]]** — 欠定整数系统的被选解及其坐标奇偶性会影响下游 same_sign，因此 matreduc 复现上游幺模操作序列、符号簿记和 wrapping i32 算术，而不只返回任意正确解。
 - **[[整数线性系统求解与像判定|整数线性系统求解与像判定]]** — has_solution 对角化后检查变换右端的逐坐标可除性，find_solution 无解时返回 None，in_left_image 与 in_right_image 提供像判定，而右端长度不匹配会触发 panic。
 - **[[普通根系的确定性枚举|普通根系的确定性枚举]]** — RootSystem 从 BasedRootDatum 播种正负简单根并以 BFS 求反射闭包，最终按环境坐标字典序排列根，结果顺序独立于发现顺序。
+- **[[有理余权的逐坐标表示与-api-边界|有理余权的逐坐标表示与 API 边界]]** — RationalCoweight 采用 Vec<Rational> 逐坐标存储，通过 dimension 与 to_rationals 提供公开坐标访问，将构造限制在 crate 内，且不提供算术或 Hash。
 - **[[有理权分子的-checked-仿射反射|有理权分子的 checked 仿射反射]]** — simple_reflect_numerator 在分母不变时以全程 checked 算术执行 v -= alpha_s * (<v, coroot_s> + offset)，支持普通简单反射及带偏移的仿射反射。
+- **[[有理权的公共分母表示与归一化|有理权的公共分母表示与归一化]]** — RationalWeight 使用 Vec<i64> 分子与正 i64 公共分母，构造、加减和缩放执行 gcd 归一化，而 halve 仅翻倍分母并将归一化时机留给调用方。
+- **[[有理权的矩阵作用整性检查与余根配对|有理权的矩阵作用、整性检查与余根配对]]** — RationalWeight 的 apply_matrix 仅作用分子并保持分母，integral_coordinates 显式检查整性，dot_coroot 返回约分后的有理配对值，并保留源码中维度错误字段的填报差异。
 - **[[有理运算实现的整数矩阵精确换基|有理运算实现的整数矩阵精确换基]]** — on_basis 以有理逆和两次矩阵乘法计算 basis^-1 * matrix * basis，仅在结果各项均为整数且可转换为 i32 时返回矩阵。
 - **[[有限域线性求解的规范截面|有限域线性求解的规范截面]]** — solve_mod_two 在 F₂ 上采用上游 canonical section，以前 d 个输入列选举解；输入不在像空间中时返回 None。
 - **[[本原索引表的惰性构建|本原索引表的惰性构建]]** — prepare_prim_index 按下降集幂等地降序扫描，记录本原位置、沿唯一上升像继承索引并转换 DEAD_END 哨兵；读取相关索引前必须 prepare，上升像序号更大仅为未显式防护的阅读假设。
+- **[[权与余权的典范配对|权与余权的典范配对]]** — pair 先检查权与余权的秩一致，再通过 i128 checked 累加计算坐标配对并检查收窄至 i32；内部 pair_coordinates 的 zip 截断风险由调用方控制。
 - **[[权与余权的简单反射及算术保护|权与余权的简单反射及算术保护]]** — reflect_weight 与 reflect_coweight 按根余根配对公式实施反射，先校验维度和生成元下标，再以 i128 中间值及受检运算处理溢出。
+- **[[权格与余权格的类型隔离|权格与余权格的类型隔离]]** — Weight 与 Coweight 分别表示 character lattice X* 与 cocharacter lattice X_*，以独立 newtype 防止混用，即使坐标相同且存在完美配对也不可互换。
 - **[[标准模参数的约化表示standardreprmod|标准模参数的约化表示（StandardReprMod）]]** — 以 KGB 元素 x 和经 (1−θ)X* 约化、规范化的 gamma_lambda 表示标准模参数，提供 build 与 mod_reduce 两条构造路径。
 - **[[根-involution-的-innerclass-构造与-weyl-因子|根 involution 的 InnerClass 构造与 Weyl 因子]]** — 构造入口在调用方根枚举预算内验证根与余根的传输，并可通过左复合 Weyl word 将任意合格的根 involution 转为保持基的 involution；不同入口保留或丢弃所得 Weyl 因子。
 - **[[根与余根的梯子底表|根与余根的梯子底表]]** — min_roots 与 min_coroots 为每个 α 预计算满足 β−α 非根或非余根的 β 集合，分别使用有序根表二分查找和余根坐标映射判定成员。
@@ -283,6 +288,7 @@
 - **[[根系的-bfs-反射闭包枚举|根系的 BFS 反射闭包枚举]]** — RootDatum::roots 从正负单根出发以 FIFO BFS 求反射闭包，使用 i128 中间运算并检查 i32 收窄溢出，第 4097 个互异向量触发 RootSystemTooLarge，最终按坐标字典序输出。
 - **[[根编号排序兼容与生成元置换|根编号排序兼容与生成元置换]]** — upstream 正根按高度及简单坐标反字典序排列，而 crate RootId 使用环境字典序；locator 对外列表统一采用 upstream 顺序，使 simple_pi 可与 oracle 直接比较。
 - **[[根论工具的整数算术与失败语义|根论工具的整数算术与失败语义]]** — 三个工具模块分别采用 checked、checked/saturating/普通算术混用及 wrapping 策略，产生错误返回、钳零、潜在 debug 溢出 panic 或静默回绕等不同失败行为；这些差异是否为有意分层尚未确定。
+- **[[格坐标的固定宽度检查算术|格坐标的固定宽度检查算术]]** — 格坐标刻意采用 checked 固定宽度存储，精确解释器值在领域边界转换；坐标加减检查溢出，按输入长度分配向量时通常显式处理分配失败，但部分 clone 操作例外。
 - **[[格对合latticeinvolution|格对合（LatticeInvolution）]]** — 分别存储权格与余权格作用，依次验证方阵形状、两作用平方为单位及 W^T·C=I，建立配对保持的对合不变量，但不保证保持根系。
 - **[[梯子底成员查询的坐标溢出语义|梯子底成员查询的坐标溢出语义]]** — 梯子底查询中 checked_sub 溢出视为差值非成员，因为超出 i32 范围的精确差不可能等于存储坐标；其他错误仍传播，上游十一例与本地八组的覆盖差异待核。
 - **[[正根集的单根提取|正根集的单根提取]]** — pos_simples 要求输入按 upstream 正根序排序，通过 bracket(β, α) 的正性及反射像的正负判断 α 或 β 是否非单根，其配对符号判据对应 simpleBasis 的论证。
@@ -312,8 +318,9 @@
 - **[[通过增广消元反求-grading-对应元素|通过增广消元反求 grading 对应元素]]** — element_from_grading 对 target XOR base 进行携带基索引标记位的增广消元，检测不可实现的 grading，并按解的标记位异或组合伴随基代表。
 - **[[部分公共块上的扩展块构造与-cofold|部分公共块上的扩展块构造与 cofold]]** — build_partial 使用 x + gamma_lambda 形式测试不动点，在子系统上折叠生成元，并在构造后处理 cofold；当前仅支持恒等生成元姿态，非恒等 bm.simple_pi 显式失败。
 - **[[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]** — 通过 Option 表达元素或链接缺失，区分 imaginary ascent 的前向 Cayley 像与 real descent 的逆像，并以奇异生成元的下降状态判定 survives。
+- **[[重复-gcd-实现的语义漂移|重复 gcd 实现的语义漂移]]** — lattice.rs 与 global_kgb.rs 的私有 gcd_u64 对 gcd(0,0) 分别返回 1 与 0，体现重复实现的语义漂移，但正分母约束使各自当前调用点仍安全。
 - **[[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]** — DepthTables 预计算正虚根及基非紧奇偶，depth 按既定根顺序贪心选取极大正交非紧根集，移除非正交候选并翻转与所选根正交但和仍为根的候选的紧性。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_313 pages | Generated 2026-10-09T17:11:14.261Z_
+_320 pages | Generated 2026-10-09T17:12:36.059Z_
