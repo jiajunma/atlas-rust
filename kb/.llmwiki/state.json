@@ -457,6 +457,19 @@
         "对偶根映射与-cartan-矩阵转置"
       ],
       "compiledAt": "2026-10-09T16:53:01.179Z"
+    },
+    "weyl-size-presentation.md": {
+      "hash": "d0cb871ac40342500de6698af1ea06ec7b12979baaa81e2ee41c5e1faddbd4a9",
+      "concepts": [
+        "cartan-类型识别的输入校验边界",
+        "dynkin-图分支形状与-weyl-群阶识别",
+        "weyl-群阶模块与实形展示模块的架构边界",
+        "基于-cartan-矩阵识别的-weyl-群阶计算",
+        "实形展示状态的构建与判定",
+        "实形展示的编号顺序与不变量错误处理",
+        "结构性源码阅读的验证与覆盖限制"
+      ],
+      "compiledAt": "2026-10-09T16:54:37.000Z"
     }
   }
 }

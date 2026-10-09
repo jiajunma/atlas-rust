@@ -1254,3 +1254,20 @@ primal 侧的交错归属、fiber_side 的 grading 线性扩张与 parity_dot �
 测试注释声明、冒号不一致的字节契约、format_word 空词 e 与 1-based 逗号、
 两个按构造不可达的 .expect、printDualRealWeyl 与 NDEBUG 尺寸断言未移植——
 全部忠实。8 页批准；wiki/concepts/ 现有 252 页，剩余候选 281。
+
+## 2026年10月10日 第三十五批候选审查：weyl-size-presentation.md 的 7 页
+
+对照 84 行来源包逐页核验：weyl_order_of_cartan 的 pub(crate) 定位与阶商
+公式 |W|/(|W_im|×|W_re|×|W_cx|) 用途、B/C 同阶 2ⁿn! 故不区分取向、精确
+Integer 算术的理由、NonSquareCartan/环面行列贡献阶 1/checked_mul 唯一受检
+算术、m=3/2/1 分派表（G2=12、F4=1152、B/C 链、A=(n+1)!、D=2ⁿn!/2、
+E6=51840、E7=2903040、E8=696729600）逐数字复核、branch_lengths 无环检测
+与三处校验留白（单节点任意非零对角返 2、负乘积计度数不提升重数、rank>4
+双键链不查位置）如实标注为阅读观察、factorial 的 Result 为预留、
+presentation 四状态位判定（ms_tau 逐元素比 ±1、quasisplit 只按 external
+编号、connected 委托对偶分量群平凡性）、扫描先于秩检查且失败整体丢弃无
+副作用、LayoutInvariantViolation 四 reason 与 "most split Cartan" 两处
+共用、两文件互不导入仅共享 StructureError 两条再导出路径、
+CartanClassification 是否调用不可见的诚实声明、测试锚点（A4=120 至空系统
+=1；sc A1/adjoint A1/sc B2 三展示案例）与未覆盖清单——全部忠实。7 页批准；
+wiki/concepts/ 现有 259 页，剩余候选 274。

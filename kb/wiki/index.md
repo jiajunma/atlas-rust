@@ -17,6 +17,7 @@
 - **[[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]** — CartanClassification::build 构造 inner class 的全部 Cartan 类，聚合各实形式的 Cartan 集、most-split 类、twisted-involution 总数与严格偏序，并共享 twisted 共轭分区供对偶侧复用。
 - **[[cartan-分类的分层预算|Cartan 分类的分层预算]]** — CartanClassificationBudget 分别约束整数格、fiber、Weyl 枚举、对合发现与 peeling；generated-involutions 模式以含 identity 的精确计数上限控制代表元发现，各预算值参与分类缓存键。
 - **[[cartan-矩阵的精确有理有限型检查|Cartan 矩阵的精确有理有限型检查]]** — 以精确有理数沿连通分量传播对称化比例，再通过 LDLᵀ 式分解检查正主元；其与有限型的等价性在来源中仅为代码意图，未经数学验收。
+- **[[cartan-类型识别的输入校验边界|Cartan 类型识别的输入校验边界]]** — 源码阅读指出识别器未完整验证 Cartan 合法性：接受任意非零单节点对角值、可能将异号边视为单键、不检查高秩双键位置，且分支遍历缺少环检测。
 - **[[cartan-类的强实层-strongrealdata|Cartan 类的强实层 StrongRealData]]** — StrongRealData 保存单个 Cartan 类的平方类、各平方类的 fiber 轨道大小与强代表元，并提供局部弱实形式、平方类和轨道之间的查询及 toAdjoint 原像求解。
 - **[[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]** — add_cartan 重复调用返回已有切片，新轨道须恰好达到分类给出的期望大小，且记录数量达到 max_involutions 时拒绝继续插入。
 - **[[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]** — fundamental class 编为 0，其余按父类编号与上游正虚根顺序进行 BFS 发现；Cayley successor 在比较和存储前先 canonicalize，以保持 Atlas 编号语义。
@@ -31,6 +32,7 @@
 - **[[descenttable-的下降集与-good-ascent-预计算|DescentTable 的下降集与 good ascent 预计算]]** — DescentTable 按元素和生成元预计算 descents 与至多具有一个向上邻居的 good ascents，并在秩超过 MAX_FOLDED_RANK 时返回资源限制错误。
 - **[[descvalue-扩展下降分类|DescValue 扩展下降分类]]** — DescValue 以 One、Two、Three 三族组织 32 种下降类型，通过奇偶枚举值、类型谓词、生成元长度与链接数描述局部结构。
 - **[[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]** — canonical dual 仅在目标尚未建立 WeylGroup 时共享源群身份，已预热目标保持独立，因此 Weyl 元素兼容性取决于对象生命周期和构造历史。
+- **[[dynkin-图分支形状与-weyl-群阶识别|Dynkin 图分支形状与 Weyl 群阶识别]]** — component_order 按边重数、节点度数和分支长度识别 A、B/C、D、E、F、G 型的群阶，其中 B/C 同阶而无需区分取向。
 - **[[fiber-grading-与-r-群核生成元|fiber grading 与 R-群核生成元]]** — fiber_side 通过基 grading 和模二平移区分紧根与非紧根，从强正交非紧根的 m_alpha 数据求核，并按自由列升序产生 R-群位向量；real_r 属于对偶侧。
 - **[[fiber-元素的模型来源绑定与规范代表|Fiber 元素的模型来源绑定与规范代表]]** — 元素相等要求 Arc 模型指针与坐标同时相等，独立构造的同坐标元素不相等；商坐标选取基代表的 XOR 给出 low-pivot 约定下的确定性 ambient 代表。
 - **[[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]** — StrongRealClassification 预计算各 form 的 KGB 大小及全局总量；fiber_size(form, cartan) 在 form 不属于指定 Cartan 时返回 Some(0)，使跨全部 Cartan 的求和保持正确。
@@ -112,6 +114,7 @@
 - **[[weyl-群生成元的规范词构造|Weyl 群生成元的规范词构造]]** — 根反射、按 orth 坐标升序右乘的 R-群元素及复根反射乘积共同构成生成元，打印直接使用 canonical_word，无需移植上游词转换机制。
 - **[[weyl-群的矩阵作用与词级元素双层结构|Weyl 群的矩阵作用与词级元素双层结构]]** — WeylAction 表示携带根 datum 的全格矩阵作用，WeylElement 表示枚举根的置换，两层通过 action_permutation 与 from_action 桥接互查。
 - **[[weyl-群的紧凑-transducer-表示|Weyl 群的紧凑 Transducer 表示]]** — 采用 du Cloux / van Leeuwen 的抛物子商表示，以固定栈数组的各项索引 W_{i-1}\W_i 的极小陪集代表元，并通过逐生成元 transducer 实现乘法；文档标注复杂度为 O(length)，本包不提供性能验收。
+- **[[weyl-群阶模块与实形展示模块的架构边界|Weyl 群阶模块与实形展示模块的架构边界]]** — 两模块互不导入，仅共享同一 StructureError 类型；现有证据无法确认 CartanClassification 内部是否调用 Weyl 群阶入口。
 - **[[weyl-语义回归的递进验证门禁|Weyl 语义回归的递进验证门禁]]** — 以独立进程原版捕获和 BEFORE/fix/AFTER 回归验证语义；已落地 A1 验收仅覆盖限定输入，G2 非对称编号、B2/C2、操作数顺序及独占元素生命周期等仍需后续见证。
 - **[[weylaction-的对偶全格作用|WeylAction 的对偶全格作用]]** — 在 character 与 cocharacter 全格上维护反射矩阵及复合作用，反射构造使用检查算术，但矩阵复合包含未经检查的 i32 收窄。
 - **[[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]** — 源码 derive 等值逐字段比较且包含 datum 值，因此“相等即矩阵作用相等”的概述须限定于 datum 值相同的情形。
@@ -161,6 +164,7 @@
 - **[[块图的直接与逆-cayley-变换|块图的直接与逆 Cayley 变换]]** — 直接与逆 Cayley 访问器共享两个像槽并按 weak descent 互补开放；i1 构建单值直接像，i2 构建双值直接像，同时回填逆像并检查槽容量。
 - **[[块的-bruhat-hasse-图与可比对计数|块的 Bruhat Hasse 图与可比对计数]]** — Bruhat Hasse 图沿首个严格 good descent 递归构造直接下邻，在 split principal series 处使用 type-II 实下降的逆 Cayley 像；含自身的可比对计数要求 Hasse 行按拓扑序排列。
 - **[[基于-alcove-的整数据定位流程|基于 alcove 的整数据定位流程]]** — int_item 依次进行根格顶点平移、dominant 化、基本 alcove 墙检测、逆序处理非整反射、典范闭包驻留和单根像置换构造；factor_dominant 贪心选取最低下标负配对生成元且无迭代上限。
+- **[[基于-cartan-矩阵识别的-weyl-群阶计算|基于 Cartan 矩阵识别的 Weyl 群阶计算]]** — weyl_order_of_cartan 通过方形检查、连通分量 BFS 拆分及分量阶乘积计算群阶，环面因子贡献 1，并使用精确 Integer 算术避免固定宽度整数溢出。
 - **[[基于-piece-的根置换预组合|基于 Piece 的根置换预组合]]** — piece_root_permutations 为每个 transducer 的各个 piece 预组合简单反射的根置换，再以这些置换的复合构造元素的根作用，无需矩阵表示。
 - **[[基于位掩码的-wim-轨道枚举|基于位掩码的 W_im 轨道枚举]]** — walk_mask_orbits 按掩码升序播种并用 LIFO 栈遍历，依据 FiberAction 的非紧判定执行 m_alpha_masks 平移，以首次出现的掩码作为轨道代表元。
 - **[[基于左下降剥离的规范约化词|基于左下降剥离的规范约化词]]** — canonical_word 按 WeylInterface 的内部生成子序逐次剥离最小左 descent，获得该序下字典序最小的约化词，并检查每步长度恰减一。
@@ -177,6 +181,8 @@
 - **[[实-weyl-层的-oracle-测试与证据边界|实 Weyl 层的 oracle 测试与证据边界]]** — 源包记录七组 fixture 的逐字节 oracle 断言及错误路径锚点，但仅属结构性阅读，未核对上游字节或完成数学验收，预算耗尽与非 quasisplit 对偶形式仍缺测试锚点。
 - **[[实-weyl-群与块稳定子的构造|实 Weyl 群与块稳定子的构造]]** — RealWeyl 根据 Cartan 类及原侧、对偶侧实形代表收集虚根、实根、复根、紧根基和 R-群，并按固定顺序校验索引与代表元。
 - **[[实-weyl-群打印的字节兼容契约|实 Weyl 群打印的字节兼容契约]]** — 打印层固定群分解头行、摘要、生成元节、冒号差异及换行布局，空词输出 e，非空词使用从 1 开始的逗号分隔编号。
+- **[[实形展示状态的构建与判定|实形展示状态的构建与判定]]** — RealFormPresentation 汇集 Lie 代数名称与紧致、分裂、拟分裂、连通四个状态，分别依据 most-split Cartan 对合、external 编号及对偶分量群平凡性判定。
+- **[[实形展示的编号顺序与不变量错误处理|实形展示的编号顺序与不变量错误处理]]** — build_presentations 按 external 编号生成展示数据，将布局错误统一报告为 LayoutInvariantViolation；对合扫描先于仅检查行数的秩检查，失败时整体丢弃结果。
 - **[[实投影像基的播种与路径依赖传送|实投影像基的播种与路径依赖传送]]** — 由 1−θ 的阶梯消元在轨道种子处构造 lift_mat 与 M_real，随后沿 cross-action 用普通生成元矩阵传送；该基具有路径依赖性并影响 y_lift 的符号。
 - **[[对偶-cartan-fiber-链的临时重建|对偶 Cartan fiber 链的临时重建]]** — 由于对偶对合 −θ 通常仅与典范代表共轭，dual_side 每次调用都在预算约束下重建 fiber、grading、实形分划与标签链，当前无缓存。
 - **[[对偶分量群的-fiber-rank|对偶分量群的 fiber rank]]** — fiber_rank 对 q = −θᵀ 计算 dim ker((q+I) mod 2) − dim span(plusBasis(q)) mod 2，末步使用 saturating_sub；函数未检查对合前提，且本文件没有相关测试。
@@ -241,6 +247,7 @@
 - **[[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]** — 由 integrality_simples 构造积分子系统的单根数据，提供按生成元编号的访问器，满足公共上下文需求而无需完整根闭包。
 - **[[精确整数矩阵与-bézout-幺模变换|精确整数矩阵与 Bézout 幺模变换]]** — IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。
 - **[[精确有理矩阵求逆|精确有理矩阵求逆]]** — invert_rational 使用 first-nonzero pivot 的精确有理高斯消元，按列返回逆矩阵；此处秩有界的消元不设置 budget knob。
+- **[[结构性源码阅读的验证与覆盖限制|结构性源码阅读的验证与覆盖限制]]** — 来源记录源码快照和已有测试锚点，但本次未执行测试或数学验收，亦未核对上游字节；例外型部分分支、错误路径及若干实形情形仍缺少测试覆盖。
 - **[[虚根的-noncompact-grading|虚根的 noncompact grading]]** — simple_grading 按 offset[s] XOR ⟨alpha_s mod 2, torus bits⟩ 判断简单虚根的非紧性，须由调用方守卫根类型；任意虚根的 grading 使用 conjugate-to-simple 循环，非虚根返回 None。
 - **[[表示参数代表元归一化|表示参数代表元归一化]]** — lambda_unique、real_unique 与 gamma_lambda 规范化代表元，其中欧几里得除法 div_euclid(2) 避免负奇数截断导致代表元选择不一致及公式项无法合并。
 - **[[表示参数差的整根系正交化|表示参数差的整根系正交化]]** — make_diff_integral_orthogonal 借助整根子系统编码和 theta_1_preimage 减去差在 (1-θ)X* 中的固定原像，使结果与指定参数的整根系正交，并对零差短路。
@@ -255,4 +262,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_252 pages | Generated 2026-10-09T16:53:01.744Z_
+_259 pages | Generated 2026-10-09T16:54:37.562Z_
