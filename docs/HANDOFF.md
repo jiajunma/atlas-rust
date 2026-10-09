@@ -489,6 +489,59 @@ rehearsal, payload, reconcile (queue/ledger/stage/accounting), one focused
 job.  (6) Retire the g2-v1 pair in the same migration (flip its
 SUBMISSION_ENABLED).
 
+### Remaining arc prediction tables (2026-10-09, source-derived)
+
+Same basis as the B2/C2 table (pinned upstream reading + Coxeter check);
+each is frozen only when its stage is wired, after the preceding gate's
+capture is inspected.
+
+Reverse operands (`WR_`, G2, recovery 729): `WR_SAME|[0,1]|[1,0]`;
+`WR_FWD|[0,1]` (right word [1] replayed in the primal system);
+`WR_REV|[1,0]` (left = dual); `WR_FWD_EQ|true`; `WR_REV_EQ|true`
+(cross-owner equality through the cold share); `WR_FWD_NEQ|true`;
+`WR_REV_NEQ|true`; `WR_FWD_ROOT|true` and `WR_REV_ROOT|true` — the
+product's owner is the LEFT operand's datum (upstream
+`W_elt_prod_wrapper` returns the mutated left operand).
+`WR_MIXED_BRAID|true` (group-theoretic braid through alternating owners).
+Prewarmed reverse (`WRN_`, recovery 735): the 6 relation/order mismatches
+throw (`=`, `!=`, `*` in both operand orders), then the high/negative word
+errors; AFTER prints `word(wrn_true_w)=[0]`, `word(wrn_false_w)=[1]`.
+
+Inner-class-dual (`WI_`, G2, recovery 730): `WI_ROUTE|true`;
+`WI_ROUTE_EQ|true`; `WI_ROUTE_MUL|[]`; `WI_DUAL_OWNER_FALSE|false`;
+`WI_DUAL_OWNER_TRUE|false` (the canonical dual is the transposed object,
+Part 1); `WI_IC_DUAL_ROUTE|true` (the inner-class-routed dual datum IS the
+explicit `dual(wi_rd)` interned object); `WI_IC_DUAL_EQ|true`;
+`WI_IC_DUAL_NEQ|false`; `WI_IC_DUAL_MUL|[]`; `WI_IC_DUAL_WORD|[0,1]|2`.
+
+No-value relations (`WV_`, G2, recovery 736): `WV_NOVALUE_OK|41` (the
+compatible cold-dual control must NOT error); all five incompatible probes
+(discarded sequence element, void: cast, void row element, for `=`/`!=`/`*`)
+throw `Weyl group mismatch` — the guard precedes the no-value gate
+(atlas-types.w:2576-2613); AFTER prints `word(wv_tw)=[0]`.
+
+Sole-WeylElt lifetime (`WL_`, recovery 731): `WL_A1|[0]|1`;
+`WL_A1_ROOT|true`; `WL_A1_MUL|[]`; `WL_G2|[0,1]|2`; `WL_G2_ROOT|true`;
+`WL_G2_MUL|[0,1,0,1]`; `WL_A1_DUAL|[]` (the element-held owner stays
+alive through interleaved unrelated constructions; upstream
+`W_elt_value.rd` is a strong pointer).
+
+Transposed prewarm (`WGT_`, G2, recovery 737): `WGT_SLOT|true` (the
+explicit `root_datum(I2, [[2,-3],[-1,2]], false)` IS the canonical dual's
+content — interned-pointer equality); then `WGT_EQ`/`WGT_NEQ`/`WGT_MUL`
+all throw `Weyl group mismatch` (the slot was genuinely prewarmed);
+AFTER prints `word(wgt_saved)=[0]`, `word(wgt_target_w)=[0]`.
+
+Dual-family no-value policy (`XN_`, G2, recovery 738): both engines print
+41 on `XN_IC_DUAL`/`XN_QS`/`XN_CF`/`XN_DR_OK`; `dual_real_form(xn_ic,99)`
+throws `Illegal dual real form number: 99` in BOTH engines (validation
+precedes the gate).  NOTE: XN is the discovery probe for the Part-4
+registration candidates — engines agree on G2 (the builds succeed); a
+DIFFERED would mean Rust's BuildAndDrop build errored where the original
+skips.  `RZ_` (zero-division, recovery 739) is pure discovery at the pin
+(the guard never fires there): no prediction table, both engines' complete
+behavior is what the capture records.
+
 ### No-value dual-family registration audit (2026-10-09, PROVISIONAL finding)
 
 A comment-vs-registration audit of `typed.rs` against the pinned upstream
