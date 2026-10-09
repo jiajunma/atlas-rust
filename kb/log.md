@@ -1757,3 +1757,22 @@ function_origin 的 "built-in"/"defined <loc>"、apply_closure 的一个值
 at NAME:LINE:COL-COL（行 1 基列 0 基、单行结束 exclusive、跨行双破折号）
 与 Rust span 1 基的差异、frame_dump 按绑定序打印槽名——全部忠实。
 7 页批准；wiki/concepts/ 现有 458 页，剩余候选 75。
+
+## 2026年10月10日 第六十四批候选审查：atlas-core-convert-expr.md 的 8 页
+
+对照 69 行来源包（维护者直接撰写）逐页核验：convert_expr 入口把
+required 装进共享 ConversionType 再写回、convert_expr_context 的
+type_floor 调整（return 操作数引用外层要求的实际 fixed 下限）、12 族
+分派清单与 #[inline(never)] 机械分区（original3839541 教训：GDB 命中的
+是分析帧非求值器）、conform_types 的特化→强转→错误次序、非行上下文
+列表显示查 row_coercion（mat: [[1,2]] 元素定型为 vec）、while 转换
+（循环层装在整棵 do 树外、条件先 a-priori 转换再查 bool、上游措辞
+"found … while … was needed."、WhileMode 三模式与 row 先试 [*] 特化
+再回退 row_coercion）、convert_simple_assignment 两形式共享路径、
+lookup_assignable 局部遮蔽全局与赋值专用诊断、component_type_for_assignment
+的行/vec/mat/KTypePol/ParamPol 允许与 ratvec 上游只读、resolve_projector
+用保留类型定义而非投影当前值（具名接收方不能唯一确定字段选择）、
+factor_transform_call 永不应用 x+1→succ(x) 丢参数优化——全部忠实。
+补充第 38 批记录的链接碰撞教训：候选 85526734 的 `[[1,2]]` 位于反引号
+代码段内，批准器正常通过——碰撞校验只针对裸 `[[...]]`，代码段免疫。
+8 页批准；wiki/concepts/ 现有 466 页，剩余候选 67。

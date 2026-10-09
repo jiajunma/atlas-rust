@@ -55,6 +55,7 @@
 - **[[cayley-链的双层无效性与-partialblock-适配|Cayley 链的双层无效性与 PartialBlock 适配]]** — 外层 None 表示无效格子，内层 None 表示未定义链；PartialBlock 适配交换生成元与元素参数，并按下降状态将不可用的 Cayley 链编码为 Some((None, None))。
 - **[[cayleycross-的下降剥离算法|Cayley/Cross 的下降剥离算法]]** — 验证 datum 与 w∘δ 的一致性后，按生成器升序选择首个下降，依据 Real 或 Complex 根类执行不同反射步骤，并在步进前检查剥离预算；终止性论证仅为源码声明。
 - **[[compactweyl-构造与生成元编号映射|CompactWeyl 构造与生成元编号映射]]** — CompactWeyl 从 Cartan 矩阵分类 Dynkin 图，反转 B/C/D 型的生成元次序，再逐内部生成元构造 transducer；d_out 与 piece_offset 分别处理内外编号及局部到全局内部编号的映射。
+- **[[convertexpr-的-inout-类型模式与单遍转换|convert_expr 的 in/out 类型模式与单遍转换]]** — convert_expr 将 required 封装为共享 ConversionType 并在转换后写回，一遍完成检查与合成；conform_types 依次尝试特化、强转和类型错误。
 - **[[coxeter-矩阵的分型查表|Coxeter 矩阵的分型查表]]** — coxeter_entry 根据连通 Dynkin 分型及 Bourbaki 生成元编号计算 Coxeter 矩阵项，在线性图中按编号距离与类型分派，并为 D/E 型采用分叉规则。
 - **[[cross-与-cayley-闭包的根类型规则|cross 与 Cayley 闭包的根类型规则]]** — 闭包按复根、虚根和实根分别处理 cross，检查长度奇偶、包边界及 Cartan 类一致性；Cayley 仅作用于非紧虚根，原样克隆环面部分并按写入顺序记录逆像。
 - **[[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]** — 链接按元素与生成元平铺存储：Cayley 适用于非紧致 imaginary，逆 Cayley 适用于 real，后者区分单前像 II 型与双前像 I 型，并在编号标准化后按升序安装。
@@ -185,6 +186,7 @@
 - **[[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]** — 源码 derive 等值逐字段比较且包含 datum 值，因此“相等即矩阵作用相等”的概述须限定于 datum 值相同的情形。
 - **[[weylelement-的置换表示与长度下降不变量|WeylElement 的置换表示与长度下降不变量]]** — 以正向置换、逆向量和缓存长度支持常数时间长度及左右 descent 查询，乘法重算长度，而单一 ambient RootSystem 的一致性由调用方保证。
 - **[[weylelt-的固定数组与容量边界|WeylElt 的固定数组与容量边界]]** — WeylElt 使用 [u8; WEYL_MAX_RANK] 固定栈数组，支持枚举与 twisted scan 中的零堆分配；WEYL_MAX_RANK=32 是表示上界，不能解释为元素枚举预算。
+- **[[while-转换的上下文模式与循环边界|while 转换的上下文模式与循环边界]]** — while 将循环层置于整棵 do 树外，条件先转换再检查 bool；所需上下文决定 void、count 或 row 模式，row 路径先尝试 [*] 特化再回退 row_coercion。
 - **[[上游兼容的值打印约定|上游兼容的值打印约定]]** — 值打印遵循有理数保留分母、联合值后缀、向量定宽及矩阵边框等具体规则；源码中的移植陈述不构成兼容验收，仍需 HPC 语料验证。
 - **[[下降集good-ascent-与本原性|下降集、good ascent 与本原性]]** — 元素 x 相对 desc(y) 本原当且仅当 good(x) 与 desc(y) 不相交，极端性要求 desc(x) 包含 desc(y)；ImaginaryTypeII 既不属于下降也不属于 good ascent。
 - **[[严格-cayley-偏序|严格 Cayley 偏序]]** — is_below 描述非空 single-root Cayley links 链的 more-compact 方向，fundamental class 位于其他类之下，有效类的自比较恒为 Some(false)。
@@ -228,6 +230,7 @@
 - **[[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]** — longest_action 从源码计算的 2ρ 出发，按生成元顺序选择正配对反射并左合成，目标为 −2ρ，超预算或无法推进时报不变量错误；数学与复杂度声明尚未验收。
 - **[[函数调用分派与内建参数解包|函数调用分派与内建参数解包]]** — apply_function 将闭包交给 apply_closure，并对变参数内建解开参数元组后调用 builtin.run；bare 变量参数即使为元组也按单个值消费。
 - **[[分窗两相-bfs-构造|分窗两相 BFS 构造]]** — KGB 枚举以 64 个元素为一窗，先用 Rayon 在只读表与 coset 上计算状态及目标，再顺序 intern 去重并分配编号；并行结构本身不代表已有多核加速证据。
+- **[[分量赋值的类型权限|分量赋值的类型权限]]** — 分量赋值受 assignable 门控，支持行、vec、mat 及 KTypePol[KType]、ParamPol[Param] 的指定分量，而 ratvec 在上游契约中只读。
 - **[[列填充的完整性不变式与错误传播|列填充的完整性不变式与错误传播]]** — fill_columns 计算指定范围的列，limit 为零时填满整块；失败时清空出错列并传播错误，保持每列为空或完整的不变式，这与上游吞掉异常的行为不同。
 - **[[利用饱和核与模二秩计算整对合分类|利用饱和核与模二秩计算整对合分类]]** — 令 plus_rank = rank − rank(ker(θ+I))，以 (θ+I) mod 2 的行空间秩得到 complex，再求 compact 与 split；内部函数要求调用方保证对合前提。
 - **[[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]** — lookup 使用前向根置换作为完整相等性键；跨系统输入受调用方契约约束，种子插入不检查键碰撞，依赖不同 Cartan 轨道的键互不重叠。
@@ -245,6 +248,7 @@
 - **[[反射子群轨道的稳定排序规则|反射子群轨道的稳定排序规则]]** — 轨道沿用 rootdata.cpp 的 BitMap 排序：BFS 仅对新层去重并保留首次插入，内部稳定器按 RootNbr 排序，用户生成元顺序控制优势化与扩展。
 - **[[反射词的首个下降构造|反射词的首个下降构造]]** — reflection_word 沿首个下降将根降到单根，再逆序回溯构造共轭反射词；simple_reflect_root_nbr 提供单根反射对根编号的作用。
 - **[[反射闭包的防御性不变量|反射闭包的防御性不变量]]** — Closure 插入候选时先验证根与余根自配对等于 2，再检查重复根的余根及简单坐标一致性，重复候选不占用新增根数额度。
+- **[[变换调用中的二元操作数保留|变换调用中的二元操作数保留]]** — factor_transform_call 始终保留二元调用的两个操作数，不应用上游将 x+1 改写为 succ(x) 的丢参数优化。
 - **[[可嵌套注释|可嵌套注释]]** — 花括号注释允许嵌套，扫描器在注释未闭合时报告包含起始行列位置的 Lexical 错误。
 - **[[可约点与标准参数-final-化|可约点与标准参数 final 化]]** — reducibility_points 返回按分子分母对升序排列的可约分数，finals_for 以栈驱动 dominant 检查及奇偶、长度下降，生成带整数系数的 final 参数。
 - **[[合成实形的选定余特征|合成实形的选定余特征]]** — elected_square_root 按 distinguished 对合与 Weyl 余权作用运输环面因子，以半平方和 delta + I 调用 stable_log，生成构造器保存的 g_rho_check；非平凡运输尚缺可区分测试断言。
@@ -265,6 +269,7 @@
 - **[[基于-cartan-矩阵识别的-weyl-群阶计算|基于 Cartan 矩阵识别的 Weyl 群阶计算]]** — weyl_order_of_cartan 通过方形检查、连通分量 BFS 拆分及分量阶乘积计算群阶，环面因子贡献 1，并使用精确 Integer 算术避免固定宽度整数溢出。
 - **[[基于-piece-的根置换预组合|基于 Piece 的根置换预组合]]** — piece_root_permutations 为每个 transducer 的各个 piece 预组合简单反射的根置换，再以这些置换的复合构造元素的根作用，无需矩阵表示。
 - **[[基于位掩码的-wim-轨道枚举|基于位掩码的 W_im 轨道枚举]]** — walk_mask_orbits 按掩码升序播种并用 LIFO 栈遍历，依据 FiberAction 的非紧判定执行 m_alpha_masks 平移，以首次出现的掩码作为轨道代表元。
+- **[[基于保留类型定义的投影解析|基于保留类型定义的投影解析]]** — resolve_projector 使用保留的类型定义进行匹配，支持复制或泛型定义，因此仅凭具名接收方无法唯一确定字段选择。
 - **[[基于图结构的-dynkin-单分量分类|基于图结构的 Dynkin 单分量分类]]** — 分类器结合秩、顶点度数、分叉点与有向多重边判定 A/B/C/D/E/F/G 型，并对环、过高度数及不支持的多重边结构报告错误。
 - **[[基于左下降剥离的规范约化词|基于左下降剥离的规范约化词]]** — canonical_word 按 WeylInterface 的内部生成子序逐次剥离最小左 descent，获得该序下字典序最小的约化词，并检查每步长度恰减一。
 - **[[基于生成元闭包的-twisted-共轭分区|基于生成元闭包的 twisted 共轭分区]]** — generated_twisted_conjugacy_partition 通过生成元闭包构造完整分区，以 twisted involutions 数量计预算、每类仅实例化一个 lattice involution，并使用紧凑根置换查询成员；外部 Cartan 编号仍由 CartanClassification 选举。
@@ -411,10 +416,12 @@
 - **[[秩二-dynkin-分类的顺序约定|秩二 Dynkin 分类的顺序约定]]** — 秩二分类按两个非对角 Cartan 条目的乘积分型，其中 B2/C2 标签由给定顶点顺序决定且保持顺序，G2 则按条目方向决定是否交换位置以使短根在前。
 - **[[积分块范围与奇异集|积分块范围与奇异集]]** — IntegralBlockScope 根据 coroot 与 gamma 的整配对区分 Singleton、Full 和 ProperSubsystem，并结合奇异集确定计算范围；源文对真积分子系统的显式失败要求与后续 partial 支持描述存在适用边界不清。
 - **[[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]** — 由 integrality_simples 构造积分子系统的单根数据，提供按生成元编号的访问器，满足公共上下文需求而无需完整根闭包。
+- **[[简单赋值的统一路径与目标查找契约|简单赋值的统一路径与目标查找契约]]** — set x := value 与裸 x := value 共用转换路径，赋值目标查找遵循局部遮蔽全局，并以整个表达式的紧凑渲染提供赋值专用诊断。
 - **[[算符优先级归约栈与奇偶结合性|算符优先级归约栈与奇偶结合性]]** — FormulaStack 在待归约算符优先级更高或同级且为偶数时归约，实现偶数优先级左结合、奇数优先级右结合，并区分首元与二元算符后一元算符的处理边界。
 - **[[类型化内建函数的注册表封装|类型化内建函数的注册表封装]]** — BuiltinFunction 只能由类型化内建注册表构造，携带注册表身份、打印名和参数策略，不具有用户闭包的词法捕获帧。
 - **[[类型化赋值目的地与分发计划|类型化赋值目的地与分发计划]]** — 全局目的地在分析时捕获 cell，局部目的地保留词法坐标，多重赋值先完整求值，再按子项从左到右、整体最后的计划分发。
 - **[[类型化转换与求值管线|类型化转换与求值管线]]** — typed 模块承担 parsed→typed 可执行转换与求值，来源称 convert_expr 在单遍中完成检查与合成，并保留上游整数收窄错误文本中的笔误。
+- **[[类型抽象中的-typefloor-调整|类型抽象中的 type_floor 调整]]** — convert_expr_context 调整类型下限，使类型抽象内的 return 操作数能够引用外层函数要求，并按该要求实际的 fixed 下限解释类型变量。
 - **[[类型构造器应用的校验与有限展开|类型构造器应用的校验与有限展开]]** — Applied 保留构造器名称及全部实参；应用校验不展开定义，单层展开保留递归引用，展开次数受绑定数约束以避免残缺自环导致死循环。
 - **[[类型特化与失败回滚语义|类型特化与失败回滚语义]]** — specialise 成功时产生最一般合一子，失败时可能保留部分特化；需回滚的调用方使用 can_specialise，赋值合一则提供 try_unify 等对应接口。
 - **[[精确整数矩阵与-bézout-幺模变换|精确整数矩阵与 Bézout 幺模变换]]** — IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。
@@ -433,6 +440,7 @@
 - **[[表示参数差的整根系正交化|表示参数差的整根系正交化]]** — make_diff_integral_orthogonal 借助整根子系统编码和 theta_1_preimage 减去差在 (1-θ)X* 中的固定原像，使结果与指定参数的整根系正交，并对零差短路。
 - **[[表示参数构造与权重恢复|表示参数构造与权重恢复]]** — 通过 sr_gamma 和 sr 构造标准参数，恢复 lambda-rho、lambda 与 nu，并支持 K-type 转换；lambda-rho 的减半步骤要求坐标和为偶数。
 - **[[表示参数的奇偶判定与朝向数|表示参数的奇偶判定与朝向数]]** — is_parity 结合 KGB 状态转运与根配对比较奇偶，orientation_number 则先作 dominant 化，再利用 real 正根相关权重计算朝向数。
+- **[[表达式转换器的十二族分派|表达式转换器的十二族分派]]** — 转换器按 Expr 种类机械划分为十二个族助手，全部使用 #[inline(never)]，保留原分支体及调整后的共享上下文；相关栈陷阱来自分析帧。
 - **[[词法诊断保留与命令恢复接口|词法诊断保留与命令恢复接口]]** — recover_command 丢弃当前物理行余部并重置状态；tokenize 提供全有或全无的结果，tokenize_with_diagnostics 则保留可恢复 token 和按遭遇顺序排列的诊断。
 - **[[语法前端的测试覆盖与验收边界|语法前端的测试覆盖与验收边界]]** — 51 个测试覆盖表达式、命令和诊断形状，但结构性阅读与文法移植陈述不构成语言验收，语法兼容仍以 HPC 语言语料门为准。
 - **[[跨对偶的-cartan-类对应与扭曲代表元|跨对偶的 Cartan 类对应与扭曲代表元]]** — Cartan 类对应以对偶根像置换定位共轭类，查找失败视为不变量错误；内部代表元构造则在对偶 datum 上重放原 Weyl 字以保留两种格作用及来源信息。
@@ -461,4 +469,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_458 pages | Generated 2026-10-09T17:51:05.028Z_
+_466 pages | Generated 2026-10-09T17:53:19.837Z_
