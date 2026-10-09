@@ -893,3 +893,13 @@ dual_twisted_representative 的原词重放、计数管线逐级预算——全�
 测试锚点数字（sc/adjoint A1=2/2、紧 A2=1、扭 A2=2、紧 B2=3、对应表与
 oracle 锚点 3501500）逐字一致。8 页批准；wiki/concepts/ 现有 31 页，
 剩余候选 502。
+
+## 2026年10月9日 第五批候选审查：kgb-graph-structure.md 的 7 页
+
+对照 104 行来源包逐页核验：四值状态与两步分类、下降规则（real 恒是、
+imaginary 恒否、complex 比 involution 长度）、分窗两相 BFS（64 元素窗、
+Rayon 纯计算相 + 顺序 intern 相）、write-once/Cayley 长度步/kgb_size 三项
+不变量、编号标准化的排序键与计数排序分工、HYBRID 自包含存储与 torus_factor
+的唯一表依赖、两处 IndexOutOfRange 回退差异的悬置记录、RAYON_NUM_THREADS=1
+与"并行结构存在≠已有多核加速"的边界声明——全部忠实。7 页批准；
+wiki/concepts/ 现有 38 页，剩余候选 495。
