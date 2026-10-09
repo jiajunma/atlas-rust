@@ -664,6 +664,19 @@
         "环面对合的-dualpi0-子商构造"
       ],
       "compiledAt": "2026-10-09T17:24:47.185Z"
+    },
+    "atlas-core-root-numbering-alcove.md": {
+      "hash": "0e5331987eef55ba0301cba75985dc72c4d88db710cfceea58a5b0e212c5d664",
+      "concepts": [
+        "alcove-墙标签与标签排序",
+        "alcove-墙集与整值墙筛选",
+        "cartan-矩阵的精确求逆",
+        "rootnumbering-根编号与-rootnbr-顺序",
+        "基本-alcove-的墙数",
+        "根子集的非正交连通分量及顺序",
+        "由基本-alcove-构造-weyl-词"
+      ],
+      "compiledAt": "2026-10-09T17:26:25.375Z"
     }
   }
 }

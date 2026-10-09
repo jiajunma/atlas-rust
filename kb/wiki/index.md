@@ -5,6 +5,8 @@
 - **[[a1-加中心环面边界-fixture-与历史-oracle|A1 加中心环面边界 fixture 与历史 oracle]]** — 11 个 A1+torus case 覆盖 root/coroot 交换、两种编号及 i32 边界，Rust 完整输出与历史 original-backed capture 比较；AFTER 作业未重跑原版，证据不推广至更高 rank 或一般根系。
 - **[[a1-迁移原型层与对偶格类型设计|A1 迁移原型层与对偶格类型设计]]** — crate 私有的 A1 原型层处于待替换状态，其中无校验的 LatticeVector(Vec<i32>) 计划由 Weight/Coweight 的编译期对偶格区分取代；原型 RootDatum 与 BasedRootDatum 是不同类型。
 - **[[alcove-分母界守卫|Alcove 分母界守卫]]** — denominator_exceeds_alcove_bound 判断 denominator > 2^rank，并在 rank ≥ 63 时返回 false，以避免有符号 i64 移位导致阈值失真。
+- **[[alcove-墙标签与标签排序|Alcove 墙标签与标签排序]]** — 墙分量的标签来自余根间取正的唯一原始整数关系，可由环境余根坐标求核；全部墙按标签降序排列，同标签按 RootNbr 排序。
+- **[[alcove-墙集与整值墙筛选|Alcove 墙集与整值墙筛选]]** — wall_set 计算 gamma 经小 dominant 位移所达 alcove 的墙余根，记录在 gamma 上取整的墙，并按余根不可相减条件筛选。
 - **[[alcove-墙集与整值墙选择|Alcove 墙集与整值墙选择]]** — wall_set 依据根的分数求值分层选择墙，并用 coroot 差关系筛除候选；负根整值求值改记为分母，最终整值墙集包含于墙集。
 - **[[alcove-根格顶点与基本-alcove-约化|Alcove 根格顶点与基本 Alcove 约化]]** — root_vertex_of_alcove 使用朴素有理下取整逐分量求根格顶点，借助转置 Cartan 矩阵求逆及系数为 1 的墙重试整性，使 gamma 减去顶点落入基本 alcove 的 Weyl 轨道。
 - **[[alcove-算法中的精确有理线性代数|Alcove 算法中的精确有理线性代数]]** — 有理方程求解与矩阵求逆通过精确消元处理唯一性和奇异性，并结合 checked 运算、最小公倍数通分及整个有理数的精确整数转换控制溢出与符号错误。
@@ -27,6 +29,7 @@
 - **[[cartan-分类的分层预算|Cartan 分类的分层预算]]** — CartanClassificationBudget 分别约束整数格、fiber、Weyl 枚举、对合发现与 peeling；generated-involutions 模式以含 identity 的精确计数上限控制代表元发现，各预算值参与分类缓存键。
 - **[[cartan-对合与单根类型分类|Cartan 对合与单根类型分类]]** — 原型 CartanInvolution 校验 M²=I 及单根像属于根系，RealReductiveGroup 根据像为原根、负根或其它根分类；虚根紧性标志是未经校验的调用方断言且已被 Grading 取代，simple_real_rank 的含义刻意窄于 real rank。
 - **[[cartan-矩阵的精确有理有限型检查|Cartan 矩阵的精确有理有限型检查]]** — 以精确有理数沿连通分量传播对称化比例，再通过 LDLᵀ 式分解检查正主元；其与有限型的等价性在来源中仅为代码意图，未经数学验收。
+- **[[cartan-矩阵的精确求逆|Cartan 矩阵的精确求逆]]** — 使用分数自由消元计算 Cartan 矩阵的精确逆，并以分子与分母的形式表示结果。
 - **[[cartan-矩阵输入契约与连通分量划分|Cartan 矩阵输入契约与连通分量划分]]** — classify 检查方形、对角元 2、非对角元范围与零模式对称性，通过 first-match 合并生成按最小顶点升序排列的连通分量；这些检查不构成完整的数学合法性验收。
 - **[[cartan-类型识别的输入校验边界|Cartan 类型识别的输入校验边界]]** — 源码阅读指出识别器未完整验证 Cartan 合法性：接受任意非零单节点对角值、可能将异号边视为单键、不检查高秩双键位置，且分支遍历缺少环检测。
 - **[[cartan-类的强实层-strongrealdata|Cartan 类的强实层 StrongRealData]]** — StrongRealData 保存单个 Cartan 类的平方类、各平方类的 fiber 轨道大小与强代表元，并提供局部弱实形式、平方类和轨道之间的查询及 toAdjoint 原像求解。
@@ -107,6 +110,7 @@
 - **[[root-ladder-修复的限定接受与账本状态歧义|Root ladder 修复的限定接受与账本状态歧义]]** — 来源确认 AFTER-v3 在坐标边界范围内通过独立检查，但前文称接受范围不含 acceptance-index 登记，后文又称条目 0003-a1-torus-root-coroot-ladder-boundary 已登记为 accepted/math_pass；账本状态叙述需核对，且均不支持一般正确性或性能结论。
 - **[[rootdatum-弱驻留与规范活对象身份|RootDatum 弱驻留与规范活对象身份]]** — original Atlas 按完整 PreRootDatum 内容及 preference 弱驻留 RootDatum，以存活对象的指针身份实现相等性；重型对象可释放，但轻量索引键仍保留。
 - **[[rootid-与根系索引对齐|RootId 与根系索引对齐]]** — RootId 同时索引根、余根和简单坐标三张对齐表；公开访问器通过 Option 或 Result 处理越界，简单根 ID 则保持生成器顺序。
+- **[[rootnumbering-根编号与-rootnbr-顺序|RootNumbering 根编号与 RootNbr 顺序]]** — 正根按坐标和及从末坐标向前的比较排序，prefer_coroots 选择坐标系，并通过正负根配对与 signed(nbr)=nbr−npos 提供编号转换。
 - **[[rootset-只读位图集合|RootSet 只读位图集合]]** — RootSet 以稳定根序上的位图存储成员，公开 contains 对越界返回 false、iter 按索引升序遍历，构造与插入仅供内部使用。
 - **[[rust-ladder-成员查询的选择性溢出处理|Rust ladder 成员查询的选择性溢出处理]]** — build_ladder_bottoms 仅将 root/coroot 成员查询中的 ArithmeticOverflow 解释为 false，独立执行两类查询并传播其他错误，同时保持底层减法、排序、布局和公共 API 不变。
 - **[[rust-weyl-内核与抽象群的无环所有权模型|Rust Weyl 内核与抽象群的无环所有权模型]]** — 分离 datum 坐标内核与抽象 Weyl 群身份可表达共享语义并避免 handle 与 context 的强引用环；核心身份修复已落地，后续缓存共享设计仍需独立验证。
@@ -221,6 +225,7 @@
 - **[[基于轨道的折叠-cartan-矩阵|基于轨道的折叠 Cartan 矩阵]]** — folded_cartan 按轨道构造折叠根与折叠余根，并依 crate 的配对约定累加 cartan[a][b]；它检查索引越界，但将轨道完整性、不交性、覆盖性及输出合法性留给调用方。
 - **[[基于饱和像适应基的-kgb-去重指纹|基于饱和像适应基的 KGB 去重指纹]]** — fingerprint 将 log_2pi 分子投影到 θ+I 饱和像的适应基并按分母取模，利用基变换的幺模性质保持判别信息，结合对合标识完成元素去重。
 - **[[基本-alcove-墙与整性检测|基本 alcove 墙与整性检测]]** — fundamental_alcove_walls 由全部单根和逐 Dynkin 分量最高余根对应的负根构成，int_item 分别以分子配对值等于 0 或负分母判定 gamma 是否落墙。
+- **[[基本-alcove-的墙数|基本 Alcove 的墙数]]** — 基本 alcove 的墙由单余根及每个不可约分量的一条最低余根组成，墙数为秩加分量数，本实现中仅该大小用于“Too few walls”检查。
 - **[[基本余权的精确构造|基本余权的精确构造]]** — fundamental_coweights 将 Cartan 矩阵逆的各列按实际 simple coroot 展开，得到满足根配对为 Kronecker δ、radical 分量为零的 full lattice-rank 有理坐标。
 - **[[基本纤维与平方类播种|基本纤维与平方类播种]]** — 基本纤维播种结合 dualPi0(−δ^t) 子商、平方类生成元和精确求得的基本余权位移，将纤维 lift 叠入恒等对合包，并检查初始元素的指纹互异性。
 - **[[基本虚根-grading-的位置约束|基本虚根 grading 的位置约束]]** — 算法在基本虚单根基上构造紧致性起始位与 datum-单根目标约束，按位置匹配 crate 的根序；与上游前导段配对的一致性依赖其排序不变量，尚属注释声明。
@@ -319,6 +324,7 @@
 - **[[标准模参数的约化表示standardreprmod|标准模参数的约化表示（StandardReprMod）]]** — 以 KGB 元素 x 和经 (1−θ)X* 约化、规范化的 gamma_lambda 表示标准模参数，提供 build 与 mod_reduce 两条构造路径。
 - **[[根-involution-的-innerclass-构造与-weyl-因子|根 involution 的 InnerClass 构造与 Weyl 因子]]** — 构造入口在调用方根枚举预算内验证根与余根的传输，并可通过左复合 Weyl word 将任意合格的根 involution 转为保持基的 involution；不同入口保留或丢弃所得 Weyl 因子。
 - **[[根与余根的梯子底表|根与余根的梯子底表]]** — min_roots 与 min_coroots 为每个 α 预计算满足 β−α 非根或非余根的 β 集合，分别使用有序根表二分查找和余根坐标映射判定成员。
+- **[[根子集的非正交连通分量及顺序|根子集的非正交连通分量及顺序]]** — root_components 按非正交关系划分根子集，分量内部按 RootNbr 升序，最终分量按最大 RootNbr 排列，该顺序影响 FPP 乘积向量及 Weyl 见证。
 - **[[根对合数据rootinvolutiondata|根对合数据（RootInvolutionData）]]** — 在格对合之上验证根置换及逐根余根运输；后者排除仅保持配对却错误移动余根中心环面坐标的作用。
 - **[[根对合诱导的伴随余权作用|根对合诱导的伴随余权作用]]** — 根像的单根坐标构成根作用矩阵；由于根作用已验证为对合，其对偶作用的逆转置等于转置，因而伴随余权作用由转置矩阵给出。
 - **[[根数据的-radical-与-coradical-饱和核基|根数据的 radical 与 coradical 饱和核基]]** — 实现分别对简单根和简单余根坐标矩阵求饱和整数核，并在无根时保留 ambient 格维度；radical_basis 文档首行与实现的措辞差异尚待核对。
@@ -335,6 +341,7 @@
 - **[[环境根反射字的共享约定|环境根反射字的共享约定]]** — reflection_word 通过 to_dominant(reflection(α,2ρ)) 生成并反转反射字，逐轮选择首个负配对生成元并重启扫描；消费方共享这一上游移植约定，终止性依赖数学性质。
 - **[[环面对合的-dualpi0-子商构造|环面对合的 dualPi0 子商构造]]** — dual_pi0 将 ker_F2(θ+1) 对饱和 +1 特征格的模二像取商，构成计算对偶分量群所需的源与目标空间。
 - **[[环面部分的模二表示与余权提升|环面部分的模二表示与余权提升]]** — 初始环面部分由 factor − coch 的整数坐标奇偶性编码，下降后以 coch + lift(tp) 提升为余权，供虚单根紧致性配对使用。
+- **[[由基本-alcove-构造-weyl-词|由基本 Alcove 构造 Weyl 词]]** — from_fundamental_alcove 在每个墙分量留出一个单位标签墙，将其余墙经 to_positive_system 移到单根系，再逆序处理步骤并通过最终单值索引构造 Weyl 词。
 - **[[由自由坐标构造-f₂-右核|由自由坐标构造 F₂ 右核]]** — right_kernel 为每个自由坐标结合对应主元系数构造核向量，再插入新子空间形成重新约化的典范核基。
 - **[[种子下方的-bruhat-区间生成|种子下方的 Bruhat 区间生成]]** — bruhat_below 经 Bruhat_generator::block_below 生成种子下方的标准模参数区间，作为部分公共块构造的输入。
 - **[[秩二-dynkin-分类的顺序约定|秩二 Dynkin 分类的顺序约定]]** — 秩二分类按两个非对角 Cartan 条目的乘积分型，其中 B2/C2 标签由给定顶点顺序决定且保持顺序，G2 则按条目方向决定是否交换位置以使短根在前。
@@ -366,4 +373,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_363 pages | Generated 2026-10-09T17:24:47.879Z_
+_370 pages | Generated 2026-10-09T17:26:26.083Z_

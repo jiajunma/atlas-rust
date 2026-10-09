@@ -1542,3 +1542,19 @@ u32 切片无防护、折叠 'f'/'g' 不覆盖、5+7 测试锚点与未覆盖清
 忠实。批准前按已记录的教训修正三个候选中的 5 处 `[[1]]`/`[[2]]` 矩阵
 字面量（pmatrix 化后复核批准）。7 页批准；wiki/concepts/ 现有 363 页，
 剩余候选 170。
+
+## 2026年10月10日 第五十一批候选审查：atlas-core-root-numbering-alcove.md 的 7 页
+
+对照 56 行来源包（维护者直接撰写、git base 964f0033）逐页核验：
+RootNumbering 的 (level, root_compare) 排序（从最后坐标向前）、
+prefer_coroots 选坐标系、正根 [npos,total) 与负根镜像 npos-1-p、
+signed(nbr)=nbr−npos、BTreeMap 坐标索引；wall_set 的小 dominant 位移
+语义与 integrals=on_wall_coroots、min_coroots_for 的 α∨−β∨ 非余根过滤；
+root_components 分量内 RootNbr 升序而分量间按最大 RootNbr（原版追加
+行为所致，FPP 乘积向量可观察——与第四十五批 alcove.rs 侧"按首次出现
+顺序"的记录分属两层，如实保留各自表述）；labels_for_component 唯一正
+本原关系与环境余根表核计算；sorted_by_label 降序+RootNbr 并列；
+from_fundamental_alcove 留单位标签墙+to_positive_system+逆序得词；
+基本 alcove 墙数=秩+分量数且只有大小可观察（"Too few walls"）；精确
+Cartan 逆的 (分子,分母) 分数自由消元（候选如实不展开未覆盖细节）——
+全部忠实。7 页批准；wiki/concepts/ 现有 370 页，剩余候选 163。
