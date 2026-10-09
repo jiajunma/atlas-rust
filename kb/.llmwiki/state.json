@@ -28,6 +28,20 @@
         "仅成功发布的惰性初始化"
       ],
       "compiledAt": "2026-10-09T15:31:16.075Z"
+    },
+    "weyl-layer.md": {
+      "hash": "9584adc0171179e475fb3017f93af12877ee7deeae61278e6f131b76a2e67d12",
+      "concepts": [
+        "parabolicpieces-的抛物分解与排序键",
+        "weyl-元素的扭曲共轭",
+        "weyl-群的矩阵作用与词级元素双层结构",
+        "weylaction-的对偶全格作用",
+        "weylaction-的等值与-datum-身份语义",
+        "weylelement-的置换表示与长度下降不变量",
+        "基于左下降剥离的规范约化词",
+        "带基数预算的-weyl-群作用枚举"
+      ],
+      "compiledAt": "2026-10-09T15:34:08.858Z"
     }
   }
 }

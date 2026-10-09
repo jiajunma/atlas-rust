@@ -871,3 +871,12 @@ no-value 先后序、内容+偏好驻留键、cold-share/预热不覆盖、左 o
 inner-class eager dual、AFTER-v5 验收范围与整树落地规则、性能数字的证据边界
 （采样归因不可相加、59→5 仅为假设）、转置 canonical dual 的 G2 预热空转
 分析——全部忠实。8 页批准；wiki/concepts/ 现有 15 页，剩余候选 518。
+
+## 2026年10月9日 第三批候选审查：weyl-layer.md 的 8 页
+
+对照 124 行来源包逐页核验：双层分工与互查桥、反射矩阵构造的受检算术与
+无检查截断面、compose_fast 前置条件、derive 逐字段等值与文档表述的张力、
+CompactWeyl+rayon 枚举与无断言排序、dead-code insert_action 观察、左右下降
+的逆/正向读取、canonical_word 的内部生成子序与不变量检查、ParabolicPieces
+排序键与上游行号转述限制——全部忠实，候选一致保留"未执行构建/测试/原版
+运行"的边界声明。8 页批准；wiki/concepts/ 现有 23 页，剩余候选 510。
