@@ -21,7 +21,14 @@ layers.
 
 ### `atlas-core`
 
-`atlas-core` has no terminal, readline, or process-exit policy. It contains:
+`atlas-core` has no terminal, readline, or process-exit policy. The module
+decomposition below is the original design plan; the crate as built (verified
+2026-10-10) differs: `typed.rs` holds the conversion and evaluation pipeline,
+`session.rs`/`session_frame.rs` own the stateful command loop and file frames,
+`domain_builtins.rs` is the domain bridge, with `coercions`/`diagnostic`/
+`formula`/`frames`/`lex`/`linear_values`/`matreduc`(crate-private)/`source`/
+`syntax`/`types`/`value` alongside (full inventory in `kb/index.md` and the
+atlas-core facade wiki page). Planned module roles:
 
 - `source`: UTF-8 input, source IDs, one-based spans, and line mapping;
 - `lex`: stateful Atlas tokens, literals, comments, operators, and lexical diagnostics;
