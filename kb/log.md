@@ -1065,3 +1065,14 @@ Imaginary 报错）、reduced_word 有意偏差与逐字母互逆性、make_rela
 sr_with_modifier 的顺序、simple_reflect_numerator 的 checked 算术、
 BlockModifier 字段语义与 u32::MAX 哨兵、两个集成测试细节——全部忠实。
 8 页批准；wiki/concepts/ 现有 155 页，剩余候选 378。
+
+## 2026年10月10日 第二十二批候选审查：matreduc.md 的 8 页
+
+对照 93 行来源包逐页核验：逐操作复现的动机（被选解的 τ/t 奇偶性进入
+ext_block::same_sign）、wrapping i32 镜像 C++ int 含溢出域、divide 的
+负被除数分支避开 i32::MIN 取负、gcd 的 flip/记录矩阵符号纪律、diagonalise
+簿记怪癖（覆盖赋值/^=/退出后 ^=/pull_back_columns/首项负号归一）与
+行列式口径以测试为准、has_solution/find_solution 的失败差异、assert 的
+panic 面、exp_i 的 debug_assert 前置、oracle_reference_cases 逐字节锚点
+（含 6×6 秩亏案例的解字面量）、未测面清单——全部忠实。8 页批准；
+wiki/concepts/ 现有 163 页，剩余候选 370。
