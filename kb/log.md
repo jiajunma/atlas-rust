@@ -1672,3 +1672,16 @@ TypeAssignment 的 [fixed,fixed+degree) 无环替换与 append 连同待决替�
 导入、unify 失败部分变异 vs try_unify 回滚、InferredType 接口清单、
 recursive.rs 的命名 RHS 槽位优先与环上匿名后代保留身份、59 测试分布——
 全部忠实。8 页批准；wiki/concepts/ 现有 421 页，剩余候选 112。
+
+## 2026年10月10日 第五十九批候选审查：atlas-core-session.md 的 8 页
+
+对照 80 行来源包（维护者直接撰写）逐页核验：SessionEvent 六变体与
+Value 独占 void 标志、output() 的 UTF-8 分流（非法字节进 OutputBytes
+不被替换字符改写）、run_source/run_source_with_context 分工、Newline/Eof/
+Unsupported/Directive 的分流（Directive 在会话层只能得 Io 诊断）、
+next_session_token 消费时刻记录标识符保首次使用序、execute_tokens 的
+allow_more/Ok(None) 保留前缀不求值无诊断、SetType 按真实词法终止符重建
+span（Newline 列+1）、drain_failed_printed 先排空已打印再发诊断
+（ext_kl.cpp:947 顺序的移植陈述）、201 测试家族统计与
+include_str!+oracle.stdout/stderr 逐字节范式、硬规则 7 的原版背书回归
+——全部忠实。8 页批准；wiki/concepts/ 现有 429 页，剩余候选 104。
