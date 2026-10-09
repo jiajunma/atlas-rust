@@ -63,6 +63,25 @@ Status: **PROVISIONAL — never truth until the original's complete behavior
 is captured on HPC** (the A1 rule).  The pair supersedes the
 `weyl_context_g2_dual_draft.atlas` draft (commit `a81db81c`).
 
+Pre-registered prediction review (2026-10-09, source-level, before any HPC
+run): the contract's G2 predictions were traced against the repaired code
+path (`dual_root_datum` transposes the Cartan, swaps roots/coroots, flips
+`prefers_coroots`, B↔C the Lie type, interned, `share_group_into_if_cold`).
+Every prediction is internally consistent **except possibly** the
+`WG_DUAL_OWNER|true` / `WG_REVERSE_OWNER|true` pair, which hold iff the
+original's numbering swap transposes G2's non-symmetric Cartan: dual(SC
+G2,true) and adjoint(G2,false) then coincide exactly (Cartan Cᵀ, basis
+roots, C-row coroots).  That convention IS the asymmetric-interface witness
+question — if the capture returns ORIGINAL_SOURCE_PREDICTION_DIFFERED on
+exactly those markers, the open point is the numbering convention and the
+goldens get corrected to the original's; anything else differing points at
+the fixture or a real new discrepancy.  The prewarmed case's order was
+verified: `wgn_target=adjoint(G2,false)` precedes `dual(wgn_true)`, and
+equal content shares one interned identity, so the prewarmed dual rejects
+(A1's prewarmed-incompatible finding), giving the contract's predicted
+6×mismatch + high + negative order.
+
+
 Design decisions for the capture stage (2026-10-09): the capture runs as a
 new `weyl-context-g2-v1` stage migrating the existing capture pair
 (`hpc/stage_weyl_context_core_capture.py` + `hpc/math_weyl_context_core_capture.py`
