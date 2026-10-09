@@ -28,7 +28,7 @@ REPL 逐 token 消费；`tokenize` 只是要完整 token 流的兼容便利接�
 - `KEYWORDS`：35 个保留字（quit/set/let/in/begin/end/if/then/else/elif/
   fi/and/or/not/next/do/dont/from/downto/while/for/od/case/esac/rec_fun/
   true/false/die/break/return/set_type/any_type/whattype/showall/forget）。
-- `PRIMITIVE_TYPES`：20 个上游原始类型名，按 `Prim::ALL` 顺序
+- `PRIMITIVE_TYPES`：21 个上游原始类型名，按 `Prim::ALL` 顺序
   （void/int/rat/string/bool/vec/mat/ratvec/LieType/RootDatum/WeylElt/
   InnerClass/RealForm/CartanClass/KGBElt/Block/Split/KType/KTypePol/Param/
   ParamPol）——在值层存在**之前**就按位置保留，与上游一致。

@@ -1616,3 +1616,20 @@ pub(crate) matreduc + 1 个私有测试模块，确认为包的计数笔误。�
 domain_builtins 句柄的 Arc 束+急切种子+惰性 KGB/表示属主与结构比较对应
 上游 memoized 句柄可观察相等、matreduc 私有但需独立包的声明——全部忠实。
 7 页批准；wiki/concepts/ 现有 397 页，剩余候选 136。
+
+## 2026年10月10日 第五十六批候选审查：atlas-core-lex.md 的 8 页
+
+对照 91 行来源包（维护者直接撰写）逐页核验。审查中又发现一处包计数
+笔误：包行 31-32 写"20 个上游原始类型名"但清单 21 个；对照 git base
+964f0033 与当前 lex.rs 的 PRIMITIVE_TYPES 均为 21 个，包已更正
+（20→21），候选 atlas-词法-token-模型 的正文段落相应改写为更正后陈述
+加更正注记（该候选同样先如实保留歧义）。其余核验：TokenKind 12 变体与
+OperatorBecomes 融合规则（跨空白/注释、失败回退）、Directive 仅命令首
+识别与四种种类、lexeme 精确源拼写含引号、35 保留字、FILE_NAME_CHARS
+不含斜杠、换行抑制状态机的 nesting/prevent_termination 双空透出条件与
+各关键字/标点状态转换、operator_termination 的"."例外、裸 ! 永不融合、
+<=> 极大连续段为单算符、不支持字符清空状态使下一换行终止（对应 oracle
+恢复行为）、未闭合注释/字符串的诊断文本与 pending 恢复 token、
+recover_command 语义、TokenCursor 错误与 token 同缓存、tokenize 全有
+或全无 vs tokenize_with_diagnostics 保留诊断、23 测试与职责边界——全部
+忠实。8 页批准；wiki/concepts/ 现有 405 页，剩余候选 128。

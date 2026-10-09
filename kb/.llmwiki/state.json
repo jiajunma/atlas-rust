@@ -728,6 +728,20 @@
         "领域内建桥接与上下文句柄"
       ],
       "compiledAt": "2026-10-09T17:34:18.095Z"
+    },
+    "atlas-core-lex.md": {
+      "hash": "2ffd0fbbb16fba3fd0e8fa11489ca46a0b1f55ad312da853bed5ea521d1ce51c",
+      "concepts": [
+        "atlas-词法-token-模型",
+        "tokencursor-单-token-前瞻",
+        "可嵌套注释",
+        "命令首指令与文件名扫描",
+        "字符串转义与未闭合恢复",
+        "换行抑制状态机",
+        "词法诊断保留与命令恢复接口",
+        "运算符扫描与复合赋值融合"
+      ],
+      "compiledAt": "2026-10-09T17:37:51.884Z"
     }
   }
 }
