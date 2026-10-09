@@ -114,6 +114,13 @@ explanation. Hashes identify bytes; they do not prove those bytes correct.
    every affected page, including unapproved siblings; a shared source hash can
    make an old sibling appear fresh. Record unresolved pages as needs_refresh
    in the maintained index/body instead of claiming synchronization.
+   Approval rejects candidates whose `[[...]]` wiki-link targets resolve to
+   nothing (`broken citation targets`). A recurring cause is bare matrix
+   literals such as `W=[[-1]]` inside inline math, which collide with link
+   syntax; rewrite them in `\begin{pmatrix}...\end{pmatrix}` form (the style
+   sibling pages already use), re-verify the edited draft against its source
+   packet, then approve. Scan a packet's whole candidate set for this pattern
+   before starting its review loop.
 6. Source removal requires explicit review of all dependent pages and citations.
    Review-only compilation does not complete all retirement/orphan processing.
    Do not run rm, non-review refresh/compile, watch, quickstart or query --save

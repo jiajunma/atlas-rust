@@ -1302,3 +1302,21 @@ ModTwoSubquotient 的 crate 私有定位与四道构造校验、validate_induced
 i32 收窄四类失败折叠为同一 None（包装器重标不兼容格）、B⁻¹MB 手算复核
 （[[1,1],[0,-1]] 一致）、偶子格 [2] 上单位阵不变、测试缺口四项如实——
 全部忠实。7 页批准；wiki/concepts/ 现有 273 页，剩余候选 260。
+
+## 2026年10月10日 第三十八批候选审查：involution-types.md 的 7 页
+
+对照 156 行来源包逐页核验：三层类型的职责阶梯（配对保持对合 → 根置换+
+余根运输 → wθ 再为对合）、LatticeInvolution 门序（方阵 → W²=I、C²=I 短路
+i128 → W^T·C=I 配对保持）、anti_invariant_rank 的 (r−tr θ)/2 精确式与负/
+奇拒绝、RootInvolutionData 的 DatumMismatch→RankMismatch→单根级先于主循环
+的错误优先级、余根运输排除"固定所有根却移动余根中心坐标"的设计动机测试、
+分类优先级（自身→Imaginary、checked_neg 负根→Real、否则 Complex）、子系统
+单根提取（继承正系、候选−成员差为正坐标向量则跳过、输出按 RootId 升序）、
+TwistedInvolution 先三个 datum 一致性后秩检查、合成结果重走完整门控、
+distinguished 不存储、compose_matrices 的 actual 恒为 right.len() 阅读观察、
+全部测试锚点数值（pair=−34 手算复核一致、A2 负反对角 Real=2/Complex=4/
+Imaginary=0、[id_of([1,1])] 等）——全部忠实。批准过程中发现两处候选把
+1x1 矩阵写成裸 `[[-1]]` 字面量，与 wiki 链接语法碰撞被批准门拒绝
+（broken citation targets）；已改写为 pmatrix 形式并复核后批准，教训记入
+kb/AGENTS.md 第 5 条。另有四个未来批次候选存在同类模式，到批处理。7 页
+批准；wiki/concepts/ 现有 280 页，剩余候选 253。

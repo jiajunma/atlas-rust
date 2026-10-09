@@ -496,6 +496,19 @@
         "有理运算实现的整数矩阵精确换基"
       ],
       "compiledAt": "2026-10-09T16:57:34.430Z"
+    },
+    "involution-types.md": {
+      "hash": "582246dd07b0e95233c4fffb4685ee4ebfdaaa27cd8e26bd6282aaf33b1f8ed3",
+      "concepts": [
+        "对合下的虚根实根与复根分类",
+        "对合的反不变秩",
+        "扭曲对合twistedinvolution",
+        "根对合数据rootinvolutiondata",
+        "继承正系中的子系统单根提取",
+        "对合类型的分层构造验证与错误优先级",
+        "格对合latticeinvolution"
+      ],
+      "compiledAt": "2026-10-09T17:02:29.360Z"
     }
   }
 }
