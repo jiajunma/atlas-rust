@@ -1,0 +1,31 @@
+{ G2 Weyl inner-class-dual witness: the original's inner-class build eagerly
+  calls the canonical dual() and retains both datum owners, so a datum routed
+  through inner_class/real_form and the dual obtained via dual(InnerClass)
+  must participate in the SAME owner-identity scheme as the explicit
+  constructors. WI_ROUTE_* anchor the routing; WI_IC_DUAL_* test whether the
+  inner-class-routed dual shares the primal's abstract Weyl group (cold-dual
+  compatible) or is an independent owner (rejects) — either outcome is a
+  captured discovery. WI_DUAL_OWNER_* re-probe the numbering convention so
+  this fixture is self-contained. Provisional until complete original
+  behavior is captured on HPC. No atlas scripts. }
+set wi_rd=simply_connected(Lie_type("G2"),true)
+set wi_ic=inner_class(wi_rd,[[1,0],[0,1]])
+set wi_G=quasisplit_form(wi_ic)
+set wi_ic_rd=root_datum(wi_G)
+set wi_w=W_elt(wi_ic_rd,[0])
+set wi_direct_w=W_elt(wi_rd,[0])
+prints("WI_ROUTE|",wi_ic_rd=wi_rd)
+prints("WI_ROUTE_EQ|",wi_w=wi_direct_w)
+prints("WI_ROUTE_MUL|",word(wi_w*wi_direct_w))
+set wi_rd_dual=dual(wi_rd)
+prints("WI_DUAL_OWNER_FALSE|",wi_rd_dual=adjoint(Lie_type("G2"),false))
+prints("WI_DUAL_OWNER_TRUE|",wi_rd_dual=adjoint(Lie_type("G2"),true))
+set wi_ic_dual=dual(wi_ic)
+set wi_ic_dual_rd=root_datum(quasisplit_form(wi_ic_dual))
+prints("WI_IC_DUAL_ROUTE|",wi_ic_dual_rd=wi_rd_dual)
+set wi_ic_dual_w=W_elt(wi_ic_dual_rd,[0])
+prints("WI_IC_DUAL_EQ|",wi_direct_w=wi_ic_dual_w)
+prints("WI_IC_DUAL_NEQ|",wi_direct_w!=wi_ic_dual_w)
+prints("WI_IC_DUAL_MUL|",word(wi_direct_w*wi_ic_dual_w))
+prints("WI_IC_DUAL_WORD|",word(W_elt(wi_ic_dual_rd,[0,1])),"|",length(W_elt(wi_ic_dual_rd,[0,1])))
+prints("WI_RECOVERY|",730)

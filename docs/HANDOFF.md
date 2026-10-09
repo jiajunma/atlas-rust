@@ -309,6 +309,34 @@ The remaining arc gates (inner-class-dual, no-value) are deliberately NOT
 drafted yet: their fixture design needs the G2/B2/C2 capture outcomes and
 an `inner_class` constructor survey first.
 
+### Inner-class-dual fixture draft (2026-10-09, PROVISIONAL, unwired)
+
+Fourth arc gate.  Constructor survey (local, read-only): `inner_class(rd,
+mat)` is the accepted form (the `inner_class("A1",...)` string form is the
+rejected probe), `root_datum` takes a RealForm (`set rd=root_datum(G)` is
+the standard template idiom), and `dual` has InnerClass and RealForm
+overloads (`di := dual(ic)` in the strong_real_*_dual_order_probe
+fixtures); `dual(dual(rd))=rd` is an established suite assertion.
+
+- `tests/math/generics/weyl_context_g2_inner_class_dual.atlas` (1695 bytes,
+  sha `dffd7f44cc1868500e5fadfbe424539848dbf0d941027e32b355217656922cd6`):
+  routes SC(G2,true) through `inner_class(rd,identity)` +
+  `quasisplit_form` + `root_datum` and tests the datum and W_elt relations
+  against the direct constructors; then compares `dual(InnerClass)` routed
+  back to a datum against explicit `dual(RootDatum)`.  The original's
+  inner-class build eagerly calls the canonical `dual()` and retains both
+  datum owners, so `WI_IC_DUAL_EQ/NEQ/MUL` discover whether the
+  inner-class-routed dual shares the primal's abstract Weyl group or is an
+  independent owner — either outcome is captured, and the header says so.
+  `WI_DUAL_OWNER_FALSE/TRUE` re-probe the numbering convention so the
+  fixture is self-contained.  Recovery marker 730.
+
+Same status: NOT truth, NOT wired; prefix `WI_` for `_parse_frame` at
+wiring time.  The no-value gate remains undrafted deliberately: its fixture
+needs the void/no-value precedents (a discarded-position comparison that
+still must reject) designed against the void-boundary lessons, not a
+mechanical mirror.
+
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 
 The classifier change is committed (`80eaf6d3`):
