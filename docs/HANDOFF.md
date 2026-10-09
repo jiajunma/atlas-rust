@@ -318,6 +318,31 @@ record: kb/log.md 2026-10-09.  Toolchain note: node/pnpm live at
 v24.19.0, pnpm 11.19.0); the launcher finds node itself, and pnpm was
 invoked via that fallback path.
 
+### Wiki review sweep COMPLETE (2026-10-10) — 535 pages live, fully fresh
+
+The 533 held candidates from the 2026-10-09 compile were all reviewed
+individually against their source packets (no bulk approval) and approved
+across 49 batches, each batch recorded in `kb/log.md` and pushed in its own
+commit (up to `b4c7bf1a` on `codex/math-benchmark-suite`).  Review caught and
+fixed: two packet miscounts corrected at the packet level after checking the
+actual source bytes at the pinned git base AND at HEAD (atlas-core-root.md
+"15→14 pub mod" — lib.rs has 14 at both; atlas-core-lex.md "20→21 primitive
+type names" — PRIMITIVE_TYPES has 21 at both; contrast `Prim::ALL` in
+types.rs, which genuinely has 20 — no `Void`), and one recurring candidate
+defect class: bare `[[…]]` matrix literals (e.g. `W=[[-1]]`) collide with
+wiki-link syntax and are rejected at approval (`broken citation targets`);
+fix is `\begin{pmatrix}…\end{pmatrix}` rewrite + re-verification, and
+backticked code spans are exempt (lesson recorded in kb/AGENTS.md rule 5).
+After the sweep, the two packet corrections left 15 live pages stale;
+`refresh --stale` (dry-run inspected first) recompiled the 2 packets: 7 pages
+refreshed unchanged, 8 regenerated candidates re-reviewed and approved
+(including 2 newly-extracted concepts).  Final `llmwiki status`: **535
+concepts, 73 sources, Fresh, no stale/orphaned pages, zero pending
+candidates**; a full-vault link sweep (855 indexed names: filename stems +
+display titles) finds **zero red links**.  Editorial caveat per kb/AGENTS.md:
+these pages are structural-reading records, not mathematical acceptance —
+the HPC gates remain the acceptance authority.
+
 ### Upstream HEAD moved (2026-10-09, read-only finding)
 
 A fresh `git ls-remote` at 2026-10-09T13:14:20Z resolves upstream
