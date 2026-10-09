@@ -93,9 +93,10 @@ ingestedAt: 2026-10-05T18:00:04Z
   内容。B2/C2 不受影响且更锐利：C2 的固定 Cartan 正是 B2 的转置，故
   `dual(SC(B2,true))` 与 `adjoint(C2,false)` 内容一致。
 - G2 arc 现状：g2-v1 payload 65 文件冻结并彩排通过（overrides manifest
-  `bcc09dbc…`，源码链 1,569 文件 `dff0e90d…`），因隧道中断暂缓提交；六个后续
+  `bcc09dbc…`，源码链 1,569 文件 `dff0e90d…`），因隧道中断暂缓提交；七个后续
   见证 fixture（B2/C2 一对、reverse operands 一对、inner-class-dual、no-value、
-  sole-WeylElt lifetime）已起草为 provisional、未接线，结构经 Kimi probe
+  sole-WeylElt lifetime，以及用显式转置内容预热的 G2 transposed-prewarm
+  跟进）已起草为 provisional、未接线，结构经 Kimi probe
   复核；群论预测经独立整数 Coxeter 计算交叉核对。逐 gate 递进顺序不变。
 - 新快照
   [`2026-10-09-weyl-owner-dual-landed.json`](snapshots/2026-10-09-weyl-owner-dual-landed.json)

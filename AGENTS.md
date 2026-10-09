@@ -604,7 +604,12 @@ ceiling and default one focused job; do not trade correctness for speed.
   witnesses from the 2026-10-03 design slice
   `docs/slices/weyl_semantic_next_captures_2026_10_03.md` are now drafted;
   none is wired into any contract/stager/catalog, predictions wait for the
-  G2 numbering-convention answer; see `docs/HANDOFF.md`.
+  G2 numbering-convention answer; see `docs/HANDOFF.md`.  An eighth
+  follow-up fixture
+  (`weyl_context_g2_prewarmed_transposed_dual.atlas` sha `7ed86be0…`)
+  implements the genuine prewarmed-rejection vehicle identified by the
+  upstream reading (the frozen G2 prewarmed dual-side triplet is vacuous
+  by construction); it belongs to a later arc stage.
 - Everything below the frontier entries is historical evidence carrying its
   own supersession markers. A historical "next target" or "reprofile" note
   never reactivates itself; only the latest unsuperseded state of a claim
