@@ -349,6 +349,19 @@
         "伴随根数据与余特征格投影"
       ],
       "compiledAt": "2026-10-09T16:38:18.134Z"
+    },
+    "cayley-cross.md": {
+      "hash": "0e5779035378026f3a24545a7605e9b5cb2ecea2e745f31e19b3415c101769a9",
+      "concepts": [
+        "cayley-根的长根化与强正交规范化",
+        "cayleycross-的下降剥离算法",
+        "利用饱和核与模二秩计算整对合分类",
+        "对偶分量群的-fiber-rank",
+        "扭曲对合的-cayleycross-分解",
+        "整对合分类的预算门与检查顺序",
+        "整对合的-compactcomplexsplit-因子计数"
+      ],
+      "compiledAt": "2026-10-09T16:40:18.846Z"
     }
   }
 }

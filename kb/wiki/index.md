@@ -21,8 +21,10 @@
 - **[[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]** — add_cartan 重复调用返回已有切片，新轨道须恰好达到分类给出的期望大小，且记录数量达到 max_involutions 时拒绝继续插入。
 - **[[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]** — fundamental class 编为 0，其余按父类编号与上游正虚根顺序进行 BFS 发现；Cayley successor 在比较和存储前先 canonicalize，以保持 Atlas 编号语义。
 - **[[cayley-变换与目标模空间归约|Cayley 变换与目标模空间归约]]** — cayley 执行裸 sigma_mult，再在目标增大的 mod-space 中归约；若目标 Cartan 类尚未加入表，则返回 None。
+- **[[cayley-根的长根化与强正交规范化|Cayley 根的长根化与强正交规范化]]** — 逆序重放中由 cross 字母反射已收集的 Cayley 根，再验证双向正交、将 B2 正交短根对替换为长根和差，并取正排序；强正交是访问器文档声明的输出保证。
 - **[[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]** — cayley 以 s·w 的置换查表寻找邻居，目标 Cartan 未添加时返回 None；stage e 要求预先添加该 form 的向上封闭 Cartan 集合。
 - **[[cayley-链的双层无效性与-partialblock-适配|Cayley 链的双层无效性与 PartialBlock 适配]]** — 外层 None 表示无效格子，内层 None 表示未定义链；PartialBlock 适配交换生成元与元素参数，并按下降状态将不可用的 Cayley 链编码为 Some((None, None))。
+- **[[cayleycross-的下降剥离算法|Cayley/Cross 的下降剥离算法]]** — 验证 datum 与 w∘δ 的一致性后，按生成器升序选择首个下降，依据 Real 或 Complex 根类执行不同反射步骤，并在步进前检查剥离预算；终止性论证仅为源码声明。
 - **[[compactweyl-构造与生成元编号映射|CompactWeyl 构造与生成元编号映射]]** — CompactWeyl 从 Cartan 矩阵分类 Dynkin 图，反转 B/C/D 型的生成元次序，再逐内部生成元构造 transducer；d_out 与 piece_offset 分别处理内外编号及局部到全局内部编号的映射。
 - **[[coxeter-矩阵的分型查表|Coxeter 矩阵的分型查表]]** — coxeter_entry 根据连通 Dynkin 分型及 Bourbaki 生成元编号计算 Coxeter 矩阵项，在线性图中按编号距离与类型分派，并为 D/E 型采用分叉规则。
 - **[[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]** — 链接按元素与生成元平铺存储：Cayley 适用于非紧致 imaginary，逆 Cayley 适用于 real，后者区分单前像 II 型与双前像 I 型，并在编号标准化后按升序安装。
@@ -116,6 +118,7 @@
 - **[[关系格封装与构造预检|关系格封装与构造预检]]** — RelationMatrix、RelationBasis 和 RelationGenerator 封装关系格操作，在分配、复制、推进迭代器或收集生成元之前执行相应形状与预算检查。
 - **[[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]** — longest_action 从源码计算的 2ρ 出发，按生成元顺序选择正配对反射并左合成，目标为 −2ρ，超预算或无法推进时报不变量错误；数学与复杂度声明尚未验收。
 - **[[分窗两相-bfs-构造|分窗两相 BFS 构造]]** — KGB 枚举以 64 个元素为一窗，先用 Rayon 在只读表与 coset 上计算状态及目标，再顺序 intern 去重并分配编号；并行结构本身不代表已有多核加速证据。
+- **[[利用饱和核与模二秩计算整对合分类|利用饱和核与模二秩计算整对合分类]]** — 令 plus_rank = rank − rank(ker(θ+I))，以 (θ+I) mod 2 的行空间秩得到 complex，再求 compact 与 split；内部函数要求调用方保证对合前提。
 - **[[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]** — lookup 使用前向根置换作为完整相等性键；跨系统输入受调用方契约约束，种子插入不检查键碰撞，依赖不同 Cartan 轨道的键互不重叠。
 - **[[单位上三角整数矩阵求逆|单位上三角整数矩阵求逆]]** — inverse_upper_triangular 通过回代及 wrapping i32 运算求单位上三角矩阵的逆，并对非方阵或存在非 1 对角元的输入报错。
 - **[[单反射下的图像基传送|单反射下的图像基传送]]** — 沿单反射 s 更新 L′=sL、M′=Ms，保持 L′M′=1−θ′；传送使用 checked i64 算术，其结果可与重新归约所得基存在列符号或列次序差异。
@@ -138,6 +141,7 @@
 - **[[完整块图的测试覆盖与证据边界|完整块图的测试覆盖与证据边界]]** — 源码列有七个秩一 A1 测试，覆盖对偶、Cayley 与部分 Bruhat 行为，但未覆盖多生成元布局、若干状态和失败分支；本包仅作结构性阅读，不提供运行或数学验收结论。
 - **[[完整块的-kgb-纤维积|完整块的 KGB 纤维积]]** — 完整块将实形式与对偶实形式的完整 KGB 集按对偶 twisted involution 配对，并保留两侧原始 KGB 坐标编号；缺失的对偶包不贡献元素。
 - **[[实投影像基的播种与路径依赖传送|实投影像基的播种与路径依赖传送]]** — 由 1−θ 的阶梯消元在轨道种子处构造 lift_mat 与 M_real，随后沿 cross-action 用普通生成元矩阵传送；该基具有路径依赖性并影响 y_lift 的符号。
+- **[[对偶分量群的-fiber-rank|对偶分量群的 fiber rank]]** — fiber_rank 对 q = −θᵀ 计算 dim ker((q+I) mod 2) − dim span(plusBasis(q)) mod 2，末步使用 saturating_sub；函数未检查对合前提，且本文件没有相关测试。
 - **[[对偶实形式的分层计数管线|对偶实形式的分层计数管线]]** — dual_real_form_count 依次构造对偶内类、Cartan fiber、伴随 fiber、分次数据和弱实形式划分，再返回类数；来源仅转录测试断言，未执行测试或验收数学正确性。
 - **[[对偶根数据与对偶内类构造|对偶根数据与对偶内类构造]]** — 对偶根数据转置 Cartan 并交换根与余根后复用构造校验，对偶内类以 −(q·W0)ᵗ 和 −(q·W0) 分别构造权与余权作用，并分配最长元和根系闭包预算。
 - **[[对合的-1θx-图像基对|对合的 (1−θ)X* 图像基对]]** — 以 n×r 的 lift_mat 与 r×n 的 m_real 表示图像基及坐标映射，满足 lift_mat·m_real = 1−θ。
@@ -155,8 +159,11 @@
 - **[[形变计算的父块抽象|形变计算的父块抽象]]** — KlSumParent 提供 Full 或 Partial 父块的借用视图，DeformParent 持有所需块数据；Partial 按行重构参数，递归驱动保证父块在借用期间存活。
 - **[[形变项计算的边界情形与输出顺序|形变项计算的边界情形与输出顺序]]** — deformation_terms 在 block.length(y)=0 时返回空；奇异集为空时所有元素均为 final，反向累积列表为 [y,y−1,…,0]。
 - **[[形变驱动的冻结移植契约|形变驱动的冻结移植契约]]** — Rust 形变驱动按冻结的 domain/deform 契约移植上游入口，约束共享 lambda_rho、block modifier、alcove 收缩与去除记忆化等行为；源码结构阅读不构成数学验收。
+- **[[扭曲对合的-cayleycross-分解|扭曲对合的 Cayley/Cross 分解]]** — 以 Cayley 根、生成器下标组成的 cross word 及其 WeylAction 表示扭曲对合，并通过重放验证输入；分解在不同实现间不唯一，应比较重放不变量或标签结果。
 - **[[承载可观测量的适配基adaptedbasis|承载可观测量的适配基（adapted_basis）]]** — adapted_basis 同步跟踪左变换的逆并保留上游主元与重排策略，因为选定的基固定 stable_log 代表元及下游 g_rho_check、torus_factor 有理量。
 - **[[挠部分打包与-involution-图像基|挠部分打包与 involution 图像基]]** — y_pack 使用 M_real 坐标模 2 打包挠部分，y_lift 恢复 (1−theta)lambda_rho；精确图像基保存在 involution 表中并沿 cross-action BFS 传送。
+- **[[整对合分类的预算门与检查顺序|整对合分类的预算门与检查顺序]]** — classify_involution 先检查方阵形状，再强制执行 rank、存储和系数预算，随后以 checked i128 运算验证 M²=I，最后构造 θ+I 进行分类。
+- **[[整对合的-compactcomplexsplit-因子计数|整对合的 compact、complex、split 因子计数]]** — 整对合分类仅记录恒等、交换对与取负三类整分解的数量，不选定具体分解，并满足 compact + 2·complex + split = rank。
 - **[[整数列阶梯归约与带符号-gcd-扫描|整数列阶梯归约与带符号 gcd 扫描]]** — build 自底向上扫描并跟踪列操作；gcd_sweep 选最小绝对值主元、记录负主元取正的符号操作，并使用 div_euclid 保持典范像基定向。
 - **[[整数基的模-2-归约|整数基的模 2 归约]]** — reduce_basis_mod_two 将整数基归约为其在 Y/2Y 中张成的子空间信息。
 - **[[整数格计算预算integerlatticebudget|整数格计算预算（IntegerLatticeBudget）]]** — 以矩阵维数、存活工作条目总量、初等操作次数和中间系数位长限制单次精确计算；这些约束属于计算预算，不代表数学秩限制。
@@ -195,4 +202,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_192 pages | Generated 2026-10-09T16:38:18.623Z_
+_199 pages | Generated 2026-10-09T16:40:19.342Z_

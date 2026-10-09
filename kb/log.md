@@ -1125,3 +1125,17 @@ ptr_eq 绑定的 provenance 语义与 CartanFiberMismatch 锚点、canonical 代
 可解析（两页为已上线页、六页为本批或管线内候选）。另修正 kb/AGENTS.md 的
 编译器 pin 记录与 package.json 的 1.4.2 保持一致。8 页批准；
 wiki/concepts/ 现有 192 页，剩余候选 341。
+
+## 2026年10月10日 第二十七批候选审查：cayley-cross.md 的 7 页
+
+对照 111 行来源包逐页核验：分解四分量与"cross_word 存生成器下标而非
+RootId"的区分、跨 port 不唯一与 replay-invariant 比较契约、provenance 双门
+（weight/coweight 两侧比较，支撑 w^{-1}=δwδ 终止论证）、lowest-external-
+descent-first 剥离与预算检查时点（找到下降后、步进前，故零需求输入预算 0
+可通过；Complex 一步两次反射只计一步）、逆序重放时 Cross 反射已收集 Cayley
+根、长根化的 B2 对替换与终止性如实标注为源码声明、六种不变量错误无专门负
+测试的覆盖缺口、整对合分类的检查顺序（形状 → 预算门 → i128 checked
+is_involution → checked_add(1)）与 compact+2·complex+split=n 恒等式、
+奇偶测试矩阵字面量、fiber_rank 的 saturating_sub vs checked_sub 阅读观察
+及其零测试状态——全部忠实。7 页批准；wiki/concepts/ 现有 199 页，
+剩余候选 334。
