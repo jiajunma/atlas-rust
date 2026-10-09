@@ -1792,3 +1792,22 @@ nth_set_bit 的 0 基与非负耗尽得 -1/负值走补码有限清位、flex_ad
 分量不带引号、prints 加换行而另两个不加）、321 条目/170 名/309 启动名
 三个不同清单统计如实区分、注册表相对上游不全由 REMAINING_BUILTINS.md
 跟踪——全部忠实。8 页批准；wiki/concepts/ 现有 474 页，剩余候选 59。
+
+## 2026年10月10日 第六十六批候选审查：atlas-core-domain-dispatch.md 的 7 页
+
+对照 72 行来源包（维护者直接撰写）逐页核验：call/call_with_printed/
+call_owned_with_printed 三入口分工与 printed 侧通道只有
+partial_extended_KL_block 使用（ext_kl.cpp:945-948 中途 stdout）、
+hungry_product_owned 的三乘积表（先校验后消费：RANK_MAX 组合秩/权与余权
+大小匹配，factors 合并/word_act_weight/simple_coreflect）、166 臂统一
+形状（arity→类型提取→调用→包装→四类错误路径）、臂内校验顺序契约
+（build_KGB_element_wrapper 全部构造检查在无值门之前、KL_block_wrapper
+先 test_standard、classify_involution_wrapper 先方形与 M²=I）、signed32
+再 unsigned32 的收窄次序、real_form 按参数个数分派、coerce 六类标签
+（LT/IcRf 调派发臂、RdIc/RdRf 句柄导航不经函数调用、SpI/Sp(I,I) 先收窄、
+KpolK 经 finals_for+merge_ktype_term+K_type_pol 项序、PolP 经
+expand_final+SR_poly 项序）、未知 tag 的运行时错误文案、
+build_real_form 的 internal(external) 翻译与 Illegal real form number、
+canonical_forms 父级弱缓存与 same_real_form_owner 指针规则配对、自定义
+构造即使数学相等也新建属主——全部忠实。7 页批准；wiki/concepts/ 现有
+481 页，剩余候选 52。
