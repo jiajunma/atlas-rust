@@ -642,6 +642,19 @@ scale→readjust→lookup→common-terms 的 c(1-s) 递归、扭曲版的
 [阅读快照](snapshots/2026-10-09-atlas-core-deformation-cache.json)；维护者直接
 撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
 
+[校验与打印](atlas-core-domain-validate-print.md)记录 `domain_builtins.rs`
+9730–12263：`validate` 的 46 臂逐臂无值门顺序契约（BuildAndDrop 的
+Weyl_orbit、integrality 先查维数、W_refl 收窄可观察在先、KGB_elt 全管线
+再丢弃、KL_block 先 test_standard）、块打印机（`common_block_rows`
+**每次新建**打印一致且按 `(x, gamma-lambda)` 匹配 init——单按 x 在 R 包内
+有歧义；`located_common_block_rows` 参与共享查找；`partial_block_rows` 用
+**调用方** gamma 的 survives 标志）、`print_text` 与各打印机
+（print_KGB 的同形式选择、print_gradings 的 `sigma.pull_back` 位约定、
+print_real_Weyl 臂内先查防静默翻译、`involution_expression` 的
+`^`/`x`/`e` 渲染）。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-domain-validate-print.json)；
+维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

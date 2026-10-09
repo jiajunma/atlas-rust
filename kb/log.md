@@ -778,3 +778,11 @@ build_custom_real_form 的新表+基本 Cartan+自定义种子）。维护者直
 递推 F(z)=L(z)+Σc_t(1-s)F(t)（=(1+s) 展开等价原版整数递推）与 scale-zero
 全保留基底、逐子项 scale/readjust/lookup/common-terms 递归、扭曲版的
 后 setup 计时与翻转系数。维护者直接撰写（无 Kimi）；索引与 log 已同步。
+
+新增 `sources/atlas-core-domain-validate-print.md` 与快照
+`2026-10-09-atlas-core-domain-validate-print.json`：46 臂 validate 的逐臂
+无值门顺序契约、块打印机（common_block_rows 新建打印一致 + (x,g-lambda)
+init 匹配、located_ 的共享查找、partial 的调用方 gamma survives）、
+print_text 与各打印机（print_KGB 同形式选择、print_gradings 的
+sigma.pull_back 位约定、print_real_Weyl 的臂内先查）。维护者直接撰写
+（无 Kimi）；索引与 log 已同步。

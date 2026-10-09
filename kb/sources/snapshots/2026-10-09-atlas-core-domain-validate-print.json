@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of domain_builtins.rs lines 9730-12263 for the atlas-core-domain-validate-print packet: validate's 46 arms with their per-arm upstream validation-order contracts (BuildAndDrop for Weyl_orbit, integrality's dimension check before the no-value gate, W_refl's observable narrowing order, KGB_elt's full pipeline before dropping, KL_block's test_standard first), the block printers (common_block_rows fresh-built per call with the (x, gamma-lambda) init match, located_common_block_rows' shared-lookup participation, partial_block_rows' caller-gamma survives flag), print_text's dispatch, and the individual printers (print_KGB's same-form selection rule, print_gradings' sigma.pull_back bit convention, print_real_Weyl's in-arm checks before ExternalFormOrder).",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/domain_builtins.rs",
+   "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+   "bytes": 959480,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  }
+ ]
+}
