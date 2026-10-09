@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of domain_builtins.rs lines 1628-2527 for the atlas-core-domain-construction packet: build_datum's simply-connected vs adjoint bases (roots=Cartan rows vs basis; coroots=basis vs Cartan columns) with the T1-factors-appended ordering, the quotient/explicit datum builders, build_inner_class_context's fixed assembly order with budgets (including the dual side built once: dual_inner_class + dual_classification + dual_form_count + dual_cartan_correspondence), build_inner_class's transpose-then-from_root_involution (upstream left-composes to distinguished), build_dual_inner_class's switched coroot preference + letter-wise dual Lie type, build_real_form's canonical weak cache, and build_custom_real_form's fresh table + fundamental Cartan + custom seed.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/domain_builtins.rs",
+   "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+   "bytes": 959480,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  }
+ ]
+}

@@ -620,6 +620,18 @@ to_string/error 的逐字边界）、求值辅助的上游契约（收窄逐字�
 [阅读快照](snapshots/2026-10-09-atlas-core-typed-eval.json)；维护者直接撰写
 （无 Kimi 调用）。133 个测试待分包。结构性阅读，不声称语言或数学验收。
 
+[领域构造管线](atlas-core-domain-construction.md)记录 `domain_builtins.rs`
+1628–2527（Weyl 弧中心区）：`build_datum` 的两路基（单连通：根=Cartan 行、
+余根=基；伴随：根=基、余根=Cartan **列**）与 T1 因子追加序、商/显式 datum、
+`build_inner_class_context` 的固定装配顺序与预算门（**对偶侧只建一次**：
+dual_inner_class + 对偶分类 + 对偶弱实形计数 + Cartan 对应）、
+`build_inner_class`（转置 + from_root_involution，上游再左合成为
+distinguished）、`build_dual_inner_class`（余根偏好翻转 + 逐字母对偶
+Lie 类型——即 dual-identity 路径）、`build_real_form` 规范弱缓存、
+`build_custom_real_form`（新表 + 基本 Cartan + 自定义种子 + 两个形变缓存）。
+对应[阅读快照](snapshots/2026-10-09-atlas-core-domain-construction.json)；
+维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

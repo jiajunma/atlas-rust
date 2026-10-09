@@ -763,3 +763,11 @@ DomainNoValue 的 Skip/Validate/BuildAndDrop 无值门策略：补全名清单�
 规则、递归 0 号槽自绑、新帧不入捕获链保无环、return 解到调用边界、带名
 槽的错误附帧转储迹行）、回溯渲染（parsetree.w 的 at NAME:LINE:COL 形式）。
 维护者直接撰写（无 Kimi）；索引与 log 已同步。
+
+新增 `sources/atlas-core-domain-construction.md` 与快照
+`2026-10-09-atlas-core-domain-construction.json`：构造管线（build_datum 的
+两路基、商/显式 datum、build_inner_class_context 的固定装配顺序含对偶侧
+只建一次、build_inner_class 的转置+from_root_involution、
+build_dual_inner_class 的余根翻转+逐字母对偶、build_real_form 规范弱缓存、
+build_custom_real_form 的新表+基本 Cartan+自定义种子）。维护者直接撰写
+（无 Kimi）；索引与 log 已同步。
