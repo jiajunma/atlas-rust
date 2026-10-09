@@ -152,7 +152,7 @@ if ACTIVE_CAMPAIGN != _ACTIVE_CAMPAIGN:
 
 # This exact driver is enabled only with its matching sole-active stager.  The
 # guard in main() precedes environment parsing and filesystem I/O.
-SUBMISSION_ENABLED = True
+SUBMISSION_ENABLED = False
 EXPECTED_STAGE = (
     "/public/home/majj/atlas-rust-campaign-20260930/stages/"
     "weyl-context-core-after-v5"

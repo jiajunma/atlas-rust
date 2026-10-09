@@ -45,7 +45,7 @@ SBATCH = "hpc/math_weyl_context_core_after.sbatch"
 # successor remains disabled until its driver, progressive creator, allowlist
 # and all static tests are frozen together.  The guard in main() precedes argument parsing
 # and every filesystem operation.
-SUBMISSION_ENABLED = True
+SUBMISSION_ENABLED = False
 
 EXPECTED_TEST_COUNTS = {
     "test-campaign-stage-creation": 32,

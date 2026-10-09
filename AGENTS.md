@@ -565,6 +565,30 @@ ceiling and default one focused job; do not trade correctness for speed.
 
 ### Predecessor transitions: rebind every historical validator before launch
 
+- UPDATE G2 capture-stage migration2026-10-09: the capture pair moved from
+  the closed before-v4 gate to `weyl-context-g2-v1` (G2 asymmetric-interface
+  witness).  New transition lessons beyond the ones below: (1) a historical
+  validator's `successor_stage` assertion must pin the literal stage name —
+  `remediation.get("successor_stage") != STAGE_NAME` goes stale the moment
+  the successor itself is superseded (caught in validate_before_v3_failure).
+  (2) A new predecessor STATE uses the CURRENT descriptor schema
+  (`atlas-stage-creation-predecessor-v14`), never the predecessor-era one;
+  the frozen historical blocks keep their era versions.  (3) The campaign
+  ledger is strictly linear: the direct PREDECESSOR must be the chain head
+  (after-v5), not the case-set ancestor (before-v4); bind the ancestor
+  through a ported `validate_before_v4_result` instead, and port the retired
+  chain's failure validators with locally rebound era identities.
+  (4) Stager constants must stay `pure_expression`s for the allowlist: no
+  subscripts at module level (`G2_SOURCE` went literal; the validator
+  cross-checks consistency instead).  (5) Retire the outgoing pair in the
+  same migration (flip its `SUBMISSION_ENABLED`), extend the active pair's
+  FROZEN_LAUNCHER trust set and STAGE_INPUT_NAMES to cover it, and swap the
+  era-specific mutation directions in the allowlist's rejection battery.
+  (6) Historical values for a new predecessor block come from the last
+  HPC-validated submission record or a fresh read-only harvest — never from
+  a truncated handoff note (three hand-completed sha tails were caught by
+  the cross-check against the validated records before any launch).
+
 - UPDATE Weyl AFTER-v3 failure2026-10-06: job3899303 FINAL `FAILED 1:0` at
   `release-build` (E0609) after all125 checkers passed.  The repair patch
   `hpc/patches/weyl_context_core_repair.patch` migrated session.rs call

@@ -112,7 +112,7 @@ RETIRED_BUNDLE_SHA256 = (
 RETIRED_BUNDLE_BYTES = 311925
 MAX_RETIRED_BUNDLE_BYTES = 1024 * 1024
 MAX_RETIRED_SOURCE_BYTES = 128 * 1024
-CURRENT_POLICY = "weyl-core-after-active"
+CURRENT_POLICY = "weyl-g2-active"
 POLICIES = {
     "parent-only": {
         "parent": "active", "before": "pending", "after": "pending",
@@ -148,6 +148,13 @@ POLICIES = {
         "index_driver": "pending", "weyl_capture": "pending",
         "weyl_capture_driver": "pending", "weyl_after": "active",
         "weyl_after_driver": "active",
+    },
+    "weyl-g2-active": {
+        "parent": "retired", "before": "pending", "after": "pending",
+        "index": "pending", "before_driver": "pending", "driver": "pending",
+        "index_driver": "pending", "weyl_capture": "active",
+        "weyl_capture_driver": "active", "weyl_after": "pending",
+        "weyl_after_driver": "pending",
     },
 }
 
@@ -199,16 +206,16 @@ WEYL_EXECUTION_SOURCE_SHA256 = {
     ),
 }
 WEYL_CAPTURE_DRIVER_SHA256 = (
-    "31f5aef26e14ca669ee9306efc70cc2c4f8f22fd19af11dab5e979a0296966d7"
+    "354086e7ba0af4d0a0c559b11168f58671a3d74f4addedbe12fd92bc0955050f"
 )
 WEYL_CAPTURE_STAGER_SHA256 = (
-    "639b5c20d1a1efc68eebb3a240d9d2aa717c1c90757321c6b3445652fad649a6"
+    "1c5093d05c6fe3238368d9635412a1cdf76d67425adb7b1589a086b8e07ae8eb"
 )
 WEYL_AFTER_STAGER_SHA256 = (
-    "7cd7bbed9e3c09d414e5a17246f27277311d137ec8b67ee5fe5b2cfcf16af58e"
+    "adb7cecdd287ced4e5cad597a78cee2d96933511b6185093032844f02be9b75e"
 )
 WEYL_AFTER_DRIVER_SHA256 = (
-    "ab99c7a62b8c24dcba74cca2531f00f568cee17cb04702f602d59dbbabec0c3a"
+    "20c57dd72f8642550c39f300845a1d037ca7043ee3789b36fbf8f7751aec64c9"
 )
 WEYL_AFTER_EXECUTION_SOURCE_SHA256 = {
     **WEYL_EXECUTION_SOURCE_SHA256,
@@ -298,9 +305,8 @@ WEYL_CAPTURE_DRIVER_IMPORTS = {
     "from campaign_source import digest,file_manifest,materialize_source_archive",
     "from campaign_workspace import ACTIVE_CAMPAIGN,campaign_stage,create_result_folder,ephemeral_job_workspace",
     "from progressive_submit import read_json_file,validate_stage_creation",
-    "from stage_weyl_context_core_capture import ACCEPTED_SOURCE,CATALOG_CASES,CATALOG_PATH,CATALOG_SHA256,EXPECTED_TEST_COUNTS,FINAL_HASHES,PATCH_HASHES,PIN_NAME,PIN_SCHEMA,PARENT_SEAL_REFERENCE,PARENT_SOURCE_OBJECT,RETIRED_STAGER_BUNDLE_REFERENCE,SBATCH,SEALED_FIXTURE_HASHES,STAGE_LOCK,STAGE_NAME,SUBMISSION_ENABLED as STAGER_SUBMISSION_ENABLED,TESTS_ONLY_HASHES,REGRESSION_CATALOG_BYTES,REGRESSION_CATALOG_PATH,REGRESSION_CATALOG_SHA256,REGRESSION_FIXTURE_HASHES,REGRESSION_INSPECTION_BYTES,REGRESSION_INSPECTION_PATH,REGRESSION_INSPECTION_SHA256,REGRESSION_PATCH_HASHES,REGRESSION_PATCH_PATH,REGRESSION_SOURCE,REGRESSION_SOURCE_HASHES,confirmed_record,existing_lock,frozen_stage_inputs,saved_json_sha,submission_receipt,validate_catalog as validate_staged_catalog,validate_capture_v1_failure,validate_capture_v2_failure,validate_capture_v3_failure,validate_capture_v4_failure,validate_capture_v5_failure,validate_capture_v6_failure,validate_capture_v7_failure,validate_capture_v8,validate_before_v1_failure,validate_before_v2_failure,validate_before_v3_failure,validate_parent_objects,validate_pin as validate_stage_pin,validate_predecessor,validate_prior_creation_failure,validate_regression_inputs,validate_stage_topology",
-    "from weyl_context_core_contract import CAPTURE_MATURITY,NONACCEPTING_STATUSES,classify_capture,decode_catalog as decode_discovery_catalog,validate_catalog as validate_contract_catalog",
-    "from weyl_context_core_regression import BEFORE_REPRODUCED,HARNESS_FAILURE as BEFORE_HARNESS_FAILURE,OBSERVATION_SCHEMA as BEFORE_OBSERVATION_SCHEMA,PROVENANCE_FAILURE as BEFORE_PROVENANCE_FAILURE,UNEXPECTED_PASS,classify_before,decode_catalog as decode_regression_catalog,decode_inspection as decode_regression_inspection,expected_provenance as expected_regression_provenance,validate_artifacts as validate_regression_artifacts",
+    "from stage_weyl_context_core_capture import ACCEPTED_SOURCE,CATALOG_CASES,CATALOG_PATH,CATALOG_SHA256,EXPECTED_TEST_COUNTS,FINAL_HASHES,G2_FIXTURE_BYTES,G2_FIXTURE_HASHES,G2_SOURCE,PATCH_HASHES,PIN_NAME,PIN_SCHEMA,PARENT_SEAL_REFERENCE,PARENT_SOURCE_OBJECT,REPAIR_PATCH_HASHES,REPAIR_PATCH_PATH,REPAIRED_SOURCE,REPAIRED_SOURCE_HASHES,RETIRED_STAGER_BUNDLE_REFERENCE,SBATCH,SEALED_FIXTURE_HASHES,STAGE_LOCK,STAGE_NAME,SUBMISSION_ENABLED as STAGER_SUBMISSION_ENABLED,TESTS_ONLY_HASHES,REGRESSION_FIXTURE_HASHES,REGRESSION_PATCH_HASHES,REGRESSION_PATCH_PATH,REGRESSION_SOURCE,REGRESSION_SOURCE_HASHES,confirmed_record,existing_lock,frozen_stage_inputs,saved_json_sha,submission_receipt,validate_catalog as validate_staged_catalog,validate_capture_v1_failure,validate_capture_v2_failure,validate_capture_v3_failure,validate_capture_v4_failure,validate_capture_v5_failure,validate_capture_v6_failure,validate_capture_v7_failure,validate_capture_v8,validate_before_v1_failure,validate_before_v2_failure,validate_before_v3_failure,validate_before_v4_result,validate_after_v1_failure,validate_after_v2_failure,validate_after_v3_failure,validate_after_v4_failure,validate_after_v5_result,validate_g2_inputs,validate_parent_objects,validate_pin as validate_stage_pin,validate_predecessor,validate_prior_creation_failure,validate_stage_topology",
+    "from weyl_context_core_contract import CAPTURE_MATURITY,NONACCEPTING_STATUSES,classify_capture,decode_g2_catalog as decode_discovery_catalog,validate_g2_catalog as validate_contract_catalog",
     "from weyl_parent_seal import boundary_bytes,load_parent_seal",
 }
 WEYL_AFTER_STAGER_IMPORTS = {
@@ -431,6 +437,27 @@ WEYL_CAPTURE_STAGER_ASSIGNMENTS = {
     "SHA256_PATTERN", "FORBIDDEN_DURABLE_STAGE_NAMES",
     "ALLOWED_STAGE_DIRECTORIES", "ALLOWED_STAGE_FILES",
     "SLURM_OUTPUT_PATTERN",
+    "BEFORE_V3_PREDECESSOR", "BEFORE_V3_PREDECESSOR_CAMPAIGN_FILES",
+    "BEFORE_V3_PREDECESSOR_RECORD", "BEFORE_V3_PREDECESSOR_REFERENCE",
+    "BEFORE_V3_PREDECESSOR_STAGE", "BEFORE_V3_PREDECESSOR_STATE",
+    "BEFORE_V4_RESULT_EVIDENCE", "BEFORE_V4_CHECKER_TOTAL",
+    "BEFORE_V4_PREDECESSOR", "BEFORE_V4_PREDECESSOR_CAMPAIGN_FILES",
+    "BEFORE_V4_PREDECESSOR_RECORD", "BEFORE_V4_PREDECESSOR_REFERENCE",
+    "BEFORE_V4_PREDECESSOR_STAGE", "BEFORE_V4_PREDECESSOR_STATE",
+    "AFTER_V1_FAILURE_EVIDENCE", "AFTER_V1_ERA_SOURCE_MANIFEST_SHA256",
+    "AFTER_V1_PREDECESSOR", "AFTER_V1_PREDECESSOR_STAGE",
+    "AFTER_V2_FAILURE_EVIDENCE", "AFTER_V2_PREDECESSOR",
+    "AFTER_V2_PREDECESSOR_OUT", "AFTER_V2_PREDECESSOR_STAGE",
+    "AFTER_V3_FAILURE_EVIDENCE", "AFTER_V3_PREDECESSOR",
+    "AFTER_V3_PREDECESSOR_OUT", "AFTER_V3_PREDECESSOR_STAGE",
+    "AFTER_V4_FAILURE_EVIDENCE", "AFTER_V4_PREDECESSOR",
+    "AFTER_V4_PREDECESSOR_CAMPAIGN_FILES", "AFTER_V4_PREDECESSOR_RECORD",
+    "AFTER_V4_PREDECESSOR_STAGE", "AFTER_V4_PREDECESSOR_STATE",
+    "AFTER_V5_RESULT_EVIDENCE", "AFTER_V5_SUBMISSION_EVIDENCE",
+    "REPAIR_PATCH_PATH", "REPAIR_PATCH_HASHES", "REPAIR_PATCH_BYTES",
+    "REPAIRED_SOURCE_HASHES", "REPAIRED_SOURCE",
+    "G2_FIXTURE_PATH", "G2_PREWARM_FIXTURE_PATH", "G2_FIXTURE_HASHES",
+    "G2_FIXTURE_BYTES", "G2_SOURCE", "G2_RECORD",
 }
 WEYL_CAPTURE_DRIVER_ASSIGNMENTS = {
     "_ACTIVE_CAMPAIGN", "LEGACY_PATH_OPEN_ATTEMPTS", "SUBMISSION_ENABLED",
@@ -441,8 +468,7 @@ WEYL_CAPTURE_DRIVER_ASSIGNMENTS = {
     "COMMAND_CONTRACTS", "REPORT_KEYS", "INVOCATION_KEYS",
     "PROVENANCE_KEYS", "OBSERVATION_KEYS", "ARTIFACT_KEYS", "COMMAND_KEYS",
     "CATALOG_RECORD",
-    "BEFORE_CLAIM_KEYS", "EXPECTED_COMMAND_EXITS", "REGRESSION_CATALOG_RECORD",
-    "REGRESSION_INSPECTION_RECORD", "REGRESSION_KEYS",
+    "EXPECTED_COMMAND_EXITS", "HARNESS_FAILURE",
     "THREAD_SETTINGS", "ENVIRONMENT_KEYS", "LIMITATIONS", "FORBIDDEN_REPORT_KEYS",
     "COMPLETE_CAPTURE_STATUSES", "ROOT_SYSTEM", "SESSION", "TEST_PATCH",
     "PRODUCTION_PATCH", "BOUNDARY_FIXTURE", "BOUNDARY_STDOUT",
@@ -999,22 +1025,22 @@ def exact_weyl_core_contract(tree, filename):
                 getattr(tree, "_source_text", "").encode("utf-8")
             ).hexdigest() == WEYL_CAPTURE_STAGER_SHA256
             and literal_assignment(tree, "STAGE_NAME")
-            == "weyl-context-core-before-v4"
+            == "weyl-context-g2-v1"
             and literal_assignment(tree, "PIN_NAME")
-            == "weyl-context-core-before-v4-pin.json"
+            == "weyl-context-g2-v1-pin.json"
             and literal_assignment(tree, "PIN_SCHEMA")
-            == "atlas-weyl-context-core-before-pin-v4"
+            == "atlas-weyl-context-g2-pin-v1"
             and literal_assignment(tree, "SBATCH")
             == "hpc/math_weyl_context_core_capture.sbatch"
             and literal_assignment(tree, "EXPECTED_TEST_COUNTS") == {
                 "test-campaign-stage-creation": 32,
                 "test-progressive-submit": 17,
-                "test-weyl-context-core-contract": 18,
-                "test-weyl-context-core-regression-contract": 17,
+                "test-weyl-context-core-contract": 24,
+                "test-weyl-context-core-regression-contract": 21,
                 "test-math-weyl-context-core-capture": 28,
                 "test-stager-allowlist": 7,
             }
-            and literal_assignment(tree, "CHECKER_TESTS") == 119
+            and literal_assignment(tree, "CHECKER_TESTS") == 129
             and literal_assignment(tree, "SHA256_PATTERN")
             == r"[0-9a-f]{64}\Z"
             and literal_assignment(tree, "FORBIDDEN_DURABLE_STAGE_NAMES")
@@ -1077,7 +1103,13 @@ def exact_weyl_core_contract(tree, filename):
                     "29eb6392458aa0d856ca88a1fba6d5eefc4e265f2e5ec5a5ba1ba41bdcf11c31"
                 ),
                 "hpc/math_weyl_context_core_capture.py": (
-                    "a8f784181cf4ec02d58ce00e5b64c0f10910ef975f65f7b53784be9d540e37ab"
+                    "354086e7ba0af4d0a0c559b11168f58671a3d74f4addedbe12fd92bc0955050f"
+                ),
+                "hpc/stage_weyl_context_core_after.py": (
+                    "adb7cecdd287ced4e5cad597a78cee2d96933511b6185093032844f02be9b75e"
+                ),
+                "hpc/math_weyl_context_core_after.py": (
+                    "20c57dd72f8642550c39f300845a1d037ca7043ee3789b36fbf8f7751aec64c9"
                 ),
             }
             and literal_assignment(tree, "FROZEN_LAUNCHER_STATES") == {
@@ -1088,6 +1120,8 @@ def exact_weyl_core_contract(tree, filename):
                 "hpc/math_ladder_boundary_after.py": False,
                 "hpc/stage_ladder_boundary_index.py": False,
                 "hpc/math_ladder_boundary_index.py": False,
+                "hpc/stage_weyl_context_core_after.py": False,
+                "hpc/math_weyl_context_core_after.py": False,
                 "hpc/stage_weyl_context_core_capture.py": True,
                 "hpc/math_weyl_context_core_capture.py": True,
             }
@@ -1109,21 +1143,21 @@ def exact_weyl_core_contract(tree, filename):
             and literal_assignment(tree, "EXPECTED_STAGE")
             == (
                 "/public/home/majj/atlas-rust-campaign-20260930/stages/"
-                "weyl-context-core-before-v4"
+                "weyl-context-g2-v1"
             )
             and literal_assignment(tree, "REPORT_SCHEMA")
-            == "atlas-weyl-context-core-before-v4"
+            == "atlas-weyl-context-g2-v1"
             and literal_assignment(tree, "CHECKER_PYTHON")
             == "/public/software/anaconda/anaconda3-2022.5/bin/python3.9"
             and literal_assignment(tree, "SUCCESS_STATUS")
-            == "WEYL_CONTEXT_BEFORE_EXPECTED_FAILURES_OBSERVED"
+            == "WEYL_CONTEXT_G2_CAPTURE_COMPLETE"
             and literal_assignment(tree, "INCOMPLETE_STATUS")
-            == "WEYL_CONTEXT_CORE_BEFORE_INCOMPLETE"
+            == "WEYL_CONTEXT_G2_INCOMPLETE"
             and literal_assignment(tree, "EXPECTED_INVOCATIONS") == (
-                ("weyl_context_core_cold_dual", "oracle"),
-                ("weyl_context_core_cold_dual", "rust"),
-                ("weyl_context_core_prewarmed_dual", "rust"),
-                ("weyl_context_core_prewarmed_dual", "oracle"),
+                ("weyl_context_g2_cold_dual", "oracle"),
+                ("weyl_context_g2_cold_dual", "rust"),
+                ("weyl_context_g2_prewarmed_dual", "rust"),
+                ("weyl_context_g2_prewarmed_dual", "oracle"),
             )
             and literal_assignment(tree, "COMMAND_NAMES") == (
                 "test-campaign-stage-creation",
@@ -1339,8 +1373,26 @@ def exact_weyl_creation_gate(tree):
     expected_catalog = ast.parse(
         "validate_staged_catalog(root, inputs)\n"
     ).body[0].value
-    expected_regression = ast.parse(
-        "validate_regression_inputs(root, inputs, accepted_source_manifest)\n"
+    expected_g2 = ast.parse(
+        "validate_g2_inputs(root, inputs, accepted_source_manifest)\n"
+    ).body[0].value
+    expected_before_v4_result = ast.parse(
+        "validate_before_v4_result(root, inputs)\n"
+    ).body[0].value
+    expected_after_v1 = ast.parse(
+        "validate_after_v1_failure(root, inputs)\n"
+    ).body[0].value
+    expected_after_v2 = ast.parse(
+        "validate_after_v2_failure(root, inputs)\n"
+    ).body[0].value
+    expected_after_v3 = ast.parse(
+        "validate_after_v3_failure(root, inputs)\n"
+    ).body[0].value
+    expected_after_v4 = ast.parse(
+        "validate_after_v4_failure(root, inputs)\n"
+    ).body[0].value
+    expected_after_v5 = ast.parse(
+        "validate_after_v5_result(root, inputs)\n"
     ).body[0].value
 
     def exact_calls(expected):
@@ -1362,11 +1414,21 @@ def exact_weyl_creation_gate(tree):
     before_v2 = exact_calls(expected_before_v2)
     before_v3 = exact_calls(expected_before_v3)
     catalog = exact_calls(expected_catalog)
-    regression = exact_calls(expected_regression)
+    g2 = exact_calls(expected_g2)
+    before_v4_result = exact_calls(expected_before_v4_result)
+    after_v1 = exact_calls(expected_after_v1)
+    after_v2 = exact_calls(expected_after_v2)
+    after_v3 = exact_calls(expected_after_v3)
+    after_v4 = exact_calls(expected_after_v4)
+    after_v5 = exact_calls(expected_after_v5)
     return (len(confirmed) == len(creation) == len(receipt) == 1
             and len(v5_failure) == len(v6_failure) == len(v7_failure) == 1
             and len(v8) == len(before_v1) == len(before_v2) == len(before_v3) == 1
-            and len(catalog) == len(regression) == 1
+            and len(before_v4_result) == 1
+            and len(after_v1) == len(after_v2) == 1
+            and len(after_v3) == len(after_v4) == 1
+            and len(after_v5) == 1
+            and len(catalog) == len(g2) == 1
             and confirmed[0].lineno < creation[0].lineno < receipt[0].lineno
             and receipt[0].lineno < v5_failure[0].lineno
             and v5_failure[0].lineno < v6_failure[0].lineno
@@ -1375,8 +1437,14 @@ def exact_weyl_creation_gate(tree):
             and v8[0].lineno < before_v1[0].lineno
             and before_v1[0].lineno < before_v2[0].lineno
             and before_v2[0].lineno < before_v3[0].lineno
-            and before_v3[0].lineno < catalog[0].lineno
-            and catalog[0].lineno < regression[0].lineno)
+            and before_v3[0].lineno < before_v4_result[0].lineno
+            and before_v4_result[0].lineno < after_v1[0].lineno
+            and after_v1[0].lineno < after_v2[0].lineno
+            and after_v2[0].lineno < after_v3[0].lineno
+            and after_v3[0].lineno < after_v4[0].lineno
+            and after_v4[0].lineno < after_v5[0].lineno
+            and after_v5[0].lineno < catalog[0].lineno
+            and catalog[0].lineno < g2[0].lineno)
 
 
 def exact_weyl_after_creation_gate(tree):
@@ -1733,13 +1801,21 @@ def exact_weyl_capture_stager_flow(tree):
          and node.func.id == "validate_capture_v8"],
         key=lambda node: node.lineno,
     )
-    regression_validation_calls = sorted(
-        [node for node in ast.walk(run)
-         if isinstance(node, ast.Call)
-         and isinstance(node.func, ast.Name)
-         and node.func.id == "validate_regression_inputs"],
-        key=lambda node: node.lineno,
-    )
+    def _call_chain(name):
+        return sorted(
+            [node for node in ast.walk(run)
+             if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Name)
+             and node.func.id == name],
+            key=lambda node: node.lineno,
+        )
+    g2_validation_calls = _call_chain("validate_g2_inputs")
+    before_v4_result_calls = _call_chain("validate_before_v4_result")
+    after_v1_calls = _call_chain("validate_after_v1_failure")
+    after_v2_calls = _call_chain("validate_after_v2_failure")
+    after_v3_calls = _call_chain("validate_after_v3_failure")
+    after_v4_calls = _call_chain("validate_after_v4_failure")
+    after_v5_result_calls = _call_chain("validate_after_v5_result")
     before_v1_validation_calls = sorted(
         [node for node in ast.walk(run)
          if isinstance(node, ast.Call)
@@ -1802,7 +1878,13 @@ def exact_weyl_capture_stager_flow(tree):
             and len(before_v1_validation_calls) == 2
             and len(before_v2_validation_calls) == 2
             and len(before_v3_validation_calls) == 2
-            and len(regression_validation_calls) == 2
+            and len(g2_validation_calls) == 2
+            and len(before_v4_result_calls) == 2
+            and len(after_v1_calls) == 2
+            and len(after_v2_calls) == 2
+            and len(after_v3_calls) == 2
+            and len(after_v4_calls) == 2
+            and len(after_v5_result_calls) == 2
             and len(install_calls) == 1
             and bool(mutations)
             and validations[0] < min(mutations)
@@ -1838,9 +1920,27 @@ def exact_weyl_capture_stager_flow(tree):
             and before_v3_validation_calls[0].lineno < creation_calls[0].lineno
             and install_calls[0].lineno < before_v3_validation_calls[1].lineno
             and before_v3_validation_calls[1].lineno < build_pin_calls[0].lineno
-            and regression_validation_calls[0].lineno < creation_calls[0].lineno
-            and install_calls[0].lineno < regression_validation_calls[1].lineno
-            and regression_validation_calls[1].lineno < build_pin_calls[0].lineno
+            and before_v4_result_calls[0].lineno < creation_calls[0].lineno
+            and install_calls[0].lineno < before_v4_result_calls[1].lineno
+            and before_v4_result_calls[1].lineno < build_pin_calls[0].lineno
+            and after_v1_calls[0].lineno < creation_calls[0].lineno
+            and install_calls[0].lineno < after_v1_calls[1].lineno
+            and after_v1_calls[1].lineno < build_pin_calls[0].lineno
+            and after_v2_calls[0].lineno < creation_calls[0].lineno
+            and install_calls[0].lineno < after_v2_calls[1].lineno
+            and after_v2_calls[1].lineno < build_pin_calls[0].lineno
+            and after_v3_calls[0].lineno < creation_calls[0].lineno
+            and install_calls[0].lineno < after_v3_calls[1].lineno
+            and after_v3_calls[1].lineno < build_pin_calls[0].lineno
+            and after_v4_calls[0].lineno < creation_calls[0].lineno
+            and install_calls[0].lineno < after_v4_calls[1].lineno
+            and after_v4_calls[1].lineno < build_pin_calls[0].lineno
+            and after_v5_result_calls[0].lineno < creation_calls[0].lineno
+            and install_calls[0].lineno < after_v5_result_calls[1].lineno
+            and after_v5_result_calls[1].lineno < build_pin_calls[0].lineno
+            and g2_validation_calls[0].lineno < creation_calls[0].lineno
+            and install_calls[0].lineno < g2_validation_calls[1].lineno
+            and g2_validation_calls[1].lineno < build_pin_calls[0].lineno
             and v5_validation_calls[0].lineno
                 < v6_validation_calls[0].lineno
             and v5_validation_calls[1].lineno
@@ -1864,11 +1964,34 @@ def exact_weyl_capture_stager_flow(tree):
             and before_v2_validation_calls[1].lineno
                 < before_v3_validation_calls[1].lineno
             and before_v3_validation_calls[0].lineno
-                < regression_validation_calls[0].lineno
+                < before_v4_result_calls[0].lineno
             and before_v3_validation_calls[1].lineno
-                < regression_validation_calls[1].lineno
+                < before_v4_result_calls[1].lineno
+            and before_v4_result_calls[0].lineno
+                < after_v1_calls[0].lineno
+            and before_v4_result_calls[1].lineno
+                < after_v1_calls[1].lineno
+            and after_v1_calls[0].lineno
+                < after_v2_calls[0].lineno
+            and after_v1_calls[1].lineno
+                < after_v2_calls[1].lineno
+            and after_v2_calls[0].lineno
+                < after_v3_calls[0].lineno
+            and after_v2_calls[1].lineno
+                < after_v3_calls[1].lineno
+            and after_v3_calls[0].lineno
+                < after_v4_calls[0].lineno
+            and after_v3_calls[1].lineno
+                < after_v4_calls[1].lineno
+            and after_v4_calls[0].lineno
+                < after_v5_result_calls[0].lineno
+            and after_v4_calls[1].lineno
+                < after_v5_result_calls[1].lineno
+            and after_v5_result_calls[0].lineno
+                < g2_validation_calls[0].lineno
+            and after_v5_result_calls[1].lineno
+                < g2_validation_calls[1].lineno
             and prior_arguments == [])
-
 
 def exact_weyl_after_stager_flow(tree):
     parent = function(tree, "validate_parent_objects")
@@ -2331,13 +2454,13 @@ class StagerAllowlist(unittest.TestCase):
             "stage_ladder_boundary_before.py": False,
             "stage_ladder_boundary_after.py": False,
             "stage_ladder_boundary_index.py": False,
-            "stage_weyl_context_core_capture.py": False,
-            "stage_weyl_context_core_after.py": True,
+            "stage_weyl_context_core_capture.py": True,
+            "stage_weyl_context_core_after.py": False,
             HISTORICAL_DRIVER: False,
             AFTER_DRIVER: False,
             INDEX_DRIVER: False,
-            WEYL_CAPTURE_DRIVER: False,
-            WEYL_AFTER_DRIVER: True,
+            WEYL_CAPTURE_DRIVER: True,
+            WEYL_AFTER_DRIVER: False,
         }
         for name, enabled in expected.items():
             tree = parsed((HPC / name).read_text(encoding="utf-8"))
@@ -2392,10 +2515,10 @@ class StagerAllowlist(unittest.TestCase):
                     "SUBMISSION_ENABLED = False", "SUBMISSION_ENABLED = True", 1)}, drivers),
             ({**staged, "stage_weyl_context_core_capture.py": staged[
                 "stage_weyl_context_core_capture.py"].replace(
-                    "SUBMISSION_ENABLED = False", "SUBMISSION_ENABLED = True", 1)}, drivers),
+                    "SUBMISSION_ENABLED = True", "SUBMISSION_ENABLED = False", 1)}, drivers),
             ({**staged, "stage_weyl_context_core_after.py": staged[
                 "stage_weyl_context_core_after.py"].replace(
-                    "SUBMISSION_ENABLED = True", "SUBMISSION_ENABLED = False", 1)}, drivers),
+                    "SUBMISSION_ENABLED = False", "SUBMISSION_ENABLED = True", 1)}, drivers),
             ({**staged, "stage_weyl_context_core_capture.py": staged[
                 "stage_weyl_context_core_capture.py"].replace(
                     "550b1330ec8806d1343d50d6ceb8488f89eb03546f6bb37c538cb5cd460e9b09",
@@ -2416,10 +2539,10 @@ class StagerAllowlist(unittest.TestCase):
                 "SUBMISSION_ENABLED = False", "SUBMISSION_ENABLED = True", 1)}),
             (staged, {**drivers, WEYL_CAPTURE_DRIVER: drivers[
                 WEYL_CAPTURE_DRIVER].replace(
-                    "SUBMISSION_ENABLED = False", "SUBMISSION_ENABLED = True", 1)}),
+                    "SUBMISSION_ENABLED = True", "SUBMISSION_ENABLED = False", 1)}),
             (staged, {**drivers, WEYL_AFTER_DRIVER: drivers[
                 WEYL_AFTER_DRIVER].replace(
-                    "SUBMISSION_ENABLED = True", "SUBMISSION_ENABLED = False", 1)}),
+                    "SUBMISSION_ENABLED = False", "SUBMISSION_ENABLED = True", 1)}),
             (staged, {**drivers, WEYL_CAPTURE_DRIVER: drivers[
                 WEYL_CAPTURE_DRIVER].replace(
                     '"workspace/source": work / "source"',

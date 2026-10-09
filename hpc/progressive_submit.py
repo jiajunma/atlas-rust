@@ -21,7 +21,7 @@ import campaign_workspace
 from campaign_workspace import submission_scope
 
 
-ACTIVE_STAGE_NAME = "weyl-context-core-after-v5"
+ACTIVE_STAGE_NAME = "weyl-context-g2-v1"
 STAGE_CREATION_CONTRACT_SCHEMA = "atlas-stage-creation-contract-v14"
 STAGE_CREATION_PREDECESSOR_SCHEMA = \
     "atlas-stage-creation-predecessor-v14"
@@ -69,6 +69,7 @@ EXPECTED_PREDECESSOR_LINEAGE = (
     ("weyl-context-core-after-v2", "3890580"),
     ("weyl-context-core-after-v3", "3899303"),
     ("weyl-context-core-after-v4", "3899885"),
+    ("weyl-context-core-after-v5", "3900050"),
 )
 
 
@@ -948,6 +949,11 @@ def _validate_predecessor_state_descriptor(value, campaign):
         + status + ".json"
         for status in ("prepared", "sealed", "published")
     }
+    after_v4_scoped_campaign_files = {
+        ".atlas-stage-creation-weyl-context-core-after-v4-"
+        + status + ".json"
+        for status in ("prepared", "sealed", "published")
+    }
     required_campaign_files = (
         legacy_campaign_files | v2_scoped_campaign_files
         | v3_scoped_campaign_files | v4_scoped_campaign_files
@@ -956,7 +962,7 @@ def _validate_predecessor_state_descriptor(value, campaign):
         | before_v1_scoped_campaign_files | before_v2_scoped_campaign_files
         | before_v3_scoped_campaign_files | before_v4_scoped_campaign_files
         | after_v1_scoped_campaign_files | after_v2_scoped_campaign_files
-        | after_v3_scoped_campaign_files
+        | after_v3_scoped_campaign_files | after_v4_scoped_campaign_files
         | predecessor_scoped_campaign_files
     )
     failure_pattern = re.compile(
@@ -1027,7 +1033,7 @@ def _validate_creation_contract(contract, campaign):
             or set(pin) != {"path", "schema", "stage_creation_key"}
             or pin.get("path") != ACTIVE_STAGE_NAME + "-pin.json"
             or pin.get("schema")
-               != "atlas-weyl-context-core-after-pin-v5"
+               != "atlas-weyl-context-g2-pin-v1"
             or pin.get("stage_creation_key") != "stage_creation"):
         raise ValueError("stage-creation pin descriptor changed")
     _safe_relative(pin["path"])

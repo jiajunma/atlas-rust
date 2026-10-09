@@ -23,15 +23,16 @@ import weyl_context_core_regression as regression
 
 
 EXPECTED_ORDER = (
-    ("weyl_context_core_cold_dual", "oracle"),
-    ("weyl_context_core_cold_dual", "rust"),
-    ("weyl_context_core_prewarmed_dual", "rust"),
-    ("weyl_context_core_prewarmed_dual", "oracle"),
+    ("weyl_context_g2_cold_dual", "oracle"),
+    ("weyl_context_g2_cold_dual", "rust"),
+    ("weyl_context_g2_prewarmed_dual", "rust"),
+    ("weyl_context_g2_prewarmed_dual", "oracle"),
 )
 CAUSE_MESSAGES = {
     contract.MISMATCH: "Weyl group mismatch",
     contract.HIGH_WORD: "Illegal Weyl word entry 1 (should be <1)",
     contract.NEGATIVE_WORD: "Negative integer where unsigned is required",
+    contract.HIGH_WORD_G2: "Illegal Weyl word entry 2 (should be <2)",
 }
 REPORT_KEYS = {
     "schema", "job", "node", "status", "evidence_maturity", "scope",
@@ -41,7 +42,7 @@ REPORT_KEYS = {
     "ephemeral_workspace_removed", "source", "binaries", "limitations",
     "legacy_path_open_attempts", "thread_settings",
     "source_integrity_rechecked", "provenance", "environment",
-    "regression", "performance_gate_released", "rank_gate_released",
+    "performance_gate_released", "rank_gate_released",
 }
 INVOCATION_KEYS = {
     "sequence", "case_id", "engine", "invocation_id", "pid",
@@ -57,11 +58,6 @@ COMMAND_KEYS = {
 ARTIFACT_KEYS = {"path", "sha256", "bytes"}
 PROVENANCE_KEYS = {
     "pin_sha256", "submission_receipt", "harness_inputs", "campaign_record",
-}
-REGRESSION_KEYS = {
-    "catalog", "inspection", "artifacts", "classification",
-    "original_rerun_invocations", "selector_command",
-    "retained_control_command", "inventory_command",
 }
 ENVIRONMENT_KEYS = {
     "PATH", "HOME", "LD_LIBRARY_PATH", "CARGO_HOME", "RUSTUP_HOME",
@@ -95,11 +91,16 @@ def unresolved_globals(code, namespace):
 
 def catalog_value():
     return {
-        "schema": contract.CATALOG_SCHEMA,
+        "schema": contract.G2_CATALOG_SCHEMA,
         "evidence_maturity": contract.CATALOG_MATURITY,
-        "scope": contract.CATALOG_SCOPE,
-        "cases": [dict(row) for row in contract.EXPECTED_CASES],
+        "scope": contract.G2_CATALOG_SCOPE,
+        "cases": [dict(row) for row in contract.G2_EXPECTED_CASES],
     }
+
+
+def predictions_for(case_id):
+    found = contract.PREDICTIONS.get(case_id)
+    return found if found is not None else contract.G2_PREDICTIONS[case_id]
 
 
 def observation(engine, exit_status):
@@ -118,12 +119,13 @@ def observation(engine, exit_status):
 
 
 def stdout_bytes(case_id, engine):
-    if engine == "oracle":
-        return (
-            Path(__file__).resolve().parents[1] / "tests" / "math"
-            / "generics" / (case_id + ".oracle.stdout")
-        ).read_bytes()
-    prediction = contract.PREDICTIONS[case_id][engine]
+    golden = (
+        Path(__file__).resolve().parents[1] / "tests" / "math"
+        / "generics" / (case_id + ".oracle.stdout")
+    )
+    if engine == "oracle" and golden.exists():
+        return golden.read_bytes()
+    prediction = predictions_for(case_id)[engine]
     lines = ["MATH_BEGIN " + case_id]
     lines.extend(prediction["payload_lines"])
     lines.extend(["MATH_END " + case_id, "Bye."])
@@ -131,12 +133,13 @@ def stdout_bytes(case_id, engine):
 
 
 def stderr_bytes(case_id, engine):
-    if engine == "oracle":
-        return (
-            Path(__file__).resolve().parents[1] / "tests" / "math"
-            / "generics" / (case_id + ".oracle.stderr")
-        ).read_bytes()
-    causes = contract.PREDICTIONS[case_id][engine]["causes"]
+    golden = (
+        Path(__file__).resolve().parents[1] / "tests" / "math"
+        / "generics" / (case_id + ".oracle.stderr")
+    )
+    if engine == "oracle" and golden.exists():
+        return golden.read_bytes()
+    causes = predictions_for(case_id)[engine]["causes"]
     if engine == "oracle":
         return "".join(
             "Runtime error:\n  " + CAUSE_MESSAGES[cause]
@@ -171,8 +174,8 @@ def invocation_records(root):
     records = []
     raw_by_id = {}
     for sequence, (case_id, engine) in enumerate(EXPECTED_ORDER):
-        prediction = contract.PREDICTIONS[case_id][engine]
-        case = next(row for row in contract.EXPECTED_CASES
+        prediction = predictions_for(case_id)[engine]
+        case = next(row for row in contract.G2_EXPECTED_CASES
                     if row["id"] == case_id)
         fixture = (
             Path(__file__).resolve().parents[1] / "tests" / "math"
@@ -230,8 +233,8 @@ def command_records(root):
         elif name == "source-reconstruction":
             stdout = (
                 "SOURCE_RECONSTRUCTION_OK %d %s\n"
-                % (stager.REGRESSION_SOURCE["files"],
-                   stager.REGRESSION_SOURCE["source_manifest_sha256"])
+                % (stager.G2_SOURCE["files"],
+                   stager.G2_SOURCE["source_manifest_sha256"])
             ).encode()
         elif name == "atlas-core-test-inventory":
             names = list(regression.SELECTOR_TESTS) + [regression.CONTROL_TEST]
@@ -249,15 +252,9 @@ def command_records(root):
                 "running 2 tests\n"
                 "WEYL_CONTEXT_CORE_READY weyl_context_core_cold_dual "
                 "diagnostics=2\n"
-                "thread 'session::tests::weyl_context_core_cold_dual_original' "
-                "panicked at crates/atlas-core/src/session.rs:1:1:\n"
-                "complete original Weyl-context stdout and ordered diagnostics\n"
                 "WEYL_CONTEXT_CORE_READY weyl_context_core_prewarmed_dual "
                 "diagnostics=4\n"
-                "thread 'session::tests::weyl_context_core_prewarmed_dual_original' "
-                "panicked at crates/atlas-core/src/session.rs:1:1:\n"
-                "complete original Weyl-context stdout and ordered diagnostics\n"
-                "test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; "
+                "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; "
                 "630 filtered out; finished in 0.01s\n"
             ).encode()
         elif name == "root-ladder-control":
@@ -271,7 +268,7 @@ def command_records(root):
         else:
             stdout = (name + " complete\n").encode()
         stderr = b""
-        exit_status = 101 if name == "weyl-context-regressions" else 0
+        exit_status = 0
         time_raw = (
             b"\tUser time (seconds): 0.50\n"
             b"\tSystem time (seconds): 0.25\n"
@@ -304,24 +301,36 @@ def valid_pin():
     inputs = {name: "a" * 64 for name in stager.STAGE_INPUT_NAMES}
     inputs.update(stager.PATCH_HASHES)
     inputs.update(stager.REGRESSION_PATCH_HASHES)
+    inputs.update(stager.REPAIR_PATCH_HASHES)
     inputs.update(stager.REGRESSION_FIXTURE_HASHES)
+    inputs.update(stager.G2_FIXTURE_HASHES)
     inputs[stager.REGRESSION_CATALOG_PATH] = stager.REGRESSION_CATALOG_SHA256
     inputs[stager.REGRESSION_INSPECTION_PATH] = (
         stager.REGRESSION_INSPECTION_SHA256)
     inputs[stager.V8_SUBMISSION_EVIDENCE_PATH] = (
         stager.V8_SUBMISSION_EVIDENCE_SHA256)
-    inputs[stager.BEFORE_V1_FAILURE_EVIDENCE["file"]] = (
-        stager.BEFORE_V1_FAILURE_EVIDENCE["sha256"])
-    inputs[stager.BEFORE_V2_FAILURE_EVIDENCE["file"]] = (
-        stager.BEFORE_V2_FAILURE_EVIDENCE["sha256"])
-    inputs[stager.BEFORE_V3_FAILURE_EVIDENCE["file"]] = (
-        stager.BEFORE_V3_FAILURE_EVIDENCE["sha256"])
+    for evidence in (
+            stager.V1_FAILURE_EVIDENCE,
+            stager.V2_FAILURE_EVIDENCE,
+            stager.V3_FAILURE_EVIDENCE,
+            stager.V4_FAILURE_EVIDENCE,
+            stager.V5_FAILURE_EVIDENCE,
+            stager.V6_FAILURE_EVIDENCE,
+            stager.V7_FAILURE_EVIDENCE,
+            stager.BEFORE_V1_FAILURE_EVIDENCE,
+            stager.BEFORE_V2_FAILURE_EVIDENCE,
+            stager.BEFORE_V3_FAILURE_EVIDENCE,
+            stager.BEFORE_V4_RESULT_EVIDENCE,
+            stager.AFTER_V1_FAILURE_EVIDENCE,
+            stager.AFTER_V2_FAILURE_EVIDENCE,
+            stager.AFTER_V3_FAILURE_EVIDENCE,
+            stager.AFTER_V4_FAILURE_EVIDENCE,
+            stager.AFTER_V5_RESULT_EVIDENCE,
+            stager.AFTER_V5_SUBMISSION_EVIDENCE,
+    ):
+        inputs[evidence["file"]] = evidence["sha256"]
     inputs[stager.PRIOR_CREATION_FAILURE_EVIDENCE["file"]] = (
         stager.PRIOR_CREATION_FAILURE_EVIDENCE["sha256"])
-    inputs[stager.V1_FAILURE_EVIDENCE["file"]] = (
-        stager.V1_FAILURE_EVIDENCE["sha256"])
-    inputs[stager.V2_FAILURE_EVIDENCE["file"]] = (
-        stager.V2_FAILURE_EVIDENCE["sha256"])
     inputs[stager.V3_FAILURE_EVIDENCE["file"]] = (
         stager.V3_FAILURE_EVIDENCE["sha256"])
     inputs[stager.V4_FAILURE_EVIDENCE["file"]] = (
@@ -473,6 +482,90 @@ def recovery_predecessor():
             "72884ef76fca402fee932098abefe4a8d9ce0e9593b6229c0cb514399aeee214"
         ),
     })
+    history.append({
+        "stage": "/campaign/stages/weyl-context-core-before-v4",
+        "script": stager.SBATCH,
+        "queue_before": [],
+        "status": "SUBMITTED",
+        "max_outstanding": 10,
+        "job": "3886748",
+        "pin_sha256": (
+            "54221cf4545875ec768c09d92753ceba5c5140faeacd895cbf8af36327e18e78"
+        ),
+        "stage_creation_sha256": (
+            "c9197be0f005da73d110a3aac6d9b0531fe92728dd0f8db37d7c2a8b992307c7"
+        ),
+    })
+    history.append({
+        "stage": "/campaign/stages/weyl-context-core-after-v1",
+        "script": stager.SBATCH,
+        "queue_before": [],
+        "status": "SUBMITTED",
+        "max_outstanding": 10,
+        "job": "3890328",
+        "pin_sha256": (
+            "396f30f2dae9e52637fbfeb0c8b5510286090b0801da4787742c0f2d2b9d7bb4"
+        ),
+        "stage_creation_sha256": (
+            "ba22b03c4f87171d1ec1b5eb7aa0b8d6018e15d03054e9d5822eabc1e58771ad"
+        ),
+    })
+    history.append({
+        "stage": "/campaign/stages/weyl-context-core-after-v2",
+        "script": stager.SBATCH,
+        "queue_before": [],
+        "status": "SUBMITTED",
+        "max_outstanding": 10,
+        "job": "3890580",
+        "pin_sha256": (
+            "3820fd83e64a9a9b8503eedc379e3a4e9dc62a583ca778d232c358bd1940918a"
+        ),
+        "stage_creation_sha256": (
+            "e468bf226f31f35177703d4b5ed88ef230a03396a5be5dc94671d6bee94ec29b"
+        ),
+    })
+    history.append({
+        "stage": "/campaign/stages/weyl-context-core-after-v3",
+        "script": stager.SBATCH,
+        "queue_before": [],
+        "status": "SUBMITTED",
+        "max_outstanding": 10,
+        "job": "3899303",
+        "pin_sha256": (
+            "b7f683d27b21fa1f8b98d22f54445e7d8edb82b22ff78a7c89d8420dcc70b52c"
+        ),
+        "stage_creation_sha256": (
+            "387ecb1f71635488d9dd59d10f8d685120941807e9df768268d340d14b42a2bc"
+        ),
+    })
+    history.append({
+        "stage": "/campaign/stages/weyl-context-core-after-v4",
+        "script": stager.SBATCH,
+        "queue_before": [],
+        "status": "SUBMITTED",
+        "max_outstanding": 10,
+        "job": "3899885",
+        "pin_sha256": (
+            "b1855bcab3c70cfb2a83943bd484de4c58e4b5266442b6c61b6a05bd0b825f25"
+        ),
+        "stage_creation_sha256": (
+            "1b3e32a192c6e2e7136d7ee7bc04f5aeb7c0b9d2df06077933832fa3c4829508"
+        ),
+    })
+    history.append({
+        "stage": "/campaign/stages/weyl-context-core-after-v5",
+        "script": stager.SBATCH,
+        "queue_before": [],
+        "status": "SUBMITTED",
+        "max_outstanding": 10,
+        "job": "3900050",
+        "pin_sha256": (
+            "d13190716f1996cc71c068bbf9589beec0553749c4d805fb3e02894cb83ff4d2"
+        ),
+        "stage_creation_sha256": (
+            "c968e621a0265026999c0962b321e5c253f0fa68a5cf8fb6191a10de42e4cc98"
+        ),
+    })
     return history
 
 
@@ -490,7 +583,7 @@ def unconfirmed_capture_attempt(root, pin):
 
 def capture_results(records, raw_by_id):
     results = []
-    for case in contract.EXPECTED_CASES:
+    for case in contract.G2_EXPECTED_CASES:
         selected = []
         for row in records:
             if row["case_id"] != case["id"]:
@@ -555,7 +648,7 @@ def valid_report(root):
         (Path(__file__).resolve().parents[1]
          / stager.AFTER_REPORT_PATH).read_text())
     accepted_manifest = accepted_report["source_files"]
-    manifest = driver.regression_source_manifest(accepted_manifest)
+    manifest = driver.g2_source_manifest(accepted_manifest)
     catalog_raw = (
         Path(__file__).resolve().parents[1]
         / stager.CATALOG_PATH
@@ -567,7 +660,7 @@ def valid_report(root):
         "job": "12345",
         "node": "compute-node",
         "status": driver.SUCCESS_STATUS,
-        "evidence_maturity": "tests_first_before",
+        "evidence_maturity": contract.CAPTURE_MATURITY,
         "scope": driver.REPORT_SCOPE,
         "pin": pin,
         "accepted_source": copy.deepcopy(pin["accepted_source"]),
@@ -579,9 +672,9 @@ def valid_report(root):
             "campaign_record": copy.deepcopy(campaign_record),
         },
         "source": {
-            "files": stager.REGRESSION_SOURCE["files"],
+            "files": stager.G2_SOURCE["files"],
             "manifest_sha256":
-                stager.REGRESSION_SOURCE["source_manifest_sha256"],
+                stager.G2_SOURCE["source_manifest_sha256"],
             "manifest": manifest,
         },
         "binaries": {
@@ -621,15 +714,7 @@ def valid_report(root):
             "HOME": "/home/capture",
             "LD_LIBRARY_PATH": "/toolchain/lib",
         }, root / "workspace"),
-        "regression": regression_references(root),
     }
-    report["regression"]["original_rerun_invocations"] = [
-        record["invocation_id"]
-        for record in invocations if record["engine"] == "oracle"
-    ]
-    report["regression"]["classification"] = driver._regression_classification(
-        report, root,
-    )
     return report
 
 
@@ -750,26 +835,26 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
     def test_stage_identity_catalog_and_test_counts_are_exact(self):
         self.assertEqual(driver.STAGE_NAME, stager.STAGE_NAME)
         self.assertEqual(driver.STAGE_NAME,
-                         "weyl-context-core-before-v4")
+                         "weyl-context-g2-v1")
         self.assertEqual(driver.PIN_NAME, stager.PIN_NAME)
         self.assertEqual(driver.PIN_NAME,
-                         "weyl-context-core-before-v4-pin.json")
+                         "weyl-context-g2-v1-pin.json")
         self.assertEqual(driver.PIN_SCHEMA, stager.PIN_SCHEMA)
         self.assertEqual(driver.PIN_SCHEMA,
-                         "atlas-weyl-context-core-before-pin-v4")
+                         "atlas-weyl-context-g2-pin-v1")
         self.assertEqual(driver.SBATCH, stager.SBATCH)
         self.assertEqual(driver.CATALOG_PATH, stager.CATALOG_PATH)
         self.assertEqual(driver.CATALOG_SHA256, stager.CATALOG_SHA256)
         self.assertEqual(driver.REPORT_SCHEMA,
-                         "atlas-weyl-context-core-before-v4")
+                         "atlas-weyl-context-g2-v1")
         self.assertEqual(driver.SUCCESS_STATUS,
-                         regression.BEFORE_REPRODUCED)
+                         "WEYL_CONTEXT_G2_CAPTURE_COMPLETE")
         self.assertEqual(driver.EXPECTED_TEST_COUNTS,
                          stager.EXPECTED_TEST_COUNTS)
         self.assertEqual(
             driver.EXPECTED_TEST_COUNTS[
                 "test-math-weyl-context-core-capture"], 28)
-        self.assertEqual(sum(driver.EXPECTED_TEST_COUNTS.values()), 119)
+        self.assertEqual(sum(driver.EXPECTED_TEST_COUNTS.values()), 129)
         self.assertEqual(tuple(driver.COMMAND_NAMES[:6]),
                          tuple(stager.EXPECTED_TEST_COUNTS))
         self.assertEqual(len(driver.COMMAND_NAMES), 13)
@@ -788,21 +873,13 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             "artifact": {
                 "path": "catalog.json",
                 "sha256": driver.CATALOG_SHA256,
-                "bytes": 1283,
+                "bytes": 1436,
             },
             "cases": 2,
             "fresh_processes": 4,
         })
-        self.assertEqual(
-            driver.REGRESSION_CATALOG_RECORD["sha256"],
-            regression.CATALOG_SHA256,
-        )
-        self.assertEqual(
-            driver.REGRESSION_INSPECTION_RECORD["sha256"],
-            regression.INSPECTION_SHA256,
-        )
         self.assertEqual(driver.EXPECTED_COMMAND_EXITS[
-            "weyl-context-regressions"], {0, 101})
+            "weyl-context-regressions"], {0})
         self.assertTrue(all(
             exits == {0} for name, exits in driver.EXPECTED_COMMAND_EXITS.items()
             if name != "weyl-context-regressions"
@@ -821,7 +898,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
         self.assertTrue(all(type(row["timeout_seconds"]) is int
                             and row["timeout_seconds"] == 45 for row in plan))
         plan[0]["case_id"] = "mutated"
-        self.assertEqual(contract.EXPECTED_CASES[0]["id"],
+        self.assertEqual(contract.G2_EXPECTED_CASES[0]["id"],
                          EXPECTED_ORDER[0][0])
 
     def test_invocation_plan_rejects_changed_catalog(self):
@@ -1206,13 +1283,13 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             records, _ = invocation_records(root)
             driver.validate_invocation_records(records, root)
             expected_inputs = {
-                "weyl_context_core_cold_dual": (
-                    "d94ae61b72215cda32b4ef040221dd81d0dd127866bc334c2ca7f43a23b820ba",
-                    1916,
+                "weyl_context_g2_cold_dual": (
+                    "9ea25f2d0f38c79d439d210ee2e467f10b74891b0593e71bd2aad440f3b82e51",
+                    2025,
                 ),
-                "weyl_context_core_prewarmed_dual": (
-                    "3f3bb95cf514aee419678543e135e405285b1d6db10d63eb590e27a94880ee4f",
-                    1386,
+                "weyl_context_g2_prewarmed_dual": (
+                    "3907ff5b0deb8ffde2ef2b12d20b0132b3831b98674e42bdb62d67a47fcba44f",
+                    1561,
                 ),
             }
             for row in records:
@@ -1285,7 +1362,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             self.assertIs(driver.validate_report(report, root), report)
             self.assertEqual(set(report), REPORT_KEYS)
             self.assertEqual(report["evidence_maturity"],
-                             "tests_first_before")
+                             contract.CAPTURE_MATURITY)
             self.assertTrue(report["complete"])
             self.assertTrue(report["integrity_rechecked"])
             self.assertTrue(report["source_integrity_rechecked"])
@@ -1300,20 +1377,13 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             self.assertEqual(
                 len(report["commands"]), len(driver.COMMAND_NAMES))
             self.assertEqual(report["catalog"], driver.CATALOG_RECORD)
-            self.assertEqual(set(report["regression"]), REGRESSION_KEYS)
             self.assertEqual(
-                report["regression"]["classification"]["status"],
-                regression.BEFORE_REPRODUCED,
-            )
-            self.assertEqual(
-                report["regression"]["original_rerun_invocations"],
-                [report["invocations"][0]["invocation_id"],
-                 report["invocations"][3]["invocation_id"]],
-            )
-            self.assertEqual(
-                set(report["regression"]["artifacts"]),
-                {Path(name).name for name in stager.REGRESSION_FIXTURE_HASHES},
-            )
+                [capture["status"] for capture in report["captures"]],
+                ["SOURCE_PREDICTIONS_OBSERVED_UNREVIEWED"] * 2)
+            self.assertTrue(all(
+                capture["full_stdout_equal"] and capture["exit_status_equal"]
+                and capture["full_stderr_equal"]
+                for capture in report["captures"]))
             self.assertEqual(
                 tuple(row["name"] for row in report["commands"]),
                 tuple(driver.COMMAND_NAMES))
@@ -1378,13 +1448,13 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             self.assertTrue(all(
                 row["observation"]["maxrss_approximate"] is False
                 for row in report["invocations"]))
-            self.assertEqual(report["source"]["files"], 1567)
-            self.assertEqual(len(report["source"]["manifest"]), 1567)
+            self.assertEqual(report["source"]["files"], 1569)
+            self.assertEqual(len(report["source"]["manifest"]), 1569)
             self.assertEqual(
                 stager.canonical_json_sha(report["source"]["manifest"]),
-                "55f807cadb712377cbf6c0c79250b1d5e739e9757290a24209a086f89632850f")
+                "dff0e90d2830ba3e5dfd95cee950ba47f7683a20fe829c43850ee77095ca34bd")
             self.assertEqual(report["source"]["manifest_sha256"],
-                             stager.REGRESSION_SOURCE[
+                             stager.G2_SOURCE[
                                  "source_manifest_sha256"])
             self.assertEqual(report["binaries"]["oracle"]["sha256"],
                              ORACLE_SHA256)
@@ -1397,7 +1467,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             limitations = " ".join(report["limitations"]).lower()
             self.assertIn("driver", limitations)
             self.assertIn("child", limitations)
-            self.assertIn("tests-first", limitations)
+            self.assertIn("provisional", limitations)
             self.assertIn("performance", limitations)
             self.assertIn("approximate", limitations)
             self.assertIn("speed", limitations)
@@ -1415,7 +1485,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             provenance = value["provenance"]
             provenance["campaign_record"]["stage"] = (
                 "/public/home/majj/atlas-rust-campaign-20990101/stages/"
-                "weyl-context-core-before-v4"
+                "weyl-context-g2-v1"
             )
             provenance["submission_receipt"] = stager.submission_receipt(
                 provenance["campaign_record"], value["pin"])
@@ -1464,10 +1534,10 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                 job="99999"),
             lambda value: value["provenance"]["submission_receipt"].update(
                 job="99999"),
-            lambda value: value["regression"]["classification"].update(
-                status=regression.UNEXPECTED_PASS),
-            lambda value: value["regression"].update(
-                original_rerun_invocations=[]),
+            lambda value: value["captures"][0].update(
+                status="RUST_SOURCE_PREDICTION_DIFFERED"),
+            lambda value: value["captures"][1].update(
+                classification={}),
             move_campaign_and_recompute_receipt,
             lambda value: value.update(extra=True),
         )
@@ -1478,57 +1548,6 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                 change(report)
                 with self.subTest(report=report):
                     self.assert_rejected_report(report, root)
-
-        # A clean two-test selector exit is evidence that this source is not a
-        # failing BEFORE.  Preserve it as its own non-success classification;
-        # do not collapse it into a generic command-record failure.
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            report = valid_report(root)
-            selector = next(
-                record for record in report["commands"]
-                if record["name"] == "weyl-context-regressions"
-            )
-            selector_log = (
-                b"running 2 tests\n"
-                b"WEYL_CONTEXT_CORE_READY weyl_context_core_cold_dual "
-                b"diagnostics=0\n"
-                b"test session::tests::weyl_context_core_cold_dual_original "
-                b"... ok\n"
-                b"WEYL_CONTEXT_CORE_READY weyl_context_core_prewarmed_dual "
-                b"diagnostics=8\n"
-                b"test session::tests::weyl_context_core_prewarmed_dual_original "
-                b"... ok\n"
-                b"test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; "
-                b"630 filtered out; finished in 0.01s\n"
-            )
-            selector_time = (
-                b"\tUser time (seconds): 0.50\n"
-                b"\tSystem time (seconds): 0.25\n"
-                b"\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:01.00\n"
-                b"\tMaximum resident set size (kbytes): 2048\n"
-                b"\tExit status: 0\n"
-            )
-            selector["exit_status"] = 0
-            selector["stdout"] = artifact(
-                root, selector["stdout"]["path"], selector_log)
-            selector["time"] = artifact(
-                root, selector["time"]["path"], selector_time)
-            classification = driver._regression_classification(report, root)
-            self.assertEqual(classification["status"], regression.UNEXPECTED_PASS)
-            self.assertTrue(classification["unexpected_regressions_passed"])
-            self.assertFalse(classification["expected_regressions_observed"])
-            self.assertTrue(all(
-                classification[key] is False
-                for key in (
-                    "acceptance_eligible", "math_gate_released",
-                    "cache_gate_released", "performance_gate_released",
-                    "rank_gate_released",
-                )
-            ))
-            report["status"] = regression.UNEXPECTED_PASS
-            report["regression"]["classification"] = classification
-            self.assert_rejected_report(report, root)
 
     def test_report_rejects_speed_ratio_acceptance_and_review_fields_recursively(self):
         locations = (
@@ -1575,17 +1594,11 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             lambda value: value["captures"].pop(),
             lambda value: value["invocations"].pop(),
             lambda value: value["commands"].pop(),
-            lambda value: value["regression"]["catalog"].update(
+            lambda value: value["catalog"]["artifact"].update(
                 sha256="0" * 64),
-            lambda value: value["regression"]["inspection"].update(
-                bytes=1),
-            lambda value: value["regression"]["catalog"].update(
-                path="renamed-regression-catalog.json"),
-            lambda value: next(iter(
-                value["regression"]["artifacts"].values()
-            )).update(path="renamed-regression-artifact"),
-            lambda value: value["regression"]["artifacts"].pop(
-                next(iter(value["regression"]["artifacts"]))),
+            lambda value: value["catalog"]["artifact"].update(bytes=1),
+            lambda value: value["catalog"]["artifact"].update(
+                path="renamed-catalog.json"),
         )
         for change in changes:
             with tempfile.TemporaryDirectory() as directory:
@@ -1601,7 +1614,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             report = valid_report(root)
             self.assertEqual(
                 [row["case"]["id"] for row in report["captures"]],
-                [row["id"] for row in contract.EXPECTED_CASES])
+                [row["id"] for row in contract.G2_EXPECTED_CASES])
             report["captures"][0]["arms"]["oracle"]["stdout"]["bytes"] += 1
             self.assert_rejected_report(report, root)
 
@@ -1648,27 +1661,29 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             row = report["invocations"][1]
             path = root / row["stdout"]["path"]
             changed = path.read_bytes().replace(
-                b"WC_RECOVERY|727", b"WC_RECOVERY|728")
+                b"WG_RECOVERY|727", b"WG_RECOVERY|728")
             replace_raw(report, root, 1, "stdout", changed)
             reclassify(report, root)
             self.assertTrue(report["captures"][0]["stream_complete"])
             self.assertIs(driver.validate_report(report, root), report)
             assert_capture_only(report)
 
-        # The discovery classifier still records a complete original stream
-        # that differs from a source prediction, but the BEFORE report now
-        # binds the exact original golden and must reject any such mutation.
+        # The G2 capture has no frozen golden yet: a complete original
+        # stream that differs from the provisional source prediction is a
+        # recorded prediction difference, not a rejection.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             report = valid_report(root)
             row = report["invocations"][0]
             path = root / row["stdout"]["path"]
             changed = path.read_bytes().replace(
-                b"WC_RECOVERY|727", b"WC_RECOVERY|728")
+                b"WG_RECOVERY|727", b"WG_RECOVERY|728")
             replace_raw(report, root, 0, "stdout", changed)
             reclassify(report, root)
             self.assertTrue(report["captures"][0]["stream_complete"])
-            self.assert_rejected_report(report, root)
+            self.assertEqual(report["captures"][0]["status"],
+                             "ORIGINAL_SOURCE_PREDICTION_DIFFERED")
+            self.assertIs(driver.validate_report(report, root), report)
             assert_capture_only(report)
 
         unknown_complete = (
@@ -1676,17 +1691,17 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                 1,
                 0,
                 "rust",
-                "BOTH_SOURCE_PREDICTIONS_DIFFERED",
+                "RUST_SOURCE_PREDICTION_DIFFERED",
                 lambda raw: raw.replace(
-                    b"MATH_BEGIN weyl_context_core_cold_dual\n",
+                    b"MATH_BEGIN weyl_context_g2_cold_dual\n",
                     b"future rust stdout prefix\n"
-                    b"MATH_BEGIN weyl_context_core_cold_dual\n",
+                    b"MATH_BEGIN weyl_context_g2_cold_dual\n",
                     1,
                 ).replace(
-                    b"MATH_END weyl_context_core_cold_dual\n",
-                    b"WC_FUTURE_MARKER|opaque\n"
+                    b"MATH_END weyl_context_g2_cold_dual\n",
+                    b"WG_FUTURE_MARKER|opaque\n"
                     b"future complete payload line\n"
-                    b"MATH_END weyl_context_core_cold_dual\n"
+                    b"MATH_END weyl_context_g2_cold_dual\n"
                     b"future rust stdout suffix\n",
                     1,
                 ),
@@ -1706,15 +1721,15 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                 "oracle",
                 "ORIGINAL_SOURCE_PREDICTION_DIFFERED",
                 lambda raw: raw.replace(
-                    b"MATH_BEGIN weyl_context_core_prewarmed_dual\n",
+                    b"MATH_BEGIN weyl_context_g2_prewarmed_dual\n",
                     b"future original stdout prefix\n"
-                    b"MATH_BEGIN weyl_context_core_prewarmed_dual\n",
+                    b"MATH_BEGIN weyl_context_g2_prewarmed_dual\n",
                     1,
                 ).replace(
-                    b"MATH_END weyl_context_core_prewarmed_dual\n",
-                    b"WCN_FUTURE_MARKER|opaque\n"
+                    b"MATH_END weyl_context_g2_prewarmed_dual\n",
+                    b"WGN_FUTURE_MARKER|opaque\n"
                     b"future complete original payload line\n"
-                    b"MATH_END weyl_context_core_prewarmed_dual\n"
+                    b"MATH_END weyl_context_g2_prewarmed_dual\n"
                     b"future original stdout suffix\n",
                     1,
                 ),
@@ -1756,10 +1771,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                     "sha256": hashlib.sha256(changed_stderr).hexdigest(),
                     "bytes": len(changed_stderr),
                 })
-                if engine == "oracle":
-                    self.assert_rejected_report(report, root)
-                else:
-                    self.assertIs(driver.validate_report(report, root), report)
+                self.assertIs(driver.validate_report(report, root), report)
                 assert_capture_only(report)
 
         incomplete_observations = (
@@ -1785,35 +1797,36 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                     assert_capture_only(report)
                     self.assert_rejected_report(report, root)
 
-        case_id = "weyl_context_core_cold_dual"
+        case_id = "weyl_context_g2_cold_dual"
         begin = ("MATH_BEGIN " + case_id + "\n").encode()
         end = ("MATH_END " + case_id + "\n").encode()
         malformed_streams = (
-            ("missing-delimiter", "stdout",
+            ("missing-delimiter", "stdout", 1, 0,
              lambda raw: raw.replace(end, b"", 1)),
-            ("duplicate-delimiter", "stdout",
+            ("duplicate-delimiter", "stdout", 1, 0,
              lambda raw: raw.replace(begin, begin + begin, 1)),
-            ("reversed-delimiters", "stdout",
+            ("reversed-delimiters", "stdout", 1, 0,
              lambda raw: end + begin + b"Bye.\n"),
-            ("foreign-delimiter", "stdout",
+            ("foreign-delimiter", "stdout", 1, 0,
              lambda raw: b"MATH_BEGIN foreign_case\n" + raw),
-            ("recognized-diagnostic-truncation", "stderr",
+            ("recognized-diagnostic-truncation", "stderr", 2, 1,
              lambda raw: b"\n".join(raw.splitlines()[:-1]) + b"\n"),
-            ("non-utf8", "stdout",
+            ("non-utf8", "stdout", 1, 0,
              lambda raw: raw.replace(begin, begin + b"\xff\n", 1)),
-            ("missing-diagnostic-final-newline", "stderr",
+            ("missing-diagnostic-final-newline", "stderr", 2, 1,
              lambda raw: raw[:-1]),
         )
-        for reason, stream, mutation in malformed_streams:
+        for reason, stream, index, capture_index, mutation in \
+                malformed_streams:
             with tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 report = valid_report(root)
-                row = report["invocations"][1]
+                row = report["invocations"][index]
                 path = root / row[stream]["path"]
                 changed = mutation(path.read_bytes())
-                replace_raw(report, root, 1, stream, changed)
+                replace_raw(report, root, index, stream, changed)
                 reclassify(report, root)
-                capture = report["captures"][0]
+                capture = report["captures"][capture_index]
                 arm = capture["arms"]["rust"]
                 with self.subTest(reason=reason):
                     self.assertFalse(capture["stream_complete"])
@@ -2081,14 +2094,16 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             expected_failure = dict(result, exit_status=101)
             with patch.object(
                     driver, "_execute_timed", return_value=expected_failure):
-                selector_record, _ = driver._command_record(
-                    expected_failure_out, "weyl-context-regressions",
-                    root, work, {}, work / "expected-failure.time", {},
-                )
-            self.assertEqual(selector_record["exit_status"], 101)
-            self.assertEqual(driver._command_failed_checks(
-                "weyl-context-regressions", selector_record,
-            ), [])
+                with self.assertRaises(driver.CommandRecordFailure) as caught:
+                    driver._command_record(
+                        expected_failure_out, "weyl-context-regressions",
+                        root, work, {}, work / "expected-failure.time", {},
+                    )
+            # The repaired-source stage admits only a clean pass: the
+            # historical expected-failure exit 101 fails closed.
+            self.assertEqual(
+                caught.exception.evidence["record"]["exit_status"], 101)
+            self.assertEqual(caught.exception.failed_checks, ["exit_status"])
 
             rejected_out = root / "results" / "rejected-command"
             rejected_out.mkdir()
@@ -2355,24 +2370,24 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                 "test-math-weyl-context-core-capture"], 28)
         self.assertEqual(
             stager.EXPECTED_TEST_COUNTS[
-                "test-weyl-context-core-regression-contract"], 17)
-        self.assertEqual(stager.CHECKER_TESTS, 119)
-        self.assertEqual(len(stager.STAGE_INPUT_NAMES), 53)
-        self.assertEqual(stager.PREDECESSOR["campaign_ledger_records"], 18)
+                "test-weyl-context-core-regression-contract"], 21)
+        self.assertEqual(stager.CHECKER_TESTS, 129)
+        self.assertEqual(len(stager.STAGE_INPUT_NAMES), 65)
+        self.assertEqual(stager.PREDECESSOR["campaign_ledger_records"], 24)
         self.assertEqual(
             stager.PREDECESSOR["campaign_ledger_sha256"],
-            "fec706e87cd1a28c0700b55698a86b8c69553875b89d15274789065cf740e6b9",
+            "6bdf33d7c1e4dcad1515632000a966223bed50537f25ebb7cdc672bc02401f99",
         )
-        self.assertEqual(stager.PREDECESSOR["job"], "3884903")
+        self.assertEqual(stager.PREDECESSOR["job"], "3900050")
         self.assertEqual(stager.PREDECESSOR["stage_tree_sha256"],
                          stager.PREDECESSOR_STATE["stage_tree_sha256"])
         self.assertEqual(
             stager.PREDECESSOR_STATE["stage_tree_sha256"],
-            "7d9603b2c4081c8ec620fe3530d292f43b8fe6782916749af19391280c44a60e",
+            "7096f5f08486e1fc9a8af4cf2af7a7e07b04570d3ea31e23ccb55a84e399bce5",
         )
-        self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_files"], 141)
+        self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_files"], 198)
         self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_directories"], 18)
-        self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_bytes"], 3676351)
+        self.assertEqual(stager.PREDECESSOR_STATE["stage_tree_bytes"], 5222128)
         self.assertEqual(stager.BEFORE_V2_PREDECESSOR["job"], "3884880")
         self.assertEqual(
             stager.BEFORE_V2_PREDECESSOR["campaign_ledger_records"], 17)
@@ -2989,6 +3004,13 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             stager.canonical_json_sha(regression_manifest),
             stager.REGRESSION_SOURCE["source_manifest_sha256"],
         )
+        g2_manifest = stager.validate_g2_inputs(
+            repository, pin["inputs"], accepted_report["source_files"])
+        self.assertEqual(len(g2_manifest), 1569)
+        self.assertEqual(
+            stager.canonical_json_sha(g2_manifest),
+            stager.G2_SOURCE["source_manifest_sha256"],
+        )
         changed_inputs = copy.deepcopy(pin["inputs"])
         changed_inputs[stager.REGRESSION_CATALOG_PATH] = "0" * 64
         with self.assertRaises(ValueError):
@@ -3084,11 +3106,11 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                     hashlib.sha256(raw).hexdigest())
             self.assertIn(destination_identity, synced)
 
-    def test_running_job_recovers_exact_nineteenth_attempt_and_missing_receipt(self):
+    def test_running_job_recovers_exact_twenty_fifth_attempt_and_missing_receipt(self):
         predecessor = recovery_predecessor()
-        self.assertEqual(len(predecessor), 18)
+        self.assertEqual(len(predecessor), 24)
         self.assertTrue(predecessor[-1]["stage"].endswith(
-            "/weyl-context-core-before-v3"))
+            "/weyl-context-core-after-v5"))
         predecessor_contract = copy.deepcopy(stager.PREDECESSOR)
         predecessor_contract["campaign_ledger_sha256"] = (
             stager.saved_json_sha(predecessor)
@@ -3104,7 +3126,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             pin_sha256 = stager.saved_json_sha(pin)
             attempt = unconfirmed_capture_attempt(root, pin)
             history = predecessor + [copy.deepcopy(attempt)]
-            self.assertEqual(len(history), 19)
+            self.assertEqual(len(history), 25)
             ledger_path = campaign / ".atlas-progressive-submit.json"
             intent_path = root / "submission-intent.json"
             receipt_path = root / "submission.json"
@@ -3171,9 +3193,21 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
                 stack.enter_context(patch.object(
                     driver, "validate_staged_catalog",
                     return_value={"catalog": True}))
-                regression_gate = stack.enter_context(patch.object(
-                    driver, "validate_regression_inputs",
-                    return_value={"regression": True}))
+                g2_gate = stack.enter_context(patch.object(
+                    driver, "validate_g2_inputs",
+                    return_value={"g2": True}))
+                before_v4_gate = stack.enter_context(patch.object(
+                    driver, "validate_before_v4_result"))
+                after_v1_gate = stack.enter_context(patch.object(
+                    driver, "validate_after_v1_failure"))
+                after_v2_gate = stack.enter_context(patch.object(
+                    driver, "validate_after_v2_failure"))
+                after_v3_gate = stack.enter_context(patch.object(
+                    driver, "validate_after_v3_failure"))
+                after_v4_gate = stack.enter_context(patch.object(
+                    driver, "validate_after_v4_failure"))
+                after_v5_gate = stack.enter_context(patch.object(
+                    driver, "validate_after_v5_result"))
                 stack.enter_context(patch.object(
                     driver, "validate_parent_objects",
                     return_value=stager.PARENT_SOURCE_OBJECT))
@@ -3208,12 +3242,18 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             before_v1_gate.assert_called_once_with(root, pin["inputs"])
             before_v2_gate.assert_called_once_with(root, pin["inputs"])
             before_v3_gate.assert_called_once_with(root, pin["inputs"])
-            regression_gate.assert_called_once_with(
+            g2_gate.assert_called_once_with(
                 root, pin["inputs"], {"source": True})
+            before_v4_gate.assert_called_once_with(root, pin["inputs"])
+            after_v1_gate.assert_called_once_with(root, pin["inputs"])
+            after_v2_gate.assert_called_once_with(root, pin["inputs"])
+            after_v3_gate.assert_called_once_with(root, pin["inputs"])
+            after_v4_gate.assert_called_once_with(root, pin["inputs"])
+            after_v5_gate.assert_called_once_with(root, pin["inputs"])
             self.assertEqual(result["record"], confirmed)
             self.assertEqual(result["receipt"], expected_receipt)
-            self.assertEqual(result["regression_source_manifest"],
-                             {"regression": True})
+            self.assertEqual(result["g2_source_manifest"],
+                             {"g2": True})
             self.assertEqual(stager.read_json_file(ledger_path),
                              predecessor + [confirmed])
             self.assertEqual(stager.read_json_file(intent_path), confirmed)
@@ -3492,9 +3532,9 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
         self.assertEqual(stager.PREDECESSOR_STAGE,
                          stager.PREDECESSOR["stage"])
         self.assertTrue(stager.PREDECESSOR_STAGE.endswith(
-            "/stages/weyl-context-core-before-v3"))
+            "/stages/weyl-context-core-after-v5"))
         self.assertEqual(stager.PREDECESSOR_STATE["schema"],
-                         "atlas-stage-creation-predecessor-v12")
+                         "atlas-stage-creation-predecessor-v14")
         self.assertTrue(stager.BEFORE_V2_PREDECESSOR_STAGE.endswith(
             "/stages/weyl-context-core-before-v2"))
         self.assertEqual(stager.BEFORE_V2_PREDECESSOR_REFERENCE,
@@ -3646,7 +3686,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             ],
             key=lambda item: item[0],
         )
-        regression_calls = calls_named("validate_regression_inputs")
+        regression_calls = calls_named("validate_g2_inputs")
         v8_calls = calls_named("validate_capture_v8")
         before_v1_calls = calls_named("validate_before_v1_failure")
         before_v2_calls = calls_named("validate_before_v2_failure")
@@ -3839,8 +3879,8 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             "validate_before_v2_failure(root, manifest)")
         installed_before_v3_at = run_source.index(
             "validate_before_v3_failure(root, manifest)")
-        installed_regression_at = run_source.index(
-            "validate_regression_inputs(root, manifest")
+        installed_g2_at = run_source.index(
+            "validate_g2_inputs(root, manifest")
         installed_v6_at = run_source.index(
             "validate_capture_v6_failure(root, manifest)")
         self.assertLess(run_source.index("install_inputs(root, manifest)"),
@@ -3850,8 +3890,8 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
         self.assertLess(installed_v8_at, installed_before_v1_at)
         self.assertLess(installed_before_v1_at, installed_before_v2_at)
         self.assertLess(installed_before_v2_at, installed_before_v3_at)
-        self.assertLess(installed_before_v3_at, installed_regression_at)
-        self.assertLess(installed_regression_at, run_source.index("build_pin("))
+        self.assertLess(installed_before_v3_at, installed_g2_at)
+        self.assertLess(installed_g2_at, run_source.index("build_pin("))
         gates_source = inspect.getsource(driver.gates)
         self.assertLess(gates_source.index("validate_stage_topology"),
                         gates_source.index("frozen_stage_inputs"))
@@ -3881,7 +3921,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
         )
         self.assertLess(
             gates_source.index("validate_staged_catalog(root, inputs)"),
-            gates_source.index("validate_regression_inputs("),
+            gates_source.index("validate_g2_inputs("),
         )
         self.assertLess(
             gates_source.index("validate_capture_v5_failure(root, inputs)"),
@@ -3896,9 +3936,9 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         raw = (root / stager.SBATCH).read_text()
         self.assertIn("#!/bin/bash -p", raw)
-        self.assertIn("#SBATCH --job-name=atlas-weyl-core-before-v4", raw)
+        self.assertIn("#SBATCH --job-name=atlas-weyl-g2-v1", raw)
         self.assertIn(
-            "#SBATCH --output=weyl-context-core-before-v4-%j.out", raw)
+            "#SBATCH --output=weyl-context-g2-v1-%j.out", raw)
         self.assertIn("#SBATCH --nodes=1", raw)
         self.assertIn("#SBATCH --ntasks=1", raw)
         self.assertIn("#SBATCH --cpus-per-task=2", raw)

@@ -82,6 +82,75 @@ then G2's own BEFORE/AFTER chain.  B2/C2, reverse operand orders,
 inner-class-dual and no-value follow the same shape after G2's gate is
 accepted.
 
+## G2-V1 MIGRATION (in progress) — 2026-10-09
+
+Migrating the capture pair (`hpc/stage_weyl_context_core_capture.py` +
+`hpc/math_weyl_context_core_capture.py`) from the closed before-v4 gate to
+the new `weyl-context-g2-v1` capture stage.  Done so far: provisional
+fixtures (`8eadd1ed`), contract G2 layer (`2235a039`, 24/24 contract tests).
+Pending: stager/driver migration, progressive_submit lineage, test files,
+local rehearsal, then HPC submission.
+
+Harvested constants for the migration (all locally verified):
+
+- G2 fixture shas: cold `70c3e09e3678d149f46d844d2a47c3024050452a1383116784e577d953fa8c50`
+  (1928 B), prewarmed `06d3816d4636f2d25d46f96f1efa5417c598c4b6511d42f37d2fec61c8e05921`
+  (1454 B).  Catalog `weyl_context_g2_catalog.json` sha
+  `179d47814aa7526753f2a6dcdff9b23def9a09cbcabe5f96ec9d24dd2bef3bbd` (1436 B).
+- Capture input envelopes (`prints("MATH_BEGIN <id>")\n` + fixture +
+  `prints("MATH_END <id>")\nquit\n`): cold 2025 B sha
+  `9ea25f2d0f38c79d439d210ee2e467f10b74891b0593e71bd2aad440f3b82e51`;
+  prewarmed 1561 B sha
+  `3907ff5b0deb8ffde2ef2b12d20b0132b3831b98674e42bdb62d67a47fcba44f`.
+- before-v4 predecessor identity (copied from the HPC-validated
+  BEFORE_V4_PREDECESSOR in the after stager + the after-v1 submission
+  record `math_weyl_context_core_after_v1_submission_2026_10_03.json`):
+  job 3886748; pin `54221cf4…`; creation `c9197be0…`; contract `2affae9a…`;
+  transaction `4ae83ab4…`; overrides `add7dfe0…`; intent `c94c6cc6…`;
+  receipt `f53f3766…`; report `3d0c7c91…`/344871; report.sha256
+  `4516e044f5edcbfa…`/65; .out `977be4c8…`/145 (0644);
+  tree `1fa45944…`/180 files/18 dirs/4151738 B; device 3431958692; inode
+  162130669722468804; result evidence
+  `tests/reference/hpc/math_weyl_context_core_before_v4_2026_10_02.json`
+  sha `bf69999feb945b67f586d92d378cc20d238cb518ef84ad6ce11b54e3e74200d3`.
+  Campaign namespace at before-v4 completion: 37 creation files (the
+  capture stager's existing chain through before-v3 has 34; add before-v4's
+  prepared `eaa076df…`/20662, sealed `227bf9aa…`/589, published
+  `0dc33624…`/677).  Ledger at g2-v1 binding: `6bdf33d7…`/24 (re-verify at
+  reconciliation).
+- Source binding: parent seal `5133bb32…` + ladder patches
+  (`69676d60…` tests, `cada2e34…` fix) + regression patch `ccd30098…`
+  (3994 B) + repair patch `1ad07e8f…` (30047 B) → the exact after-v5 tree
+  (1567 files, manifest `84a3fbfd…`); the A1 fixtures/goldens stay in the
+  payload because they are inside that manifest.  g2-v1 adds the two G2
+  fixtures (+ catalog as a driver input) → expected tree 1570 files;
+  compute the new manifest locally with `campaign_source.file_manifest`
+  over the HEAD tree subset during the migration rehearsal.
+- Key structural findings: the capture stager owns all constants (the
+  driver imports them); `run_enabled` calls `validate_regression_inputs`
+  twice (payload + installed) — g2-v1 replaces that with a G2 inputs
+  validator (repair patch + G2 fixtures + catalog) since the stage is a
+  fresh capture, not a BEFORE gate; `_parse_frame`'s marker filter was
+  generalized to all known prefixes in `2235a039`; the contract's
+  `_validated_case`/`_arm_result` accept both registries.
+- Edit checklist: [x] fixtures [x] contract+tests [x] stager identity /
+  catalog / predecessor (direct PREDECESSOR = **after-v5**, the linear-ledger
+  chain head; before-v4 is bound historically via the ported
+  `validate_before_v4_result`, and the after chain's four failure validators
+  plus a new `validate_after_v5_result` are ported with rebound era
+  identities) / LIFECYCLE / source section (repair + G2 overlays, 1569-file
+  manifest `dff0e90d…` derived locally through three verified checkpoints)
+  / STAGE_INPUT_NAMES (65) [x] driver (4 G2 arms, regression commands kept
+  as passing controls, report schema `atlas-weyl-context-g2-v1`, capture-only
+  report, G2 source chain) [x] sbatch labels [x] progressive_submit
+  (ACTIVE_STAGE_NAME, lineage + after-v5, after-v4 scoped files, pin schema
+  literal) [x] all four test files migrated [x] EXPECTED_TEST_COUNTS = 129
+  [x] full local rehearsal under `umask 0022`: 129 tests, one remaining
+  local-only 0444-env error (green on HPC by precedent) [ ] payload/
+  pre-flight/reconcile/submit (one focused job) [ ] collection cron.
+  Both launchers are enabled and hash-pinned: stager `1c5093d0…`,
+  driver `354086e7…` (after-pair retired: `adb7cecdd…`/`20c57dd7…`).
+
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 
 The classifier change is committed (`80eaf6d3`):
