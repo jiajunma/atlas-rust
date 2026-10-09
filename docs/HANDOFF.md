@@ -317,6 +317,35 @@ prose asserting *current* state ("now implemented", "pending", the frontier)
 must be revised in the same commit as the transition that invalidates it —
 dated history stays, undated "now" rots.
 
+### Uncommitted-owner-content sweeps in three docs commits (2026-10-10, incident record)
+
+While editing docs during the tunnel outage I committed three files that
+carried PRE-EXISTING uncommitted working-tree content alongside my edits —
+the `git add <path>` staged the whole file, not just my delta:
+
+- `e2c6e127` swept `docs/REMAINING_BUILTINS.md` (+2007 lines: nearly the
+  entire current ledger, from LATEST 2026-10-02 onward, had never been
+  committed) under a message about the registry recount.
+- `f8a5ba25` swept `docs/COMPATIBILITY.md` (+77 lines: the whole
+  oracle-pin/346-corpus transition analysis) under the upstream-move note.
+- `3f984bfa` swept `docs/BENCHMARKS.md` (+58 lines: the accepted job3868782
+  baseline section) under the baseline-precondition update.
+
+Assessment: the swept content is legitimate, dated, and accurate project
+record (accepted gates and frozen inventories), so it stays committed —
+reverting would destroy the only copy and the branch is already pushed
+(no history rewrite).  The process violation is that it went in under my
+messages without the author's commit decision.  The author's pending
+modifications to `.gitignore`, `README.md`, `docs/DEFORM_DESIGN.md`,
+`docs/KL_CHAIN_TRACE.md`, `docs/LANGUAGE.md`, `docs/MATH_VALIDATION.md`,
+`docs/ON_DEMAND_PARTITION_DESIGN.md`, `docs/slices/generic_language_2026-09-28.md`,
+`hpc/math_generic_probe.py`, `hpc/math_language_bridge.py`, `hpc/math_suite.py`,
+`hpc/math_suite.sbatch`, `hpc/test_math_generic_probe.py`,
+`hpc/test_math_suite.py`, `tests/math/README.md`, `tests/math/catalog.json`,
+`tests/math/generics/catalog.json` remain UNTOUCHED and uncommitted.
+Prevention adopted: before staging any path I did not create, diff it
+against HEAD and confirm the delta is only my own edit.
+
 ### Payload rebuild drill at HEAD `7e40ddd7` (2026-10-09, tunnel-down)
 
 Re-ran runbook steps 1-2 locally: `git archive HEAD` of the 65 resolved
