@@ -244,3 +244,26 @@ must still error (validation precedes the gate), and
 `dual_real_form(ic,0)` must not.  Provisional and unwired; belongs to the
 no-value arc stage, and if the capture confirms divergence the fix is the
 one-word registration change (plus the regression).
+
+### Part 4 addendum: the reverse-direction sweep and its false-positive lesson
+
+A scripted cross-audit (all 171 Rust policy registrations vs 175 upstream
+installed wrappers at the pin, classifying each upstream wrapper's no-value
+behavior from its body text) produced 59 raw candidates in BOTH directions,
+including the dangerous-sounding reverse class "Rust VALIDATE where the
+original pure-skips" (wrong-rejection candidates: `block`, `partial_block`,
+`deform`, `W_refl`, `status`, `KL_block`, `KL_column`, `classify_involution`,
+`twisted_involution`, …).  Manual verification dissolved every spot-check:
+`test_standard(*p,"Cannot generate block")` and `internal_root_index(...)`
+are helper calls that VALIDATE before the no-value gate without a literal
+`throw` in the wrapper body — the Rust Validate arms replicate exactly those
+helper checks (`test_standard(parameter, "Cannot generate block")` etc.,
+with per-name atlas-types.w citations in `validate()`).  The heuristic's
+throw-literal scan is blind to helper-internal validation, so the 59-list is
+NOT evidence of further divergences; a reliable sweep would need call-aware
+validation detection.  What survives manual verification remains exactly the
+Part-4 dual-family table above.  Generalization worth remembering: any
+pure-skip-upstream + BuildAndDrop-Rust pair whose build is FALLIBLE (budgets)
+is a latent no-value error-path divergence — e.g. a discarded
+`root_permutation` on a budget-stressing datum errors in Rust but is silent
+in the original; the dual family is the verified representative.
