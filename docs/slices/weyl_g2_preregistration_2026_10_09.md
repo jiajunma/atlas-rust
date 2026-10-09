@@ -189,6 +189,24 @@ pin and the frozen A1 goldens:
 - `Weyl group mismatch` verbatim at atlas-types.w:2581/2591/2605 (the
   eq/neq/prod wrappers), matching Part 1 fact 5.
 
+## Part 5: format grounding against the A1 goldens (same day, later)
+
+The G2/B2C2 prediction tables' line SHAPES were validated against the frozen
+A1 oracle goldens (`weyl_context_core_cold_dual.oracle.stdout` /
+`..._prewarmed_dual.oracle.stdout`, the v8-captured byte-exact streams):
+booleans print `true`/`false`, words print `[0]`/`[0,1]`/`[]` (empty word),
+lengths bare integers, fields pipe-separated, and the rebound declaration
+emits `Variable ... (overriding previous instance, ...)` between markers.
+All prediction-table entries follow these formats.  Content cross-checks
+that also hold: `WC_DUAL_COLD_OWNER|true` (A1's transpose is invisible, so
+the canonical dual IS adjoint(A1,false) content — consistent with Part 1's
+matrix analysis), `WC_REBOUND|false|...` (preference flip), and the A1
+prewarmed dual-side AFTER lines showing `wcn_dual=wcn_target` → true (A1:
+the prewarmed target IS the canonical dual — for G2 Part 1 predicts false,
+which is exactly the vacuity point).  The A1 fixtures' `matrix(w)` field
+(`[ 1, 0 ]` with spaces) is deliberately not used in the G2 family — word/
+length/bool only.
+
 ## Part 4: no-value registration policy audit (same day, later)
 
 The no-value side-effect question cuts both ways: not only must validations
