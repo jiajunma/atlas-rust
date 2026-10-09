@@ -270,6 +270,13 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
   fixture's symmetric rejection (both numberings incompatible in BOTH
   operand orders, high/negative entry diagnostics, all errors recover)
   match the model.
+  Same-day G2 inner-class-dual review: `weyl_context_g2_inner_class_dual.atlas`
+  re-read: routing pins (`wi_ic_rd=wi_rd` true, routed elements equal and
+  multiply), the self-contained owner re-probe (both numberings false),
+  and the inner-class-routed dual checks (`wi_ic_dual_rd=wi_rd_dual` true;
+  the WI_IC_DUAL_EQ/NEQ/MUL triplet whose cold-share-vs-independent outcome
+  is the declared discovery) match the pre-registration model, including
+  the original's eager-dual construction background.
 
 ### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
 
