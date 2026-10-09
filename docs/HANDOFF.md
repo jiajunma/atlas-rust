@@ -387,6 +387,14 @@ key earlier-window commits (`690c2b92` repair, `964f0033` G2 migration,
 their declared files, and none of the owner's other pending paths
 (`tests/math/*/catalog.json`, `hpc/math_suite*`, `README.md`, `.gitignore`,
 …) appears in any of my commits this session.
+A related fourth case, different in kind: `6e07f206` is the FIRST commit of
+`docs/slices/language_corpus_transition_2026-10-01.md` — the file was
+untracked (never previously committed) although already referenced by the
+committed COMPATIBILITY.md, so `git add` introduced its full 2026-10-01
+content plus my dated UPDATE.  The outcome repairs a dangling reference;
+the commit message should nonetheless have said "first commit of the
+previously untracked slice".  Untracked status is now part of the same
+pre-stage check.
 
 ### Payload rebuild drill at HEAD `7e40ddd7` (2026-10-09, tunnel-down)
 
