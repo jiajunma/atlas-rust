@@ -286,6 +286,18 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
   BuildAndDrop-vs-skip divergence is observable only where the build
   errors), and the invalid-index `dual_real_form(xn_ic,99)` still errors
   (validation precedes the gate) — all consistent with the model.
+  Same-day final fixture review: `weyl_context_sole_weylelt_lifetime.atlas`
+  (WL_) and `rat_int_zero_division.atlas` (RZ_) re-read: WL_'s owner
+  temporaries never separately bound + interleaved noise constructions +
+  post-hoc use (word/product/root_datum round-trip true/cold-dual product)
+  correctly exercises the weak-interning lifetime question at A1 and G2;
+  RZ_'s known-clean int/int control runs FIRST (survives a terminating
+  probe), the nonconstant-zero trick defeats the static fold, and the
+  rat/int division/modulo probes target the pinned oracle's documented
+  dead-guard defect (`i==0` compares the pointer; upstream 509f584c fixed
+  it) as a labeled original-defect candidate — consistent with the
+  upstream delta analysis.  All drafted witness fixtures are now
+  re-verified against the pre-registration records.
 
 ### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
 
