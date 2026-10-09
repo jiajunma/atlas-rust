@@ -1,0 +1,27 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of the value layer for the atlas-core-value-layer packet: value.rs's Value enum (incl. Union's injector print, Closure's SlotShape/recursive/frame/span/param_names payload, opaque BuiltinFunction, the byte-preserving AtlasString whose Display is never the byte authority, Rational's separate-sign printing with an always-printed denominator), linear_values.rs's vec/mat/ratvec payloads with the byte-exact upstream print formats (column-major matrices, construction-time ratvec normalization), and formula.rs's operator-priority stack with the even-left/odd-right parity associativity rule. 11 tests across the three files.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/value.rs",
+   "sha256": "d7c64362becfb252b3722d09ce47d0ffbd29068044827e8aef65f77821a14c3a",
+   "bytes": 13509,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/linear_values.rs",
+   "sha256": "23a021083e7a1780b8081cde46089f21207c14469ff17b1ba72a1403439cbf88",
+   "bytes": 14378,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/formula.rs",
+   "sha256": "0b6d7dc57f5a066e30bbc889811f8094741dca33fbf81e3a8c89684ac7685865",
+   "bytes": 6726,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  }
+ ]
+}

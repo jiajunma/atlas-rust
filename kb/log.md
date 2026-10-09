@@ -692,3 +692,10 @@ Type/Prim/TypeBinding/TypeTable（revision Arc 身份、matching_bindings 查全
 （TypeScheme/TypeAssignment/InferredType，含上游 append 语义）+ recursive
 图级安装 + revision_tests。59 个测试。维护者直接撰写（无 Kimi）；索引与
 log 已同步；未运行编译/测试/compiler。
+
+新增 `sources/atlas-core-value-layer.md` 与快照
+`2026-10-09-atlas-core-value-layer.json`：Value 面（Union injector 打印、
+Closure 载荷、不透明 BuiltinFunction、字节保留 AtlasString、Rational 符号
+单走且分母恒打印）+ vec/mat/ratvec 载荷与逐字节上游打印格式（列主序、
+构造时规范化）+ 算符优先级栈的奇偶结合律。11 个测试。维护者直接撰写
+（无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。

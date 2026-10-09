@@ -516,6 +516,16 @@ constructors+`revision: Arc<()>` 非语义快照身份；`matching_bindings` 查
 [阅读快照](snapshots/2026-10-09-atlas-core-types.json)；维护者直接撰写
 （无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
 
+[值层](atlas-core-value-layer.md)记录 `value.rs`+`linear_values.rs`+
+`formula.rs`（359+403+243 行）：`Value` 面（`Union` 的 injector 打印、
+`Closure` 的 SlotShape/recursive/frame/span/param_names 载荷、不透明的
+`BuiltinFunction`、字节保留 `AtlasString`——Display 永不是字节权威）、
+`Rational` 符号与分子分离且分母恒打印、vec/mat/ratvec 载荷逐字节对应上游
+（列主序矩阵、`[ ]`/`" ]"` 尾、ratvec 构造时 gcd 规范化）、算符优先级栈
+的**奇偶结合律**（偶左奇右）。11 个测试。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-value-layer.json)；维护者直接
+撰写（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
