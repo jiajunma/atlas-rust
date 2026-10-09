@@ -1185,3 +1185,21 @@ Cartan/twist 上的 fold、cofold 在 complete_construction 之后且当前仅�
 is_present 的成员判定分工、length(n)=parent.length(z(n))、StarOracle 注入
 边界与 debug_assertions 对应 #ifndef NDEBUG、dirty 工作区快照如实记录——
 全部忠实。7 页批准；wiki/concepts/ 现有 222 页，剩余候选 311。
+
+## 2026年10月10日 第三十一批候选审查：extended-kl.md 的 7 页
+
+对照 118 行来源包逐页核验：池/符号分离（KlHashTable 条目 i32 KlPol 对应
+上游 IntPolEntry，索引不打包符号位，prim_flip 独立 bitmap，raw_ext_KL 的
+inx.second ? -inx.first : inx.first 渲染层）、DescentTable 预计算
+（is_descent 置 descents、否则 !has_double_image 置 good_ascents 即"至多
+一个向上邻居"、rank>MAX_FOLDED_RANK 的资源拒绝）、prim_index 逐 mask 递减
+构造（首个 good ascent、like-nonparity/跨 partial-block 边记 DEAD_END、沿
+cross 继承按 epsilon 差置 flip、收尾反转为递增）、very_easy/easy 集合与
+is_extremal（D(x)⊇D(y)）/is_primitive（G(x)∩D(y)=∅）判定、候选中
+"extremal 蕴含 primitive"的推导复核成立且反向限制如实声明、qk_plus_1/
+qk_minus_1/qk_minus_q 辅助多项式、mu(i,x,y) 取 q^{(ℓ(y/x)-i)/2} 系数
+（i=1,2,3）、fill_columns 的 limit==0 约定与"出错清空出错列并传播"对上游
+catch(...) 的有意偏离（候选如实指出偏离清单的"不改变可观察结果"概括不覆盖
+失败路径行为差异）、未移植项（get_M/down-set defect/check_polys/共享池
+swallow/StandardRepr 侧 ext_kl_matrix 前段）——全部忠实。7 页批准；
+wiki/concepts/ 现有 229 页，剩余候选 304。

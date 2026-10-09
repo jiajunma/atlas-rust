@@ -146,6 +146,11 @@
 
 - [[klv-表的-primitive-投影与访问语义|KLV 表的 primitive 投影与访问语义]]
 
+## primitivisation
+
+- [[primitivisation-索引与符号传播|Primitivisation 索引与符号传播]]
+- [[多项式池与-primitivisation-符号分离|多项式池与 primitivisation 符号分离]]
+
 ## Rust
 
 - [[reducedparamkey-与-reduced-键控块复用|ReducedParamKey 与 reduced 键控块复用]]
@@ -171,6 +176,7 @@
 
 ## Rust移植
 
+- [[扩展-klv-的-rust-移植边界与有意偏离|扩展 KLV 的 Rust 移植边界与有意偏离]]
 - [[整数矩阵算法的逐操作保真移植|整数矩阵算法的逐操作保真移植]]
 
 ## Rust设计
@@ -276,12 +282,17 @@
 
 - [[blockdescent-八值状态体系|BlockDescent 八值状态体系]]
 
+## 下降集
+
+- [[descenttable-的下降集与-good-ascent-预计算|DescentTable 的下降集与 good ascent 预计算]]
+
 ## 不动点
 
 - [[部分公共块上的扩展块构造与-cofold|部分公共块上的扩展块构造与 cofold]]
 
 ## 不变式
 
+- [[列填充的完整性不变式与错误传播|列填充的完整性不变式与错误传播]]
 - [[单反射下的图像基传送|单反射下的图像基传送]]
 
 ## 不变式校验
@@ -412,6 +423,7 @@
 
 - [[blockdescent-八值状态体系|BlockDescent 八值状态体系]]
 - [[对角化的行列式符号簿记|对角化的行列式符号簿记]]
+- [[扩展-klv-的-rust-移植边界与有意偏离|扩展 KLV 的 Rust 移植边界与有意偏离]]
 - [[整数矩阵算法的逐操作保真移植|整数矩阵算法的逐操作保真移植]]
 - [[根编号排序兼容与生成元置换|根编号排序兼容与生成元置换]]
 - [[表示参数代表元归一化|表示参数代表元归一化]]
@@ -483,6 +495,14 @@
 ## 分量群
 
 - [[对偶分量群的-fiber-rank|对偶分量群的 fiber rank]]
+
+## 列填充
+
+- [[列填充的完整性不变式与错误传播|列填充的完整性不变式与错误传播]]
+
+## 列式存储
+
+- [[扩展-klv-多项式表的逐列存储|扩展 KLV 多项式表的逐列存储]]
 
 ## 前置条件
 
@@ -568,6 +588,10 @@
 - [[weyl-语义回归的递进验证门禁|Weyl 语义回归的递进验证门禁]]
 - [[坐标边界修复的-tests-first-验证链|坐标边界修复的 tests-first 验证链]]
 - [[整数矩阵移植的-oracle-回归锚点与证据边界|整数矩阵移植的 oracle 回归锚点与证据边界]]
+
+## 回溯
+
+- [[扩展-klv-的-extremal-与-primitive-判定|扩展 KLV 的 extremal 与 primitive 判定]]
 
 ## 因子分解
 
@@ -659,6 +683,10 @@
 ## 多项式存储
 
 - [[klv-多项式去重池|KLV 多项式去重池]]
+
+## 多项式池
+
+- [[多项式池与-primitivisation-符号分离|多项式池与 primitivisation 符号分离]]
 
 ## 多项式运算
 
@@ -853,8 +881,14 @@
 
 - [[rust-weyl-内核与抽象群的无环所有权模型|Rust Weyl 内核与抽象群的无环所有权模型]]
 
+## 扩展KLV
+
+- [[扩展-klv-多项式表的逐列存储|扩展 KLV 多项式表的逐列存储]]
+- [[扩展-klv-的-extremal-与-primitive-判定|扩展 KLV 的 extremal 与 primitive 判定]]
+
 ## 扩展块
 
+- [[descenttable-的下降集与-good-ascent-预计算|DescentTable 的下降集与 good ascent 预计算]]
 - [[descvalue-扩展下降分类|DescValue 扩展下降分类]]
 - [[局部扩展类型识别与全父块构造|局部扩展类型识别与全父块构造]]
 - [[扩展块与-δ-不动部分|扩展块与 δ-不动部分]]
@@ -956,6 +990,7 @@
 - [[rootset-只读位图集合|RootSet 只读位图集合]]
 - [[transducer-转移表编码|Transducer 转移表编码]]
 - [[twisted-involution-表与-cartan-轨道存储|Twisted involution 表与 Cartan 轨道存储]]
+- [[扩展-klv-多项式表的逐列存储|扩展 KLV 多项式表的逐列存储]]
 - [[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]
 
 ## 数据表示
@@ -1328,6 +1363,14 @@
 
 - [[stablelog选举的稳定对数|stable_log：选举的稳定对数]]
 
+## 符号传播
+
+- [[primitivisation-索引与符号传播|Primitivisation 索引与符号传播]]
+
+## 符号处理
+
+- [[多项式池与-primitivisation-符号分离|多项式池与 primitivisation 符号分离]]
+
 ## 符号簿记
 
 - [[对角化的行列式符号簿记|对角化的行列式符号簿记]]
@@ -1448,6 +1491,10 @@
 ## 索引映射
 
 - [[扩展块与父块的索引映射|扩展块与父块的索引映射]]
+
+## 索引构造
+
+- [[primitivisation-索引与符号传播|Primitivisation 索引与符号传播]]
 
 ## 索引管理
 
@@ -1599,6 +1646,7 @@
 - [[最小环面算法的测试覆盖边界|最小环面算法的测试覆盖边界]]
 - [[完整块图的测试覆盖与证据边界|完整块图的测试覆盖与证据边界]]
 - [[形变驱动的冻结移植契约|形变驱动的冻结移植契约]]
+- [[扩展-klv-的-rust-移植边界与有意偏离|扩展 KLV 的 Rust 移植边界与有意偏离]]
 - [[整数矩阵移植的-oracle-回归锚点与证据边界|整数矩阵移植的 oracle 回归锚点与证据边界]]
 - [[梯子底成员查询的坐标溢出语义|梯子底成员查询的坐标溢出语义]]
 
@@ -1734,6 +1782,7 @@
 - [[twisted-involution-记录的数学不变量|Twisted involution 记录的数学不变量]]
 - [[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]
 - [[伴随纤维的资源预算与可恢复错误|伴随纤维的资源预算与可恢复错误]]
+- [[列填充的完整性不变式与错误传播|列填充的完整性不变式与错误传播]]
 - [[反射闭包的防御性不变量|反射闭包的防御性不变量]]
 - [[合成实形种子算法的门控与资源限制|合成实形种子算法的门控与资源限制]]
 - [[整对合分类的预算门与检查顺序|整对合分类的预算门与检查顺序]]
@@ -1753,6 +1802,10 @@
 
 - [[整数列阶梯归约与带符号-gcd-扫描|整数列阶梯归约与带符号 gcd 扫描]]
 
+## 集合判定
+
+- [[扩展-klv-的-extremal-与-primitive-判定|扩展 KLV 的 extremal 与 primitive 判定]]
+
 ## 非紧性
 
 - [[虚根的-noncompact-grading|虚根的 noncompact grading]]
@@ -1764,6 +1817,7 @@
 
 ## 预计算
 
+- [[descenttable-的下降集与-good-ascent-预计算|DescentTable 的下降集与 good ascent 预计算]]
 - [[基于-piece-的根置换预组合|基于 Piece 的根置换预组合]]
 - [[根与余根的梯子底表|根与余根的梯子底表]]
 

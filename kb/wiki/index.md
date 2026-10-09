@@ -28,6 +28,7 @@
 - **[[compactweyl-构造与生成元编号映射|CompactWeyl 构造与生成元编号映射]]** — CompactWeyl 从 Cartan 矩阵分类 Dynkin 图，反转 B/C/D 型的生成元次序，再逐内部生成元构造 transducer；d_out 与 piece_offset 分别处理内外编号及局部到全局内部编号的映射。
 - **[[coxeter-矩阵的分型查表|Coxeter 矩阵的分型查表]]** — coxeter_entry 根据连通 Dynkin 分型及 Bourbaki 生成元编号计算 Coxeter 矩阵项，在线性图中按编号距离与类型分派，并为 D/E 型采用分叉规则。
 - **[[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]** — 链接按元素与生成元平铺存储：Cayley 适用于非紧致 imaginary，逆 Cayley 适用于 real，后者区分单前像 II 型与双前像 I 型，并在编号标准化后按升序安装。
+- **[[descenttable-的下降集与-good-ascent-预计算|DescentTable 的下降集与 good ascent 预计算]]** — DescentTable 按元素和生成元预计算 descents 与至多具有一个向上邻居的 good ascents，并在秩超过 MAX_FOLDED_RANK 时返回资源限制错误。
 - **[[descvalue-扩展下降分类|DescValue 扩展下降分类]]** — DescValue 以 One、Two、Three 三族组织 32 种下降类型，通过奇偶枚举值、类型谓词、生成元长度与链接数描述局部结构。
 - **[[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]** — canonical dual 仅在目标尚未建立 WeylGroup 时共享源群身份，已预热目标保持独立，因此 Weyl 元素兼容性取决于对象生命周期和构造历史。
 - **[[fiber-元素的模型来源绑定与规范代表|Fiber 元素的模型来源绑定与规范代表]]** — 元素相等要求 Arc 模型指针与坐标同时相等，独立构造的同坐标元素不相等；商坐标选取基代表的 XOR 给出 low-pivot 约定下的确定性 ambient 代表。
@@ -55,6 +56,7 @@
 - **[[mod-2-投影与纤维商上的诱导映射|mod-2 投影与纤维商上的诱导映射]]** — mod-2 投影利用根系数的奇性翻转坐标位，FiberToAdjoint::apply 依次取规范代表、执行投影并构造目标纤维元素，每次应用现算而不缓存稠密矩阵。
 - **[[original-atlas-的抽象坐标-ladder-构造|Original Atlas 的抽象坐标 ladder 构造]]** — Original Atlas 使用抽象简单根坐标 Byte_vector 构造 ladder，再通过 Weyl reflection permutation 扩展至所有根，使环境格中的大坐标不参与该阶段的减法。
 - **[[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]** — ParabolicPieces 用内部层级的最小右陪集代表元分解生成 piece 索引列表，其字典序复现上游 WeylElt 排序并供 involution 排序及 KGB 重编号使用。
+- **[[primitivisation-索引与符号传播|Primitivisation 索引与符号传播]]** — 针对每个 descent mask 递减遍历元素，沿首个 good ascent 的 cross 链接继承 primitive 索引并依 epsilon 更新符号，遇到 like-nonparity 或 partial-block 边界则标记 DEAD_END。
 - **[[realformseed-的封装与构造不变量|RealFormSeed 的封装与构造不变量]]** — RealFormSeed 在共享 append-only 表的编号下绑定 grading offset、square-class cocharacter 与种子元素，以私有字段保证 grading_offset 等于 grading_of_simples(cocharacter)。
 - **[[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]** — build 检查 inner class、fundamental class 归一化、强层计数一致性降级及 form id 边界；custom 要求显式 cocharacter 的 simple pairings 为整数且 torus part 复现该 form 的 compact pattern。
 - **[[reducedparamkey-与-reduced-键控块复用|ReducedParamKey 与 reduced 键控块复用]]** — 使用姿态传输后的 KGB 元素、规范整数据编号和 Smith codec 余数构成私有稳定键，使 Weyl 姿态下匹配的查询复用已存公共块。
@@ -125,6 +127,7 @@
 - **[[最小环面部分的-grading-轨道搜索|最小环面部分的 grading 轨道搜索]]** — 算法用 LIFO 栈与 BTreeSet<u64> 遍历 grading 轨道，在置位方向施加余根奇偶平移和 grading 翻转，筛选满足目标约束的候选并按位向量整数序取最小值。
 - **[[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]** — longest_action 从源码计算的 2ρ 出发，按生成元顺序选择正配对反射并左合成，目标为 −2ρ，超预算或无法推进时报不变量错误；数学与复杂度声明尚未验收。
 - **[[分窗两相-bfs-构造|分窗两相 BFS 构造]]** — KGB 枚举以 64 个元素为一窗，先用 Rayon 在只读表与 coset 上计算状态及目标，再顺序 intern 去重并分配编号；并行结构本身不代表已有多核加速证据。
+- **[[列填充的完整性不变式与错误传播|列填充的完整性不变式与错误传播]]** — fill_columns 计算指定范围的列，limit 为零时填满整块；失败时清空出错列并传播错误，保持每列为空或完整的不变式，这与上游吞掉异常的行为不同。
 - **[[利用饱和核与模二秩计算整对合分类|利用饱和核与模二秩计算整对合分类]]** — 令 plus_rank = rank − rank(ker(θ+I))，以 (θ+I) mod 2 的行空间秩得到 complex，再求 compact 与 split；内部函数要求调用方保证对合前提。
 - **[[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]** — lookup 使用前向根置换作为完整相等性键；跨系统输入受调用方契约约束，种子插入不检查键碰撞，依赖不同 Cartan 轨道的键互不重叠。
 - **[[单位上三角整数矩阵求逆|单位上三角整数矩阵求逆]]** — inverse_upper_triangular 通过回代及 wrapping i32 运算求单位上三角矩阵的逆，并对非方阵或存在非 1 对角元的输入报错。
@@ -149,6 +152,7 @@
 - **[[基本-alcove-墙与整性检测|基本 alcove 墙与整性检测]]** — fundamental_alcove_walls 由全部单根和逐 Dynkin 分量最高余根对应的负根构成，int_item 分别以分子配对值等于 0 或负分母判定 gamma 是否落墙。
 - **[[基本余权的精确构造|基本余权的精确构造]]** — fundamental_coweights 将 Cartan 矩阵逆的各列按实际 simple coroot 展开，得到满足根配对为 Kronecker δ、radical 分量为零的 full lattice-rank 有理坐标。
 - **[[基本虚根-grading-的位置约束|基本虚根 grading 的位置约束]]** — 算法在基本虚单根基上构造紧致性起始位与 datum-单根目标约束，按位置匹配 crate 的根序；与上游前导段配对的一致性依赖其排序不变量，尚属注释声明。
+- **[[多项式池与-primitivisation-符号分离|多项式池与 primitivisation 符号分离]]** — 共享 KlHashTable 类型存储 i32 系数的 KlPol，索引不打包符号；独立 prim_flip 位图记录符号翻转，kl_pol_index 返回索引与翻转标志对。
 - **[[完整块图的对偶数据变换|完整块图的对偶数据变换]]** — BlockGraph::dual 通过反转元素编号、交换两侧坐标、反射长度及映射状态和链接生成对偶块，其中长度反射依赖末元素长度最大，双值 Cayley 像保持原顺序。
 - **[[完整块图的测试覆盖与证据边界|完整块图的测试覆盖与证据边界]]** — 源码列有七个秩一 A1 测试，覆盖对偶、Cayley 与部分 Bruhat 行为，但未覆盖多生成元布局、若干状态和失败分支；本包仅作结构性阅读，不提供运行或数学验收结论。
 - **[[完整块的-kgb-纤维积|完整块的 KGB 纤维积]]** — 完整块将实形式与对偶实形式的完整 KGB 集按对偶 twisted involution 配对，并保留两侧原始 KGB 坐标编号；缺失的对偶包不贡献元素。
@@ -174,6 +178,9 @@
 - **[[形变计算的父块抽象|形变计算的父块抽象]]** — KlSumParent 提供 Full 或 Partial 父块的借用视图，DeformParent 持有所需块数据；Partial 按行重构参数，递归驱动保证父块在借用期间存活。
 - **[[形变项计算的边界情形与输出顺序|形变项计算的边界情形与输出顺序]]** — deformation_terms 在 block.length(y)=0 时返回空；奇异集为空时所有元素均为 final，反向累积列表为 [y,y−1,…,0]。
 - **[[形变驱动的冻结移植契约|形变驱动的冻结移植契约]]** — Rust 形变驱动按冻结的 domain/deform 契约移植上游入口，约束共享 lambda_rho、block modifier、alcove 收缩与去除记忆化等行为；源码结构阅读不构成数学验收。
+- **[[扩展-klv-多项式表的逐列存储|扩展 KLV 多项式表的逐列存储]]** — ExtKlTable 为每个块元素 y 保存一列多项式池索引，按 x 相对于 y 的 descent set 的 primitive 位置寻址，并提供带符号多项式及系数查询。
+- **[[扩展-klv-的-extremal-与-primitive-判定|扩展 KLV 的 extremal 与 primitive 判定]]** — Extremal 要求 descents(x) 包含 descents(y)，primitive 要求 good_ascents(x) 与 descents(y) 不交；相关集合查询及回溯接口由 DescentTable 提供。
+- **[[扩展-klv-的-rust-移植边界与有意偏离|扩展 KLV 的 Rust 移植边界与有意偏离]]** — 移植采用自有池，推迟共享池和 swallow，省略部分调试检查，并仅覆盖扩展块已构建后的矩阵流程；源码包不提供数学验收或结果等价性的独立证据。
 - **[[扩展块与-δ-不动部分|扩展块与 δ-不动部分]]** — 扩展块取普通块的 δ-不动部分，并将生成元折叠到 δ-轨道；本来源仅解释结构切片，不提供数学验收结论。
 - **[[扩展块与父块的索引映射|扩展块与父块的索引映射]]** — z(n) 给出扩展元素的父索引，element(zz) 返回首个满足 z(n) ≥ zz 的扩展索引或 size()，元素长度沿用对应父块元素的长度。
 - **[[扭曲对合的-cayleycross-分解|扭曲对合的 Cayley/Cross 分解]]** — 以 Cayley 根、生成器下标组成的 cross word 及其 WeylAction 表示扭曲对合，并通过重放验证输入；分解在不同实现间不唯一，应比较重放不变量或标签结果。
@@ -225,4 +232,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_222 pages | Generated 2026-10-09T16:46:19.947Z_
+_229 pages | Generated 2026-10-09T16:47:55.027Z_

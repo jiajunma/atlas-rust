@@ -403,6 +403,19 @@
         "部分公共块上的扩展块构造与-cofold"
       ],
       "compiledAt": "2026-10-09T16:46:19.450Z"
+    },
+    "extended-kl.md": {
+      "hash": "0314dcb12b924bd86b315116041d433f4ba60369515ea8dae6731bc93cc09b67",
+      "concepts": [
+        "descenttable-的下降集与-good-ascent-预计算",
+        "primitivisation-索引与符号传播",
+        "列填充的完整性不变式与错误传播",
+        "多项式池与-primitivisation-符号分离",
+        "扩展-klv-多项式表的逐列存储",
+        "扩展-klv-的-extremal-与-primitive-判定",
+        "扩展-klv-的-rust-移植边界与有意偏离"
+      ],
+      "compiledAt": "2026-10-09T16:47:54.574Z"
     }
   }
 }
