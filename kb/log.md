@@ -679,3 +679,9 @@ TokenKind 12 变体（OperatorBecomes 融合、命令首指令）、35 关键字
 指令/注释/字符串边界（嵌套注释、双写引号、未闭合串 warning 且恢复 token
 保留）、TokenCursor 缓存错误 peek、tokenize_with_diagnostics。维护者直接
 撰写（无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。
+
+新增 `sources/atlas-core-syntax.md` 与快照 `2026-10-09-atlas-core-syntax.json`：
+Expr/Command/Pattern/TypeExpr 的 AST 面、四条解析入口（fragment 的
+Ok(None) 多行续行纪律）、TokenStream 适配与 Bison 措辞诊断、type_scope。
+51 个测试。维护者直接撰写（无 Kimi）；字节数一律实测（快照脚本现场测量，
+覆盖初稿占位值）。索引与 log 已同步；未运行编译/测试/compiler。

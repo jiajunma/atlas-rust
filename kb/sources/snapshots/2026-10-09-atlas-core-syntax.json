@@ -1,0 +1,27 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of syntax.rs + grammar.lalrpop for the atlas-core-syntax packet: the Expr/Command/Pattern/LambdaParam/TypeExpr AST surfaces with their parser.y/axis.w provenance comments, the parse entry points (parse_command_fragment_in's Ok(None) multi-line continuation rule), the TokenStream adapter and Bison-worded diagnostics, and the 51-test anchor module. Grammar-to-upstream correspondences are implementation-stated, not verified behavior.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/syntax.rs",
+   "sha256": "454efdb0989356b1eae8b560775841e28604b81c0685ddddc061a206d31ff79a",
+   "bytes": 168343,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/grammar.lalrpop",
+   "sha256": "303cd012a961b6c7f504a4697d1a0cb3ab26da6c299b276a5d12ab00018c6b0a",
+   "note": "grammar source surveyed for organization only (not read in full); hash omitted",
+   "bytes": 49405
+  },
+  {
+   "path": "crates/atlas-core/src/syntax/type_scope.rs",
+   "sha256": "ae5b73932cba3be06d01849e029aa818fdeff54ae1929bbb0ac7211c4c41c275",
+   "bytes": 8073,
+   "note": "parser-owned lexical type scopes; role from its header, not read in full"
+  }
+ ]
+}

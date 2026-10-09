@@ -492,6 +492,18 @@ token 进入 pending（REPL 行为）、`TokenCursor` 缓存错误的前瞻、
 [阅读快照](snapshots/2026-10-09-atlas-core-lex.json)；维护者直接撰写
 （无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
 
+[语法前端](atlas-core-syntax.md)记录 `syntax.rs`（4659 行）与
+`grammar.lalrpop`（1096 行）：`Expr`/`Command`/`Pattern`/`LambdaParam`/
+`TypeExpr` 的 AST 面（含 `BarList` 不经用户重载的独立脱糖、
+`OperatorCast` 的自由变量、`TypeAbstraction` 离开体即消失、`IntCase` 的
+负值/越界/取模三态、重复 `break` 按 levels+1 解层）、四条解析入口
+（`parse_command_fragment_in` 在解析器持有的类型规格未闭合时返回
+`Ok(None)`：物理换行不终止它，完整前不求值）、`TokenStream` 适配与
+Bison 措辞诊断（"syntax error, unexpected …"）、`type_scope.rs` 的
+解析器持有词法类型作用域。51 个测试。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-syntax.json)；维护者直接撰写
+（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
