@@ -481,6 +481,17 @@ abandon 级联最内层先且经 `line_map` 报物理行、`preprocess` 先剥�
 [阅读快照](snapshots/2026-10-09-atlas-core-session-frame.json)；维护者
 直接撰写（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
 
+[有状态词法器](atlas-core-lex.md)记录 `lex.rs`（992 行）：`TokenKind`
+12 变体（`OperatorBecomes` 跨空白/注释融合 `+:=`、命令首 token 才识别
+`<`/`<<`/`>`/`>>` 指令）、35 关键字与 20 个按 `Prim::ALL` 位置保留的
+原始类型、换行抑制状态机（Group/Let/Block 嵌套栈 + prevent/previous
+终止符：`.` 后的算符不再吞换行）、指令名前跳过空白**和注释**且裸名
+不含斜杠、嵌套 `{}` 注释、双写引号转义、未闭合串报 warning 且恢复出的
+token 进入 pending（REPL 行为）、`TokenCursor` 缓存错误的前瞻、
+`tokenize_with_diagnostics` 的恢复式扫描。23 个测试。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-lex.json)；维护者直接撰写
+（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of lex.rs for the atlas-core-lex packet: the 12-variant TokenKind (incl. OperatorBecomes fusion and command-start-only directives), the 35 keywords and 20 positionally reserved primitive types, the newline-suppression state machine (nesting stack, prevent/previous termination, keyword and punctuation effects), directive/comment/string boundaries (nested comments, quote-doubling, unterminated-string warning with the recovered token retained), TokenCursor's cached-error peek, and tokenize_with_diagnostics.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/lex.rs",
+   "sha256": "b43f863c38f628aef7721739614d8daa18c9d702c07226e792e530793d604785",
+   "bytes": 36362,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  }
+ ]
+}

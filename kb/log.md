@@ -672,3 +672,10 @@ compiler。
 abandon 级联（最内层先、line_map 物理行）、preprocess 续行。18 个测试
 锚点。维护者直接撰写（无 Kimi）；索引与 log 已同步；未运行编译/测试/
 compiler。
+
+新增 `sources/atlas-core-lex.md` 与快照 `2026-10-09-atlas-core-lex.json`：
+TokenKind 12 变体（OperatorBecomes 融合、命令首指令）、35 关键字 + 20 个
+按位保留的原始类型、换行抑制状态机（嵌套栈 + prevent/previous 终止符）、
+指令/注释/字符串边界（嵌套注释、双写引号、未闭合串 warning 且恢复 token
+保留）、TokenCursor 缓存错误 peek、tokenize_with_diagnostics。维护者直接
+撰写（无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。
