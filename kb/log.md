@@ -1170,3 +1170,18 @@ LIFO+BTreeSet<u64> 与 2^rank 上限、ModTwoVector 整数序选举、空候选�
 错误对应上游断言、测试覆盖边界如实记录（三正例皆 coch==factor、测试 3 与
 测试 2 首组输入相同、encode 的 Result 为预留）——全部忠实。8 页批准；
 wiki/concepts/ 现有 215 页，剩余候选 318。
+
+## 2026年10月10日 第三十批候选审查：extended-block.md 的 7 页
+
+对照 95 行来源包逐页核验：DescValue 32 值三族分类、is_descent 对应奇数
+枚举值、generator_length 按族 1/2/3、零链接类型（OneRealNonparity/
+OneImaginaryCompact 不记录 cross action）、has_october_surprise 的定义式
+与 2016-10 注释、ExtGen 的 usize::MAX 哨兵对应上游 ~0、fold_orbits 的
+cartan[i][j]=<α_i,α_j^v> 约定与轨道按 s0 递增、全块 build 在平凡 bm 下
+transformed_twisted 退化为双 kgb.twisted、build_partial 的
+x+gamma_lambda 不动点测试（y 是合成子系统计数而非对偶 KGB 元素）、子系统
+Cartan/twist 上的 fold、cofold 在 complete_construction 之后且当前仅恒等
+姿态（非恒等 simple_pi 显式失败）、element(zz) 的下界查找语义与
+is_present 的成员判定分工、length(n)=parent.length(z(n))、StarOracle 注入
+边界与 debug_assertions 对应 #ifndef NDEBUG、dirty 工作区快照如实记录——
+全部忠实。7 页批准；wiki/concepts/ 现有 222 页，剩余候选 311。
