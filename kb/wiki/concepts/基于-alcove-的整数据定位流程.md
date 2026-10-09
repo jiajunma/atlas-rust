@@ -7,7 +7,7 @@ kind: concept
 createdAt: "2026-10-09T14:59:38.938Z"
 updatedAt: "2026-10-09T22:38:39.013Z"
 tags:
-  - Alcove
+  - alcove
   - 整根系
   - 算法
 aliases:

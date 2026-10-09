@@ -7,7 +7,7 @@ kind: concept
 createdAt: "2026-10-09T21:13:50.470Z"
 updatedAt: "2026-10-09T21:13:50.470Z"
 tags:
-  - hpc
+  - HPC
   - validation
   - provenance
 aliases:

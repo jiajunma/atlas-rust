@@ -8,7 +8,7 @@ createdAt: "2026-10-09T21:14:06.184Z"
 updatedAt: "2026-10-09T21:14:06.184Z"
 tags:
   - weyl
-  - rust
+  - Rust
   - representation
   - performance
 aliases:

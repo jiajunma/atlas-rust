@@ -9,7 +9,7 @@ updatedAt: "2026-10-09T22:12:45.405Z"
 tags:
   - Levi子群
   - 轨道枚举
-  - Alcove
+  - alcove
 aliases:
   - levi-子商轨道与顶点轨道扩展
 confidence: 1
