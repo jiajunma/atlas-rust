@@ -1076,3 +1076,13 @@ ext_block::same_sign）、wrapping i32 镜像 C++ int 含溢出域、divide 的
 panic 面、exp_i 的 debug_assert 前置、oracle_reference_cases 逐字节锚点
 （含 6×6 秩亏案例的解字面量）、未测面清单——全部忠实。8 页批准；
 wiki/concepts/ 现有 163 页，剩余候选 370。
+
+## 2026年10月10日 第二十三批候选审查：weyl-transducer.md 的 7 页
+
+对照 72 行来源包逐页核验：parabolic-subquotient 表示与固定栈数组的零堆
+分配、WEYL_MAX_RANK=32 是表示上界而非枚举预算、表编码的 shift/transduction
+分界、CompactWeyl::new 三步（分类/反转 BCD/逐生成元建表）、d_out 与
+piece_offset 的编号分工、coxeter_entry 的分派表（含 BC(0,1)/F(1,2)=4、G=6；
+D/E 分叉未展开如实声明）、canonical_word 的重建-拼接-映射回流程与输入词
+无关性、piece_root_permutations 免矩阵、E6 数字为文档转述而非性能结论——
+全部忠实。7 页批准；wiki/concepts/ 现有 170 页，剩余候选 363。

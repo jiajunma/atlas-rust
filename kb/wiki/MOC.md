@@ -51,6 +51,14 @@
 - [[公共上下文的生成元操作commoncontext|公共上下文的生成元操作（CommonContext）]]
 - [[块图的直接与逆-cayley-变换|块图的直接与逆 Cayley 变换]]
 
+## Coxeter矩阵
+
+- [[coxeter-矩阵的分型查表|Coxeter 矩阵的分型查表]]
+
+## Dynkin图
+
+- [[coxeter-矩阵的分型查表|Coxeter 矩阵的分型查表]]
+
 ## HPC验证
 
 - [[weyl-语义回归的递进验证门禁|Weyl 语义回归的递进验证门禁]]
@@ -160,6 +168,7 @@
 - [[titselement-的元素表示与正规形契约|TitsElement 的元素表示与正规形契约]]
 - [[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]
 - [[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]
+- [[weylelt-的固定数组与容量边界|WeylElt 的固定数组与容量边界]]
 - [[余权坐标的投影出处绑定|余权坐标的投影出处绑定]]
 - [[关系格封装与构造预检|关系格封装与构造预检]]
 - [[标准模参数的约化表示standardreprmod|标准模参数的约化表示（StandardReprMod）]]
@@ -174,20 +183,27 @@
 - [[titscoset-的-grading-offset-与完整-inner-class-门控|TitsCoset 的 grading offset 与完整 inner-class 门控]]
 - [[titselement-的元素表示与正规形契约|TitsElement 的元素表示与正规形契约]]
 
+## Transducer
+
+- [[transducer-转移表编码|Transducer 转移表编码]]
+
 ## Weyl作用
 
 - [[torus-部分的模二矩阵传输|Torus 部分的模二矩阵传输]]
 
 ## Weyl群
 
+- [[compactweyl-构造与生成元编号映射|CompactWeyl 构造与生成元编号映射]]
 - [[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]
 - [[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]
 - [[twisted-cross-action-的-bfs-轨道构建|Twisted cross-action 的 BFS 轨道构建]]
 - [[twisted-weyl-群的对合对偶映射|Twisted Weyl 群的对合对偶映射]]
 - [[weyl-元素的可失败关系与跨坐标运算|Weyl 元素的可失败关系与跨坐标运算]]
 - [[weyl-元素的扭曲共轭|Weyl 元素的扭曲共轭]]
+- [[weyl-元素的规范词|Weyl 元素的规范词]]
 - [[weyl-姿态变换与典范约化词|Weyl 姿态变换与典范约化词]]
 - [[weyl-群的矩阵作用与词级元素双层结构|Weyl 群的矩阵作用与词级元素双层结构]]
+- [[weyl-群的紧凑-transducer-表示|Weyl 群的紧凑 Transducer 表示]]
 - [[weylaction-的对偶全格作用|WeylAction 的对偶全格作用]]
 - [[weylelement-的置换表示与长度下降不变量|WeylElement 的置换表示与长度下降不变量]]
 - [[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]
@@ -315,6 +331,10 @@
 ## 内存测量
 
 - [[weyl-上下文共享的性能与内存证据边界|Weyl 上下文共享的性能与内存证据边界]]
+
+## 内存表示
+
+- [[weylelt-的固定数组与容量边界|WeylElt 的固定数组与容量边界]]
 
 ## 内容去重
 
@@ -554,6 +574,10 @@
 
 - [[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]
 
+## 容量约束
+
+- [[weylelt-的固定数组与容量边界|WeylElt 的固定数组与容量边界]]
+
 ## 对偶
 
 - [[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]
@@ -694,6 +718,10 @@
 
 - [[twisted-cross-action-的-bfs-轨道构建|Twisted cross-action 的 BFS 轨道构建]]
 
+## 抛物子商
+
+- [[weyl-群的紧凑-transducer-表示|Weyl 群的紧凑 Transducer 表示]]
+
 ## 抛物子群
 
 - [[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]
@@ -748,6 +776,7 @@
 ## 数据结构
 
 - [[blockgraph-存储布局与坐标定位不变量|BlockGraph 存储布局与坐标定位不变量]]
+- [[transducer-转移表编码|Transducer 转移表编码]]
 - [[twisted-involution-表与-cartan-轨道存储|Twisted involution 表与 Cartan 轨道存储]]
 - [[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]
 
@@ -842,11 +871,16 @@
 
 ## 构造算法
 
+- [[compactweyl-构造与生成元编号映射|CompactWeyl 构造与生成元编号映射]]
 - [[根-involution-的-innerclass-构造与-weyl-因子|根 involution 的 InnerClass 构造与 Weyl 因子]]
 
 ## 枚举算法
 
 - [[带基数预算的-weyl-群作用枚举|带基数预算的 Weyl 群作用枚举]]
+
+## 查表算法
+
+- [[coxeter-矩阵的分型查表|Coxeter 矩阵的分型查表]]
 
 ## 标准模参数
 
@@ -870,6 +904,7 @@
 ## 根系
 
 - [[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]
+- [[基于-piece-的根置换预组合|基于 Piece 的根置换预组合]]
 - [[根对合诱导的伴随余权作用|根对合诱导的伴随余权作用]]
 - [[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]
 
@@ -1124,6 +1159,10 @@
 
 - [[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]
 
+## 紧凑表示
+
+- [[weyl-群的紧凑-transducer-表示|Weyl 群的紧凑 Transducer 表示]]
+
 ## 线性代数
 
 - [[实投影像基的播种与路径依赖传送|实投影像基的播种与路径依赖传送]]
@@ -1142,9 +1181,17 @@
 - [[k-型公式缓存的锁外计算与提交复核|K 型公式缓存的锁外计算与提交复核]]
 - [[weyl-上下文共享的性能与内存证据边界|Weyl 上下文共享的性能与内存证据边界]]
 
+## 编号映射
+
+- [[compactweyl-构造与生成元编号映射|CompactWeyl 构造与生成元编号映射]]
+
 ## 编号规则
 
 - [[公共块的构造与元素编号partialblock|公共块的构造与元素编号（PartialBlock）]]
+
+## 置换
+
+- [[基于-piece-的根置换预组合|基于 Piece 的根置换预组合]]
 
 ## 置换表示
 
@@ -1189,6 +1236,10 @@
 
 - [[twisted-involution-的三阶段规范化|Twisted involution 的三阶段规范化]]
 
+## 规范化算法
+
+- [[weyl-元素的规范词|Weyl 元素的规范词]]
+
 ## 规范截面
 
 - [[有限域线性求解的规范截面|有限域线性求解的规范截面]]
@@ -1200,6 +1251,10 @@
 ## 规范表示
 
 - [[基于左下降剥离的规范约化词|基于左下降剥离的规范约化词]]
+
+## 规范词
+
+- [[weyl-元素的规范词|Weyl 元素的规范词]]
 
 ## 计数
 
@@ -1272,6 +1327,10 @@
 
 - [[twisted-involution-枚举与共轭轨道分区|Twisted involution 枚举与共轭轨道分区]]
 - [[基于位掩码的-wim-轨道枚举|基于位掩码的 W_im 轨道枚举]]
+
+## 转移表
+
+- [[transducer-转移表编码|Transducer 转移表编码]]
 
 ## 输入校验
 
@@ -1357,6 +1416,10 @@
 
 - [[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]
 - [[基于生成元闭包的-twisted-共轭分区|基于生成元闭包的 twisted 共轭分区]]
+
+## 预计算
+
+- [[基于-piece-的根置换预组合|基于 Piece 的根置换预组合]]
 
 ## 饱和核
 

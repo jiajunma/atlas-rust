@@ -296,6 +296,19 @@
         "整数线性系统求解与像判定"
       ],
       "compiledAt": "2026-10-09T16:23:40.675Z"
+    },
+    "weyl-transducer.md": {
+      "hash": "43c55b6f3a61f28add43711641bc050fcd5193963812add09c489f91cb17fe31",
+      "concepts": [
+        "compactweyl-构造与生成元编号映射",
+        "coxeter-矩阵的分型查表",
+        "transducer-转移表编码",
+        "weyl-元素的规范词",
+        "weyl-群的紧凑-transducer-表示",
+        "weylelt-的固定数组与容量边界",
+        "基于-piece-的根置换预组合"
+      ],
+      "compiledAt": "2026-10-09T16:26:09.772Z"
     }
   }
 }
