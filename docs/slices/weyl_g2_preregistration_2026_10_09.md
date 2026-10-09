@@ -112,3 +112,43 @@ the G2 semantic gate passes with the corrected predictions recorded.  Any
 DIFFERED between engines — on any pin — is the Rust defect the arc exists
 to catch; a miscalibrated-predictions note applies only to the three pins
 named above.
+
+## Part 2: W_elt retention and the inner-class eager dual (same day, later)
+
+Two more upstream facts complete the source-level pre-registration for the
+remaining drafted fixtures (same fetched file, atlas-types.w at the pin):
+
+7. **A live W_elt keeps its datum alive.** `W_elt_value` (atlas-types.w:
+   2459-2471) has members `shared_root_datum rd; const WeylGroup& W;
+   WeylElt val;` — the `rd` strong pointer prevents interning expiry while
+   any element lives, and `W` references `rd->W()`.  `root_datum(W_elt)`
+   exists: `datum_from_W_elt_wrapper` (2552-2556) pushes `w->rd`.  So the
+   sole-WeylElt lifetime fixture's expectations in the original are safe by
+   construction: `WL_*_ROOT` round-trips print true, products and the cold
+   dual through `dual(root_datum(w))` work, and a later equal construction
+   reuses the same interned object because the store's weak slot is still
+   alive.  Rust must match (its W_elt holds the interned handle); any
+   expiry misbehavior is a genuine defect.
+8. **`inner_class_value::build` eagerly builds and retains the canonical
+   dual datum.**  Line 3306:
+   `std::make_shared<inner_class_value>(srd, srd->dual(), tau, lo, ...)`;
+   the class stores `shared_root_datum datum, dual_datum` (3234).  Per
+   `dual()`'s cold-share, this also fills the canonical dual's W_ptr with
+   the primal's group.  `dual(InnerClass)` (3322-3325) rebuilds via
+   `build(dual_datum, dualDistinguished())`.  Expected original behavior for
+   the WI fixture: `WI_ROUTE`=true, `WI_ROUTE_EQ`=true, `WI_ROUTE_MUL`=[],
+   `WI_DUAL_OWNER_FALSE`=**false**, `WI_DUAL_OWNER_TRUE`=**false** (the
+   canonical dual is the transposed object, per Part 1),
+   `WI_IC_DUAL_ROUTE`=true (the inner-class-routed dual datum IS the
+   explicit `dual(wi_rd)` interned object), `WI_IC_DUAL_EQ`=true,
+   `WI_IC_DUAL_NEQ`=false, `WI_IC_DUAL_MUL`=[], `WI_IC_DUAL_WORD`=[0,1]|2.
+   The gate's question for Rust is whether its inner-class path participates
+   in the same interned dual-identity scheme; the original's answers are
+   these.
+
+With Parts 1-2, every drafted fixture now has source-derived oracle
+expectations: G2 cold/prewarmed (Part 1), B2/C2 (Part 1 consequence),
+reverse operands (fact 5: left-owner products), inner-class-dual (fact 8),
+no-value (fact 5: guards throw before the no-value gate, so all five WV
+discarded/void contexts throw in the original while `WV_NOVALUE_OK` prints
+41), and sole-WeylElt lifetime (fact 7).
