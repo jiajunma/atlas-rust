@@ -12,7 +12,6 @@ tags:
   - 扩展块
 aliases:
   - descenttable-的下降集与-good-ascent-预计算
-  - D的GA预
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

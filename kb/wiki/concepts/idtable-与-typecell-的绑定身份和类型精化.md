@@ -12,7 +12,6 @@ tags:
   - 类型精化
 aliases:
   - idtable-与-typecell-的绑定身份和类型精化
-  - I与T的
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

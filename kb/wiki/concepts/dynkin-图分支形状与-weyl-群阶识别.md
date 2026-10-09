@@ -12,7 +12,6 @@ tags:
   - 类型识别
 aliases:
   - dynkin-图分支形状与-weyl-群阶识别
-  - D图W群
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

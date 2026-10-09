@@ -12,7 +12,6 @@ tags:
   - 实约化群
 aliases:
   - atlas-real-group-的-crate-门面与数学值边界
-  - A的C门
 confidence: 1
 provenanceState: merged
 modelId: codex-cli-default

@@ -12,7 +12,6 @@ tags:
   - 测试覆盖
 aliases:
   - 对偶分量群的-fiber-rank
-  - 对FR
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

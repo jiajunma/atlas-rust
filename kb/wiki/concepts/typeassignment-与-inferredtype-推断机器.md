@@ -12,7 +12,6 @@ tags:
   - 替换
 aliases:
   - typeassignment-与-inferredtype-推断机器
-  - T与I推
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

@@ -12,7 +12,6 @@ tags:
   - 纤维秩
 aliases:
   - cartan-纤维秩与-dualpi0
-  - C纤D
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

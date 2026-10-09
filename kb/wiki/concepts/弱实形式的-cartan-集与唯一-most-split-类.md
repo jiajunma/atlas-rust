@@ -11,7 +11,6 @@ tags:
   - Cartan分类
 aliases:
   - 弱实形式的-cartan-集与唯一-most-split-类
-  - 弱C集M类
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

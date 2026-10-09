@@ -13,7 +13,6 @@ tags:
   - 算法不变量
 aliases:
   - cross-与-cayley-闭包的根类型规则
-  - C与C闭
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

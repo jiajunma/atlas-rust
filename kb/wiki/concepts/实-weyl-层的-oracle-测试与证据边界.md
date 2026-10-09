@@ -12,7 +12,6 @@ tags:
   - 覆盖限制
 aliases:
   - 实-weyl-层的-oracle-测试与证据边界
-  - 实W层O测
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

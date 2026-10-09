@@ -12,7 +12,6 @@ tags:
   - 整数溢出
 aliases:
   - root-ladder-bottom-集与固定宽度成员查询
-  - RLB集
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

@@ -12,7 +12,6 @@ tags:
   - Rust
 aliases:
   - convertexpr-的-inout-类型模式与单遍转换
-  - C的I类
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

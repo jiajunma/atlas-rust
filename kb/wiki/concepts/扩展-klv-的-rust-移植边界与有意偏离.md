@@ -12,7 +12,6 @@ tags:
   - 证据边界
 aliases:
   - 扩展-klv-的-rust-移植边界与有意偏离
-  - 扩K的R移
 confidence: 0.99
 provenanceState: merged
 modelId: codex-cli-default

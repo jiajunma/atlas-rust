@@ -12,7 +12,6 @@ tags:
   - 算法
 aliases:
   - dynkin-分支的内类字母判定与-complex-因子重排
-  - D分C因
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

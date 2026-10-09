@@ -12,7 +12,6 @@ tags:
   - 来源歧义
 aliases:
   - root-ladder-修复的限定接受与账本状态歧义
-  - RL修
 confidence: 0.98
 provenanceState: ambiguous
 modelId: codex-cli-default

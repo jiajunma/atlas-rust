@@ -12,7 +12,6 @@ tags:
   - 精确算术
 aliases:
   - 基于-cartan-矩阵识别的-weyl-群阶计算
-  - 基C矩W群
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

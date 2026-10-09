@@ -12,7 +12,6 @@ tags:
   - 基线对齐
 aliases:
   - original-atlas-的抽象坐标-ladder-构造
-  - OA的L构
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

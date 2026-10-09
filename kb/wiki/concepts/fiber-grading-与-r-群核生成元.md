@@ -12,7 +12,6 @@ tags:
   - 模二线性代数
 aliases:
   - fiber-grading-与-r-群核生成元
-  - FG与R
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

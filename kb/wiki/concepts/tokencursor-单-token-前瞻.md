@@ -12,7 +12,6 @@ tags:
   - 流式解析
 aliases:
   - tokencursor-单-token-前瞻
-  - T单T前
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

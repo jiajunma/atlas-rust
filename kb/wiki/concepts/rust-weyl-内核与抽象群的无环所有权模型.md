@@ -12,7 +12,6 @@ tags:
   - 共享设计
 aliases:
   - rust-weyl-内核与抽象群的无环所有权模型
-  - RW内
 confidence: 0.99
 provenanceState: merged
 modelId: codex-cli-default

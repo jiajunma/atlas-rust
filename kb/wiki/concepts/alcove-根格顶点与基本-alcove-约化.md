@@ -12,7 +12,6 @@ tags:
   - Weyl群
 aliases:
   - alcove-根格顶点与基本-alcove-约化
-  - A根A约
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

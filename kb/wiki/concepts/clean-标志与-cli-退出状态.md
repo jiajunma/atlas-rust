@@ -12,7 +12,6 @@ tags:
   - 会话管理
 aliases:
   - clean-标志与-cli-退出状态
-  - C标C退
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

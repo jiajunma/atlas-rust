@@ -12,7 +12,6 @@ tags:
   - Rust实现
 aliases:
   - rootnumbering-根编号与-rootnbr-顺序
-  - R根R顺
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

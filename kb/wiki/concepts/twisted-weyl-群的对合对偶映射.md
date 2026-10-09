@@ -12,7 +12,6 @@ tags:
   - 算法
 aliases:
   - twisted-weyl-群的对合对偶映射
-  - TW群
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

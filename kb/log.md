@@ -1977,3 +1977,36 @@ markdown 链接零 404。另记录待办：136 个被已提交文档引用的目
 存在但未被 git 跟踪（docs/slices/ 48 个文件 133 处引用 + AFTER-v3 的
 root_ladder fixture/golden 3 个文件），属 owner 的提交决定，已在 HANDOFF
 记录，不代为提交。
+## [2026-10-09T19:38:51Z] compile | 25 source(s) → 0 page(s)
+- Sources: block-graph.md, cartan-classification.md, deformation-drivers.md, ext-param.md, extended-block.md, extended-kl.md, grading.md, inner-class.md, integer-lattice.md, involution-table.md, kgb-graph-structure.md, kl-polynomial-table.md, lattice-types.md, matreduc.md, mod-two.md, partial-common-block.md, real-form-seed.md, real-projection.md, rep-context.md, rep-table.md, … (+5 more)
+
+
+## 2026年10月10日 刷新候选复审完成（153 候选，545 页）
+
+前一条目的 31 处来源包链接修复改变了 25 个包的字节，`refresh --stale`
+重编译后产生 27 页原地刷新与 153 个待审候选。本轮按 hold-all 纪律逐包
+复审后全部批准：
+
+- 9 个新页先对包全文核验忠实性再批准（extended-kl 3 页、
+  kl-polynomial-table 3 页、mod-two 3 页）。
+- 其余 144 个为既有页的改写刷新。复审用三层筛：(1) 机械校验全部引用锚点
+  行号在包内有效、且每个被引句的代码标识符与数字 token 确实出现在所引
+  行范围内（76 个直接通过）；(2) 67 个仅剩"限定名/移位的引用"差异的
+  候选，逐条打印其句子与包内出处人工核对，全部为忠实改写（含一处
+  `max_len` 系包内 LaTeX `\mathrm{max\_len}` 的代码体写法、一处
+  "2016 年 10 月"系包内 "October 2016" 的中译）；(3) 对 8 个通过组的
+  完整 diff 抽查语义翻转风险，未发现事实漂移。候选与现页的差异绝大多数
+  是措辞改写与引用锚点重挂；链接前缀修复（`../../../crates` → `../../`）
+  不影响锚点行号。
+
+复审后 `llmwiki status`：545 concepts / 73 sources / Fresh / 0 待审候选；
+全库链接扫描（872 个索引名：文件名+显示标题）零红链。本轮为编辑性复审，
+不构成数学验收；验收权威仍在 HPC 门与账本。
+
+附注（标签/MOC 漂移）：本轮 133 个刷新页的前沿 tags 有变动，MOC 由编译器
+随之重建，分节 824→772、页链接 1605→1559。核查结果：没有任何页失去全部
+标签，545 页全部仍在 MOC 中至少出现一次；净变化是合并（如 内部类→内类、
+整数运算→整数算术 为完全改名）。仍有少量近义标签并存（资源限制 2 页 /
+资源预算 16 页、算法不变量 4 页 / 构造不变量 5 页、不变量 6 页），与既有
+的碎片化问题同类——按 10 月 10 日 MOC 合并条目的既定决定，更广义的标签
+归并留作后续专项编辑工作，本轮不做机械批量改动。

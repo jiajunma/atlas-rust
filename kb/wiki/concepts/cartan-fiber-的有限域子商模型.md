@@ -12,7 +12,6 @@ tags:
   - 有限域
 aliases:
   - cartan-fiber-的有限域子商模型
-  - CF的
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

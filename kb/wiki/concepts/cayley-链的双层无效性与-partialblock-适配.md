@@ -12,7 +12,6 @@ tags:
   - 块拓扑
 aliases:
   - cayley-链的双层无效性与-partialblock-适配
-  - C链P适
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

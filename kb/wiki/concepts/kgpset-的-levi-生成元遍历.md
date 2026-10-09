@@ -12,7 +12,6 @@ tags:
   - 调用契约
 aliases:
   - kgpset-的-levi-生成元遍历
-  - K的L生
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

@@ -12,7 +12,6 @@ tags:
   - 预算管理
 aliases:
   - 对偶-cartan-fiber-链的临时重建
-  - 对CF链
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

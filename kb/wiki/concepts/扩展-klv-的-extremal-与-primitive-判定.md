@@ -12,7 +12,6 @@ tags:
   - 回溯
 aliases:
   - 扩展-klv-的-extremal-与-primitive-判定
-  - 扩K的E与P判
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

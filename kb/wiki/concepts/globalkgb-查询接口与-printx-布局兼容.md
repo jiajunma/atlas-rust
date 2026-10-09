@@ -12,7 +12,6 @@ tags:
   - 兼容性
 aliases:
   - globalkgb-查询接口与-printx-布局兼容
-  - G查P布
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

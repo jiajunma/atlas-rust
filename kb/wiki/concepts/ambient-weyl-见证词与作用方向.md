@@ -12,7 +12,6 @@ tags:
   - 对偶作用
 aliases:
   - ambient-weyl-见证词与作用方向
-  - AW见
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

@@ -12,7 +12,6 @@ tags:
   - 词构造
 aliases:
   - 由基本-alcove-构造-weyl-词
-  - 由A构W词
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

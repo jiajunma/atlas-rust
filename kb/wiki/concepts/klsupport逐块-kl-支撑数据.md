@@ -12,7 +12,6 @@ tags:
   - 数据结构
 aliases:
   - klsupport逐块-kl-支撑数据
-  - KK支
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

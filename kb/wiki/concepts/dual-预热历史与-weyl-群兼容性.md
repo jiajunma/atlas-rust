@@ -12,7 +12,6 @@ tags:
   - 可观察语义
 aliases:
   - dual-预热历史与-weyl-群兼容性
-  - D预W群
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

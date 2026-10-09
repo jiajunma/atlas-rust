@@ -12,7 +12,6 @@ tags:
   - 适用范围
 aliases:
   - a1-加中心环面边界-fixture-与历史-oracle
-  - A加F与O
 confidence: 1
 provenanceState: merged
 modelId: codex-cli-default

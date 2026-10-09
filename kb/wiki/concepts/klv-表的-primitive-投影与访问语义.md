@@ -12,7 +12,6 @@ tags:
   - 边界语义
 aliases:
   - klv-表的-primitive-投影与访问语义
-  - K表P投
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

@@ -12,7 +12,6 @@ tags:
   - grading
 aliases:
   - cayley-回拉与模二-grading-求解
-  - C回G求
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

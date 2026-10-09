@@ -489,6 +489,32 @@ display titles) finds **zero red links**.  Editorial caveat per kb/AGENTS.md:
 these pages are structural-reading records, not mathematical acceptance —
 the HPC gates remain the acceptance authority.
 
+Follow-up (2026-10-10, second refresh round): the 31 packet link fixes
+(`../../../crates` → `../../` inside two-level `kb/sources/`) changed 25
+packet byte streams, so `refresh --stale` recompiled them: 27 pages
+refreshed in place plus **153 held candidates**.  All 153 were reviewed and
+approved: 9 brand-new pages (extended-kl ×3, kl-polynomial-table ×3,
+mod-two ×3) were verified against full packet text first; the 144 page
+refreshes went through a three-tier sieve — (1) mechanical check that every
+citation anchor is a valid packet line range AND every code identifier /
+number token in the citing sentence appears inside the cited lines (76
+passed outright), (2) the remaining 67 had only qualification/re-anchoring
+flags, each printed with its packet provenance and eyeballed (all faithful;
+two representative resolutions: candidate `` `max_len` `` is the packet's
+LaTeX `\mathrm{max\_len}` set in code font, and "2016 年 10 月" is the
+packet's "October 2016"), (3) full-diff spot checks of 8 sieve-passing
+candidates across 8 packet groups found no semantic drift (rewording +
+citation re-attachment only).  Tag churn accompanied the refresh: 133 pages'
+frontmatter tags changed, MOC rebuilt 824→772 sections / 1605→1559 links;
+verified no page lost all tags and all 545 pages remain linked in the MOC —
+net consolidation (内部类→内类, 整数运算→整数算术 complete renames), with
+small residual near-synonym splits (资源限制/资源预算 2/16,
+算法不变量/构造不变量 4/5) deferred to the already-planned dedicated tag
+curation pass, same as the pre-existing fragmentation decision.  Final
+state: **545 concepts / 73 sources / Fresh / 0 pending candidates / zero
+red links (872 indexed names)**; logged in `kb/log.md` 2026-10-10.  Same
+editorial caveat: not mathematical acceptance.
+
 ### Upstream HEAD moved (2026-10-09, read-only finding)
 
 A fresh `git ls-remote` at 2026-10-09T13:14:20Z resolves upstream

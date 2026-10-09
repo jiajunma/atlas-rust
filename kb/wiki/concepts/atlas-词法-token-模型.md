@@ -12,7 +12,6 @@ tags:
   - Rust
 aliases:
   - atlas-词法-token-模型
-  - A词T模
 confidence: 0.99
 provenanceState: extracted
 modelId: codex-cli-default

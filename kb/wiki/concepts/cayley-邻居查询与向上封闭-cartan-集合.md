@@ -1,15 +1,15 @@
 ---
 title: Cayley 邻居查询与向上封闭 Cartan 集合
-summary: cayley 以 s·w 的置换查表寻找邻居，目标 Cartan 未添加时返回 None；stage e 要求预先添加该 form 的向上封闭 Cartan 集合。
+summary: cayley 通过 s·w 的置换查表寻找邻居，目标 Cartan 类尚未添加时返回 None；stage e 要求预先添加对应实形式的向上封闭 Cartan 集合。
 sources:
   - involution-table.md
 kind: concept
 createdAt: "2026-10-09T14:52:42.234Z"
-updatedAt: "2026-10-09T14:52:42.234Z"
+updatedAt: "2026-10-09T19:31:15.048Z"
 tags:
   - Cayley变换
   - Cartan分类
-  - 接口契约
+  - KGB
 aliases:
   - cayley-邻居查询与向上封闭-cartan-集合
   - C邻C集
@@ -19,28 +19,29 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
 ---
 
 # Cayley 邻居查询与向上封闭 Cartan 集合
 
-`InvolutionTable::cayley(generator, id)` 查询对合记录的 Cayley 邻居，其词级表达式为 \(s\cdot w\)。查询通过反射乘积与根置换查表完成；目标 Cartan 类尚未加入表时，返回 `None`。因此，返回值的解释依赖于调用方是否已准备好所需的 Cartan 集合。^[involution-table.md:73-75]
+`InvolutionTable::cayley(generator, id)` 查询对合记录的 Cayley 邻居 \(s\cdot w\)，通过反射乘积与根置换查表定位目标。目标 Cartan 类尚未加入表时，查询返回 `None`；KGB 构建 stage-(e) 要求预先添加该实形式的向上封闭 Cartan 集合，因此返回值必须结合这一调用前提解释。^[involution-table.md:73-75]
 
 ## 查询与存储基础
 
-[[Twisted involution 表与 Cartan 轨道存储|Twisted involution 表]]按 Cartan 类连续存储对合轨道，`InvolutionId` 跨 Cartan 全局连续递增。`add_cartan(classification, cartan)` 将指定类的轨道加入表，重复添加则返回已有切片；种子与期望轨道大小来自 classification，生成结果必须恰好符合期望大小。^[involution-table.md:20-24, involution-table.md:33-35, involution-table.md:44-49]
+[[Twisted involution 表与 Cartan 轨道存储|Twisted involution 表]]属于 KGB 构建的 stage b，按 Cartan 类连续存储对合轨道。`InvolutionId` 跨 Cartan 全局连续递增，`orbit_slice(cartan)` 返回对应的连续轨道切片及其起始编号。^[involution-table.md:20-24, involution-table.md:33-35]
 
-表的查找键是前向根置换。Cayley 查询计算 \(s\cdot w\) 后通过置换查表定位目标；相较之下，`cross(generator, id)` 查询的是 \(s\cdot w\cdot\mathrm{twist}(s)\)，使用构建时存储的链接。两者的作用公式与查询路径不同。^[involution-table.md:67-75]
+`add_cartan(classification, cartan)` 将指定 Cartan 类的轨道加入表；重复添加返回已有切片。轨道种子与期望大小来自 classification，生成结果必须恰好填满期望大小，否则报告 `"orbit size"` 不变量错误。相关构造约束见 [[Cartan 轨道的幂等添加与容量约束]]。^[involution-table.md:44-49]
+
+表以**前向根置换**作为查找键。`cayley` 计算反射乘积 \(s\cdot w\) 后查表；`cross(generator, id)` 则查询 \(s\cdot w\cdot\mathrm{twist}(s)\)，直接读取构建时存储的链接。两者的作用公式与查询路径不同。^[involution-table.md:67-75]
 
 ## 向上封闭的调用契约
 
-KGB 构建的 stage-(e) 契约要求：调用 Cayley 邻居查询前，先添加该实形式的向上封闭 Cartan 集合。该准备工作完成后，`None` 即表示调用方违反不变量；不能将它解释为符合该契约的正常查询结果。此要求将邻居查询的有效性与表中已加入的 Cartan 类范围联系起来。^[involution-table.md:73-75]
+stage-(e) 的准备要求是先添加该实形式的**向上封闭 Cartan 集合**。在此之前，`None` 可以反映目标 Cartan 类尚未入表；满足这一准备契约后，来源将 `None` 认定为调用方违反不变量，而非正常的邻居查询结果。^[involution-table.md:73-75]
 
 ## 测试与证据边界
 
-来源记录了一项针对 Cayley 边的测试锚点：目标 Cartan 类加入前，查询返回 `None`；加入后，同一条边的查询返回 `Some`。这一锚点直接覆盖了 Cartan 类是否入表对查询结果的影响。^[involution-table.md:79-84]
+来源记录的 Cayley 边测试检查了目标 Cartan 类加入前后的变化：加入前返回 `None`，加入后返回 `Some`。这一锚点覆盖了目标 Cartan 是否入表对查询结果的影响，可结合 [[Involution 表的测试锚点与证据边界]] 阅读。^[involution-table.md:79-88]
 
-本页依据的是源码结构性阅读及所记录的测试锚点。来源包未执行构建、测试或原版运行，也不提供数学验收、性能或并行结论；相关正确性仍属于独立的 [[HPC 验收证据链]]。^[involution-table.md:9-16, involution-table.md:103-106]
+本页依据源码结构性阅读及来源记录的测试锚点。来源包未执行构建、测试或原版运行，不提供数学验收、性能或并行结论；正确性属于该实现自身的 [[HPC 验收证据链]]。^[involution-table.md:9-16, involution-table.md:103-106]
 
 ## Sources
 

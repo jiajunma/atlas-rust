@@ -12,7 +12,6 @@ tags:
   - 环面
 aliases:
   - 根数据的-radical-与-coradical-饱和核基
-  - 根R与C饱
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

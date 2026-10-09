@@ -12,7 +12,6 @@ tags:
   - 排序不变量
 aliases:
   - adjoint-轨道的分层有序-bfs
-  - A轨B
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

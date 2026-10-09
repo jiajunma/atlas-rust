@@ -12,7 +12,6 @@ tags:
   - 结构不变量
 aliases:
   - bruhat-偏序的-hasse-图构造
-  - B偏H图
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

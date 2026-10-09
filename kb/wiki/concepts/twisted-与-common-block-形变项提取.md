@@ -12,7 +12,6 @@ tags:
   - 系数转换
 aliases:
   - twisted-与-common-block-形变项提取
-  - T与C形
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

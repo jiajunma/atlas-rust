@@ -12,7 +12,6 @@ tags:
   - 位集
 aliases:
   - specialgrading-的-bourbaki-序拉回与因子切片
-  - S的B序
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

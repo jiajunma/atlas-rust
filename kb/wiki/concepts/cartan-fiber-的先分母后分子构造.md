@@ -12,7 +12,6 @@ tags:
   - 资源预算
 aliases:
   - cartan-fiber-的先分母后分子构造
-  - CF的
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default

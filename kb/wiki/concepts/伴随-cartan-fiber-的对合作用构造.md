@@ -12,7 +12,6 @@ tags:
   - 对偶作用
 aliases:
   - 伴随-cartan-fiber-的对合作用构造
-  - 伴CF的
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default
