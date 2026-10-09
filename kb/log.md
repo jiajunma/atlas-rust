@@ -1702,3 +1702,19 @@ completed 打 Completely）、clean 纪律（语法/类型/求值错误置脏、
 describe_bytes 输出形状与无 span 裸头、18 测试锚点清单与 eval/
 file_commands_b9 唯一允许写 /tmp——全部忠实。7 页批准；wiki/concepts/
 现有 436 页，剩余候选 97。
+
+## 2026年10月10日 第六十一批候选审查：atlas-core-value-layer.md 的 7 页
+
+对照 74 行来源包（维护者直接撰写）逐页核验：Value 全变体清单、
+AtlasString(Vec<u8>) 字节保留与双向 PartialEq、Display 只是预览而
+atlas_text/append_atlas_text 才是无 Unicode 边界的打印机、Rational 符号
+单走且分母为 1 也打印、Closure 只打 Function defined 头（完整形式由
+closure_trace_string 渲染）、Closure 的 shapes（whole 绑在元素槽之前）、
+parameters=0 不再压帧、recursive 0 号槽绑自身、frame 弹出后存活、
+BuiltinFunction 不透明只能由注册表构造、Vec32/Matrix 列主序/RatVec 构造
+即规范化且分母 0 返 None、write_bracketed 的右对齐逗号分隔" ]"/"[ ]"
+细节与 ratvec 追加 /denominator、formula 栈的 should_reduce 奇偶结合
+约定（偶左奇右）与 4 测试钉死、首元一元算符参与比较而二元后一元属其
+运算元——全部忠实；候选如实保留"Value 已列线性变体"与"phase-B B2 才
+嵌入"的阶段性表述差异。7 页批准；wiki/concepts/ 现有 443 页，剩余
+候选 90。
