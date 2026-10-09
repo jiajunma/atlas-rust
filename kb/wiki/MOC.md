@@ -62,6 +62,7 @@
 ## HPC验证
 
 - [[weyl-语义回归的递进验证门禁|Weyl 语义回归的递进验证门禁]]
+- [[坐标边界修复的-tests-first-验证链|坐标边界修复的 tests-first 验证链]]
 
 ## InnerClass
 
@@ -118,6 +119,10 @@
 
 - [[k-型公式的记忆化与截断复用|K 型公式的记忆化与截断复用]]
 
+## Oracle溯源
+
+- [[a1-加中心环面边界-fixture-与历史-oracle|A1 加中心环面边界 fixture 与历史 oracle]]
+
 ## Oracle验证
 
 - [[整数矩阵移植的-oracle-回归锚点与证据边界|整数矩阵移植的 oracle 回归锚点与证据边界]]
@@ -131,6 +136,7 @@
 - [[reducedparamkey-与-reduced-键控块复用|ReducedParamKey 与 reduced 键控块复用]]
 - [[repcontext-借用上下文与一致性约束|RepContext 借用上下文与一致性约束]]
 - [[reptableowner-实形式资源所有者|RepTableOwner 实形式资源所有者]]
+- [[rust-ladder-成员查询的选择性溢出处理|Rust ladder 成员查询的选择性溢出处理]]
 - [[rust-weyl-内核与抽象群的无环所有权模型|Rust Weyl 内核与抽象群的无环所有权模型]]
 - [[standardrepr-标准表示参数|StandardRepr 标准表示参数]]
 - [[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]
@@ -199,6 +205,7 @@
 - [[compactweyl-构造与生成元编号映射|CompactWeyl 构造与生成元编号映射]]
 - [[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]
 - [[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]
+- [[original-atlas-的抽象坐标-ladder-构造|Original Atlas 的抽象坐标 ladder 构造]]
 - [[twisted-cross-action-的-bfs-轨道构建|Twisted cross-action 的 BFS 轨道构建]]
 - [[twisted-weyl-群的对合对偶映射|Twisted Weyl 群的对合对偶映射]]
 - [[weyl-作用到根排列的转换|Weyl 作用到根排列的转换]]
@@ -456,6 +463,7 @@
 ## 回归测试
 
 - [[weyl-语义回归的递进验证门禁|Weyl 语义回归的递进验证门禁]]
+- [[坐标边界修复的-tests-first-验证链|坐标边界修复的 tests-first 验证链]]
 - [[整数矩阵移植的-oracle-回归锚点与证据边界|整数矩阵移植的 oracle 回归锚点与证据边界]]
 
 ## 图算法
@@ -522,6 +530,7 @@
 ## 基线对齐
 
 - [[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]
+- [[original-atlas-的抽象坐标-ladder-构造|Original Atlas 的抽象坐标 ladder 构造]]
 - [[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]
 - [[平方类编号与换基不变量|平方类编号与换基不变量]]
 - [[强实分类打印视图-strongrealclassprint|强实分类打印视图 StrongRealClassPrint]]
@@ -702,6 +711,10 @@
 - [[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]
 - [[梯子底成员查询的坐标溢出语义|梯子底成员查询的坐标溢出语义]]
 
+## 成员查询
+
+- [[rust-ladder-成员查询的选择性溢出处理|Rust ladder 成员查询的选择性溢出处理]]
+
 ## 截断语义
 
 - [[k-型公式的记忆化与截断复用|K 型公式的记忆化与截断复用]]
@@ -759,6 +772,7 @@
 
 ## 数学不变量
 
+- [[root-ladder-bottom-集与固定宽度成员查询|Root ladder bottom 集与固定宽度成员查询]]
 - [[twisted-involution-记录的数学不变量|Twisted involution 记录的数学不变量]]
 
 ## 数学对象
@@ -819,6 +833,7 @@
 
 ## 整数溢出
 
+- [[root-ladder-bottom-集与固定宽度成员查询|Root ladder bottom 集与固定宽度成员查询]]
 - [[梯子底成员查询的坐标溢出语义|梯子底成员查询的坐标溢出语义]]
 
 ## 整数矩阵
@@ -875,6 +890,10 @@
 
 - [[titscoset-的-grading-offset-与完整-inner-class-门控|TitsCoset 的 grading offset 与完整 inner-class 门控]]
 
+## 来源歧义
+
+- [[root-ladder-修复的限定接受与账本状态歧义|Root ladder 修复的限定接受与账本状态歧义]]
+
 ## 构建验证
 
 - [[伴随-cartan-纤维的构建与下降验证|伴随 Cartan 纤维的构建与下降验证]]
@@ -920,6 +939,7 @@
 ## 根系
 
 - [[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]
+- [[root-ladder-bottom-集与固定宽度成员查询|Root ladder bottom 集与固定宽度成员查询]]
 - [[rootid-与根系索引对齐|RootId 与根系索引对齐]]
 - [[weyl-作用到根排列的转换|Weyl 作用到根排列的转换]]
 - [[反射闭包的防御性不变量|反射闭包的防御性不变量]]
@@ -975,6 +995,10 @@
 ## 正规形
 
 - [[titselement-的元素表示与正规形契约|TitsElement 的元素表示与正规形契约]]
+
+## 测试夹具
+
+- [[a1-加中心环面边界-fixture-与历史-oracle|A1 加中心环面边界 fixture 与历史 oracle]]
 
 ## 测试覆盖
 
@@ -1135,6 +1159,7 @@
 ## 算法设计
 
 - [[based-cross-action-的闭式实现|Based cross action 的闭式实现]]
+- [[original-atlas-的抽象坐标-ladder-构造|Original Atlas 的抽象坐标 ladder 构造]]
 - [[torus-部分的模二矩阵传输|Torus 部分的模二矩阵传输]]
 
 ## 算法顺序
@@ -1307,6 +1332,10 @@
 
 - [[块图的直接与逆-cayley-变换|块图的直接与逆 Cayley 变换]]
 
+## 证据审查
+
+- [[root-ladder-修复的限定接受与账本状态歧义|Root ladder 修复的限定接受与账本状态歧义]]
+
 ## 证据范围
 
 - [[weyl-语义回归的递进验证门禁|Weyl 语义回归的递进验证门禁]]
@@ -1320,6 +1349,10 @@
 - [[形变驱动的冻结移植契约|形变驱动的冻结移植契约]]
 - [[整数矩阵移植的-oracle-回归锚点与证据边界|整数矩阵移植的 oracle 回归锚点与证据边界]]
 - [[梯子底成员查询的坐标溢出语义|梯子底成员查询的坐标溢出语义]]
+
+## 证据链
+
+- [[坐标边界修复的-tests-first-验证链|坐标边界修复的 tests-first 验证链]]
 
 ## 诱导映射
 
@@ -1398,6 +1431,7 @@
 
 ## 适用范围
 
+- [[a1-加中心环面边界-fixture-与历史-oracle|A1 加中心环面边界 fixture 与历史 oracle]]
 - [[公共块对偶变换及-kl-递归的闭合限制|公共块对偶变换及 KL 递归的闭合限制]]
 
 ## 适配基
@@ -1429,6 +1463,7 @@
 ## 错误处理
 
 - [[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]
+- [[rust-ladder-成员查询的选择性溢出处理|Rust ladder 成员查询的选择性溢出处理]]
 - [[twisted-involution-记录的数学不变量|Twisted involution 记录的数学不变量]]
 - [[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]
 - [[伴随纤维的资源预算与可恢复错误|伴随纤维的资源预算与可恢复错误]]
@@ -1467,6 +1502,10 @@
 
 - [[根数据的-radical-与-coradical-饱和核基|根数据的 radical 与 coradical 饱和核基]]
 - [[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]
+
+## 验收状态
+
+- [[root-ladder-修复的限定接受与账本状态歧义|Root ladder 修复的限定接受与账本状态歧义]]
 
 ## 验证
 

@@ -1096,3 +1096,17 @@ D/E 分叉未展开如实声明）、canonical_word 的重建-拼接-映射回�
 边界（仅限该查询路径、其它错误照传）、RootSet 的只读位图与不可达 panic 面、
 测试锚点与 11-vs-8 数量差异的待核记录——全部忠实。8 页批准；
 wiki/concepts/ 现有 178 页，剩余候选 355。
+
+## 2026年10月10日 第二十五批候选审查：root-ladder-overflow-repair.md 的 6 页
+
+对照 143 行来源包逐页核验：3868832 发现（原版接受全部 11 个 A1+环面
+坐标边界案例、Rust 溢出拒绝六个）、"可表示的相反根之差不可表示则必不在
+i32 根集内"的推理链、修复仅限 build_ladder_bottoms 成员查询单点
+（combine_roots 与 i128 反射路径不动、禁用 wrapping/saturating）、原版
+RootSystem 在压缩抽象单纯根坐标中构造梯子底（环境格尚未存在，环面坐标
+不参与减法）与 Rust 逐对相减的结构性差异、tests-first 链（BEFORE-v3
+job3873400 证明两域一核三处失败 → 修复 → AFTER-v3 job3875239 全绿）、
+账本状态歧义（前文称接受范围不含 index 登记、后文记载 entry
+0003-a1-torus-root-coroot-ladder-boundary 已 accepted/math_pass——候选
+如实标注为歧义而非擅自消解）、"不授予性能/排名/更广数学验收"的限定声明——
+全部忠实。6 页批准；wiki/concepts/ 现有 184 页，剩余候选 349。

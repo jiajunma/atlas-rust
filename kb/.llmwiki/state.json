@@ -323,6 +323,18 @@
         "梯子底成员查询的坐标溢出语义"
       ],
       "compiledAt": "2026-10-09T16:29:06.809Z"
+    },
+    "root-ladder-overflow-repair.md": {
+      "hash": "630225a1efd35e788009d5d82dc26c16f9112806ac56ee0a14a889281f74fe6e",
+      "concepts": [
+        "a1-加中心环面边界-fixture-与历史-oracle",
+        "original-atlas-的抽象坐标-ladder-构造",
+        "root-ladder-bottom-集与固定宽度成员查询",
+        "root-ladder-修复的限定接受与账本状态歧义",
+        "rust-ladder-成员查询的选择性溢出处理",
+        "坐标边界修复的-tests-first-验证链"
+      ],
+      "compiledAt": "2026-10-09T16:34:43.186Z"
     }
   }
 }
