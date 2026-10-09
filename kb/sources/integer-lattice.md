@@ -69,7 +69,7 @@ matreduc.h:70-122）的忠实移植：伴随跟踪 LEFT 变换的逆而非事后
 
 ## 来源与限制
 
-- 源码：[integer_lattice.rs](../../../crates/atlas-real-group/src/integer_lattice.rs)；
+- 源码：[integer_lattice.rs](../../crates/atlas-real-group/src/integer_lattice.rs)；
   阅读快照
   [`2026-10-03-integer-lattice.json`](snapshots/2026-10-03-integer-lattice.json)。
 - 上游行号均转述自源码注释（matreduc.h/matreduc.cpp），未独立重读上游，随

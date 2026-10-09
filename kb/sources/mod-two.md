@@ -94,7 +94,7 @@ numerator `contains`、补基恰好来自 denominator 缺 pivot 的位置；违�
 
 ## 来源与限制
 
-- 源码：[mod_two.rs](../../../crates/atlas-real-group/src/mod_two.rs)；
+- 源码：[mod_two.rs](../../crates/atlas-real-group/src/mod_two.rs)；
   阅读快照 [`2026-10-03-mod-two.json`](snapshots/2026-10-03-mod-two.json)
   （初读）与 [`2026-10-06-grading-mod-two.json`](snapshots/2026-10-06-grading-mod-two.json)
   （重读，同一 SHA-256 `945e867e…`，重读与 grading.rs 同包进行）。

@@ -66,7 +66,7 @@ part 须复现该 form 的 compact pattern。
 
 ## 来源与限制
 
-- 源码：[real_form_seed.rs](../../../crates/atlas-real-group/src/real_form_seed.rs)；
+- 源码：[real_form_seed.rs](../../crates/atlas-real-group/src/real_form_seed.rs)；
   阅读快照
   [`2026-10-03-real-form-seed.json`](snapshots/2026-10-03-real-form-seed.json)。
 - 上游行号均转述自源码注释（y_values.cpp/rootdata.cpp/atlas-types.w/

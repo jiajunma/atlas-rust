@@ -89,7 +89,7 @@ B2 每条记录的 θ 典范性（像 = `weyl.image(δ.image(root))`、(W+Cayley
 
 ## 来源与限制
 
-- 源码：[involution_table.rs](../../../crates/atlas-real-group/src/involution_table.rs)；
+- 源码：[involution_table.rs](../../crates/atlas-real-group/src/involution_table.rs)；
   阅读快照
   [`2026-10-03-involution-table.json`](snapshots/2026-10-03-involution-table.json)
   （初读）与

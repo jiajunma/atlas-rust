@@ -111,7 +111,7 @@ KlTableHandle<Arc<PartialBlock>>` 持有共享句柄。`new` 从 `&BlockGraph` �
 
 两条路径的公式与判定条件不在本包展开；endgame 的历史修复
 （`first_endgame_pair`、real-II cross 的 `UndefBlock` 边界）有自己的
-tests-first 证据链，见 [项目交接记录](../../../docs/HANDOFF.md) 的相应段落。
+tests-first 证据链，见 [项目交接记录](../../docs/HANDOFF.md) 的相应段落。
 
 ## 来源与限制
 
@@ -121,8 +121,8 @@ tests-first 证据链，见 [项目交接记录](../../../docs/HANDOFF.md) 的�
   `(1+q)² → 0`）、`sub_shifted` 单项（`(1+q) − q·1 = 1`）。未测面广：
   `add`/`sub`、`add_shifted`、`scaled`、`divide_by_2` 错误分支、
   `quotient_by_1_plus_q`、`match_pol` 去重路径、`get` 越界等。
-- 源码：[kl_polynomial.rs](../../../crates/atlas-real-group/src/kl_polynomial.rs)、
-  [kl_table.rs](../../../crates/atlas-real-group/src/kl_table.rs)；阅读快照
+- 源码：[kl_polynomial.rs](../../crates/atlas-real-group/src/kl_polynomial.rs)、
+  [kl_table.rs](../../crates/atlas-real-group/src/kl_table.rs)；阅读快照
   [`2026-10-03-kl-polynomial-table.json`](snapshots/2026-10-03-kl-polynomial-table.json)
   （初读）与
   [`2026-10-06-lattice-kl-polynomial.json`](snapshots/2026-10-06-lattice-kl-polynomial.json)

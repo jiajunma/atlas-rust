@@ -78,7 +78,7 @@ trait：逐生成元的 `star` 计算与其比较的 `ext_param` 值属于后续
 
 ## 来源与限制
 
-- 源码：[ext_block.rs](../../../crates/atlas-real-group/src/ext_block.rs)；
+- 源码：[ext_block.rs](../../crates/atlas-real-group/src/ext_block.rs)；
   阅读快照
   [`2026-10-03-extended-block.json`](snapshots/2026-10-03-extended-block.json)。
 - 上游行号均转述自源码注释（ext_block.h/ext_block.cpp/blocks.cpp/

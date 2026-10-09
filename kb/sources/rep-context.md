@@ -88,7 +88,7 @@ class 不同报 `DatumMismatch`；表与图的 `Arc` 指针不同也报
 
 ## 来源与限制
 
-- 源码：[rep_context.rs](../../../crates/atlas-real-group/src/rep_context.rs)；
+- 源码：[rep_context.rs](../../crates/atlas-real-group/src/rep_context.rs)；
   阅读快照 [`2026-10-03-rep-context.json`](snapshots/2026-10-03-rep-context.json)。
 - 上游行号均转述自源码注释（repr.h/repr.cpp/involutions.h/involutions.cpp/
   matreduc.h/arithmetic.h/basic_io.cpp），未独立重读上游，随版本演进可能漂移。

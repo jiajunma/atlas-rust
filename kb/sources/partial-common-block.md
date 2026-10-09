@@ -97,7 +97,7 @@ cross 的 complex descent，`KlTable` 会拒绝。返回值是 `BareBlock`：对
 
 ## 来源与限制
 
-- 源码：[partial_block.rs](../../../crates/atlas-real-group/src/partial_block.rs)；
+- 源码：[partial_block.rs](../../crates/atlas-real-group/src/partial_block.rs)；
   阅读快照
   [`2026-10-03-partial-common-block.json`](snapshots/2026-10-03-partial-common-block.json)。
 - 上游行号均转述自源码注释，未独立重读上游，随版本演进可能漂移。

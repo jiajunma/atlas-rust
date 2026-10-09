@@ -64,7 +64,7 @@ simple-reflection 根置换是 coset 自有的派生副本（对表的私有缓�
 
 ## 来源与限制
 
-- 源码：[tits_element.rs](../../../crates/atlas-real-group/src/tits_element.rs)；
+- 源码：[tits_element.rs](../../crates/atlas-real-group/src/tits_element.rs)；
   阅读快照 [`2026-10-03-tits-element.json`](snapshots/2026-10-03-tits-element.json)。
 - 上游行号均转述自源码注释（tits.cpp），未独立重读上游，随版本演进可能漂移。
 - 关联：[Twisted involution 表](involution-table.md)、

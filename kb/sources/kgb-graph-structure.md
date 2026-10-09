@@ -87,13 +87,13 @@ packet 内：packet 间按排序后的 involution 位置排列，packet 内保�
 
 ## 来源与限制
 
-- 源码：[kgb_graph.rs](../../../crates/atlas-real-group/src/kgb_graph.rs)；
+- 源码：[kgb_graph.rs](../../crates/atlas-real-group/src/kgb_graph.rs)；
   阅读快照
   [`2026-10-03-kgb-graph.json`](snapshots/2026-10-03-kgb-graph.json)。
 - 上游引用行号来自源码注释，未经独立重读，随上游演进可能漂移。
 - 前置概念：[根坐标与格坐标](../wiki/math/root-coordinates.md)、
   [Weyl 身份与共享](weyl-context-identity-and-sharing.md)；相关治理与验收边界见
-  [项目规则](../../../AGENTS.md) 与 [交接记录](../../../docs/HANDOFF.md)。
+  [项目规则](../../AGENTS.md) 与 [交接记录](../../docs/HANDOFF.md)。
 - 本包未执行任何构建、测试或原版运行；KGB 枚举的正确性证据（rank6 640/640
   inventory 等）属于它自己的 gate 链，本包不重述也不扩展。
 - 起草经由已验证的本地 Kimi probe 路由（无工具、文本提案；模型

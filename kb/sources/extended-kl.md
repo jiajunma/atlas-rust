@@ -105,7 +105,7 @@ partial-block 边（`some_scent` 为 `None`）记 `DEAD_END`；否则沿 cross �
 
 ## 来源与限制
 
-- 源码：[ext_kl.rs](../../../crates/atlas-real-group/src/ext_kl.rs)；阅读快照
+- 源码：[ext_kl.rs](../../crates/atlas-real-group/src/ext_kl.rs)；阅读快照
   [`2026-10-03-extended-kl.json`](snapshots/2026-10-03-extended-kl.json)。
 - 上游行号均转述自源码注释（ext_kl.h/ext_kl.cpp/Atlas.h/atlas-types.w），
   未独立重读上游，随版本演进可能漂移。

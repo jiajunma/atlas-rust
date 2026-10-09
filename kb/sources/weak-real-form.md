@@ -92,7 +92,7 @@ B2 恒等 3 类（代表元精确钉定）、SC A1 平凡作用 2 个单元类�
 
 ## 来源与限制
 
-- 源码：[weak_real_form.rs](../../../crates/atlas-real-group/src/weak_real_form.rs)；
+- 源码：[weak_real_form.rs](../../crates/atlas-real-group/src/weak_real_form.rs)；
   阅读快照
   [`2026-10-03-weak-real-form.json`](snapshots/2026-10-03-weak-real-form.json)
   （初读）与

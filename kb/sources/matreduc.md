@@ -77,7 +77,7 @@ wrapping 溢出域（文档声明可观测）、`in_*_image` 的矩形/秩亏、
 
 ## 来源与限制
 
-- 源码：[matreduc.rs](../../../crates/atlas-real-group/src/matreduc.rs)；
+- 源码：[matreduc.rs](../../crates/atlas-real-group/src/matreduc.rs)；
   阅读快照 [`2026-10-03-matreduc.json`](snapshots/2026-10-03-matreduc.json)
   （初读）与
   [`2026-10-06-real-projection-matreduc.json`](snapshots/2026-10-06-real-projection-matreduc.json)

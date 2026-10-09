@@ -78,7 +78,7 @@ zip 截断使短 `weight` 静默按零；`lift` 对过长坐标直接下标会 p
 
 ## 来源与限制
 
-- 源码：[real_projection.rs](../../../crates/atlas-real-group/src/real_projection.rs)；
+- 源码：[real_projection.rs](../../crates/atlas-real-group/src/real_projection.rs)；
   阅读快照
   [`2026-10-03-real-projection.json`](snapshots/2026-10-03-real-projection.json)
   （初读）与

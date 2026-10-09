@@ -82,7 +82,7 @@ grading（`ImpossibleGrading`，且 `adjoint.dimension() == 0`、`grading_shift(
 
 ## 来源与限制
 
-- 源码：[grading.rs](../../../crates/atlas-real-group/src/grading.rs)；阅读
+- 源码：[grading.rs](../../crates/atlas-real-group/src/grading.rs)；阅读
   快照 [`2026-10-03-grading.json`](snapshots/2026-10-03-grading.json)
   （初读）与 [`2026-10-06-grading-mod-two.json`](snapshots/2026-10-06-grading-mod-two.json)
   （重读，同一 SHA-256 `a9fe00ba…`，重读与 mod_two.rs 同包进行）。

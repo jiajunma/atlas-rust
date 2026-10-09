@@ -1966,3 +1966,14 @@ MOC 按页面 tags 分组，存在 alcove/Alcove 与 grading/Grading 两组仅�
 整数据定位流程、基本虚根-grading-的位置约束）的 tag 统一到多数派小写，
 并同步合并 MOC.md 中两个分裂小节（824 节，原 826）。更广义的标签归并
 （826 个不同标签）留作后续专项编辑工作，不做机械批量改动。
+
+## 2026年10月10日 来源包相对链接修复（31 处断链）
+
+全库链接完整性扫描发现 kb/sources/*.md 系统性使用 `../../../crates/...`——
+从 kb/sources/ 出发该路径逃出仓库根（正确深度是 `../../`；`../../../` 是
+kb/wiki/concepts/ 三层深度页的写法，包编写时沿袭了它）。逐条按"目标存在
+才改写"修复 31 处（含 AGENTS.md/HANDOFF.md 两条同深度错误），修复后全部
+markdown 链接零 404。另记录待办：136 个被已提交文档引用的目标在磁盘上
+存在但未被 git 跟踪（docs/slices/ 48 个文件 133 处引用 + AFTER-v3 的
+root_ladder fixture/golden 3 个文件），属 owner 的提交决定，已在 HANDOFF
+记录，不代为提交。

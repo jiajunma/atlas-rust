@@ -102,7 +102,7 @@ involution 的 Weyl part——循环终止性依赖于此（每步降低 twisted
 
 ## 来源与限制
 
-- 源码：[inner_class.rs](../../../crates/atlas-real-group/src/inner_class.rs)；
+- 源码：[inner_class.rs](../../crates/atlas-real-group/src/inner_class.rs)；
   阅读快照 [`2026-10-03-inner-class.json`](snapshots/2026-10-03-inner-class.json)。
 - 上游行号均转述自源码注释（atlas-types.w/innerclass.cpp/weyl.cpp/
   prettyprint.cpp/repr.cpp），未独立重读上游，随版本演进可能漂移。

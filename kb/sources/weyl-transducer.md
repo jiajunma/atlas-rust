@@ -59,7 +59,7 @@ Bourbaki 序生成元返回 Coxeter 矩阵项：先交换使 $a \le b$；线性�
 
 ## 来源与限制
 
-- 源码：[weyl_transducer.rs](../../../crates/atlas-real-group/src/weyl_transducer.rs)；
+- 源码：[weyl_transducer.rs](../../crates/atlas-real-group/src/weyl_transducer.rs)；
   阅读快照
   [`2026-10-03-weyl-transducer.json`](snapshots/2026-10-03-weyl-transducer.json)。
 - 上游行号均转述自源码注释（weyl.cpp），未独立重读上游，随版本演进可能漂移。

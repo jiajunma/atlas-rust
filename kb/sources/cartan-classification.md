@@ -91,8 +91,8 @@ action 为代表；`CartanClassification` 消费时会用 Atlas-canonical 代表
 
 ## 来源与限制
 
-- 源码：[cartan_classification.rs](../../../crates/atlas-real-group/src/cartan_classification.rs)、
-  [cartan_class.rs](../../../crates/atlas-real-group/src/cartan_class.rs)；
+- 源码：[cartan_classification.rs](../../crates/atlas-real-group/src/cartan_classification.rs)、
+  [cartan_class.rs](../../crates/atlas-real-group/src/cartan_class.rs)；
   阅读快照
   [`2026-10-03-cartan-classification.json`](snapshots/2026-10-03-cartan-classification.json)。
 - 上游行号均转述自源码注释（innerclass.cpp/atlas-types.w/tits.h），未独立

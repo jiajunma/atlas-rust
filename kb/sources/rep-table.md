@@ -69,7 +69,7 @@ reduced 参数的哈希稳定身份：`x` 是经 locator attitude 传输**之后
 
 ## 来源与限制
 
-- 源码：[rep_table.rs](../../../crates/atlas-real-group/src/rep_table.rs)；
+- 源码：[rep_table.rs](../../crates/atlas-real-group/src/rep_table.rs)；
   阅读快照 [`2026-10-03-rep-table.json`](snapshots/2026-10-03-rep-table.json)。
 - 上游行号均转述自源码注释（repr.h/repr.cpp/K_repr.cpp），未独立重读上游，
   随版本演进可能漂移。

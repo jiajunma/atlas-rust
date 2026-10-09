@@ -106,8 +106,8 @@ stages 负责；置换的 antisymmetry 靠「构造器是唯一入口」保证�
 
 ## 来源与限制
 
-- 源码：[weyl.rs](../../../crates/atlas-real-group/src/weyl.rs)、
-  [weyl_element.rs](../../../crates/atlas-real-group/src/weyl_element.rs)；
+- 源码：[weyl.rs](../../crates/atlas-real-group/src/weyl.rs)、
+  [weyl_element.rs](../../crates/atlas-real-group/src/weyl_element.rs)；
   阅读快照 [`2026-10-03-weyl-layer.json`](snapshots/2026-10-03-weyl-layer.json)
   （初读）与
   [`2026-10-06-weyl-root-involution.json`](snapshots/2026-10-06-weyl-root-involution.json)

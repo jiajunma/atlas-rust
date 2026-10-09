@@ -135,7 +135,7 @@ rank-0 单例不贡献形变项且不调用 `lookup`。可取消变体
 
 ## 来源与限制
 
-- 源码：[deform.rs](../../../crates/atlas-real-group/src/deform.rs)；阅读快照
+- 源码：[deform.rs](../../crates/atlas-real-group/src/deform.rs)；阅读快照
   [`2026-10-03-deformation-drivers.json`](snapshots/2026-10-03-deformation-drivers.json)。
 - 上游行号均转述自源码注释（repr.cpp/blocks.cpp/arithmetic.h/
   atlas-types.w），未独立重读上游，随版本演进可能漂移。

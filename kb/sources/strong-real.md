@@ -67,7 +67,7 @@ output.cpp:506-508）、`square()`（possible square 的分子序列，已约化
 
 ## 来源与限制
 
-- 源码：[strong_real.rs](../../../crates/atlas-real-group/src/strong_real.rs)；
+- 源码：[strong_real.rs](../../crates/atlas-real-group/src/strong_real.rs)；
   阅读快照 [`2026-10-03-strong-real.json`](snapshots/2026-10-03-strong-real.json)。
 - 上游行号均转述自源码注释（output.cpp/innerclass.cpp/cartanclass.cpp），
   未独立重读上游，随版本演进可能漂移。

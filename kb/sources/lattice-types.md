@@ -80,7 +80,7 @@ domain boundary 处转换，而不是改变每个根系矩阵条目的表示。`
 
 ## 来源与限制
 
-- 源码：[lattice.rs](../../../crates/atlas-real-group/src/lattice.rs)；
+- 源码：[lattice.rs](../../crates/atlas-real-group/src/lattice.rs)；
   阅读快照 [`2026-10-03-lattice-types.json`](snapshots/2026-10-03-lattice-types.json)
   （初读）与 [`2026-10-06-lattice-kl-polynomial.json`](snapshots/2026-10-06-lattice-kl-polynomial.json)
   （重读，同一 SHA-256 `3cf4e62c…`，重读与 kl_polynomial.rs 同包进行）。

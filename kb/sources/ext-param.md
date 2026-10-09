@@ -69,7 +69,7 @@ delta-fixed）；`scaled_extended_finalise(ctx, sr, factor_num, factor_den)`
 
 ## 来源与限制
 
-- 源码：[ext_param.rs](../../../crates/atlas-real-group/src/ext_param.rs)；
+- 源码：[ext_param.rs](../../crates/atlas-real-group/src/ext_param.rs)；
   阅读快照 [`2026-10-03-ext-param.json`](snapshots/2026-10-03-ext-param.json)。
 - 上游行号均转述自源码注释（ext_block.h/ext_block.cpp/repr.h/repr.cpp），
   未独立重读上游，随版本演进可能漂移。

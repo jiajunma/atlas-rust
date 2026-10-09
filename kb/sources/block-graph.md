@@ -127,7 +127,7 @@ C±/rn/ic 块级状态、全部 20 个 `BlockInvariantViolation` 字面量分支
 
 ## 来源与限制
 
-- 源码：[block.rs](../../../crates/atlas-real-group/src/block.rs)；阅读快照
+- 源码：[block.rs](../../crates/atlas-real-group/src/block.rs)；阅读快照
   [`2026-10-03-block-graph.json`](snapshots/2026-10-03-block-graph.json)
   （初读）与 [`2026-10-06-block.json`](snapshots/2026-10-06-block.json)
   （重读，同一 SHA-256 `3d3a88fa…`）。
