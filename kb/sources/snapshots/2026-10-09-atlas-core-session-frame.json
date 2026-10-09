@@ -1,0 +1,20 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of session_frame.rs for the atlas-core-session-frame packet: FileProvider/FileSink boundaries (sink opens after parse, before evaluation), include-once/force/cycle/depth-64 semantics, clean-flag discipline (Io diagnostics never dirty), Value:/void printing, depth-indented reports, redirect-body-parses-as-expression ordering, the abandon cascade (innermost first, physical lines via line_map), preprocess continuation joining, and the 18-test anchor module.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/session_frame.rs",
+   "sha256": "19889fec6d92ddbc93fa44e9f9bbbae8ff0825442a63b539b7cd50b498ee3327",
+   "bytes": 38610,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "tests/math/generics/string_byte_raw_output.atlas",
+   "sha256": "ec50d64ad09f48be784d2123893d8f974e4622049d69f6b1885049c2766f1bd6",
+   "note": "frozen original-backed byte-capture fixture referenced by the first frame test"
+  }
+ ]
+}

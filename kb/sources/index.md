@@ -470,6 +470,17 @@ Directive 由会话层拒绝而归属 `session_frame`）、`next_session_token` 
 `.oracle.*` 逐字节比对为范式（Weyl A1 goldens 为例）。结构性阅读，
 不声称语言或数学验收。
 
+[会话帧：文件包含、输出重定向与顶层输出面](atlas-core-session-frame.md)
+记录 `session_frame.rs`（993 行）：FileProvider/FileSink 边界（sink 在
+解析成功后、求值前打开；语法错误不留文件，求值失败留部分输出）、
+include-once/`<<` 强制/循环静默跳过/64 层上限、`clean` 只在语法类型求值
+错误时置位（Io 诊断与 abandon 不弄脏）、`Value:` 打印与 void 抑制、按
+包含深度缩进的报告、重定向体先按表达式解析（parser.y:180-181）、
+abandon 级联最内层先且经 `line_map` 报物理行、`preprocess` 先剥尾空白
+再续行。18 个测试锚点含字节串三件套（冻结原版字节比对）。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-session-frame.json)；维护者
+直接撰写（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

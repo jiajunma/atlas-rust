@@ -664,3 +664,11 @@ session.rs 的 SessionEvent 六变体（字节保留面）、逐命令外层循�
 字节数第一次凭记忆写错（129981→实测 191393），已用 stat 修正——与"sha 尾巴
 不凭记忆"同一纪律，字节数也一律实测。索引与 log 已同步；未运行编译/测试/
 compiler。
+
+新增 `sources/atlas-core-session-frame.md` 与快照
+`2026-10-09-atlas-core-session-frame.json`：FileProvider/FileSink 边界
+（sink 在解析后求值前打开）、include-once/强制/循环/64 层语义、clean 纪律
+（Io 不弄脏）、Value:/void 打印、深度缩进、重定向体先按表达式解析、
+abandon 级联（最内层先、line_map 物理行）、preprocess 续行。18 个测试
+锚点。维护者直接撰写（无 Kimi）；索引与 log 已同步；未运行编译/测试/
+compiler。
