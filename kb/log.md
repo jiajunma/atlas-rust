@@ -1287,3 +1287,18 @@ ModTwoSubquotient 的 crate 私有定位与四道构造校验、validate_induced
 的分子/分母双查与"只查商基代表会看似成立"的注释论据、12 测试锚点与未
 覆盖清单（5 处不变量违规/两个 relation/dot 无直接测试/文件内无调用方）
 ——全部忠实。7 页批准；wiki/concepts/ 现有 266 页，剩余候选 267。
+
+## 2026年10月10日 第三十七批候选审查：primitive-involution.md 的 7 页
+
+对照 149 行来源包逐页核验：纯表定位（不涉及 root datum/Weyl/inner-class
+管线）、perm 方向（扁平位置 k → 矩阵下标 perm[k]，对应 Layout::d_perm）与
+包装器侧 checked_permutation 的职责划分、字节级解析（char::from(u8)、
+绝不 UTF-8 解码、skip_punctuation）、诊断顺序钉住"未知符号先于因子计数"、
+五变体 Display 逐字节复刻上游文案（含反引号开单引号合）、's' 坍缩恰在
+−1∈Weyl 群处（A1/B/C/偶 D/E7/E8/F/G）与存活条件、'u' 的三路分派、'C'
+消耗两个相同连续因子、逐字母表（A 反对角/奇 D 与 u 换末两顶点/E6 固定
+1,3 换 0↔5,2↔4/T 负恒等/其余坍缩臂仅防御作用）、不返回 Result 的前置
+条件契约与两道 debug_assert_eq、on_basis 的有理逆+三重循环+floor 整性+
+i32 收窄四类失败折叠为同一 None（包装器重标不兼容格）、B⁻¹MB 手算复核
+（[[1,1],[0,-1]] 一致）、偶子格 [2] 上单位阵不变、测试缺口四项如实——
+全部忠实。7 页批准；wiki/concepts/ 现有 273 页，剩余候选 260。

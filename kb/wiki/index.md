@@ -11,6 +11,7 @@
 - **[[blockgraph-存储布局与坐标定位不变量|BlockGraph 存储布局与坐标定位不变量]]** — BlockGraph 以 x 外层、y 内层编号，分别按元素优先和生成元优先平铺 descent 与 cross，并依赖 xs 弱增、区间索引及连续 y 偏移实现带校验的坐标定位。
 - **[[blockmodifier-块修正子|BlockModifier 块修正子]]** — BlockModifier 组合 BlockLocator 与有理权平移，提供恒等构造、无校验包装及保留整根系定位信息的重置操作；该功能切片尚未接入现存消费方。
 - **[[blocktopology-只读块拓扑接口|BlockTopology 只读块拓扑接口]]** — 以密封 trait 提供 KL 所需的最小只读块表面，并依赖秩、长度排序、格子存在性和链接范围等结构不变量；支持引用及 Arc 包装的动态 trait 对象。
+- **[[bourbaki-重编号与对合矩阵下标映射|Bourbaki 重编号与对合矩阵下标映射]]** — perm[k] 将第 k 个扁平化单根映射到输出矩阵下标；排列合法性由包装器 checked_permutation 验证，layout_involution 依赖调用方满足前置条件。
 - **[[bruhat-偏序的-hasse-图构造|Bruhat 偏序的 Hasse 图构造]]** — bruhat_hasse 通过首个严格良下降的 cross 或逆 Cayley 像及上升扩展生成直接下邻，无此下降时收集 RealTypeII 的第一逆 Cayley 分量；索引和 expect 依赖构造不变量。
 - **[[cartan-fiber-的先分母后分子构造|Cartan fiber 的先分母后分子构造]]** — 构造先计算整数负特征格并模二约化作为分母，再按余特征作用矩阵的行计算 I+θ_Y 的有限域右核作为分子，最后建立子商；整数预算与有限域分配防护分别生效。
 - **[[cartan-fiber-的有限域子商模型|Cartan fiber 的有限域子商模型]]** — CartanFiber 采用 ker_F2(I+θ_Y)/red_2 ker_Z(I+θ_Y) 的子商坐标与 low-pivot 归约基；其与 Y^θ/(I+θ_Y)Y 的同构仅作为代码注释声明记录，未获本包数学验收。
@@ -145,6 +146,8 @@
 - **[[关系格封装与构造预检|关系格封装与构造预检]]** — RelationMatrix、RelationBasis 和 RelationGenerator 封装关系格操作，在分配、复制、推进迭代器或收集生成元之前执行相应形状与预算检查。
 - **[[典范整数据驻留|典范整数据驻留]]** — IntegralDatumTable 以按 upstream 正根序排列的典范正根表为键，追加分配 id 并复用已有 IntegralDatumItem；典范数据依赖 gamma 所在 alcove，而不只依赖整根系，且跨调用必须保持同一 RootSystem。
 - **[[典范纤维与-k-型等价判定|典范纤维与 K 型等价判定]]** — to_canonical_fiber 沿 canonicalize 给出的词进行复单根 cross；equivalent 先检查 Cartan 类，再比较双方典范纤维中的结果。
+- **[[内类字母的字节解析与规范化|内类字母的字节解析与规范化]]** — checked_inner_class_letters 按字节读取并跳过 ASCII 标点和空白，将 e 归一为 c，依据类型与秩坍缩 s、u；C 消耗两个相同连续因子。
+- **[[内类字母解析的错误模型与诊断顺序|内类字母解析的错误模型与诊断顺序]]** — InnerClassLetterError 区分符号过多、过少、未知符号、复配对失败和无意义的不等秩类，并优先报告未知符号，再检查因子是否存在。
 - **[[最低主元索引的典范-rref-子空间|最低主元索引的典范 RREF 子空间]]** — ModTwoSubspace 通过升序消元及插入后的旧行消元保持与插入顺序无关的典范既约行阶梯基，支持秩与成员判定。
 - **[[最小环面算法的测试覆盖边界|最小环面算法的测试覆盖边界]]** — 现有四个测试锚点均为 rank 2 紧致内类，正例均满足 coch == factor，未以可区分断言刻画非平凡运输，也未覆盖非紧致 distinguished、多数错误分支和秩上限门控。
 - **[[最小环面部分的-grading-轨道搜索|最小环面部分的 grading 轨道搜索]]** — 算法用 LIFO 栈与 BTreeSet<u64> 遍历 grading 轨道，在置位方向施加余根奇偶平移和 grading 翻转，筛选满足目标约束的候选并按位向量整数序取最小值。
@@ -155,6 +158,7 @@
 - **[[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]** — lookup 使用前向根置换作为完整相等性键；跨系统输入受调用方契约约束，种子插入不检查键碰撞，依赖不同 Cartan 轨道的键互不重叠。
 - **[[单位上三角整数矩阵求逆|单位上三角整数矩阵求逆]]** — inverse_upper_triangular 通过回代及 wrapping i32 运算求单位上三角矩阵的逆，并对非方阵或存在非 1 对角元的输入报错。
 - **[[单反射下的图像基传送|单反射下的图像基传送]]** — 沿单反射 s 更新 L′=sL、M′=Ms，保持 L′M′=1−θ′；传送使用 checked i64 算术，其结果可与重新归约所得基存在列符号或列次序差异。
+- **[[单连通群基本权基上的逐字母对合表|单连通群基本权基上的逐字母对合表]]** — layout_involution 通过恒等块、A 型反对角、D 型末两顶点交换、E6 特定顶点交换、T 型负恒等及复因子交换构造对合矩阵，不涉及 root datum 或 Weyl group 管线。
 - **[[反射闭包的防御性不变量|反射闭包的防御性不变量]]** — Closure 插入候选时先验证根与余根自配对等于 2，再检查重复根的余根及简单坐标一致性，重复候选不占用新增根数额度。
 - **[[可约点与标准参数-final-化|可约点与标准参数 final 化]]** — reducibility_points 返回按分子分母对升序排列的可约分数，finals_for 以栈驱动 dominant 检查及奇偶、长度下降，生成带整数系数的 final 参数。
 - **[[合成实形的选定余特征|合成实形的选定余特征]]** — elected_square_root 按 distinguished 对合与 Weyl 余权作用运输环面因子，以半平方和 delta + I 调用 stable_log，生成构造器保存的 g_rho_check；非平凡运输尚缺可区分测试断言。
@@ -194,6 +198,7 @@
 - **[[对偶实形式的分层计数管线|对偶实形式的分层计数管线]]** — dual_real_form_count 依次构造对偶内类、Cartan fiber、伴随 fiber、分次数据和弱实形式划分，再返回类数；来源仅转录测试断言，未执行测试或验收数学正确性。
 - **[[对偶根数据与对偶内类构造|对偶根数据与对偶内类构造]]** — 对偶根数据转置 Cartan 并交换根与余根后复用构造校验，对偶内类以 −(q·W0)ᵗ 和 −(q·W0) 分别构造权与余权作用，并分配最长元和根系闭包预算。
 - **[[对偶根映射与-cartan-矩阵转置|对偶根映射与 Cartan 矩阵转置]]** — 对偶根通过 primal 余根向量映回 primal RootId，而实根及实紧根子系统使用转置 Cartan 矩阵确定类型，由此体现 B/C 类型互换。
+- **[[对合查表实现的证据范围与测试缺口|对合查表实现的证据范围与测试缺口]]** — 来源提供结构性源码阅读和测试断言记录，未执行测试或完成数学验收，也未独立核对上游字节；非方阵换基、非恒等排列下的复因子交换及空输入等仍缺少测试覆盖。
 - **[[对合的-1θx-图像基对|对合的 (1−θ)X* 图像基对]]** — 以 n×r 的 lift_mat 与 r×n 的 m_real 表示图像基及坐标映射，满足 lift_mat·m_real = 1−θ。
 - **[[对角化的行列式符号簿记|对角化的行列式符号簿记]]** — row_minus 与 col_minus 的覆盖、异或及稳定列排列奇偶性决定首个对角元素的符号；源码注释对行变换行列式的保证不一致，源包以测试约束 |det(row)|=1、det(col)=1 为准。
 - **[[局部扩展类型识别与全父块构造|局部扩展类型识别与全父块构造]]** — extended_type 在父块上进行纯组合局部类型识别，ExtBlock::build 在平凡 block modifier 下结合 complete_construction 与 induced 完成全父块构造。
@@ -220,6 +225,7 @@
 - **[[承载可观测量的适配基adaptedbasis|承载可观测量的适配基（adapted_basis）]]** — adapted_basis 同步跟踪左变换的逆并保留上游主元与重排策略，因为选定的基固定 stable_log 代表元及下游 g_rho_check、torus_factor 有理量。
 - **[[折叠生成元与-foldorbits|折叠生成元与 fold_orbits]]** — ExtGen 表示折叠生成元，fold_orbits 根据 Cartan 矩阵和 δ 诱导的简单根置换生成有序轨道，并拒绝非对合 twist。
 - **[[挠部分打包与-involution-图像基|挠部分打包与 involution 图像基]]** — y_pack 使用 M_real 坐标模 2 打包挠部分，y_lift 恢复 (1−theta)lambda_rho；精确图像基保存在 involution 表中并沿 cross-action BFS 传送。
+- **[[换基失败的统一不兼容格语义|换基失败的统一不兼容格语义]]** — on_basis 将非方阵、奇异基、非整结果及 i32 转换失败统一折叠为 None，包装器再将其标记为不兼容格，调用方无法区分具体失败原因。
 - **[[整子系统的余根加法闭包|整子系统的余根加法闭包]]** — additive_closure 将墙根及其负根纳入集合，以余根坐标两两相加直到不动点；文档中的 B2 回归锚点说明误用根坐标加法只得到四个长根，而余根加法得到全部八个根。
 - **[[整对合分类的预算门与检查顺序|整对合分类的预算门与检查顺序]]** — classify_involution 先检查方阵形状，再强制执行 rank、存储和系数预算，随后以 checked i128 运算验证 M²=I，最后构造 θ+I 进行分类。
 - **[[整对合的-compactcomplexsplit-因子计数|整对合的 compact、complex、split 因子计数]]** — 整对合分类仅记录恒等、交换对与取负三类整分解的数量，不选定具体分解，并满足 compact + 2·complex + split = rank。
@@ -233,6 +239,7 @@
 - **[[整数线性系统求解与像判定|整数线性系统求解与像判定]]** — has_solution 对角化后检查变换右端的逐坐标可除性，find_solution 无解时返回 None，in_left_image 与 in_right_image 提供像判定，而右端长度不匹配会触发 panic。
 - **[[普通根系的确定性枚举|普通根系的确定性枚举]]** — RootSystem 从 BasedRootDatum 播种正负简单根并以 BFS 求反射闭包，最终按环境坐标字典序排列根，结果顺序独立于发现顺序。
 - **[[有理权分子的-checked-仿射反射|有理权分子的 checked 仿射反射]]** — simple_reflect_numerator 在分母不变时以全程 checked 算术执行 v -= alpha_s * (<v, coroot_s> + offset)，支持普通简单反射及带偏移的仿射反射。
+- **[[有理运算实现的整数矩阵精确换基|有理运算实现的整数矩阵精确换基]]** — on_basis 以有理逆和两次矩阵乘法计算 basis^-1 * matrix * basis，仅在结果各项均为整数且可转换为 i32 时返回矩阵。
 - **[[有限域线性求解的规范截面|有限域线性求解的规范截面]]** — solve_mod_two 在 F₂ 上采用上游 canonical section，以前 d 个输入列选举解；输入不在像空间中时返回 None。
 - **[[本原索引表的惰性构建|本原索引表的惰性构建]]** — prepare_prim_index 按下降集幂等地降序扫描，记录本原位置、沿唯一上升像继承索引并转换 DEAD_END 哨兵；读取相关索引前必须 prepare，上升像序号更大仅为未显式防护的阅读假设。
 - **[[权与余权的简单反射及算术保护|权与余权的简单反射及算术保护]]** — reflect_weight 与 reflect_coweight 按根余根配对公式实施反射，先校验维度和生成元下标，再以 i128 中间值及受检运算处理溢出。
@@ -269,4 +276,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_266 pages | Generated 2026-10-09T16:56:15.693Z_
+_273 pages | Generated 2026-10-09T16:57:34.987Z_
