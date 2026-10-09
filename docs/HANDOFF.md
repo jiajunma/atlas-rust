@@ -299,6 +299,18 @@ separate reviewed transition requiring a complete HPC replay against current
 master (never relabel historical pins), and the KGB integer-0 fixes mean a
 refresh can change edge-case oracle outputs.  Also blocked on the tunnel.
 
+Follow-up analysis of the delta (`docs/slices/upstream_5ae51193_delta_2026_10_09.md`)
+found one CONFIRMED original-side defect at the pin: `rat_divide_int_wrapper`
+and `rat_modulo_int_wrapper` compare the `shared_ptr` (`i==0`) instead of the
+value, so "Rational division/modulo by zero" never fires at `7e1b958c`
+(upstream fix `509f584c`); plus the `repr.cpp` `reducibility_points`
+restructure (85+/35-, may change unitarity-lane outputs at refresh) and the
+`basic.at` `status(vec,KGBElt)` root_index fix.  Provisional probe fixture
+`tests/math/generics/rat_int_zero_division.atlas` (sha `adb48086…`, prefix
+`RZ_`, int/int control first for signal-safety) drafted, unwired; capture
+belongs to the tunnel-blocked queue.  The defect is a labeled
+original-defect candidate: never port its pinned behavior as a golden.
+
 ### B2/C2 fixture drafts (2026-10-09, PROVISIONAL, unwired)
 
 Next arc gate after G2 is the cross-type dual witness: dual(B2)=C2 crosses

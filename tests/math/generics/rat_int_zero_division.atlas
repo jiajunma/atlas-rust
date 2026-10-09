@@ -1,0 +1,22 @@
+{ rat/int zero-division behavior at oracle pin 7e1b958c.  Upstream 509f584c
+  fixed rat_divide_int_wrapper/rat_modulo_int_wrapper comparing the
+  shared_ptr (i==0) instead of the value (i->val.is_zero()), so at the pin
+  the "Rational division by zero" / "Rational modulo zero" guards never
+  fire.  Discovery question: what does the PINNED oracle actually do — a
+  deeper arithmetic error, a wrong value, or a signal?  The known-clean
+  int/int control (RZ_INV) runs FIRST so it survives in the capture even if
+  a probe terminates the process.  Rust is captured alongside; whichever way
+  the pinned oracle behaves, the upstream fix makes this a labeled
+  original-defect candidate (never port buggy oracle output as a golden).
+  Nonconstant zero (rz_n+:=0) defeats the static fold.  Provisional until
+  complete original behavior is captured on HPC.  No atlas scripts. }
+set rz_q=3/2
+set rz_n=0
+rz_n+:=0
+prints("RZ_INV|",1/rz_n)
+prints("RZ_AFTER_INV|",43)
+prints("RZ_DIV|",rz_q/rz_n)
+prints("RZ_AFTER_DIV|",41)
+prints("RZ_MOD|",rz_q%rz_n)
+prints("RZ_AFTER_MOD|",42)
+prints("RZ_RECOVERY|",739)
