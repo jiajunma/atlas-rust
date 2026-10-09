@@ -438,6 +438,57 @@ at wiring time.  With these two, all seven witnesses from the 2026-10-03
 slice are now drafted: G2 (frozen in the g2-v1 payload), B2/C2, reverse
 operands, inner-class-dual, no-value, sole-WeylElt lifetime.
 
+### B2/C2 wiring plan + source-derived prediction table (2026-10-09)
+
+For the stage after G2 (`weyl-context-b2c2-v1`).  Predictions below are
+derived from the pinned upstream reading
+(`docs/slices/weyl_g2_preregistration_2026_10_09.md`) and the integer
+Coxeter cross-check; they assume the G2 capture confirms that reading —
+revisit before freezing if G2 DIFFERs.  word/length/bool only, no
+root_permutation.
+
+Cold (`WB_`, recovery 728), both engines expected identical throughout:
+`WB_SAME|[0]|1|1|[0,1]`; `WB_NONCOMMUTE|[0,1]|[1,0]`;
+`WB_BRAID|true|4` (dihedral order 8, braid length 4);
+`WB_ALIAS|true|true`; `WB_EQUAL|true|true`;
+`WB_DUAL_OWNER_FALSE|true` and `WB_DUAL_OWNER_TRUE|false` — C2's fixed
+Cartan IS transpose(B2), so the canonical dual of SC(B2,true) has exactly
+adjoint(C2,false)'s content (roots I2, coroots [[2,-1],[-2,2]], prefer
+false); the true-numbering probe differs by the preference flag;
+`WB_DUAL_INVOL|true` (dualise² restores the exact content);
+`WB_DUAL_EQ|true`, `WB_DUAL_NEQ|false`, `WB_DUAL_MUL|[]` (cold share);
+`WB_REVERSE_OWNER_FALSE|true` / `WB_REVERSE_OWNER_TRUE|false`
+(dual(adjoint(C2,true)) = SC(B2,false) content);
+`WB_REVERSE_EQ|true`, `WB_REVERSE_NEQ|false`, `WB_REVERSE_MUL|[]|true`;
+`WB_REBOUND|false|true|false|[0]|[1]`; `WB_RECOVERY|728`.
+
+Prewarmed (`WBN_`, recovery 734): the two B2 numberings differ only in the
+preference flag → the 3 owner-side mismatches throw; high word `[2]`
+throws `Illegal Weyl word entry 2 (should be <2)`; negative throws
+`Negative integer where unsigned is required`.  Crucially NOT vacuous
+(unlike G2's): `wbn_target_a=adjoint(C2,false)` IS the canonical dual's
+content, so its prewarm fills the identity slot → the dual-side triplet
+also throws (6 mismatches + 2 word errors total).  AFTER prints:
+`word(wbn_saved)=[0]`, `word(wbn_target_a_w)=[1]`,
+`wbn_dual=wbn_target_a`=true, `wbn_dual=wbn_target_b`=false.
+
+Wiring checklist (mirror of the g2-v1 migration, whose six lessons are in
+AGENTS.md 2026-10-09): (1) PREDECESSOR = the g2-v1 job (linear-ledger chain
+head); port its result validator with rebound era identity, keep all older
+validators byte-frozen.  (2) Contract: append the two case entries +
+`_CASE_PREFIXES` (WB_/WBN_) + the prediction tables above, additively, with
+new contract tests; never touch the A1/G2 content.  (3) Stager:
+STAGE_INPUT_NAMES 65→67 (add the two fixtures), `G2_SOURCE` → a
+`B2C2_SOURCE` literal (no module-level subscripts), source chain = the same
+CAS ancestry + the new fixture overlay; recompute the manifest through the
+same three checkpoints.  (4) Driver: 2 G2 arms → B2/C2 arms; carry the A1
+regression goldens AND the freshly captured G2 oracle streams as retained
+controls.  (5) sbatch labels to b2c2-v1, progressive_submit lineage +
+scoped files for retired g2-v1, EXPECTED_TEST_COUNTS bump, full umask-022
+rehearsal, payload, reconcile (queue/ledger/stage/accounting), one focused
+job.  (6) Retire the g2-v1 pair in the same migration (flip its
+SUBMISSION_ENABLED).
+
 ### No-value dual-family registration audit (2026-10-09, PROVISIONAL finding)
 
 A comment-vs-registration audit of `typed.rs` against the pinned upstream
