@@ -148,8 +148,52 @@ Harvested constants for the migration (all locally verified):
   [x] full local rehearsal under `umask 0022`: 129 tests, one remaining
   local-only 0444-env error (green on HPC by precedent) [ ] payload/
   pre-flight/reconcile/submit (one focused job) [ ] collection cron.
-  Both launchers are enabled and hash-pinned: stager `1c5093d0…`,
-  driver `354086e7…` (after-pair retired: `adb7cecdd…`/`20c57dd7…`).
+  Both launchers are enabled and hash-pinned: stager `1c5093d0…` — note
+  the final pinned stager hash after the validator corrections commit
+  `041aad85` is `26bbe5e6…`; driver `354086e7…` (after-pair retired:
+  `adb7cecdd…`/`20c57dd7…`).
+
+### G2-V1 SUBMISSION — BLOCKED on the tunnel (2026-10-09)
+
+Payload is built and pre-flight-clean; the SSH tunnel dropped before the
+remote reconciliation (`Connection timed out` twice, ~2026-10-09).  State:
+commits `9f0be600` (migration) + `041aad85` (validator corrections) are
+pushed; the payload was built from HEAD `041aad85` — 65 files, frozen 0444,
+`overrides/overrides.json` 8255 bytes sha
+`bcc09dbc66c0742c5ccc7eaa38638e05bd90d5d0342c58afe9bd00d530ab2054`; the
+sentinel rehearsal reached `PRE_FLIGHT_PARENT_OBJECTS_BOUNDARY` (all
+validators pass on the exact payload bytes).
+
+Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
+1. Rebuild the payload byte-identically:
+   `rm -rf /tmp/g2-payload-build && mkdir -p /tmp/g2-payload-build/overrides`
+   then `git archive HEAD -- <the 65 STAGE_INPUT_NAMES>` extracted into
+   `overrides/`, `chmod 0444` all files, write `overrides/overrides.json`
+   as `{relpath: sha256}` with `json.dumps(..., indent=1, sort_keys=True)`
+   + trailing LF, chmod 0444.  The manifest sha MUST be `bcc09dbc…` again;
+   if HEAD moved, stop and re-run the sentinel rehearsal first.
+2. Sentinel rehearsal (must reach `PRE_FLIGHT_PARENT_OBJECTS_BOUNDARY`):
+   monkeypatch `validate_parent_objects`, run
+   `stager.run_enabled("/tmp/g2-payload-build", "bcc09dbc…")` from `hpc/`.
+3. Reconcile remotely, all must hold: campaign queue empty for this project
+   (the unrelated `3904926 e6-graph-merge` is not this campaign), ledger
+   sha `6bdf33d7c1e4dcad1515632000a966223bed50537f25ebb7cdc672bc02401f99`
+   with 24 records, stage path
+   `…/atlas-rust-campaign-20260930/stages/weyl-context-g2-v1` absent, sacct
+   has no weyl-context-g2 row, `/public/home/majj/.weyl-g2-v1-payload`
+   absent.
+4. Transport: tar the payload dir, scp to `/public/home/majj/.weyl-g2-v1-payload`,
+   extract, verify every file hash against the manifest, record the tar sha.
+5. Invoke EXACTLY ONCE:
+   `cd /public/home/majj/.weyl-g2-v1-payload && /public/software/anaconda/anaconda3-2022.5/bin/python3.9 -B overrides/hpc/stage_weyl_context_core_capture.py /public/home/majj/.weyl-g2-v1-payload bcc09dbc66c0742c5ccc7eaa38638e05bd90d5d0342c58afe9bd00d530ab2054`
+6. Post-checks: durable stage inputs 0444/single-link (excluding results/),
+   `.incoming` empty, ledger now 25 records, `.out` appears as
+   `weyl-context-g2-v1-<job>.out`; then remove the transport dir, write the
+   submission record `tests/reference/hpc/math_weyl_context_g2_v1_submission_2026_10_09.json`
+   (status SUBMITTED_NOT_VERIFIED), update this section, commit, and set the
+   collection cron (sacct poll; on FINAL COMPLETED inspect whether the
+   repaired Rust matches the oracle on G2 — the witness question).
+
 
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 
