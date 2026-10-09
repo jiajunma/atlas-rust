@@ -69,6 +69,20 @@
         "分窗两相-bfs-构造"
       ],
       "compiledAt": "2026-10-09T15:39:02.950Z"
+    },
+    "inner-class.md": {
+      "hash": "175bbd59ec0454f638df9c3a189e065e32915d42cd41426f0e14eb207a0c4456",
+      "concepts": [
+        "based-involution-验证与生成元-twist",
+        "innerclass-成员判定与-twisted-分解",
+        "innerclass-的根理论状态与实现边界",
+        "twisted-involution-枚举与共轭轨道分区",
+        "twisted-involution-的三阶段规范化",
+        "twisted-involution-的规范约化表达式",
+        "基于生成元闭包的-twisted-共轭分区",
+        "根-involution-的-innerclass-构造与-weyl-因子"
+      ],
+      "compiledAt": "2026-10-09T15:41:25.100Z"
     }
   }
 }

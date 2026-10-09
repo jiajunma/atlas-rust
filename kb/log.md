@@ -903,3 +903,13 @@ Rayon 纯计算相 + 顺序 intern 相）、write-once/Cayley 长度步/kgb_size
 的唯一表依赖、两处 IndexOutOfRange 回退差异的悬置记录、RAYON_NUM_THREADS=1
 与"并行结构存在≠已有多核加速"的边界声明——全部忠实。7 页批准；
 wiki/concepts/ 现有 38 页，剩余候选 495。
+
+## 2026年10月9日 第六批候选审查：inner-class.md 的 8 页
+
+对照 119 行来源包逐页核验：部分实现的明确边界（无 Cartan fiber/实形式/
+环面数据）、三个构造入口与 Weyl 因子取舍、based_involution_twist 的三条件
+与 generator_twist 语义、twisted_from_involution 的调用方前提与
+θ=w·δ 分解、三阶段 canonicalize（含 active 生成元交集细节）、
+canonical_involution_expr 的 external-least 选举与 signed-entry 编码、
+枚举族四分工（稳定列表/轨道/分区/生成元闭包版预算差异）——全部忠实。
+8 页批准；wiki/concepts/ 现有 46 页，剩余候选 487。

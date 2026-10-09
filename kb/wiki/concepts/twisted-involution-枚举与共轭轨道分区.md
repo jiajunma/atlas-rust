@@ -1,0 +1,53 @@
+---
+title: Twisted involution 枚举与共轭轨道分区
+summary: twisted_involutions 提供稳定的对合列表，twisted_conjugacy_partition 构建带成员查询的完整 Weyl twisted-conjugacy 分区，classes 接口是其薄封装；轨道代表不保证 Atlas-canonical，且结果不等同于 Cartan classes。
+sources:
+  - inner-class.md
+kind: concept
+createdAt: "2026-10-09T14:51:14.369Z"
+updatedAt: "2026-10-09T14:51:14.369Z"
+tags:
+  - 扭曲共轭
+  - 轨道枚举
+  - 分区
+aliases:
+  - twisted-involution-枚举与共轭轨道分区
+  - TI枚
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+---
+
+# Twisted involution 枚举与共轭轨道分区
+
+`InnerClass` 提供根理论层面的 twisted involution 枚举与 Weyl twisted-conjugacy 轨道分区。枚举得到的是稳定的 involution 列表；分区进一步组织其共轭轨道。这些结果尚不构成带有 Cartan fibers、real forms 或 Cartan 偏序的完整分类。^[inner-class.md:19-25, inner-class.md:87-101]
+
+## 上下文与枚举对象
+
+`InnerClass` 持有经过验证的 `BasedRootDatum`、有限常根系 `RootSystem` 和 distinguished `RootInvolutionData`。这一状态为根理论上的 twisted-conjugacy 枚举提供上下文，其实现边界见 [[InnerClass 的根理论状态与实现边界]]。^[inner-class.md:19-25]
+
+以 distinguished involution 为 $\delta$，本内类中的 involution 可写成 $\theta=w\cdot\delta$。`twisted_involutions` 枚举形如 `w after distinguished` 的 root involutions，返回稳定列表；该列表尚未对 twisted conjugacy 或 Cayley transforms 取商，因此不能直接视为 Cartan classes。成员判定与 Weyl factor 的提取见 [[InnerClass 成员判定与 twisted 分解]]。^[inner-class.md:53-59, inner-class.md:89-91]
+
+## 共轭轨道与完整分区
+
+`twisted_conjugacy_classes` 返回确定性的 Weyl twisted-conjugacy 轨道，但其代表元不是 Atlas-canonical representative。该接口不构造 Cartan fibers、real forms 或 Cartan partial order；确定性的轨道代表选择不应与 [[Twisted involution 的三阶段规范化]] 混同。^[inner-class.md:61-72, inner-class.md:92-94]
+
+`twisted_conjugacy_partition` 提供带有成员归属查询（membership lookup）的完整分区，是该接口族唯一的轨道实现。`twisted_conjugacy_classes` 只是其上的薄封装，因此轨道列表与完整分区共享同一实现入口。^[inner-class.md:95-96]
+
+## 生成元闭包构造
+
+`generated_twisted_conjugacy_partition` 通过生成元闭包构建完整分区。相较于 legacy 版本，其预算按 twisted involutions 数量计数，而非按全部 Weyl elements 数量计数；这一差异改变了构造过程的资源计量对象。相关算法见 [[基于生成元闭包的 twisted 共轭分区]]。^[inner-class.md:97-101]
+
+该构造每个类只物化一个 lattice involution，并使用紧凑根置换进行成员归属查询，避免在大群构造中为每个候选克隆完整 lattice datum。外部 Cartan 编号仍由 `CartanClassification` 选举，并非由此分区接口直接决定；参见 [[CartanId 的 Atlas 编号顺序]]。^[inner-class.md:97-101]
+
+## 证据边界
+
+本页依据的来源包是对 `inner_class.rs` 的结构性阅读，记录了 dirty 工作区的源码快照。来源包未执行构建、测试或原版运行，因此上述说明描述接口与算法结构，不构成数学验收或实测性能结论；inner class 的正确性由其独立的 [[HPC 验收证据链]] 支撑。^[inner-class.md:9-15, inner-class.md:114-114]
+
+## Sources
+
+- [inner-class.md](inner-class.md) — Inner class 层：构造、验证门与 twisted 共轭枚举。

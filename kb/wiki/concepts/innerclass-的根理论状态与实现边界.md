@@ -1,0 +1,64 @@
+---
+title: InnerClass 的根理论状态与实现边界
+summary: InnerClass 持有已验证的 BasedRootDatum、有限根系和 distinguished involution，为分解与标签提供上下文，但尚不包含 Cartan fibers、real-form data 或构建 KGB graph 所需的 torus data。
+sources:
+  - inner-class.md
+kind: concept
+createdAt: "2026-10-09T14:50:50.729Z"
+updatedAt: "2026-10-09T14:50:50.729Z"
+tags:
+  - 内部类
+  - 根系
+  - 实现边界
+aliases:
+  - innerclass-的根理论状态与实现边界
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+---
+
+# InnerClass 的根理论状态与实现边界
+
+`InnerClass` 是有意保持为部分实现的内类根理论层：它拥有经过验证的 `BasedRootDatum`、对应的有限常根系 `RootSystem`，以及一个 distinguished `RootInvolutionData`。这些状态支持根理论上的 twisted-conjugacy 轨道枚举，但不构成完整的 Atlas 实形式数据模型。^[inner-class.md:17-25]
+
+## 核心职责与边界
+
+`InnerClass` 为 `CayleyCrossDecomposition` 提供 distinguished-involution 上下文，并为 `RealFormLabels` 锚定来源身份。它尚未构建 Atlas Cartan-class fibers，不持有 real-form data，也不包含构造 KGB graph 所需的 torus data；因此，根理论状态的构造成功不能解释为实形式或 KGB 构造已经完成。相关概念见 [[扭曲对合的 Cayley/Cross 分解]]、[[Cartan 分类构造与共享分区]] 与 [[KGB 图与弱实形式]]。^[inner-class.md:19-25]
+
+## 构造与验证保证
+
+`InnerClass::new` 构建共享的根理论状态，根枚举由调用方显式提供预算。成功结果保证 distinguished lattice involution 置换该根系，并相应传送余根；这一保证不等同于 Atlas real-form 兼容性声明。^[inner-class.md:32-35]
+
+`InnerClass::from_root_involution` 接受未带基根数据上的任意对合，先验证它置换根系并传送余根，再左复合 `wrt_distinguished` 从反射后的单根像中读出的 Weyl word，使其成为带基根数据的对合。该入口随后丢弃 Weyl word；需要同时取得相对于所得 distinguished involution 的 Weyl factor 时，可使用委托给 `from_root_involution_with_factor` 的 `inner_class_with_twisted_involution`。参见 [[从根数据对合构造内类]]。^[inner-class.md:27-40]
+
+`based_involution_twist` 进一步要求每个单根都映到单根；成功时返回诱导的单根置换，失败时使用 `StructureError::InvalidBasedAutomorphism`。`generator_twist()` 则给出 distinguished involution 对简单生成元的置换。参见 [[Based involution 验证与生成元 twist]]。^[inner-class.md:42-51]
+
+## 成员判定与规范化
+
+`twisted_from_involution` 在调用方已完成平方与对合性检查的前提下，验证输入属于当前内类，并返回分解
+\[
+\theta=w\cdot\delta
+\]
+中的 Weyl 元素 \(w\)，其中 \(\delta\) 是 distinguished involution。这里使用 weight-matrix equality，其蕴含 twist 比较；拒绝同样由 `StructureError::InvalidBasedAutomorphism` 表达。参见 [[InnerClass 成员判定与 twisted 分解]]。^[inner-class.md:53-59]
+
+根理论层还提供三阶段 `canonicalize`：先使正实根与正虚根的和均占优，再限制到与两者都正交的简单生成元，最后使实际对合在残余复根子系统中保持正性。返回的生成元按执行顺序记录到规范代表元的传送；`canonicalize_with_generators` 可将操作限制在指定的 `active` 生成元内。参见 [[Twisted involution 的三阶段规范化]]。^[inner-class.md:61-72]
+
+`canonical_involution_expr` 输出 Weyl part 的约化 twisted-involution 表达式，并按外部生成元编号选取字典序最小者。其调用方必须保证输入确实是当前内类某个 twisted involution 的 Weyl part；循环终止性依赖每一步降低 twisted length。参见 [[Twisted involution 的规范约化表达式]]。^[inner-class.md:74-85]
+
+## 枚举结果的含义
+
+`twisted_involutions` 返回形如 `w after distinguished` 的根对合稳定列表；它尚未经过 twisted conjugacy 或 Cayley transforms 取商，因此不是 Cartan 类列表。`twisted_conjugacy_classes` 返回确定性的 Weyl twisted-conjugacy 轨道，但代表元不是 Atlas-canonical，也不构造 Cartan fibers、实形式或 Cartan 偏序。^[inner-class.md:87-94]
+
+`twisted_conjugacy_partition` 提供带成员查询的完整分区，`twisted_conjugacy_classes` 是其薄包装。经生成元闭包构造的 `generated_twisted_conjugacy_partition` 按 twisted involutions 数量计预算，而非所有 Weyl elements；每类仅实体化一个 lattice involution，并用紧凑根置换进行成员查询。外部 Cartan 编号仍由 `CartanClassification` 选举。参见 [[Twisted involution 枚举与共轭轨道分区]] 与 [[基于生成元闭包的 twisted 共轭分区]]。^[inner-class.md:95-101]
+
+## 证据范围
+
+本页依据的来源包是对 `inner_class.rs` 的结构性阅读，记录了所读 dirty 工作区字节及快照。该包不重述或扩展内类自身的 HPC 正确性证据链，也未执行构建、测试或原版运行，因此不提供数学验收、性能或并行结论。源码注释中的上游引用未被独立重读，其行号可能随版本变化。^[inner-class.md:9-15, inner-class.md:103-114]
+
+## Sources
+
+- [inner-class.md](inner-class.md) — Inner class 层：构造、验证门与 twisted 共轭枚举。
