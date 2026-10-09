@@ -943,3 +943,14 @@ ops 记录 + div_euclid 防定向反转 + E6 involution-187 注释）、幺模�
 None 的 stage-e 语义、simple_root_kind 三合一——全部忠实；7 个测试锚点
 （含 B2 投影传送的 assert_ne 字面量与 arm64 oracle 标注）逐字一致，未触
 分支清单一致。8 页批准；wiki/concepts/ 现有 69 页，剩余候选 464。
+
+## 2026年10月9日 第十批候选审查：rep-context.md 的 8 页
+
+对照 103 行来源包逐页核验：四元组字段与相等性（height 不参与比较）、
+undefined_print_weights 仅 UndefKGB 携带、两道 DatumMismatch 构造闸门与
+from_derived 的 debug_assert 复核、sr_gamma/sr 构造链与 KType 互转、
+lambda_rho 重建的减半奇偶拒绝、lambda_unique 的 div_euclid(2) 约定理由、
+mod_reduce/build_srm、is_parity 与 orientation_number 的步骤、
+reducibility_points 的"分子/分母对升序"措辞保留、deformation_terms 两个
+边界与逆向累积顺序——全部忠实。8 页批准；wiki/concepts/ 现有 77 页，
+剩余候选 456。

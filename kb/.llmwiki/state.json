@@ -124,6 +124,20 @@
         "实投影像基的播种与路径依赖传送"
       ],
       "compiledAt": "2026-10-09T15:48:11.996Z"
+    },
+    "rep-context.md": {
+      "hash": "2db29d2aede61b26bc8320170ff93cf6c66cfadbdd8a50bc1c8a74c3a82b9abe",
+      "concepts": [
+        "repcontext-借用上下文与一致性约束",
+        "standardrepr-标准表示参数",
+        "可约点与标准参数-final-化",
+        "形变项计算的边界情形与输出顺序",
+        "挠部分打包与-involution-图像基",
+        "表示参数代表元归一化",
+        "表示参数构造与权重恢复",
+        "表示参数的奇偶判定与朝向数"
+      ],
+      "compiledAt": "2026-10-09T15:50:31.804Z"
     }
   }
 }
