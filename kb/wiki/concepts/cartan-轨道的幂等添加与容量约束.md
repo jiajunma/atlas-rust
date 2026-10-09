@@ -1,11 +1,11 @@
 ---
 title: Cartan 轨道的幂等添加与容量约束
-summary: add_cartan 重复添加返回已有切片，新轨道须恰好达到分类给出的期望大小，记录数达到 max_involutions 后拒绝继续插入。
+summary: add_cartan 重复添加返回已有切片，新轨道大小必须等于分类预期，记录数达到 max_involutions 时拒绝继续插入。
 sources:
   - involution-table.md
 kind: concept
 createdAt: "2026-10-09T14:52:23.390Z"
-updatedAt: "2026-10-09T19:30:42.576Z"
+updatedAt: "2026-10-09T20:55:52.991Z"
 tags:
   - Cartan分类
   - 资源预算
@@ -18,11 +18,26 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: Cartan 轨道的幂等添加与容量约束
+summary: add_cartan 重复添加返回已有切片，新轨道须恰好达到分类给出的期望大小；全表记录数达到 max_involutions 后拒绝继续插入。
+sources:
+  - involution-table.md
+kind: concept
+tags:
+  - Cartan分类
+  - 资源预算
+  - 构造不变量
+aliases:
+  - cartan-轨道的幂等添加与容量约束
 ---
 
 # Cartan 轨道的幂等添加与容量约束
 
-`InvolutionTable::add_cartan(classification, cartan)` 在 KGB 构建流水线的 stage b 中，将一个 Cartan 类的 twisted involution 轨道加入表中，存为连续切片。该接口具有幂等性：重复添加同一 Cartan 类时，返回已有切片。新轨道必须恰好达到分类给出的期望大小，同时受全表记录数量上限约束。^[involution-table.md:20-24, involution-table.md:44-49, involution-table.md:62-63]
+`InvolutionTable::add_cartan(classification, cartan)` 在 KGB 构建流水线的 stage b 中，将一个 Cartan 类的 twisted involution 轨道加入表中，存为连续切片。该接口具有幂等性：重复添加同一 Cartan 类时返回已有切片。新轨道必须恰好达到分类给出的期望大小，同时受全表记录数量上限约束。^[involution-table.md:20-24, involution-table.md:44-49, involution-table.md:62-63]
 
 ## 添加与编号
 
@@ -46,10 +61,10 @@ promptModifiers:
 
 ## 测试与证据边界
 
-来源记录的相关测试锚点包括 A1 幂等添加、B2 全表与分类对账、两次独立建表的逐切片相等，以及 Cayley 目标 Cartan 加入前后的 `None` → `Some` 变化。边界测试还覆盖容量上限为 1 时拒绝第二个 Cartan，以及 `CartanId(9)` 越界；四个不变量错误字面量和 `AllocationFailed` 等分支尚未触及。参见 [[Involution 表的测试锚点与证据边界]]。^[involution-table.md:79-88]
+来源记录的相关测试锚点包括 A1 幂等添加、B2 全表与分类对账、两次独立建表的逐切片相等，以及 Cayley 目标 Cartan 加入前后的 `None` → `Some` 变化。边界测试还覆盖容量上限为 1 时拒绝第二个 Cartan，以及 `CartanId(9)` 越界。四个不变量错误字面量、`AllocationFailed` 和 `lookup` 的 `Some` 命中直接断言尚未覆盖。参见 [[Involution 表的测试锚点与证据边界]]。^[involution-table.md:79-88]
 
-这些说明来自结构性源码阅读。来源包未执行构建、测试或原版运行，不提供数学验收、性能或并行结论；正确性属于其独立的 [[HPC 验收证据链]]。^[involution-table.md:9-16, involution-table.md:103-106]
+这些说明来自结构性源码阅读。来源包未执行构建、测试或原版运行，不提供数学验收、性能或并行结论；正确性属于该实现自身的 HPC 证据链，本页不扩展其接受范围。来源中的上游行号转述自源码注释，未独立重读上游，可能随版本演进发生漂移。^[involution-table.md:9-16, involution-table.md:98-103]
 
 ## Sources
 
-- [involution-table.md](involution-table.md) — Twisted involution 表（KGB stage b）。
+- [involution-table.md](../../sources/involution-table.md) — Twisted involution 表（KGB stage b）。

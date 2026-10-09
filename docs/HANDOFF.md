@@ -515,6 +515,34 @@ state: **545 concepts / 73 sources / Fresh / 0 pending candidates / zero
 red links (872 indexed names)**; logged in `kb/log.md` 2026-10-10.  Same
 editorial caveat: not mathematical acceptance.
 
+Follow-up 2 (2026-10-10, three gap packets): with the refresh queue fully
+cleared, the documented KB coverage gaps were re-audited — the old
+"block.rs/ext_*/rep_*/kl_* + whole language layer" list was stale (all
+covered by earlier packets).  Real gaps were three `domain_builtins.rs`
+seams (2538–2653 value extractors incl. the 0xN-empty-rows adapter,
+5924–6085 alcove/FPP helpers, 9606–9723 Weyl word/generator validation)
+plus `frames/completions.rs` and `typed/type_groups.rs`.  Three new
+maintainer-written packets landed (`atlas-core-domain-seams`,
+`atlas-core-completions`, `atlas-core-type-groups`) with snapshot JSONs at
+git base `98b78278`; one reading-level finding recorded: **two coexisting
+`root_vertex_simple` ports** (domain_builtins.rs:6002 vs
+atlas-real-group/alcove.rs:643) are algorithmically aligned but differ in
+error channel (String vs StructureError), budget discipline, and
+bracket-failure handling (`unwrap_or(0)` vs `?`) — logged as drift risk,
+not a defect ruling.  The compile's link-graph expansion recompiled 55
+sources → **505 held candidates** (465 refreshes + 40 new pages).  Review:
+three-tier sieve (anchor validity + cited-token containment) passed 244;
+252 B-tier flags eyeballed (all faithful qualifications/notation); 9 C-tier
+resolved individually (e.g. `ADJOINT_PERSISTENT_SQUARES` is real but
+line-wrapped in the packet — sieve false negative); all 40 new pages read
+in full.  One candidate was rejected by the approval gate for a broken
+link (sibling page retitled); fixed by retargeting to the approved page
+per kb/AGENTS.md rule 5.  New-page caveat for future sieve runs: candidate
+`body` now carries **two** frontmatter blocks (compiler metadata + page
+draft) — strip both before comparing.  Final: **585 concepts / 76 sources
+/ Fresh / 0 pending / zero red links (933 indexed names)**; logged in
+`kb/log.md` 2026-10-10.  Editorial only — not mathematical acceptance.
+
 ### Upstream HEAD moved (2026-10-09, read-only finding)
 
 A fresh `git ls-remote` at 2026-10-09T13:14:20Z resolves upstream
@@ -912,11 +940,21 @@ Parallel local lane (no HPC needed): the KB source-packet sweep through
 `kb/sources/` continues via the verified Kimi probe route (full-bytes
 prompt, maintainer claim-by-claim verification, per-packet snapshot JSON
 under `kb/sources/snapshots/`).  Latest packet commit on this branch:
-global-kgb (see `kb/log.md` for the running list).  Remaining large gaps:
-`block.rs` (probe in flight at this writing),
-`ext_block.rs`/`ext_kl.rs`/`ext_param.rs`, `rep_context.rs`/`rep_table.rs`,
-`kl_polynomial.rs`/`kl_table.rs`, and the whole `crates/atlas-core/`
-language layer.
+global-kgb (see `kb/log.md` for the running list).  Coverage as of
+2026-10-10 (supersedes the older gap list): **atlas-real-group fully
+covered** (lib-root packet closes all 60 modules); **atlas-core has 23
+packets** — root map, session, session-frame, lex, syntax, types,
+value-layer, support-layer, typed-core, convert-expr, builtin-registry,
+typed-eval, domain-values, domain-construction, deformation-cache,
+domain-validate-print, root-numbering-alcove, center-classifier,
+domain-scc-root-table, weyl-subgroup, domain-dispatch, cli-main,
+regression-library.  Remaining gaps: `domain_builtins.rs` tail
+(~12263–22771, the largest single uncovered region, ~10.5k lines of
+per-builtin implementations), small seams 5924–6102 and 9606–9730,
+`completions.rs` + `typed/type_groups.rs` (the other three unmentioned
+files are cfg(test) modules whose organization the regression-library
+packet already maps), and the per-arm/per-test content is explicitly out
+of packet scope (see the registry and regression-library packets).
 
 ## SUPERSEDED: AFTER-v1 job 3890328 submitted, then FINAL FAILED on a harness constant bug — 2026-10-03
 

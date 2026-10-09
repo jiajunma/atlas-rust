@@ -1,14 +1,14 @@
 ---
 title: 扩展表示上下文 ExtRepContext
-summary: 以 twisting involution delta 扩展 RepContext，保存根置换、不动根集和生成元 twist，并提供移位与翻转判定。
+summary: 以 twisting involution delta 扩展 RepContext，保存根置换、不动根集与生成元 twist，并提供移位和翻转判定。
 sources:
   - ext-param.md
 kind: concept
 createdAt: "2026-10-09T14:46:46.972Z"
-updatedAt: "2026-10-09T19:27:44.878Z"
+updatedAt: "2026-10-09T20:51:40.436Z"
 tags:
   - 表示论
-  - 扩展参数
+  - Rust设计
 aliases:
   - 扩展表示上下文-extrepcontext
 confidence: 1
@@ -17,6 +17,20 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: 扩展表示上下文 ExtRepContext
+summary: 以 twisting involution delta 扩展 RepContext，保存根置换、不动根集和生成元 twist，并提供移位与翻转判定。
+sources:
+  - ext-param.md
+kind: concept
+tags:
+  - 表示论
+  - 扩展参数
+aliases:
+  - 扩展表示上下文-extrepcontext
 ---
 
 # 扩展表示上下文 ExtRepContext
@@ -25,9 +39,9 @@ promptModifiers:
 
 ## 数据表示与接口
 
-`delta` 以根系置换表示；上下文还附带不动根集，以及由该对合诱导的单生成元 twist。访问器包括 `rc()`、`delta()`、`delta_of`、`is_delta_fixed_root` 和 `twisted`，用于访问基础上下文及扩展结构。^[ext-param.md:35-38]
+`delta` 以根系置换表示；上下文还附带不动根集，以及由该对合诱导的单生成元 twist。访问器包括 `rc()`、`delta()`、`delta_of`、`is_delta_fixed_root` 和 `twisted`，提供基础上下文及扩展结构的访问。^[ext-param.md:35-38]
 
-高级判定接口包括 `to_simple_shift`、`is_very_complex` 和 `shift_flip`。来源分别将其对应到上游 `repr.h:706-708`、`repr.cpp:2804-2813` 和 `repr.cpp:2824-2836`，但没有展开判定公式或算法步骤。^[ext-param.md:35-38]
+高级判定接口包括 `to_simple_shift`、`is_very_complex` 和 `shift_flip`。来源分别将其对应到上游 `repr.h:706-708`、`repr.cpp:2804-2813` 和 `repr.cpp:2824-2836`，但未展开判定公式或算法步骤。^[ext-param.md:35-38]
 
 ## 在扩展参数计算中的作用
 
@@ -43,10 +57,10 @@ promptModifiers:
 
 ## 证据边界
 
-来源属于结构性源码阅读，记录的是 dirty 工作区中的源码字节。参数层的正确性归于其自身的 [[HPC 验收证据链]]，来源未重述或扩展该证据链。^[ext-param.md:9-15]
+来源属于结构性源码阅读，记录的是 dirty 工作区中的源码字节。参数层的正确性归于其自身的 HPC 证据链（如 unitarity gate），本来源不重述或扩展该证据链。^[ext-param.md:9-15]
 
 所列上游位置均转述自源码注释，未独立重读上游，行号可能随版本演进而漂移。来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。^[ext-param.md:70-78]
 
 ## Sources
 
-- [ext-param.md](ext-param.md) — ext_param/star 层：扩展块的参数层。
+- [ext-param.md](../../sources/ext-param.md) — ext_param/star 层：扩展块的参数层。

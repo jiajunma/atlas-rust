@@ -1,6 +1,28 @@
 ---
 title: 扩展参数值类型 ExtParam
-summary: 保存 Weyl 元素、权与余权、有理权及翻转位，支持计算 theta、重建 KGB 元素和限制参数。
+summary: 保存 Weyl 元素、权与余权、有理权及翻转位，并支持由 (tw, l mod 2) 重建 KGB 元素和限制参数。
+sources:
+  - ext-param.md
+kind: concept
+createdAt: "2026-10-09T14:46:56.920Z"
+updatedAt: "2026-10-09T20:51:48.638Z"
+tags:
+  - 表示论
+  - 参数表示
+aliases:
+  - 扩展参数值类型-extparam
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: 扩展参数值类型 ExtParam
+summary: 保存 Weyl 元素、权与余权、有理权及翻转位，支持默认扩展构造、KGB 元素重建与限制操作，并参与 star 和 finalisation。
 sources:
   - ext-param.md
 kind: concept
@@ -21,11 +43,11 @@ promptModifiers:
 
 # 扩展参数值类型 ExtParam
 
-`ExtParam` 是扩展块参数层的值类型，移植自上游 `ext_block.h:293-364` 与 `ext_block.cpp:2283-2420`。它保存扩展参数的数据，提供默认扩展构造、KGB 元素重建与限制操作，并作为 `star` 运算返回的邻接参数类型。^[ext-param.md:19-24, ext-param.md:42-52, ext-param.md:56-58]
+`ExtParam` 是扩展块参数层的值类型，移植自上游 `ext_block.h:293-364` 与 `ext_block.cpp:2283-2420`。它保存扩展参数的数据，提供默认扩展构造、KGB 元素重建与限制操作，并作为 `star` 运算返回的邻接参数类型。^[ext-param.md:19-24, ext-param.md:42-58]
 
 ## 数据结构与派生操作
 
-`ExtParam` 的字段包括 Weyl 元素 `tw`、余权 `l`（`Coweight`）、有理权 `gamma_lambda`（`RationalWeight`）、权 `tau`（`Weight`）、余权 `t`（`Coweight`）以及翻转位。^[ext-param.md:42-44]
+`ExtParam` 包含 Weyl 元素 `tw`、余权 `l`（`Coweight`）、有理权 `gamma_lambda`（`RationalWeight`）、权 `tau`（`Weight`）、余权 `t`（`Coweight`）以及翻转位。^[ext-param.md:42-44]
 
 派生操作包括 `theta(ctx)`、`theta_id(ctx)`、`x(ctx)`、`restrict_mod` 与 `restrict`。其中，`x(ctx)` 由 `(tw, l mod 2)` 重建 KGB 元素。^[ext-param.md:45-47]
 
@@ -43,14 +65,18 @@ promptModifiers:
 
 `extended_finalise(ctx, sr)` 返回 `Vec<(StandardRepr, bool)>`，其 standard 与 delta-fixed 前置条件通过 `debug_assert` 检查；`scaled_extended_finalise(ctx, sr, factor_num, factor_den)` 返回 `(StandardRepr, bool)`，缩放 $\nu$ 而保持 $\lambda$ 固定。^[ext-param.md:59-62]
 
+在[[扩展块符号调校的 StarOracle 实现]]中，`ExtParamOracle` 为 `ExtBlock::tune_signs` 服务，通过 `ext_param::def_ext` 重建每个父块元素的默认扩展；`PartialBlockOracle` 则以 `PartialBlock` 为后端，用于 `ExtBlock::build_partial` 之后的符号调校。^[ext-param.md:64-68]
+
 ## 算术与错误约定
 
-本参数层的 `Weight`、`Coweight` 与 `int` 算术采用二进制补码 wrapping `i32`，以匹配上游 `int` 算术；有理权分子保持 `i64`。上游 `assert` 条件转为 `debug_assert` 或仅在调试模式运行的 `validate`，真正的数据相关失败通过 [[StructureError 统一错误分类学|StructureError]] 暴露。参见[[扩展参数层的 Rust 移植约定]]。^[ext-param.md:28-31]
+本参数层的 `Weight`、`Coweight` 与 `int` 算术采用二进制补码 wrapping `i32`，以匹配上游 `int` 算术；有理权分子保持 `i64`。上游 `assert` 条件转为 `debug_assert` 或仅在调试模式运行的 `validate`，真正的数据相关失败通过 [[StructureError 统一错误分类学|StructureError]] 暴露。相关约定见[[扩展参数层的 Rust 移植约定]]。^[ext-param.md:28-31]
 
 ## 证据范围
 
-来源属于对 `ext_param.rs` 的结构性阅读，读取的是 dirty 工作区快照。上游文件行号转述自源码注释，未独立重读上游，可能随版本演进漂移；来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。^[ext-param.md:9-15, ext-param.md:72-78]
+来源属于对 `ext_param.rs` 的结构性阅读，所读字节记录在 `snapshots/2026-10-03-ext-param.json`，对应 dirty 工作区。该材料不重述或扩展模块自身的 HPC 正确性证据链。^[ext-param.md:9-15]
+
+上游文件行号转述自源码注释，未独立重读上游，可能随版本演进漂移。来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。^[ext-param.md:72-78]
 
 ## Sources
 
-- [ext-param.md](ext-param.md) — ext_param/star 层：扩展块的参数层。
+- [ext-param.md](../../sources/ext-param.md) — ext_param/star 层：扩展块的参数层。

@@ -1,15 +1,15 @@
 ---
 title: 强实分类打印视图 StrongRealClassPrint
-summary: 打印视图提供提升到 fundamental fiber 后的平方类号、模分母约化为非负剩余的平方分子及按轨道分划顺序排列的外部实形式编号；上游对应关系仅转述自源码注释。
+summary: 打印视图提供提升到 fundamental fiber 后的平方类号、模分母约化的非负平方分子及按轨道分划顺序排列的外部实形式编号；上游对应关系仅转述自源码注释。
 sources:
   - strong-real.md
 kind: concept
 createdAt: "2026-10-09T15:12:53.975Z"
-updatedAt: "2026-10-09T19:36:55.987Z"
+updatedAt: "2026-10-09T21:11:04.344Z"
 tags:
   - 强实形式
-  - 打印兼容
-  - 证据边界
+  - 打印契约
+  - 上游兼容
 aliases:
   - 强实分类打印视图-strongrealclassprint
 confidence: 1
@@ -18,6 +18,22 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: 强实分类打印视图 StrongRealClassPrint
+summary: StrongRealClassPrint 提供提升到 fundamental fiber 后的类编号、模分母约化为非负剩余的平方分子序列，以及按 partition 顺序排列的外部实形式编号；上游对应关系转述自源码注释。
+sources:
+  - strong-real.md
+kind: concept
+tags:
+  - 强实形式
+  - 打印兼容
+  - 证据边界
+aliases:
+  - 强实分类打印视图-strongrealclassprint
+provenanceState: extracted
 ---
 
 # 强实分类打印视图 StrongRealClassPrint
@@ -44,10 +60,10 @@ fiber 轨道编号具有另一种选择依赖：`StrongRealFormRep` 的 `fiber_o
 
 ## 证据范围
 
-来源是对 `strong_real.rs` 的结构性阅读，所读字节记录于 dirty 工作区快照。强实分类的正确性属于其自身的 [[HPC 验收证据链]]，该来源不重述或扩展这条证据链。^[strong-real.md:9-15]
+来源是对 `strong_real.rs` 的结构性阅读，所读字节记录于 dirty 工作区快照 `snapshots/2026-10-03-strong-real.json`。强实分类的正确性属于其自身的 HPC 证据链，包括 Cartan/seed gate 等；该来源不重述或扩展这条证据链。^[strong-real.md:9-15]
 
 上游 `output.cpp`、`innerclass.cpp` 和 `cartanclass.cpp` 的行号均转述自源码注释，未独立重读上游，可能随版本演进而漂移。来源未执行构建、测试或原版运行，也不包含数学验收、性能或并行结论。^[strong-real.md:70-77]
 
 ## Sources
 
-- [strong-real.md](strong-real.md)：《强实形式分类：平方类编号与 fiber 轨道》。
+- [strong-real.md](../../sources/strong-real.md)：《强实形式分类：平方类编号与 fiber 轨道》。

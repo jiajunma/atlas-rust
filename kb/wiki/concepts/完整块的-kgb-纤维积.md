@@ -1,15 +1,15 @@
 ---
 title: 完整块的 KGB 纤维积
-summary: 完整块按 twisted involution 的对偶关系配对两个完整 KGB 集，保留各自坐标编号；缺失对偶包不贡献元素，对偶包索引中的重复键会静默覆盖。
+summary: 完整块按 twisted involution 的对偶关系配对两侧完整 KGB 集，保留各自编号；缺失对偶包不贡献元素，重复包键会静默覆盖。
 sources:
   - block-graph.md
 kind: concept
 createdAt: "2026-10-09T14:41:08.924Z"
-updatedAt: "2026-10-09T19:26:27.462Z"
+updatedAt: "2026-10-09T20:48:16.339Z"
 tags:
+  - 表示论
   - 块图
   - KGB
-  - 对偶
 aliases:
   - 完整块的-kgb-纤维积
   - 完K纤
@@ -19,21 +19,38 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: 完整块的 KGB 纤维积
+summary: 完整块按 twisted involution 的对偶关系配对两个完整 KGB 集，保留各自坐标编号；缺失对偶包不贡献元素，对偶包索引中的重复键会静默覆盖。
+sources:
+  - block-graph.md
+kind: concept
+tags:
+  - 块图
+  - KGB
+  - 对偶
+aliases:
+  - 完整块的-kgb-纤维积
+  - 完K纤
+provenanceState: extracted
 ---
 
 # 完整块的 KGB 纤维积
 
-完整块是一个实形式的 [[KGB 图与弱实形式|KGB 图]]与其对偶实形式的 KGB 图，按 twisted involution 及其对偶配对形成的纤维积。每个块元素由坐标对 \((x,y)\) 表示，两侧 KGB 元素所属的对合包须满足对偶配对关系；坐标保留各自完整 KGB 集中的编号。^[block-graph.md:17-33]
+完整块是一个实形式的 [[KGB 图与弱实形式|KGB 图]]与其对偶实形式的 KGB 图，按 twisted involution 及其对偶配对形成的纤维积。每个块元素由坐标对 \((x,y)\) 表示，两侧元素所属的对合包必须满足对偶配对关系；坐标保留各自完整 KGB 集中的编号。^[block-graph.md:17-33]
 
 ## 对合的对偶配对
 
-配对使用 twisted Weyl 群的 `dual_involution` 映射。在对合矩阵上，该映射是负转置；在 Weyl 元素上，由 \(f(e)=w_0\) 与 \(f(s.w)=f(w)\,d(s)\) 刻画。实现从对偶最长元出发，按原元素的约化字**自右向左**，以对偶扭曲字母右乘；约化字使用两侧共享的外部生成元编号。详见 [[Twisted Weyl 群的对合对偶映射]]。^[block-graph.md:20-24]
+配对使用 twisted Weyl 群的 `dual_involution` 映射。在对合矩阵上，该映射是负转置；在 Weyl 元素上，由 \(f(e)=w_0\) 与 \(f(s.w)=f(w)\,d(s)\) 刻画。实现从对偶最长元出发，按原元素的约化字**自右向左**，以对偶扭曲字母右乘；约化字携带两侧共享的外部生成元编号。^[block-graph.md:20-24]
 
 ## 完整 KGB 集与公共 Cartan 限制
 
-解释器从两个实形式的**完整 KGB 集**构建块，以保持原始坐标编号。显式使用 `common_Cartans` 受限重载会改变编号，因此公共 Cartan 的限制通过配对隐式实现：若某个原侧对合的对偶不在对偶包索引中，该原侧包便不贡献任何坐标对，对应上游 `tauPacket` 返回空区间 `(0,0)` 的行为。^[block-graph.md:26-33]
+解释器从两个形式的**完整 KGB 集**构建块，以保持各自的 KGB 坐标编号。显式使用 `common_Cartans` 受限重载会改变编号，因此公共 Cartan 的限制通过配对隐式实现：若某个原侧对合的对偶不在对偶包索引中，该原侧包便不贡献任何坐标对，对应上游 `tauPacket` 返回空区间 `(0,0)` 的行为。^[block-graph.md:26-33]
 
-对偶包通过 `HashMap<WeylElement, usize>` 索引。来源中的源码阅读指出，重复键会静默覆盖，当前没有重复键防护；索引机制本身不能保证检测出重复的对合包键。^[block-graph.md:30-33]
+对偶包通过 `HashMap<WeylElement, usize>` 索引。来源中的源码阅读指出，重复键会静默覆盖，当前没有重复键防护。^[block-graph.md:30-33]
 
 ## 构造与元素编号
 
@@ -51,10 +68,12 @@ promptModifiers:
 
 ## 示例与证据边界
 
-秩一测试中的 \(\operatorname{block}(\mathrm{SL}(2,\mathbb R),\mathrm{PGL}(2,\mathbb R))\) 有三个元素，坐标依次为 \((0,1),(1,1),(2,0)\)，与冻结 fixture capture `3501519` 对齐。测试还检查了数据变换所得对偶块与原生对偶块经 `element` 换编号后的一致性，以及覆盖全 KGB 范围时 `dual().dual()` 恢复原块及其定位表。^[block-graph.md:117-124]
+来源记录的秩一测试中，\(\operatorname{block}(\mathrm{SL}(2,\mathbb R),\mathrm{PGL}(2,\mathbb R))\) 有三个元素，坐标依次为 \((0,1),(1,1),(2,0)\)，与冻结 fixture capture `3501519` 对齐。测试还检查了数据变换所得对偶块与原生对偶块经 `element` 换编号后的一致性，以及覆盖全 KGB 范围时 `dual().dual()` 恢复原块及其定位表。^[block-graph.md:117-124]
 
-来源记录的七个测试全部限于 A1，未覆盖多生成元、空对偶包或空块、`element` 失败分支等情形。来源本身属于结构性源码阅读，未执行构建、测试或原版运行；块枚举的正确性归于独立的 [[HPC 验收证据链]]。相关覆盖范围见 [[完整块图的测试覆盖与证据边界]]。^[block-graph.md:9-13, block-graph.md:117-126, block-graph.md:139-139]
+七个测试全部限于 A1，未覆盖多生成元、空对偶包或空块、`element` 失败分支等情形。相关覆盖范围见 [[完整块图的测试覆盖与证据边界]]。^[block-graph.md:117-126]
+
+来源属于结构性源码阅读，本包未执行构建、测试或原版运行，不含数学验收、性能或并行结论。块枚举的正确性属于独立的 HPC 证据链，本包不重述或扩展其结论；其中上游行号转述自源码注释，未独立重读上游。^[block-graph.md:9-13, block-graph.md:139-139]
 
 ## Sources
 
-- [block-graph.md](block-graph.md)：完整块图：实形式与对偶实形式的纤维积。
+- [block-graph.md](../../sources/block-graph.md)：完整块图：实形式与对偶实形式的纤维积。

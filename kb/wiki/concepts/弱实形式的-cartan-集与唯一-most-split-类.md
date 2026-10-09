@@ -1,51 +1,65 @@
 ---
 title: 弱实形式的 Cartan 集与唯一 most-split 类
-summary: 弱实形式数量来自 fundamental partition，每个形式关联一个升序 Cartan 类集合及唯一的 most-split Cartan 类。
+summary: 弱实形式数量来自 fundamental partition，每个形式关联升序排列的 Cartan 类集合及唯一的 most-split Cartan 类。
 sources:
   - cartan-classification.md
 kind: concept
 createdAt: "2026-10-09T14:42:28.349Z"
-updatedAt: "2026-10-09T14:42:28.349Z"
+updatedAt: "2026-10-09T20:49:07.594Z"
 tags:
   - 弱实形式
   - Cartan分类
 aliases:
   - 弱实形式的-cartan-集与唯一-most-split-类
+  - 弱C集M类
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: 弱实形式的 Cartan 集与唯一 most-split 类
+summary: 弱实形式数量来自 fundamental partition，每个形式关联一个按编号升序排列的 Cartan 集及唯一的 most-split Cartan 类。
+sources:
+  - cartan-classification.md
+kind: concept
+tags:
+  - 弱实形式
+  - Cartan分类
+aliases:
+  - 弱实形式的-cartan-集与唯一-most-split-类
 ---
 
 # 弱实形式的 Cartan 集与唯一 most-split 类
 
-`CartanClassification` 为一个 inner class 构建全部 Cartan 类，并汇总每个弱实形式的 Cartan 集及其唯一的 most-split Cartan 类。这些事实与 twisted-involution 总数、严格 Cartan 偏序共同构成分类结果。^[cartan-classification.md:18-21]
+`CartanClassification::build` 为一个 inner class 构建全部 Cartan 类，并汇总每个弱实形式的 Cartan 集及其唯一的 most-split（最分裂）Cartan 类。这两类事实与 twisted-involution 总数、严格 Cartan 偏序共同构成分类结果。^[cartan-classification.md:18-21]
 
 ## 查询接口
 
-`weak_real_form_count()` 返回弱实形式的数量，数量来自 fundamental partition；`cartan_set(form)` 返回该弱实形式所处的 Cartan 类，按编号升序排列；`most_split(form)` 返回该形式唯一的 most-split Cartan 类。Cartan 集描述一个形式涉及的全部类，most-split 查询则指定其中唯一的最分裂类。^[cartan-classification.md:53-55]
+`weak_real_form_count()` 返回弱实形式数量，其来源是 fundamental partition。`cartan_set(form)` 返回该弱实形式所处的 Cartan 类，按编号升序排列；`most_split(form)` 返回该形式唯一的 most-split Cartan 类。因此，前者提供类集合，后者提供唯一的最分裂类。^[cartan-classification.md:53-55]
 
 ## Cartan 集的编号顺序
 
-Cartan 集采用 [[CartanId 的 Atlas 编号顺序]]：fundamental class 编号为 `CartanId(0)`，其余类依 BFS 发现顺序编号。遍历时，parent 按编号升序处理，各 parent 的 positive imaginary roots 按上游 `RootNbr` 顺序处理，即先按 height，再按 simple 坐标的逆字典序。Cayley successor 在比较与存储之前先经 `InnerClass::canonicalize` 规范化。^[cartan-classification.md:25-29]
+Cartan 集使用 [[CartanId 的 Atlas 编号顺序]]：fundamental class 为 `CartanId(0)`，其余类按 BFS 发现顺序编号。构造时，parent 按编号升序处理，每个 parent 的 positive imaginary roots 按上游 `RootNbr` 顺序处理，即先按 height，再按 simple 坐标的逆字典序。Cayley successor 在比较与存储之前先经 `InnerClass::canonicalize` 规范化。^[cartan-classification.md:25-29]
 
-分类的公共接口 `cartan_ids()` 同样按升序迭代，`cartan_class(id)` 返回 `Option<&CartanClass>`；因此，形式的 Cartan 集与全局类查询使用同一套编号。^[cartan-classification.md:30-31, cartan-classification.md:54-54]
+全局接口 `cartan_ids()` 按编号升序迭代，`cartan_class(id)` 返回 `Option<&CartanClass>`。按弱实形式取得的 Cartan 集也遵循这一编号顺序。^[cartan-classification.md:30-31, cartan-classification.md:53-55]
 
 ## 与严格 Cayley 偏序的关系
 
-[[严格 Cayley 偏序]] 给出 Cartan 类之间的方向关系：`is_below(a, b)` 为真，当且仅当 `a != b`，且 `b` 的 fixed torus 的单位连通分量可经 Weyl 共轭嵌入 `a` 的相应分量。等价地，`a` 位于一条进入 `b` 的非空 single-root Cayley links 链中更紧致的一端。fundamental class 位于其他每个类之下；该关系不可反身，`is_below(x, x)` 恒为 `Some(false)`。^[cartan-classification.md:45-49]
+[[严格 Cayley 偏序]] 描述 Cartan 类之间的方向关系：`is_below(a, b)` 为真，当且仅当 `a != b`，且 `b` 的 fixed torus 的单位连通分量可经 Weyl 共轭嵌入 `a` 的相应分量。等价地，`a` 位于一条通向 `b` 的非空 single-root Cayley links 链的更紧致端。fundamental class 位于其他每个类之下；该关系不可反身，同一有效类与自身比较得到 `Some(false)`。^[cartan-classification.md:45-49]
 
-## 与强对合数据归属的衔接
+## 从强对合数据确定归属
 
-若输入是强对合数据 `(twisted, factor)`，`real_form_of(inner_class, twisted, factor)` 返回认领该数据的弱实形式；其中 `factor` 是调用方投影得到的 theta-fixed rational coweight。`real_form_of_detailed` 还返回 `twisted` 所属的 Cartan 类。该归属接口与按弱实形式查询 Cartan 集的接口，共同连接强对合数据、弱实形式和 Cartan 类；相关机制见 [[强对合数据的弱实形式归属]]。^[cartan-classification.md:53-60, cartan-classification.md:74-76]
+`real_form_of(inner_class, twisted, factor)` 返回认领强对合数据 `(twisted, factor)` 的弱实形式，其中 `factor` 是调用方投影得到的 theta-fixed rational coweight。`real_form_of_detailed` 进一步返回 `twisted` 所属的 Cartan 类；synthetic wrapper 利用该类，在调用 `minimal_torus_part` 前将 involution table 扩展到它之下的每个类。相关机制见 [[强对合数据的弱实形式归属]]。^[cartan-classification.md:56-62, cartan-classification.md:74-76]
 
 ## 证据范围
 
-来源包记录的是 `cartan_classification.rs` 与 `cartan_class.rs` 的结构性阅读，快照对应 dirty 工作区字节。它明确陈述了每个弱实形式具有唯一 most-split 类的接口事实，但不重述或扩展 Cartan 分类自身的 HPC 正确性证据链，也未执行构建、测试或原版运行。^[cartan-classification.md:9-14, cartan-classification.md:53-55, cartan-classification.md:105-105]
+本页依据 `cartan_classification.rs` 与 `cartan_class.rs` 的结构性阅读，来源快照对应两个文件的 dirty 工作区字节。来源明确记录每个弱实形式具有唯一 most-split 类这一接口事实，但不重述或扩展 Cartan 分类自身的 HPC 正确性证据链；本来源包未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。^[cartan-classification.md:9-14, cartan-classification.md:53-55, cartan-classification.md:105-105]
 
 ## Sources
 
-- [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)
+- [Cartan 分类：编号、预算与实形式归属](../../sources/cartan-classification.md)

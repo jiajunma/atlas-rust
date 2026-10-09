@@ -1,0 +1,15 @@
+{
+    "schema": "atlas-kb-reading-snapshot-v1",
+    "date": "2026-10-10",
+    "git_base": "98b78278",
+    "working_tree": false,
+    "scope": "Reading of crates/atlas-core/src/frames/completions.rs (all 112 lines) for the atlas-core-completions packet: the session-owned completion order index (intern order = first lexical use, not first successful definition), Rc-shared name allocation between index and ordered entries, OnceCell lazy snapshot invalidated only on real active-bit changes, and the legacy replace API preserving supplied order and duplicates. The three unit tests were read as anchors; behavioral acceptance belongs to the HPC completion AFTER gate (job 3868661) and command AFTER R2 (job 3868782), not restated here.",
+    "files": [
+        {
+            "path": "crates/atlas-core/src/frames/completions.rs",
+            "sha256": "5891eff8d3f1069dc3c316e21954e5389fab64b53a0a631d8428166a3e163bdc",
+            "bytes": 4530,
+            "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+        }
+    ]
+}

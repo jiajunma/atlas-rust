@@ -2010,3 +2010,32 @@ root_ladder fixture/golden 3 个文件），属 owner 的提交决定，已在 H
 资源预算 16 页、算法不变量 4 页 / 构造不变量 5 页、不变量 6 页），与既有
 的碎片化问题同类——按 10 月 10 日 MOC 合并条目的既定决定，更广义的标签
 归并留作后续专项编辑工作，本轮不做机械批量改动。
+
+## 2026年10月10日 三个缝隙包与 505 候选复审（585 页）
+
+补齐 atlas-core 覆盖缝隙的三个新来源包，均由维护者直接撰写（区域小，
+不值 Kimi probe 往返）：
+
+- `atlas-core-domain-seams`：domain_builtins.rs 的三处缝隙——值提取器组
+  （2538–2653，含 `as_matrix_rows` 的 0xN 空行表示）、alcove/FPP 助手
+  （5924–6085，Bareiss 行列式、余子式转置伴随；**记录两份并存
+  `root_vertex_simple` 的三处差异**为漂移风险）、Weyl 词/生成元校验与
+  值冻结（9606–9723，AFTER-v5 身份纪律的派发侧配套，保留源码
+  "Integer value to big for conversion" 原措辞）。
+- `atlas-core-completions`：frames/completions.rs（112 行全），intern
+  顺序/惰性快照/精确失效/replace 遗留语义。
+- `atlas-core-type-groups`：typed/type_groups.rs（90 行全），BFS 验证
+  顺序、局部名禁显式实参、裸自引用形参转发。
+
+编译器因新包的交叉链接扩展重编译了 55 个来源（21 跳过），产生 505 个
+候选（465 改写 + 40 新页）。复审：三层筛（引用锚点有效性 + 被引句
+token 落在引用行内）244 个直接通过；252 个 B 级 flag 逐条打印核对
+（全部为忠实限定名/记号）；9 个 C 级逐个人工解决（最大疑点
+`ADJOINT_PERSISTENT_SQUARES` 实为包内跨行断行的标识符，忠实）。40 个
+新页逐页全文核读。1 个候选（while-转换）因引用目标页题不同被批准门拒
+（broken citation target），按规则 5 将链接改指已批准的同主题页
+《Do 守卫体的共享词法作用域》后批准。注意本轮候选 body 带双重
+frontmatter（编译器元数据 + 页面草稿），机械筛需剥两层。
+
+最终 `llmwiki status`：585 concepts / 76 sources / Fresh / 0 待审；
+全库扫描（933 个索引名）零红链。编辑性复审，不构成数学验收。

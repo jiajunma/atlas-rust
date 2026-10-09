@@ -1,11 +1,34 @@
 ---
 title: 可约点与标准参数 final 化
-summary: reducibility_points 按分子分母对升序返回可约分数，finals_for 通过栈驱动的 dominant 检查及奇偶、长度下降生成带整数系数的 final 参数；来源未执行数学验收。
+summary: reducibility_points 按分子分母对升序返回可约分数，finals_for 通过栈驱动的 dominant 检查及奇偶、长度下降生成带整数系数的 final 参数；本包未作数学验收。
 sources:
   - rep-context.md
 kind: concept
 createdAt: "2026-10-09T15:08:54.760Z"
-updatedAt: "2026-10-09T19:35:58.432Z"
+updatedAt: "2026-10-09T21:07:59.325Z"
+tags:
+  - 表示论
+  - 形变算法
+aliases:
+  - 可约点与标准参数-final-化
+  - 可F化
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: 可约点与标准参数 final 化
+summary: reducibility_points 按分子／分母对升序返回可约分数；finals_for 通过栈驱动的 dominant 检查及奇偶／长度下降生成带整数系数的 final 参数。来源为结构性源码阅读，不构成数学验收。
+sources:
+  - rep-context.md
+kind: concept
+createdAt: "2026-10-09T15:08:54.760Z"
+updatedAt: "2026-10-10"
 tags:
   - 表示论
   - 可约性
@@ -33,23 +56,23 @@ promptModifiers:
 
 ## 可约点查询
 
-`reducibility_points(z)` 按分子／分母对的升序返回可约分数，来源将其对应到上游 `repr.cpp:825-925`。这里记录的排序依据是分子／分母对。^[rep-context.md:81-82]
+`reducibility_points(z)` 按分子／分母对升序返回可约分数，来源将其对应到上游 `repr.cpp:825-925`。此处明确记录的排序依据是分子／分母对。^[rep-context.md:81-82]
 
 ## 标准参数 final 化
 
-`finals_for(z)` 使用栈驱动的 final 化过程，结合 dominant 检查与奇偶／长度下降，返回 `(StandardRepr, i32)` 系数对。因此，结果同时保留标准参数及其整数系数，相关主题见 [[finals_for 带号重数展开]]。^[rep-context.md:83-84]
+`finals_for(z)` 使用栈驱动的 final 化过程，结合 dominant 检查与奇偶／长度下降，返回 `(StandardRepr, i32)` 系数对。结果同时保留标准参数及其整数系数，相关主题见 [[finals_for 带号重数展开]]。^[rep-context.md:83-84]
 
-参数层的奇偶谓词 `is_parity(s, x, lambda_rho, gamma)` 将生成元 `s` 在 `x` 处的 KGB 状态转运到父单根，比较 $\theta_1\lambda_\rho + 2\rho_{\text{non-real}}$ 与 $\langle\gamma,\alpha_s^\vee\rangle$ 的奇偶。来源将其标注为上游 `repr.cpp:249` 的补集。^[rep-context.md:71-73]
+参数层的奇偶谓词 `is_parity(s, x, lambda_rho, gamma)` 将生成元 `s` 在 `x` 处的 KGB 状态转运到父单根，比较 $\theta_1\lambda_\rho + 2\rho_{\text{non-real}}$ 与 $\langle\gamma,\alpha_s^\vee\rangle$ 的奇偶。来源将其标注为上游 `repr.cpp:249` 的补集；相关主题见 [[表示参数的奇偶判定与朝向数]]。^[rep-context.md:71-75]
 
 ## 形变项计算中的边界行为
 
-`deformation_terms(block, y, gamma, lambda_rho, kl_table)` 在 `block.length(y) == 0` 的平凡情形返回空；当奇异集为空时，每个元素均为 final，逆向累积的列表为 `[y, y-1, ..., 0]`。^[rep-context.md:85-87]
+`deformation_terms(block, y, gamma, lambda_rho, kl_table)` 在 `block.length(y) == 0` 的平凡情形返回空；当奇异集为空时，每个元素均为 final，逆向累积的列表为 `[y, y-1, ..., 0]`。相关说明见 [[形变项计算的边界情形与输出顺序]]。^[rep-context.md:85-87]
 
 ## 证据范围
 
-本页依据结构性源码阅读材料。参数层正确性属于其自身的 [[HPC 验收证据链]]，包括 orientation、deform、unitarity 等门控；来源不重述或扩展这些验收结论。^[rep-context.md:9-12]
+本页依据结构性源码阅读材料，其记录的 `rep_context.rs` 字节来自 dirty 工作区。参数层正确性属于自身的 HPC 证据链，包括 orientation、deform、unitarity 等门控；来源不重述或扩展这些验收结论。^[rep-context.md:9-16]
 
-来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。上游行号转述自源码注释，未经独立重读核对，可能随版本演进而漂移。^[rep-context.md:93-99]
+来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。上游行号转述自源码注释，未经独立重读核对，可能随版本演进而漂移。^[rep-context.md:91-99]
 
 ## Sources
 

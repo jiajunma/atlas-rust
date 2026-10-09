@@ -708,6 +708,29 @@ Tarjan 形 SCC（块图消费者）、`ByLastCoordinate` 的**坐标逆序**字�
 直接撰写（无 Kimi 调用）。本包不声称任何测试通过——可执行性以 HPC 门为准。
 结构性阅读。
 
+[领域层接缝](atlas-core-domain-seams.md)记录 `domain_builtins.rs` 既有各包
+之间的三个区间：值提取器组（2538–2653，`as_matrix_rows` 的 0xN 空行表示与
+显式 datum 臂消费链）、alcove/FPP 助手（5924–6085，Bareiss 无分数行列式、
+余子式转置伴随、**两份并存**的 `root_vertex_simple` 移植及其三处差异）、
+Weyl 词/生成元校验与值冻结（9606–9723，AFTER-v5 身份纪律的派发侧配套）。
+对应[阅读快照](snapshots/2026-10-10-atlas-core-domain-seams.json)；维护者
+直接撰写（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
+
+[补全候选的会话级顺序索引](atlas-core-completions.md)记录
+`frames/completions.rs`（112 行，全部）：intern 顺序即首次词法使用顺序、
+`Rc<str>` 索引/条目共享分配、`OnceCell` 惰性快照只在 active 位真实变化时
+失效、`replace` 遗留 API 保序保重复。对应
+[阅读快照](snapshots/2026-10-10-atlas-core-completions.json)；维护者直接
+撰写（无 Kimi 调用）。行为验收属 HPC completion AFTER 门（3868661）与
+command AFTER R2（3868782），本包不重述。结构性阅读。
+
+[组内名解析](atlas-core-type-groups.md)记录 `typed/type_groups.rs`（90 行，
+全部）：递归图构造前的 BFS 验证（结果先于参数、应用先于其参数）、三类
+Program 诊断、局部名永不接受显式参数、`forward_formals` 把组内裸自引用
+改写为转发全部形参的 Applied。对应
+[阅读快照](snapshots/2026-10-10-atlas-core-type-groups.json)；维护者直接
+撰写（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

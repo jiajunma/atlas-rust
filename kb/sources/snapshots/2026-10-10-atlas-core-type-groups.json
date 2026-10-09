@@ -1,0 +1,15 @@
+{
+    "schema": "atlas-kb-reading-snapshot-v1",
+    "date": "2026-10-10",
+    "git_base": "98b78278",
+    "working_tree": false,
+    "scope": "Reading of crates/atlas-core/src/typed/type_groups.rs (all 90 lines) for the atlas-core-type-groups packet: group-local name resolution before recursive graph construction — BFS validation order (result before argument, application before its arguments), the three Program-kind diagnostics, locals never accepting explicit arguments, and forward_formals rewriting a bare group self-reference into an Applied node forwarding all group formals (MathGenericList -> MathGenericList<A>).",
+    "files": [
+        {
+            "path": "crates/atlas-core/src/typed/type_groups.rs",
+            "sha256": "436085eb89bbd1bbbf5149be09dd7b5bcc872fef92c159b3a2ebce97c7bc85d2",
+            "bytes": 4530,
+            "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+        }
+    ]
+}

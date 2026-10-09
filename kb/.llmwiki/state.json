@@ -11,9 +11,11 @@
         "伴随纤维映射的测试证据与覆盖边界",
         "伴随纤维的资源预算与可恢复错误",
         "根对合诱导的伴随余权作用",
-        "源余权格到伴随余权格的整数投影"
+        "源余权格到伴随余权格的整数投影",
+        "fibertoadjoint-的按需投影",
+        "伴随-cartan-fiber-的对合作用构造"
       ],
-      "compiledAt": "2026-10-09T15:28:26.828Z"
+      "compiledAt": "2026-10-09T21:50:59.998Z"
     },
     "weyl-context-identity-and-sharing.md": {
       "hash": "6d155018197b21f11ec920b78f9b0ed0d6920b65024d3165cb1b3f37c9aa8101",
@@ -25,9 +27,15 @@
         "weyl-上下文共享的性能与内存证据边界",
         "weyl-元素的可失败关系与跨坐标运算",
         "weyl-语义回归的递进验证门禁",
-        "仅成功发布的惰性初始化"
+        "仅成功发布的惰性初始化",
+        "canonical-dual-的转置根数据与-g2-预热见证",
+        "hpc-阶段迁移的标签与前驱绑定",
+        "差分诊断的有序错误摘要契约",
+        "整树验收清单与生产落地一致性",
+        "源码预测与原版捕获的证据分离",
+        "语言层-weyl-元素的紧凑表示迁移边界"
       ],
-      "compiledAt": "2026-10-09T15:31:16.075Z"
+      "compiledAt": "2026-10-09T21:54:08.926Z"
     },
     "weyl-layer.md": {
       "hash": "f191efdf47a94419e570f515af23d2ead935b1cc76e644fd037f17959351cc60",
@@ -36,9 +44,11 @@
         "weylaction-的等值与-datum-身份语义",
         "weylelement-的置换表示与长度下降不变量",
         "基于左下降剥离的规范约化词",
-        "带基数预算的-weyl-群作用枚举"
+        "带基数预算的-weyl-群作用枚举",
+        "parabolicpieces-的抛物分解与排序键",
+        "weylaction-的对偶全格作用"
       ],
-      "compiledAt": "2026-10-09T20:01:43.022Z"
+      "compiledAt": "2026-10-09T21:44:41.627Z"
     },
     "root-datum-dual.md": {
       "hash": "2bc8c4ab0e92ecaec6000570f61e223eccf912f489165b8afef35b93a0bd4f0a",
@@ -52,7 +62,7 @@
         "根数据的-radical-与-coradical-饱和核基",
         "跨对偶的-cartan-类对应与扭曲代表元"
       ],
-      "compiledAt": "2026-10-09T15:36:39.249Z"
+      "compiledAt": "2026-10-09T21:54:12.717Z"
     },
     "kgb-graph-structure.md": {
       "hash": "7b3acb36eac2746415dcf511c965cc9ac5d831e3ca621bb3cd6c53b6765b96ea",
@@ -65,7 +75,7 @@
         "tau-packet-与-kgb-元素编号标准化",
         "分窗两相-bfs-构造"
       ],
-      "compiledAt": "2026-10-09T20:00:18.575Z"
+      "compiledAt": "2026-10-09T21:38:37.791Z"
     },
     "inner-class.md": {
       "hash": "e25064fb921a9a0881f41abaa8bde2fbccc7568e1e075a6ecf1f164852455764",
@@ -79,7 +89,7 @@
         "基于生成元闭包的-twisted-共轭分区",
         "根-involution-的-innerclass-构造与-weyl-因子"
       ],
-      "compiledAt": "2026-10-09T20:03:57.157Z"
+      "compiledAt": "2026-10-09T21:49:46.250Z"
     },
     "cartan-classification.md": {
       "hash": "1d399a87f1d5fdad52aa40067c57064c7a079ceafa04d584ac10c2de26033c40",
@@ -88,9 +98,11 @@
         "cartanid-的-atlas-编号顺序",
         "twistedconjugacyclass-与-cartanclass-的职责划分",
         "严格-cayley-偏序",
-        "强对合数据的弱实形式归属"
+        "强对合数据的弱实形式归属",
+        "cartan-分类构造与共享分区",
+        "弱实形式的-cartan-集与唯一-most-split-类"
       ],
-      "compiledAt": "2026-10-09T20:02:12.368Z"
+      "compiledAt": "2026-10-09T21:45:32.670Z"
     },
     "real-projection.md": {
       "hash": "43b7c002f97830264b67f688868ed03a049216f796f06a9a2f4c2b8d0d872681",
@@ -104,7 +116,7 @@
         "幺模矩阵求逆与分解自校验",
         "整数列阶梯归约与带符号-gcd-扫描"
       ],
-      "compiledAt": "2026-10-09T20:03:06.726Z"
+      "compiledAt": "2026-10-09T21:47:34.257Z"
     },
     "involution-table.md": {
       "hash": "488dd2c5d92e8488036332003b1a5d7ff18cf8f3951612727dd2a46b0ff72d38",
@@ -118,7 +130,7 @@
         "前向根置换索引及其调用方契约",
         "实投影像基的播种与路径依赖传送"
       ],
-      "compiledAt": "2026-10-09T20:01:28.308Z"
+      "compiledAt": "2026-10-09T21:43:19.691Z"
     },
     "rep-context.md": {
       "hash": "a3c53655939825a0af3f4777d0fcca6b59c793901c2684ae9ef9564d8502f23c",
@@ -128,9 +140,11 @@
         "可约点与标准参数-final-化",
         "挠部分打包与-involution-图像基",
         "表示参数代表元归一化",
-        "表示参数构造与权重恢复"
+        "表示参数构造与权重恢复",
+        "形变项计算的边界情形与输出顺序",
+        "表示参数的奇偶判定与朝向数"
       ],
-      "compiledAt": "2026-10-09T20:04:25.589Z"
+      "compiledAt": "2026-10-09T21:53:46.029Z"
     },
     "tits-element.md": {
       "hash": "dc60ec4863a2c2a0410ca98db190cbc1d42c1e2b7be8a185336001be4f36d9ca",
@@ -143,7 +157,7 @@
         "虚根的-noncompact-grading",
         "逆-cayley-变换的-grading-修复"
       ],
-      "compiledAt": "2026-10-09T20:04:32.660Z"
+      "compiledAt": "2026-10-09T21:54:32.315Z"
     },
     "integer-lattice.md": {
       "hash": "3395f84b8fa28054a2d079d2fa2c215e633e9f261b363df035891b3f3e1db935",
@@ -153,9 +167,10 @@
         "承载可观测量的适配基adaptedbasis",
         "整数格计算预算integerlatticebudget",
         "精确整数矩阵与-bézout-幺模变换",
-        "饱和整数核saturatedkernel"
+        "饱和整数核saturatedkernel",
+        "整数基的模-2-归约"
       ],
-      "compiledAt": "2026-10-09T20:04:50.466Z"
+      "compiledAt": "2026-10-09T21:56:40.893Z"
     },
     "real-form-seed.md": {
       "hash": "c74db522457552719223eb66fa4286a19a78ed2113420ed3cc1c5df492a0b7bc",
@@ -167,7 +182,7 @@
         "基本余权的精确构造",
         "有限域线性求解的规范截面"
       ],
-      "compiledAt": "2026-10-09T20:03:42.896Z"
+      "compiledAt": "2026-10-09T21:49:19.349Z"
     },
     "weak-real-form.md": {
       "hash": "eff101b6e3da9d9b9917ed6b8cb9e3dc9ed02a7651a27da7833ceb9ea983f163",
@@ -177,9 +192,11 @@
         "基于位掩码的-wim-轨道枚举",
         "弱实形式归因的来源与整性门控",
         "弱实形式的伴随-cartan-纤维轨道划分",
-        "轨道枚举的规模预算与整数边界"
+        "轨道枚举的规模预算与整数边界",
+        "代表元归因与-tits-搬运的职责边界",
+        "弱实形式划分与归因的测试覆盖边界"
       ],
-      "compiledAt": "2026-10-09T20:04:29.075Z"
+      "compiledAt": "2026-10-09T21:54:16.573Z"
     },
     "block-graph.md": {
       "hash": "fc724a652fe42bbfb5c1f87f5770a7b74675948a1da282669614a9529b28f64b",
@@ -192,16 +209,23 @@
         "完整块图的测试覆盖与证据边界",
         "完整块的-kgb-纤维积"
       ],
-      "compiledAt": "2026-10-09T20:01:24.687Z"
+      "compiledAt": "2026-10-09T21:42:44.010Z"
     },
     "kl-polynomial-table.md": {
       "hash": "c8e5ad37be17bc82aa59b7032c931d408d22f387fbbf9d0d67d0c26270b424de",
       "concepts": [
         "klv-多项式引擎的测试覆盖与证据边界",
         "klv-多项式的零延拓系数访问与零多项式判别",
-        "klv-多项式算术的溢出错误边界"
+        "klv-多项式算术的溢出错误边界",
+        "klv-多项式去重池",
+        "klv-多项式的表示与不变量",
+        "klv-多项式除法与整性检查",
+        "klv-表的-primitive-投影与访问语义",
+        "klv-表的幂等逐列填充算法",
+        "klv-表的逐列存储与句柄设计",
+        "klv-递归与-μ-修正的多项式运算"
       ],
-      "compiledAt": "2026-10-09T19:46:52.191Z"
+      "compiledAt": "2026-10-09T21:30:15.603Z"
     },
     "deformation-drivers.md": {
       "hash": "aaae2c5c9d54b6b686c5ec94e2b62ac29e1bd6e1c2acde53b6ed5bc0cc43b913",
@@ -211,9 +235,11 @@
         "形变驱动的冻结移植契约",
         "积分块范围与奇异集",
         "递归-twisted-deformation-与取消语义",
-        "高度受限的块形变"
+        "高度受限的块形变",
+        "splitinteger-分裂整数系数",
+        "twisted-与-common-block-形变项提取"
       ],
-      "compiledAt": "2026-10-09T20:04:54.096Z"
+      "compiledAt": "2026-10-09T21:56:44.911Z"
     },
     "partial-common-block.md": {
       "hash": "d4edac3b0249a6ee598bd02d79803836b2648377685ed5951687ece453fed5fd",
@@ -226,7 +252,7 @@
         "积分子系统integralsubsystem",
         "部分公共块的访问器与边界语义"
       ],
-      "compiledAt": "2026-10-09T20:04:46.940Z"
+      "compiledAt": "2026-10-09T21:55:15.163Z"
     },
     "strong-real.md": {
       "hash": "3d7298df1d2facdc4210c324564c3ac0a6e985d204042062124cf69ecbe83561",
@@ -238,7 +264,7 @@
         "强实分类的构造与资源边界",
         "强实形式与-fiber-轨道"
       ],
-      "compiledAt": "2026-10-09T20:02:08.599Z"
+      "compiledAt": "2026-10-09T21:45:28.885Z"
     },
     "rep-table.md": {
       "hash": "8e131e6e1db92ac03e59de435883f207b32b6d0f80565e284ded7614c2801c04",
@@ -250,7 +276,7 @@
         "reptableowner-实形式资源所有者",
         "共享-kl-表的惰性构造与回调并发约定"
       ],
-      "compiledAt": "2026-10-09T20:00:11.265Z"
+      "compiledAt": "2026-10-09T21:37:46.045Z"
     },
     "block-access-modifier.md": {
       "hash": "79d094275987ce6fb664bc2e2397a774cee5a0adae2ee1b58dc45480d6926666",
@@ -264,7 +290,7 @@
         "有理权分子的-checked-仿射反射",
         "表示参数差的整根系正交化"
       ],
-      "compiledAt": "2026-10-09T16:20:53.818Z"
+      "compiledAt": "2026-10-09T21:53:38.278Z"
     },
     "matreduc.md": {
       "hash": "d474880b9a426d564fa012a96e7a10ead1da5287ff41f9ac41ac73576903aedc",
@@ -278,7 +304,7 @@
         "整数矩阵算法的逐操作保真移植",
         "整数线性系统求解与像判定"
       ],
-      "compiledAt": "2026-10-09T20:03:28.506Z"
+      "compiledAt": "2026-10-09T21:48:09.521Z"
     },
     "weyl-transducer.md": {
       "hash": "502d9654e198621c1cca493b689b3d45f1de88e50db82c370fbbebf0beeb7308",
@@ -291,7 +317,7 @@
         "weylelt-的固定数组与容量边界",
         "基于-piece-的根置换预组合"
       ],
-      "compiledAt": "2026-10-09T20:00:58.672Z"
+      "compiledAt": "2026-10-09T21:41:16.800Z"
     },
     "root-system.md": {
       "hash": "565f18b744021ff39471e7df8d5bb836b2deec51afd31e2a79d99e50855d1377",
@@ -303,9 +329,10 @@
         "普通根系的确定性枚举",
         "根与余根的梯子底表",
         "根系枚举的显式资源预算",
-        "梯子底成员查询的坐标溢出语义"
+        "梯子底成员查询的坐标溢出语义",
+        "根系正性判定与环境坐标排序的分离"
       ],
-      "compiledAt": "2026-10-09T16:29:06.809Z"
+      "compiledAt": "2026-10-09T21:50:32.231Z"
     },
     "root-ladder-overflow-repair.md": {
       "hash": "630225a1efd35e788009d5d82dc26c16f9112806ac56ee0a14a889281f74fe6e",
@@ -317,7 +344,7 @@
         "rust-ladder-成员查询的选择性溢出处理",
         "坐标边界修复的-tests-first-验证链"
       ],
-      "compiledAt": "2026-10-09T16:34:43.186Z"
+      "compiledAt": "2026-10-09T21:40:44.828Z"
     },
     "cartan-fibers.md": {
       "hash": "889ff8b1782f1ed9103bd071f0f75960bb4cb3accbd86d3c39ae5e90603c81a8",
@@ -331,7 +358,7 @@
         "伴随-fiber-的分配前资源预算",
         "伴随根数据与余特征格投影"
       ],
-      "compiledAt": "2026-10-09T16:38:18.134Z"
+      "compiledAt": "2026-10-09T21:27:45.312Z"
     },
     "cayley-cross.md": {
       "hash": "0e5779035378026f3a24545a7605e9b5cb2ecea2e745f31e19b3415c101769a9",
@@ -342,9 +369,10 @@
         "对偶分量群的-fiber-rank",
         "扭曲对合的-cayleycross-分解",
         "整对合分类的预算门与检查顺序",
-        "整对合的-compactcomplexsplit-因子计数"
+        "整对合的-compactcomplexsplit-因子计数",
+        "整数对合的-compactcomplexsplit-分类"
       ],
-      "compiledAt": "2026-10-09T16:40:18.846Z"
+      "compiledAt": "2026-10-09T21:47:42.266Z"
     },
     "locator.md": {
       "hash": "f1ccba5dc6076638c94d883fabdf5fbff2452fbe317fa553bc2580b64f36eb65",
@@ -358,7 +386,7 @@
         "根编号排序兼容与生成元置换",
         "正根集的单根提取"
       ],
-      "compiledAt": "2026-10-09T16:42:34.888Z"
+      "compiledAt": "2026-10-09T21:50:39.962Z"
     },
     "minimal-torus.md": {
       "hash": "81726fef23e306e59ffdde548352bc7683a9e319a435e1b9fe39c27ef33faaa2",
@@ -372,7 +400,7 @@
         "最小环面部分的-grading-轨道搜索",
         "环面部分的模二表示与余权提升"
       ],
-      "compiledAt": "2026-10-09T16:44:38.620Z"
+      "compiledAt": "2026-10-09T21:51:23.377Z"
     },
     "extended-block.md": {
       "hash": "176a6f58ba1482bdfed932c6f8865cc225cc2225f9c39091be4c27daa58e94bc",
@@ -385,16 +413,22 @@
         "折叠生成元与-foldorbits",
         "部分公共块上的扩展块构造与-cofold"
       ],
-      "compiledAt": "2026-10-09T20:04:43.361Z"
+      "compiledAt": "2026-10-09T21:55:11.236Z"
     },
     "extended-kl.md": {
       "hash": "9fabd130cefad855d636ee4f5f5e12bb97ae708e68c2663d1fda3d9848087f6d",
       "concepts": [
         "扩展-klv-递归的-easy-集与-very-easy-集",
         "扩展-klv-的辅助多项式构造",
-        "扩展-kl-矩阵的块后处理管线"
+        "扩展-kl-矩阵的块后处理管线",
+        "descenttable-的下降集与-good-ascent-预计算",
+        "primitivisation-索引与符号传播",
+        "列填充的完整性不变式与错误传播",
+        "多项式池与-primitivisation-符号分离",
+        "扩展-klv-多项式表的逐列存储",
+        "扩展-klv-的-rust-移植边界与有意偏离"
       ],
-      "compiledAt": "2026-10-09T19:41:48.786Z"
+      "compiledAt": "2026-10-09T21:46:04.056Z"
     },
     "kl-support.md": {
       "hash": "4f1c57502a2f47b0a294d55bf3c4b59beb600e13e3dae9f5fc15da14d31ce716",
@@ -408,7 +442,7 @@
         "唯一上升像与本原元素回退",
         "本原索引表的惰性构建"
       ],
-      "compiledAt": "2026-10-09T16:49:29.114Z"
+      "compiledAt": "2026-10-09T21:49:23.149Z"
     },
     "ktype.md": {
       "hash": "d49d01d1e5cb6abb0f893a2540c151114530b689b6caf074a69f27d860ed30d4",
@@ -421,7 +455,7 @@
         "ktype-表示参数与规范化构造",
         "典范纤维与-k-型等价判定"
       ],
-      "compiledAt": "2026-10-09T16:51:16.166Z"
+      "compiledAt": "2026-10-09T21:37:58.290Z"
     },
     "real-weyl.md": {
       "hash": "c2abff1f99ce834d16a30a27c92e28c167d6ba6975c3743f867e71aba843c767",
@@ -433,9 +467,13 @@
         "实-weyl-群与块稳定子的构造",
         "实-weyl-群打印的字节兼容契约",
         "对偶-cartan-fiber-链的临时重建",
-        "对偶根映射与-cartan-矩阵转置"
+        "对偶根映射与-cartan-矩阵转置",
+        "simplebasis-的提前终止扫描语义",
+        "实-weyl-层的移植范围与刻意省略",
+        "实-weyl-群与块稳定子的代表元选择",
+        "实-weyl-群的根列表与排序契约"
       ],
-      "compiledAt": "2026-10-09T16:53:01.179Z"
+      "compiledAt": "2026-10-09T21:43:27.422Z"
     },
     "weyl-size-presentation.md": {
       "hash": "d0cb871ac40342500de6698af1ea06ec7b12979baaa81e2ee41c5e1faddbd4a9",
@@ -448,16 +486,23 @@
         "实形展示的编号顺序与不变量错误处理",
         "结构性源码阅读的验证与覆盖限制"
       ],
-      "compiledAt": "2026-10-09T16:54:37.000Z"
+      "compiledAt": "2026-10-09T21:53:00.220Z"
     },
     "mod-two.md": {
       "hash": "87e8645645de63fe3090f4379e24e2988fbc6933f599a96680753eeba17f8d71",
       "concepts": [
         "模二线性代数的测试锚点与验收边界",
         "模二向量的确定性排序与填充位不变量",
-        "模二线性代数的动态维数与截面容量边界"
+        "模二线性代数的动态维数与截面容量边界",
+        "f₂-上的位打包向量modtwovector",
+        "f₂-商空间的确定性代表元与陪集判定",
+        "f₂-子商的低主元坐标modtwosubquotient",
+        "保留首批独立列的典范截面canonicalmodtwosection",
+        "最低主元索引的典范-rref-子空间",
+        "由自由坐标构造-f₂-右核",
+        "线性映射下降到子商的条件验证"
       ],
-      "compiledAt": "2026-10-09T19:47:03.164Z"
+      "compiledAt": "2026-10-09T21:52:52.515Z"
     },
     "primitive-involution.md": {
       "hash": "01e78dfdafa9d080af5ea2eb84c7b0038098b28ccc4832638deac371f49adbe7",
@@ -470,7 +515,7 @@
         "换基失败的统一不兼容格语义",
         "有理运算实现的整数矩阵精确换基"
       ],
-      "compiledAt": "2026-10-09T16:57:34.430Z"
+      "compiledAt": "2026-10-09T21:49:15.514Z"
     },
     "involution-types.md": {
       "hash": "582246dd07b0e95233c4fffb4685ee4ebfdaaa27cd8e26bd6282aaf33b1f8ed3",
@@ -483,7 +528,7 @@
         "对合类型的分层构造验证与错误优先级",
         "格对合latticeinvolution"
       ],
-      "compiledAt": "2026-10-09T17:02:29.360Z"
+      "compiledAt": "2026-10-09T21:53:03.786Z"
     },
     "real-form-labels-order.md": {
       "hash": "1941572ec78b4058b4475f8b18beb2e7db1ca04960779cf6140d72d0d0270013",
@@ -497,7 +542,7 @@
         "虚根上的基-grading-扩展",
         "非紧虚根正交集的深度计算"
       ],
-      "compiledAt": "2026-10-09T17:04:31.370Z"
+      "compiledAt": "2026-10-09T21:55:50.026Z"
     },
     "twisted-involution-trio.md": {
       "hash": "b783154e20d31474660cc2dc9bfde380b9a2f64d780f96350452b0fa1220d53c",
@@ -509,7 +554,7 @@
         "根论工具的整数算术与失败语义",
         "环境根反射字的共享约定"
       ],
-      "compiledAt": "2026-10-09T17:06:18.216Z"
+      "compiledAt": "2026-10-09T21:51:15.527Z"
     },
     "grading.md": {
       "hash": "cc137b42a2e7fe897eb4d519b6864c70ebb88d74ea395e51297591b7134a2991",
@@ -518,9 +563,11 @@
         "grading-shifts-的忠实性不变量",
         "grading-的位向量类型纪律",
         "quasisplit-规范化与-grading-的仿射线性求值",
-        "通过增广消元反求-grading-对应元素"
+        "通过增广消元反求-grading-对应元素",
+        "malpha-的模二归约与伴随投影",
+        "紧致-grading-的测试锚点与覆盖边界"
       ],
-      "compiledAt": "2026-10-09T20:04:39.762Z"
+      "compiledAt": "2026-10-09T21:55:03.208Z"
     },
     "dynkin.md": {
       "hash": "bc6e2a40a58c551ecd96d34cfa6736dc147a4513a76a5ba64f50776637320d2f",
@@ -532,7 +579,7 @@
         "基于轨道的折叠-cartan-矩阵",
         "秩二-dynkin-分类的顺序约定"
       ],
-      "compiledAt": "2026-10-09T17:09:32.377Z"
+      "compiledAt": "2026-10-09T21:51:43.130Z"
     },
     "lib-root.md": {
       "hash": "be28091e5dee51e6325b4a5f82717d6690d49db09e2f75e74c452e66b307143d",
@@ -545,7 +592,7 @@
         "原型层的测试锚点与证据边界",
         "根系的-bfs-反射闭包枚举"
       ],
-      "compiledAt": "2026-10-09T17:11:13.612Z"
+      "compiledAt": "2026-10-09T21:50:17.077Z"
     },
     "lattice-types.md": {
       "hash": "cadf85f637b05a4ff23ac1dfdd2312f3c864e71aedb4b563d37eacbe90c6fb47",
@@ -555,9 +602,10 @@
         "有理权的矩阵作用整性检查与余根配对",
         "权与余权的典范配对",
         "权格与余权格的类型隔离",
-        "格坐标的固定宽度检查算术"
+        "格坐标的固定宽度检查算术",
+        "重复-gcd-实现的语义漂移"
       ],
-      "compiledAt": "2026-10-09T20:04:00.737Z"
+      "compiledAt": "2026-10-09T21:55:19.042Z"
     },
     "alcove.md": {
       "hash": "8fe7c97ed1f57157aa0c0a8cf956736228a0edd0093318d6d523acad24e3f630",
@@ -571,7 +619,7 @@
         "墙连通分量与重心分数约束",
         "根编号与负根镜像排序"
       ],
-      "compiledAt": "2026-10-09T17:15:23.714Z"
+      "compiledAt": "2026-10-09T21:42:12.738Z"
     },
     "layout-restricted-roots.md": {
       "hash": "b952ec75bec9047bf4c68267126a429161bd6c6bd16d57b6a1d79e340950d78b",
@@ -581,9 +629,10 @@
         "内类布局innerclasslayout",
         "限制权的商格单射表示restrictedweight",
         "限制根的可乘性ismultipliable",
-        "限制根系的纤维聚合与有序查询"
+        "限制根系的纤维聚合与有序查询",
+        "内类布局与限制根系的接口边界"
       ],
-      "compiledAt": "2026-10-09T17:17:27.813Z"
+      "compiledAt": "2026-10-09T21:55:42.277Z"
     },
     "error-global-tits.md": {
       "hash": "e1fca212437016e9ff68ebe99314ce73afb2de16d40c9dd0670ec76750df3cdc",
@@ -596,7 +645,7 @@
         "按根类型划分的单生成元交叉作用",
         "未移植代码路径的显式失败语义"
       ],
-      "compiledAt": "2026-10-09T17:19:39.816Z"
+      "compiledAt": "2026-10-09T21:47:10.919Z"
     },
     "global-kgb.md": {
       "hash": "41f770a3ff10e2ca21b41d284e8ed84ff648f4c7504929f25c99dd15a07502e1",
@@ -610,7 +659,7 @@
         "基于饱和像适应基的-kgb-去重指纹",
         "基本纤维与平方类播种"
       ],
-      "compiledAt": "2026-10-09T17:21:21.538Z"
+      "compiledAt": "2026-10-09T21:42:00.831Z"
     },
     "ext-param.md": {
       "hash": "e5250d085f3cb3b3e3afc43927a45217c3515adc8c82b1a487ea87fff822282e",
@@ -623,7 +672,7 @@
         "扩展块符号调校的-staroracle-实现",
         "扩展表示上下文-extrepcontext"
       ],
-      "compiledAt": "2026-10-09T20:02:52.105Z"
+      "compiledAt": "2026-10-09T21:46:39.819Z"
     },
     "topology-form-name.md": {
       "hash": "4502872aef3dbf7f8a6ac086ca47151e35bf649e71c3b2ad1fdef148cf082c85",
@@ -636,7 +685,7 @@
         "拓扑计算与实形命名的实现及验证边界",
         "环面对合的-dualpi0-子商构造"
       ],
-      "compiledAt": "2026-10-09T17:24:47.185Z"
+      "compiledAt": "2026-10-09T21:51:19.470Z"
     },
     "atlas-core-root-numbering-alcove.md": {
       "hash": "0e5331987eef55ba0301cba75985dc72c4d88db710cfceea58a5b0e212c5d664",
@@ -649,7 +698,7 @@
         "根子集的非正交连通分量及顺序",
         "由基本-alcove-构造-weyl-词"
       ],
-      "compiledAt": "2026-10-09T17:26:25.375Z"
+      "compiledAt": "2026-10-09T21:51:31.212Z"
     },
     "atlas-core-weyl-subgroup.md": {
       "hash": "8d98987d0623fc897f520a078b04d4320e73d074693b1967e99c01d9ade27741",
@@ -662,7 +711,7 @@
         "反射子群轨道的稳定排序规则",
         "精确根配对坐标的陪集树算法"
       ],
-      "compiledAt": "2026-10-09T17:27:57.622Z"
+      "compiledAt": "2026-10-09T21:52:40.933Z"
     },
     "atlas-core-center-classifier.md": {
       "hash": "3789a332382aba6e50fe737a0315f2d9a0d93e31202e954afe423d79b05a1248",
@@ -675,7 +724,7 @@
         "反射词的首个下降构造",
         "陪集树到-weyl-词的转换"
       ],
-      "compiledAt": "2026-10-09T17:29:34.575Z"
+      "compiledAt": "2026-10-09T21:55:46.330Z"
     },
     "atlas-core-domain-scc-root-table.md": {
       "hash": "343742d922dfc6159d8a9727f615309845cee1c82c7417ae7dae997a0578ac4e",
@@ -687,16 +736,21 @@
         "整数矩阵乘积的宽累积",
         "根向量到环境格基的表达"
       ],
-      "compiledAt": "2026-10-09T17:30:49.351Z"
+      "compiledAt": "2026-10-09T21:47:53.912Z"
     },
     "atlas-core-root.md": {
       "hash": "b4c31660d23bf88d4065d54172bee0be72ee909bc4ca69cada5aa0c838616f9e",
       "concepts": [
         "atlas-core-语言门面与兼容契约",
         "递归类型组的名字解析与校验分离",
-        "会话补全顺序与名字可见性分离"
+        "会话补全顺序与名字可见性分离",
+        "有状态的逐命令会话执行",
+        "类型化转换与求值管线",
+        "精确整数矩阵约化",
+        "结构性源码阅读的验证与覆盖限制",
+        "领域内建桥接与上下文句柄"
       ],
-      "compiledAt": "2026-10-09T18:16:50.398Z"
+      "compiledAt": "2026-10-09T21:56:13.541Z"
     },
     "atlas-core-lex.md": {
       "hash": "e16ce14e73a34412bb80837f53232f607259dbd1ad5fc77c8a201a0fe4db2e8a",
@@ -705,9 +759,11 @@
         "命令首指令与文件名扫描",
         "词法诊断保留与命令恢复接口",
         "运算符扫描与复合赋值融合",
-        "换行抑制状态机"
+        "换行抑制状态机",
+        "tokencursor-单-token-前瞻",
+        "可嵌套注释"
       ],
-      "compiledAt": "2026-10-09T18:16:39.666Z"
+      "compiledAt": "2026-10-09T21:54:20.371Z"
     },
     "atlas-core-syntax.md": {
       "hash": "1ece0a39afc4a96c8b8bc1e11640cc9a75941f903b5957f4874f118e5b40e835",
@@ -719,9 +775,15 @@
         "模式函数参数与类型表达式",
         "活跃类型环境与跨行增量命令解析",
         "语法前端的测试覆盖与验收边界",
-        "重定向表达式的打开前解析"
+        "重定向表达式的打开前解析",
+        "barlist-行列表的独立语法节点",
+        "do-守卫体的共享词法作用域",
+        "intcase-的索引分支与越界回绕",
+        "operatorcast-的按类型重载选择",
+        "sequence-与-next-的结果选择语义",
+        "多层-break-的循环退出与值收集"
       ],
-      "compiledAt": "2026-10-09T17:39:45.295Z"
+      "compiledAt": "2026-10-09T21:42:16.571Z"
     },
     "atlas-core-types.md": {
       "hash": "edc0eb9616980c96a180f067edb08c5e48251f862b683469410863b9b5db50a7",
@@ -735,7 +797,7 @@
         "类型特化与失败回滚语义",
         "递归类型定义的图级安装"
       ],
-      "compiledAt": "2026-10-09T17:41:57.237Z"
+      "compiledAt": "2026-10-09T21:54:39.950Z"
     },
     "atlas-core-session.md": {
       "hash": "f13951d956d620b00fb4f76b2cd13322232f99fa13890ca5d3f5e895a36b5fd0",
@@ -749,7 +811,7 @@
         "补全标识符的首次使用顺序",
         "运行时失败后的已打印输出保留"
       ],
-      "compiledAt": "2026-10-09T17:43:39.537Z"
+      "compiledAt": "2026-10-09T21:54:28.292Z"
     },
     "atlas-core-session-frame.md": {
       "hash": "ebc347813201c4efc2fdfdc5d2f7d31578cc9372f862a74480c04bd706b7ea0f",
@@ -760,9 +822,10 @@
         "嵌套包含的-abandon-级联",
         "文件命令兼容性的证据边界",
         "续行预处理与物理行映射",
-        "顶层会话事件的输出规则"
+        "顶层会话事件的输出规则",
+        "包含文件的搜索路径解析"
       ],
-      "compiledAt": "2026-10-09T17:45:25.495Z"
+      "compiledAt": "2026-10-09T21:55:53.913Z"
     },
     "atlas-core-value-layer.md": {
       "hash": "6e041ad6cac5bf1eea2941a0d69805422c5a4488f3999b887aa791d9fdd69613",
@@ -775,7 +838,7 @@
         "线性代数值载荷与有理向量规范化",
         "闭包的词法捕获与参数槽布局"
       ],
-      "compiledAt": "2026-10-09T17:47:08.320Z"
+      "compiledAt": "2026-10-09T21:55:26.885Z"
     },
     "atlas-core-typed-core.md": {
       "hash": "853041f26ea2b340e4704801621eaef51b1f4a2b09c8e398d0f3b62c8bfde6e9",
@@ -787,9 +850,14 @@
         "typedcontext-会话状态与启动初始化",
         "typedexpr-可执行表达式树",
         "类型化赋值目的地与分发计划",
-        "重载签名视图缓存与失效纪律"
+        "重载签名视图缓存与失效纪律",
+        "冻结重载值的表达式拼写保留",
+        "分量赋值与复合变更的诊断契约",
+        "类型化分支节点的分派规则",
+        "订阅表达式的分类求值顺序",
+        "饥饿内建调用的赋值目的地取值"
       ],
-      "compiledAt": "2026-10-09T17:49:12.542Z"
+      "compiledAt": "2026-10-09T21:56:37.018Z"
     },
     "atlas-core-typed-eval.md": {
       "hash": "cfe0bf35d6ccf99f4864218b16b6395552ac65f1e18e162db2d2f07d0103a2f4",
@@ -802,7 +870,7 @@
         "闭包参数绑定与无环递归帧",
         "闭包返回控制与调用错误迹"
       ],
-      "compiledAt": "2026-10-09T17:51:04.243Z"
+      "compiledAt": "2026-10-09T21:55:30.839Z"
     },
     "atlas-core-convert-expr.md": {
       "hash": "3ee2bcd3ba829916afb4c6f570caee7e5ef3c95d6b09bf3b8afc9d4f41026cb8",
@@ -816,7 +884,7 @@
         "类型抽象中的-typefloor-调整",
         "表达式转换器的十二族分派"
       ],
-      "compiledAt": "2026-10-09T17:53:19.117Z"
+      "compiledAt": "2026-10-09T21:57:28.065Z"
     },
     "atlas-core-builtin-registry.md": {
       "hash": "5375ddc233fafd36c66232a509a41595685da6e075ac148baeb2d62938ff1160",
@@ -824,9 +892,12 @@
         "readlinecompletions-的补全快照前缀过滤",
         "领域调用的无值门策略",
         "内建注册表的启动清单与覆盖边界",
-        "内建函数元数据与实现分发"
+        "内建函数元数据与实现分发",
+        "二进制补码的置位索引",
+        "尺寸自适应多项式运算与尾零规则",
+        "打印字符串转换与运行时错误的输出契约"
       ],
-      "compiledAt": "2026-10-09T18:29:01.784Z"
+      "compiledAt": "2026-10-09T21:56:28.924Z"
     },
     "atlas-core-domain-dispatch.md": {
       "hash": "1f905fd7913027864ad4525f547a173f749c10e15cbfb202245a23b31a0b20ff",
@@ -837,9 +908,10 @@
         "领域包装器的校验顺序契约",
         "领域强转标签与转换路径",
         "领域调用的打印侧通道",
-        "饥饿乘积的所有权消费路径"
+        "饥饿乘积的所有权消费路径",
+        "规范实形的编号映射与弱缓存"
       ],
-      "compiledAt": "2026-10-09T17:57:12.627Z"
+      "compiledAt": "2026-10-09T21:56:32.848Z"
     },
     "atlas-core-domain-values.md": {
       "hash": "095720e96102e5ab1fb47dca42f32f1eaeaa4c7837c41b6504180e2558b299e6",
@@ -850,9 +922,11 @@
         "实形属主约束下的多项式系数契约",
         "根数据的-weyl-身份与弱驻留机制",
         "领域值的结构等值与属主身份",
-        "领域内建调用的所有权派发与打印侧通道"
+        "领域内建调用的所有权派发与打印侧通道",
+        "dual-预热历史与-weyl-群兼容性",
+        "weyl-词条目的有序校验"
       ],
-      "compiledAt": "2026-10-09T17:59:21.518Z"
+      "compiledAt": "2026-10-09T21:56:01.739Z"
     },
     "atlas-core-domain-construction.md": {
       "hash": "d70fe7e4d84d85c790b634f206c8a16532ba3b5c2475f5e53e090f6a1b083773",
@@ -866,7 +940,7 @@
         "自定义实形的种子与上下文构造",
         "规范实形的编号映射与弱缓存"
       ],
-      "compiledAt": "2026-10-09T18:01:26.249Z"
+      "compiledAt": "2026-10-09T21:53:57.624Z"
     },
     "atlas-core-domain-validate-print.md": {
       "hash": "546db6d40cf4d2e423135d2a9854dad54750006091540b76269c934b2ba26e94",
@@ -878,9 +952,11 @@
         "实-weyl-群打印的前置检查",
         "对合表达式的打印约定",
         "部分块打印的种子归约与生存标志",
-        "领域内建函数的校验顺序契约"
+        "领域内建函数的校验顺序契约",
+        "printx-的对合表生命周期与校验边界",
+        "块稳定子打印的实形输入边界"
       ],
-      "compiledAt": "2026-10-09T18:03:36.750Z"
+      "compiledAt": "2026-10-09T21:56:09.591Z"
     },
     "atlas-core-deformation-cache.md": {
       "hash": "251d08951979797aa316b4de309b7b4c52e32ad225d643780c204413bcae0295",
@@ -894,7 +970,7 @@
         "普通全形变的递推关系",
         "精确-cramer-求解与矩阵辅助"
       ],
-      "compiledAt": "2026-10-09T18:05:26.298Z"
+      "compiledAt": "2026-10-09T21:52:29.332Z"
     },
     "atlas-core-support-layer.md": {
       "hash": "0ccb11cea1a059562ca322e7fee6cd5ce235ab492c814cc80f8e39a7fe68256a",
@@ -907,7 +983,7 @@
         "结构化诊断与原始字节保真",
         "运行时回溯的累积与暴露"
       ],
-      "compiledAt": "2026-10-09T18:07:34.241Z"
+      "compiledAt": "2026-10-09T21:54:24.316Z"
     },
     "atlas-cli-main.md": {
       "hash": "239bde9ed2849955465e28238eecedcc1ac50e2a5bb713016b2f573ca4a2d205",
@@ -921,7 +997,7 @@
         "包含文件的搜索路径解析",
         "文件输入的有损-utf-8-解码"
       ],
-      "compiledAt": "2026-10-09T18:09:37.254Z"
+      "compiledAt": "2026-10-09T21:48:21.105Z"
     },
     "atlas-core-regression-library.md": {
       "hash": "4a2b45791d18d43ec38079dc0f8be209e4d9a4622478f4a84f2bbd16662f90c4",
@@ -933,7 +1009,39 @@
         "测试结构清单与可执行正确性的证据边界",
         "通过-includestr-绑定回归测试夹具"
       ],
-      "compiledAt": "2026-10-09T18:10:53.066Z"
+      "compiledAt": "2026-10-09T21:54:59.411Z"
+    },
+    "atlas-core-domain-seams.md": {
+      "hash": "0b1cb87c2c2997db94715ef590d5cd627e3b07f88680058a3b01666406c75801",
+      "concepts": [
+        "alcove-根格顶点双重移植的语义漂移风险",
+        "bareiss-行列式与余子式伴随矩阵构造",
+        "weyl-词与单生成元的整数校验差异",
+        "显式根数据矩阵适配与空维保留",
+        "领域值提取器与隐式-lietype-转换"
+      ],
+      "compiledAt": "2026-10-09T21:55:57.775Z"
+    },
+    "atlas-core-completions.md": {
+      "hash": "a13340b64a87d93df6c1cd7242321331423a8f6e868bd3170356bf7ae9f2b559",
+      "concepts": [
+        "会话补全顺序与名字可见性分离",
+        "补全快照的惰性生成与精确失效",
+        "补全索引的-rc-字符串共享与去重",
+        "遗留补全快照替换的保序与重复项语义"
+      ],
+      "compiledAt": "2026-10-09T21:55:07.225Z"
+    },
+    "atlas-core-type-groups.md": {
+      "hash": "92c5e5b23ba73d6036dc79ef132923e4c60220b07735a77c1b9053da73aeb294",
+      "concepts": [
+        "泛型递归组裸引用的形参转发",
+        "递归类型组的名字解析与校验分离",
+        "递归类型组的广度优先验证顺序",
+        "递归类型组的显式类型实参限制",
+        "递归类型规格的结构降解与字段名分离"
+      ],
+      "compiledAt": "2026-10-09T21:54:55.451Z"
     }
   },
   "frozenSlugs": []

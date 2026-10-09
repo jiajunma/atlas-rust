@@ -1,6 +1,28 @@
 ---
 title: RepContext 借用上下文与一致性约束
-summary: 借用 inner class、involution 表和 KGB 图，共享根数据派生常量，并以 inner class 与 Arc 指针一致性检查约束底层资源。
+summary: 借用 inner class、involution 表与 KGB 图，共享根数据派生常量，并通过 inner class 与 Arc 指针一致性检查约束资源来源。
+sources:
+  - rep-context.md
+kind: concept
+createdAt: "2026-10-09T15:08:21.834Z"
+updatedAt: "2026-10-09T21:07:35.905Z"
+tags:
+  - Rust设计
+  - 上下文管理
+aliases:
+  - repcontext-借用上下文与一致性约束
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: RepContext 借用上下文与一致性约束
+summary: RepContext 借用 inner class、involution 表和 KGB 图，共享根数据派生常量，并以所属 inner class 与 Arc 指针身份约束资源一致性。
 sources:
   - rep-context.md
 kind: concept
@@ -21,19 +43,19 @@ promptModifiers:
 
 # RepContext 借用上下文与一致性约束
 
-`RepContext<'a>` 是表示参数层的借用视图，借用 inner class、involution 表及对应实形式的 KGB 图，要求它们与图构建时使用的底层结构三元组一致。它同时持有 `Arc<RepContextDerived>`，共享根数据的派生常量 $2\rho$、$2\rho^\vee$ 和 $\rho$。^[rep-context.md:40-47]
+`RepContext<'a>` 是表示参数层的借用视图，借用 inner class、involution 表及对应实形式的 KGB 图，要求三者与图构建时使用的底层结构一致。它同时持有 `Arc<RepContextDerived>`，共享根数据派生常量 $2\rho$、$2\rho^\vee$ 和 $\rho$。^[rep-context.md:40-47]
 
 ## 构造时的一致性检查
 
-`RepContext::new` 设置两道一致性检查：若 involution 表所属的 inner class 不同，返回 `DatumMismatch`；若表与图的 `Arc` 指针不同，也返回 `DatumMismatch`。因此，构造约束不仅涉及所属 inner class，还涉及共享对象的指针身份。^[rep-context.md:42-47]
+`RepContext::new` 设置两道一致性检查：若 involution 表所属的 inner class 不同，返回 `DatumMismatch`；若表与图的 `Arc` 指针不同，也返回 `DatumMismatch`。构造约束因此包含共享对象的指针身份。^[rep-context.md:42-47]
 
-crate 内可见的 `from_derived` 使用 `debug_assert!` 复核三方 `Arc` 指针一致。其检查机制与 `new` 不同：前者采用调试断言，后者在发现不一致时返回 `DatumMismatch`。^[rep-context.md:44-47]
+crate 内可见的 `from_derived` 使用 `debug_assert!` 复核三方 `Arc` 指针一致。它采用调试断言，而 `new` 在发现上述不一致时返回错误；两者的检查机制应予区分。^[rep-context.md:44-47]
 
 ## 对 involution 图像基的只读依赖
 
 每个 involution 的 $(1-\theta)X^*$ 图像基对由 `lift_mat` 与 `M_real` 表示，存放在 involution 表记录中，并沿 cross-action BFS 传送；`RepContext` 只读取这些数据。相关结构见 [[对合的 (1−θ)X* 图像基对]]。^[rep-context.md:23-28]
 
-图像基的具体选择影响 `lambda-rho` 代表元，因此实现逐步复刻上游 `matreduc::column_echelon` 及其 gcd sweep。在挠部分处理中，`y_pack` 将 `lambda_rho` 的 `M_real` 坐标模二打包为 `ModTwoVector`，`y_lift` 则从打包挠部分计算 $(1-\theta)\lambda_\rho$。参见 [[挠部分打包与 involution 图像基]]。^[rep-context.md:26-28, rep-context.md:61-63]
+当选的 `lambda-rho` 代表元依赖精确的图像基，因此阶梯归约逐步复刻上游 `matreduc::column_echelon` 及其 gcd sweep。挠部分处理中，`y_pack` 将 `lambda_rho` 的 `M_real` 坐标模二打包为 `ModTwoVector`，`y_lift` 则从打包挠部分计算 $(1-\theta)\lambda_\rho$。参见 [[挠部分打包与 involution 图像基]]。^[rep-context.md:26-28, rep-context.md:61-63]
 
 ## 表示参数的构造与恢复
 
@@ -47,8 +69,10 @@ crate 内可见的 `from_derived` 使用 `debug_assert!` 复核三方 `Arc` 指�
 
 ## 证据范围
 
-本页依据结构性源码阅读，所记录的是 dirty 工作区中的源码字节。来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论；参数层的正确性属于其独立的 [[HPC 验收证据链]]。来源中的上游行号转述自源码注释，未独立重读上游，可能随版本演进而漂移。^[rep-context.md:9-16, rep-context.md:91-99]
+本页依据 `rep_context.rs` 的结构性源码阅读，所记录的是 dirty 工作区中的源码字节，阅读快照为 `snapshots/2026-10-03-rep-context.json`。来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论；参数层正确性属于独立的 HPC 证据链，本页不扩展其结论。^[rep-context.md:9-16, rep-context.md:91-99]
+
+来源中的上游行号转述自源码注释，未独立重读上游文件，可能随版本演进而漂移。^[rep-context.md:93-94]
 
 ## Sources
 
-- [rep-context.md](rep-context.md) — 表示参数上下文：StandardRepr 与 RepContext
+- [rep-context.md](../../sources/rep-context.md) — 表示参数上下文：StandardRepr 与 RepContext。

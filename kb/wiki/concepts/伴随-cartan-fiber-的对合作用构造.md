@@ -1,79 +1,79 @@
 ---
 title: 伴随 Cartan fiber 的对合作用构造
-summary: 伴随 fiber 构造先核对 datum 与源对合，再按列提取 simple-root 作用并转置得到余特征作用，复用 CartanFiber 构造并验证投影下降；转置等于逆转置的理由来自对合性注释。
+summary: 构造时检查 datum 与源对合一致性，以根像的单根坐标建立作用矩阵，并利用对合性将其转置为余权作用后构造目标纤维。
 sources:
-  - cartan-fibers.md
+  - adjoint-fiber.md
 kind: concept
 createdAt: "2026-10-09T14:43:25.257Z"
-updatedAt: "2026-10-09T14:43:25.257Z"
+updatedAt: "2026-10-09T20:28:11.963Z"
 tags:
-  - 伴随Cartan-fiber
-  - 对合
-  - 对偶作用
+  - Cartan纤维
+  - 对合作用
 aliases:
   - 伴随-cartan-fiber-的对合作用构造
+  - 伴CF的
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: 伴随 Cartan fiber 的对合作用构造
+summary: AdjointCartanFiber::build 按列构造单根基上的对合作用，利用对合性以转置得到余权作用，再构建目标 fiber 并验证投影下降。
+sources:
+  - adjoint-fiber.md
+kind: concept
+tags:
+  - 伴随Cartan-fiber
+  - 对合
+  - 对偶作用
+aliases:
+  - 伴随-cartan-fiber-的对合作用构造
+provenanceState: extracted
 ---
 
 # 伴随 Cartan fiber 的对合作用构造
 
-伴随 Cartan fiber 的构造先把根对合写成伴随根数据上的作用矩阵，再构造目标格对合与 fiber，最后验证源 fiber 到目标 fiber 的投影能够下降到子商。该流程由 `AdjointCartanFiber::build` 实现。^[cartan-fibers.md:114-136]
+`AdjointCartanFiber::build` 接收已验证的 root-datum 对合与已构建的 ambient `CartanFiber`，在伴随半单商上构造有限 \(\mathbf F_2\) Cartan fiber。核心步骤是构造单根基上的根作用矩阵、转置得到余权作用、构建目标格对合与 fiber，最后验证源到目标的投影能够下降。^[adjoint-fiber.md:10-13, adjoint-fiber.md:25-37]
 
 ## 伴随根数据与投影
 
-`AdjointBasedRootDatum` 通过 `BasedRootDatum::standard` 使用源 Cartan 矩阵的克隆构造。代码文档声明，其 character 基是源 datum 的完整 simple-root 基，cocharacter 基是对应的 fundamental-coweight 基。^[cartan-fibers.md:101-103]
+`AdjointBasedRootDatum` 仅使用源 datum 的 Cartan 矩阵调用 `BasedRootDatum::standard`。文档注释将其 character 基描述为源单根全基，cocharacter 基描述为对应的基本余权基。整数投影 \(Y\to P^\vee\) 按源单根顺序计算 `pair(root, y)`，以这些配对值作为目标坐标；该映射可以有中心核，不是一般意义上的同构。参见 [[伴随根数据与余特征格投影]]。^[adjoint-fiber.md:17-23, adjoint-fiber.md:39-44]
 
-`AdjointProjection` 将源余特征 `y` 映到它与源 simple roots 的配对坐标。这个限制映射可以具有中心核，因此不应视为同构；相关格结构见 [[伴随根数据与余特征格投影]]。^[cartan-fibers.md:105-112]
+`AmbientCoweight` 与 `AdjointCoweight` 将裸 `Coweight` 绑定到 `Arc<AdjointProjectionModel>`。相等比较同时要求模型指针相同与坐标相同，以阻止跨投影复用；两次独立构建的投影会拒绝彼此的绑定坐标并返回 `DatumMismatch`。相关类型纪律见 [[余权坐标的投影出处绑定]]。^[adjoint-fiber.md:19-23]
 
-## 构造前置条件
+## 构造前置检查
 
-构造首先检查根系与根对合的 datum 是否一致，否则返回 `DatumMismatch`；随后检查源 fiber 的对合是否与给定根对合一致，否则返回 `CartanFiberInvolutionMismatch`。下降证明覆盖的是所保存的精确源 fiber 所铸造的元素，不能仅凭另一次构造所得 fiber 的值相等就替换来源。^[cartan-fibers.md:114-121]
+构造依次检查 datum 一致性、源 fiber 的对合一致性以及构建预算。前两项失败分别返回 `DatumMismatch` 与 `CartanFiberInvolutionMismatch`；检查通过后才构造投影，克隆源单根并建立伴随 datum。^[adjoint-fiber.md:25-30]
 
-目标矩阵分配前还会执行预算预检。令 \(r\) 为半单秩、\(n\) 为格秩，检查包括半单秩上限、持久条目界 \(16r^2+rn\) 和投影操作界 \(2n^2r\)。超限返回相应的 `AdjointFiberResourceLimit`；详见 [[伴随 fiber 的分配前资源预算]]。^[cartan-fibers.md:122-128]
+令 \(r\) 为半单秩、\(n\) 为格秩，预算检查包括半单秩上限、持久条目需求 \(16r^2+rn\) 与构建期投影操作需求 \(2n^2r\)。预算乘加使用受检算术，溢出返回 `ArithmeticOverflow`；整数格预算还会在后续 fiber 构建中生效。详见 [[伴随 fiber 的分配前资源预算]]。^[adjoint-fiber.md:33-34, adjoint-fiber.md:50-62]
 
-## 根作用与余特征作用
+## 根作用与余权作用
 
-通过门控后，`root_basis_action` 逐个处理 simple root：查找根编号、取得对合像，再提取像的 simple-root 坐标，并按**列**写入 `root_action`。`id_of`、`image` 或 `simple_coordinates` 任一步缺失，都返回 `InvalidRootAutomorphism`。^[cartan-fibers.md:129-131]
+`root_basis_action` 将根的对合像写成单根坐标，以这些坐标为**列**构造半单秩方阵。该步骤中的三处可选值若缺失，均转为 `InvalidRootAutomorphism`。^[adjoint-fiber.md:29-31]
 
-余特征作用通过 `coweight_action = transpose_square(&root_action)` 构造。代码注释给出的依据是：对偶作用应为逆转置，而 `RootInvolutionData` 已验证根作用为对合，因此逆转置等于转置。若记根作用矩阵为 \(A\)，则此处使用 \(A^{-T}=A^T\)；该论证在来源包中属于注释声明。^[cartan-fibers.md:131-133, cartan-fibers.md:153-154]
+余权作用取根作用矩阵的转置。代码注释给出的依据是：对偶作用通常为逆转置，而 `RootInvolutionData` 已验证根作用为对合，因此若根作用矩阵为 \(A\)，此处有 \(A^{-T}=A^T\)。这一转置规则依赖已验证的对合性。^[adjoint-fiber.md:31-32]
 
-随后以目标 datum、`root_action` 和 `coweight_action` 调用 `LatticeInvolution::new`，再交给 `CartanFiber::build_owned` 构造目标 fiber。这里复用 [[Cartan fiber 的先分母后分子构造]]：先计算整系数负特征格并模二约化，再计算有限域核，形成子商
-\[
-\ker_{\mathbf F_2}(I+\theta_Y)\big/\operatorname{red}_2\ker_{\mathbf Z}(I+\theta_Y).
-\]
-^[cartan-fibers.md:16-21, cartan-fibers.md:72-80, cartan-fibers.md:134-136]
+得到作用矩阵后，构造链调用 `LatticeInvolution::new`，再通过 `CartanFiber::build_owned` 建立目标 fiber；整数格预算在这一阶段生效。^[adjoint-fiber.md:33-34]
 
 ## 投影下降与按需应用
 
-目标 fiber 建成后，`source.validate_induced_map(&fiber, &projection)` 一次性验证 ambient 投影满足分子、分母两项下降条件。失败分别以 `CartanFiberMapDoesNotDescend` 的 `"numerator"` 或 `"denominator"` 关系标识报告；相关机制见 [[Ambient 映射的子商下降验证]]。^[cartan-fibers.md:90-92, cartan-fibers.md:134-136]
+目标 fiber 建成后，`source.validate_induced_map(&fiber, &projection)` 验证投影下降，投影以 `ModTwoAmbientMap` 实现者身份传入。`AdjointCartanFiber` 保存源 fiber 的克隆、投影和目标 fiber；相关机制见 [[Ambient 映射的子商下降验证]]。^[adjoint-fiber.md:34-37]
 
-之后的 `FiberToAdjoint::apply` 依次取得源元素的 canonical 代表、执行模二投影、由目标 `element_from_ambient` 构造像元素。实现不保存稠密模二映射矩阵或缓存像，而是每次按需投影，详见 [[FiberToAdjoint 的按需投影]]。^[cartan-fibers.md:138-141]
+`fiber_map()` 每次调用都克隆这三项来构造 `FiberToAdjoint`，不缓存稠密模二矩阵。应用映射时，`FiberToAdjoint::apply` 依次取得源元素的 `canonical_representative`、执行模二投影，再调用目标的 `element_from_ambient`。模二投影按根系数的奇性逐坐标翻转奇偶位，详见 [[FiberToAdjoint 的按需投影]]。^[adjoint-fiber.md:35-37, adjoint-fiber.md:45-48]
 
 ## 测试锚点与证据边界
 
-A2 twisted 测试锚定伴随 weight 与 coweight 作用矩阵分别为
-\[
-A=\begin{pmatrix}-1&1\\0&1\end{pmatrix},
-\qquad
-A^T=\begin{pmatrix}-1&0\\1&1\end{pmatrix}.
-\]
-该例用于检查作用矩阵的推导，而非直接复用 root 行。A1+A2 非对称例还逐坐标基向量验证交错关系
-\[
-\operatorname{projection}(\theta(x))
-=\theta_{\mathrm{adjoint}}(\operatorname{projection}(x)).
-\]
-^[cartan-fibers.md:145-149]
+A2 twisted 测试锚定伴随 weight 与 coweight 作用矩阵分别为 \(A=\begin{pmatrix}-1&1\\0&1\end{pmatrix}\) 与 \(A^T=\begin{pmatrix}-1&0\\1&1\end{pmatrix}\)。A1+A2 非对称作用测试还逐坐标基验证交织关系 \(\operatorname{map}(\theta y)=\theta_{\mathrm{adjoint}}\operatorname{map}(y)\)。^[adjoint-fiber.md:66-71]
 
-来源包属于结构性源码阅读，不构成 fiber 层的数学验收，也未核对上游引用的原始字节。本次知识维护未运行 Atlas、Cargo、测试或 benchmark；上述测试仅作为源码中的测试锚点报告。^[cartan-fibers.md:9-12, cartan-fibers.md:167-171]
+其他测试覆盖 A1 恒等作用的生成元投影、中心余权入核及可加性、异源 fiber 与跨投影坐标拒绝、rank-33 动态秩，以及持久条目和投影操作两条预算拒绝路径。未覆盖的错误分支包括 `AllocationFailed`、`ArithmeticOverflow`、`InvalidRootAutomorphism`、`InvalidInvolution` 和构造入口的 `DatumMismatch`；部分 fiber 查询接口也缺少直接调用测试。^[adjoint-fiber.md:66-75]
 
-已记录的覆盖缺口包括：构造首项 `DatumMismatch` 门控没有专门测试锚点，`AdjointProjection::from_source` 未显式检查 simple-root 数量与目标 rank 是否一致，部分直接索引依赖构造不变量。^[cartan-fibers.md:159-163]
+来源属于结构性源码阅读，不声称数学验收；上游引用仅转录自代码注释。本次知识维护未执行 Atlas、Cargo、测试或 benchmark，因此上述内容描述的是源码中的测试锚点，而非本次运行结果。^[adjoint-fiber.md:9-13, adjoint-fiber.md:79-85]
 
 ## Sources
 
-- [cartan-fibers.md](../../sources/cartan-fibers.md)
+- [adjoint-fiber.md](../../sources/adjoint-fiber.md)：伴随 Cartan 纤维：构建、投影与 mod-2 商（adjoint_fiber.rs）。

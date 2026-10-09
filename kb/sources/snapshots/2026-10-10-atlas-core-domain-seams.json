@@ -1,0 +1,15 @@
+{
+    "schema": "atlas-kb-reading-snapshot-v1",
+    "date": "2026-10-10",
+    "git_base": "98b78278",
+    "working_tree": false,
+    "scope": "Reading of the three uncovered seams of crates/atlas-core/src/domain_builtins.rs for the atlas-core-domain-seams packet: the value-extractor group (as_lie_type/as_usize/as_matrix/explicit_datum_matrix/as_matrix_rows at 2538-2653, including the 0xN empty-rows representation), the alcove/FPP helpers (bareiss_det/adjugate_det/root_vertex_simple at 5924-6085, including the coexistence with atlas-real-group/alcove.rs's second root_vertex_simple port and its three divergences), and the Weyl word/generator validation and value-freeze helpers (require_weyl_compatible/weyl_replayed_in_left/weyl_elements_equal/weyl_elt_value/check_weyl_word/check_weyl_generator/check_generator at 9606-9723). Caller chains verified by grep: adjugate_det at 6105/6272/6296, root_vertex_simple at 13315 (alcove_root_vertex arm), weyl_elements_equal at 855, weyl_elt_value at 6694, check_weyl_generator/check_weyl_word at 10097/10106, as_matrix_rows/explicit_datum_matrix at 12462-12468 and other arms.",
+    "files": [
+        {
+            "path": "crates/atlas-core/src/domain_builtins.rs",
+            "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+            "bytes": 959480,
+            "note": "clean relative to the recorded git_base; the hash identifies the committed bytes; only the three cited seams are in this packet's scope"
+        }
+    ]
+}

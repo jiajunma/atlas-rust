@@ -1,64 +1,59 @@
 ---
 title: dual 预热历史与 Weyl 群兼容性
-summary: canonical dual 仅在目标尚未建立 WeylGroup 时共享源群身份，已预热目标保持独立，因此 Weyl 元素兼容性取决于对象生命周期和构造历史。
+summary: canonical dual 仅在目标抽象群尚未初始化时共享源身份，预热目标不会被覆盖，因此兼容性受构造历史影响。
 sources:
-  - weyl-context-identity-and-sharing.md
+  - atlas-core-domain-values.md
 kind: concept
 createdAt: "2026-10-09T15:16:17.578Z"
-updatedAt: "2026-10-09T15:16:17.578Z"
+updatedAt: "2026-10-09T20:34:12.735Z"
 tags:
   - Weyl群
   - 对偶
-  - 可观察语义
+  - 惰性初始化
 aliases:
   - dual-预热历史与-weyl-群兼容性
+  - D预W群
 confidence: 1
 provenanceState: extracted
 modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
 ---
 
 # dual 预热历史与 Weyl 群兼容性
 
-Weyl 元素的兼容性不仅取决于根数据的结构，还取决于 canonical owner 的生命周期与 `dual()` 的预热历史。在 original Atlas 中，二元 `=`、`!=`、`*` 先检查两个元素引用的 `WeylGroup` 是否为同一个对象；不同则抛出 `Weyl group mismatch`，该检查甚至先于 `no_value` gate。相同 Cartan 矩阵或根置换并不足以保证兼容。^[weyl-context-identity-and-sharing.md:183-187]
+Weyl 元素的兼容性由抽象 Weyl 群的 `Arc` 身份决定，而不是根数据句柄的结构相等或局部坐标缓存相同。`dual()` 是否共享这一身份，取决于 canonical dual 目标是否已经预热，因此构造历史会影响后续二元关系与乘积是否被接受。^[atlas-core-domain-values.md:28-33, atlas-core-domain-values.md:53-56, atlas-core-domain-values.md:89-91]
 
-## canonical 身份与预热规则
+## canonical dual 的预热规则
 
-original Atlas 按完整 `PreRootDatum` 内容——包括 simple roots、simple coroots 和 `prefer_coroots`——弱驻留根数据。相同对象仍存活时复用其 `shared_ptr`，释放后则可在原槽位重建。RootDatum 的语言层相等比较使用这种 canonical 活对象身份；弱驻留不会永久保留不可达的重型 datum，但轻量 key 仍留在静态索引中。相关概念见 [[RootDatum 弱驻留与规范活对象身份]]。^[weyl-context-identity-and-sharing.md:164-172]
+`share_group_into_if_cold` 实现 `root_datum_value::dual` 的身份共享规则：仅当 canonical dual 目标仍冷时，才把源的抽象群身份装入目标；已预热的目标永不被覆盖，并保留与源不兼容的身份。并发共享发生竞争时，只有一个候选被发布，另一个被丢弃。^[atlas-core-domain-values.md:30-33]
 
-每个活的 `root_datum_value` 含有一个初始为空的强 `shared_ptr<WeylGroup> W_ptr`，首次调用 `W()` 时才构造。`dual()` 先取得 canonical dual：若目标的 `W_ptr` 为空，就确保 source 的群已建立，再将同一个指针安装到目标；若目标已预热，则绝不覆盖。因此，cold target 可以与 source 共享群身份，而独立预热的 target 可能保留不同的群身份。^[weyl-context-identity-and-sharing.md:174-181]
+这项共享针对抽象群，而非根数据的局部坐标。`DatumWeylIdentity` 将惰性的 `DatumWeylKernel` 与 `AbstractWeylGroup` 分开保存：前者缓存 owner 的枚举根系，后者提供 canonical-word 接口，并在上游共享 `WeylGroup` 指针的场合共享。两个单元都不回指 handle，因此不形成所有权环。^[atlas-core-domain-values.md:24-29]
 
-每个 `W_elt_value` 强持有其 root datum，并引用该 datum 的 Weyl 群，所以元素存活期间 datum 不会失效。兼容乘法的结果保留左操作数的 owner；对象寿命与操作数顺序因此都是可观察契约的一部分。^[weyl-context-identity-and-sharing.md:80-85, weyl-context-identity-and-sharing.md:183-187]
+## 弱驻留与生命周期
 
-## Rust 的历史差异与已落地修复
+`DATUM_WEYL_IDENTITIES` 是按完整内容索引的全局弱引用表。等值 owner 仍存活时，新构造会复用其身份单元；所有强引用消失后，槽位过期，后续等值构造重新开始。表的大小超过 4096 时才清理死槽。`RootDatumHandle::interned` 是唯一构造入口，保证等值的活数据共享一个 Weyl 身份。^[atlas-core-domain-values.md:34-41]
 
-修复前，Rust 每次 `build_weyl_context` 都重新构造根系统与 interface；关系运算依赖结构性 `PartialEq`，乘法也以结构 handle 相等判断兼容。这无法表达 original 的群对象身份：cold-target dual 可能被错误拒绝，而 prewarmed-target 的不兼容关系却返回布尔值，无法抛出 mismatch。上述差异已由 A1 fresh-process 原版捕获确认。^[weyl-context-identity-and-sharing.md:191-212]
+根数据本身的结构相等与 Weyl 兼容性保持分离。`RootDatumHandle::PartialEq` 刻意忽略 Weyl 身份缓存，只比较 `datum`、`lie_type`、`isogeny` 和 `prefers_coroots`；`Debug` 同样不纳入身份缓存。^[atlas-core-domain-values.md:41-43]
 
-已落地的修复让 `RootDatumHandle` 携带 `Arc<DatumWeylIdentity>`，通过完整 datum 内容加 preference 弱驻留身份，并设置仅成功发布的惰性 `DatumWeylKernel` 与 `AbstractWeylGroup` cell。`dual(RootDatum)` 仅向仍 cold 的 canonical target 安装 source 的群，保留预热目标。二元运算先比较 abstract-group 的 `Arc` 身份，再在左侧坐标系重放右侧 external word；关系检查在 no-value 级别同样执行。结构性 RootDatum `Eq`/`Debug` 保持不变。^[weyl-context-identity-and-sharing.md:249-261]
+身份单元由 `WeylIdentityCell<T>` 管理，使用 `OnceLock` 与初始化互斥锁。初始化仅在成功时落定，失败不会占用单元；双重检查与锁防止并发重复初始化，毒化或二次初始化则报告 `StructureError::RepInvariantViolation`。^[atlas-core-domain-values.md:21-23]
 
-共享抽象群身份不意味着两个元素的根坐标可以直接混用。来源中的后续共享设计明确要求：兼容但坐标 kernel 不同的元素，应将右值生成元词重放到左值 `RootSystem`，结果归左 owner。相关概念见 [[Weyl 元素兼容性与跨坐标词重放]]、[[Weyl 元素的可失败关系与跨坐标运算]]。^[weyl-context-identity-and-sharing.md:279-284]
+## 兼容检查与跨坐标比较
 
-## canonical dual 与有效预热见证
+`weyl_group_compatible` 使用 `Arc::ptr_eq(group)` 判定兼容；`require_weyl_compatible` 在无值门之前检查二元关系与乘积，不兼容时报告 `Weyl group mismatch`。即使调用方不需要结果值，也不能省略这一检查。^[atlas-core-domain-values.md:89-91, atlas-core-domain-values.md:123-124]
 
-构造 dual 时，original 的 `PreRootDatum::dualise` 交换 roots/coroots 并翻转 preference，新 RootDatum 随后从转置 Cartan 重新编号。另一条 `DualTag` 元数据 dual 路径保留原序，来源注明其仅用于 Fokko；两条路径不能混为一谈。^[weyl-context-identity-and-sharing.md:75-80]
+共享抽象群身份后，元素仍可能采用不同的 owner 局部坐标。`weyl_elements_equal` 先检查抽象群身份，再将右元素的 canonical 外生成元词在左侧系统中重放后比较；辫子等价词可以跨坐标相等，外来根置换绝不直接比较或复合。跨坐标乘积也遵循外生成元词重放规则，参见 [[Weyl 元素兼容性与跨坐标词重放]]。^[atlas-core-domain-values.md:80-82, atlas-core-domain-values.md:123-124]
 
-因此，“构造一个看似对应的 adjoint datum”不一定能预热真正的 canonical dual。来源对 G2 的捕获前登记指出，`adjoint(G2,false)` 不具有 canonical dual 的转置 coroot 内容，无法占用其 cold-share 槽位；有效的 G2 预热拒绝见证需要显式构造 `root_datum(id_mat(2), mat:[[2,-3],[-1,2]], false)`。B2/C2 则更直接：C2 的固定 Cartan 正是 B2 的转置，`dual(SC(B2,true))` 与 `adjoint(C2,false)` 内容一致。这些是来源登记的预期，不能当作已捕获结论。^[weyl-context-identity-and-sharing.md:86-94]
+`WeylEltContext` 携带的内部生成元重编号固定上游 canonical-word 的选择。`WeylEltValue` 在构造时计算并冻结 canonical 既约词，因此 `Display` 与 `word` 都是纯读取操作。相关词表示见 [[Weyl 元素的规范词]]。^[atlas-core-domain-values.md:53-58, atlas-core-domain-values.md:92-92]
 
-预热历史还可能由 inner-class 构造触发。original 的 `inner_class_value::build` 立即调用 `srd->dual()`，并强持有 primal 与 dual。因此，完整对齐不能只考虑显式 `dual(RootDatum)`，还需要验证内类构造所触发的共享路径与目标生命周期。参见 [[InnerClass 对偶构造与生命周期保持]]。^[weyl-context-identity-and-sharing.md:286-292]
+## 证据范围
 
-## 验证状态与覆盖边界
+本页依据 `domain_builtins.rs` 相关区域的结构性阅读。来源指出 owner/dual 修复具有 A1 限定的 HPC 语义验收，并引用 `tests/reference/hpc/math_weyl_context_core_after_v5_acceptance_2026_10_06.json`；这不构成对更高秩情形的验收声明。原始差异发现与 A1 回归金标位于 `tests/math/generics/weyl_context_core_*`。^[atlas-core-domain-values.md:9-17, atlas-core-domain-values.md:121-122]
 
-A1 原版捕获观察到，两种 cold canonical-dual 构造历史中的 `=` 为 true、`!=` 为 false，乘法成功；修复前 Rust 给出相反关系结果并拒绝乘法。对于独立预热的不兼容 owner，原版拒绝关系与乘法，而 Rust 错误地产生布尔关系结果。回归固定原版 stdout/stderr，并比较有序错误种类与消息。^[weyl-context-identity-and-sharing.md:140-151]
-
-截至来源的 2026-10-09 更新，AFTER-v5 job3900050 已 `COMPLETED 0:0`，修复以 `690c2b92` 落地。cold_dual 完全字节相等，prewarmed_dual 在 stdout、退出码和有序 error summary 下相符；验收记录为 `math_weyl_context_core_after_v5_acceptance_2026_10_06.json`。接受范围仍限于 A1 语义，不授予缓存、性能、内存、高 rank 或更广数学 release。^[weyl-context-identity-and-sharing.md:63-74]
-
-A1 跨 dual 乘法仅覆盖 \(s_0s_0=1\)，不能发现生成元重编号错误或直接复合 foreign root permutation 的问题；既有 rebind fixture 仍有 alias 保持 datum 存活，也不能证明仅靠 WeylElt 维持生命周期。后续需逐步覆盖 G2、B2/C2、两个操作数顺序、inner-class dual、no-value relations 与 sole-WeylElt lifetime。来源更新时 G2 gate 已冻结和彩排，尚待提交，后续见证仍为 provisional。^[weyl-context-identity-and-sharing.md:313-330]
-
-这些身份规则约束了安全共享的范围，但不会自动证明性能收益。只有后续语义 gate 通过，才能加入 one-build work-count 测试并开展 fresh-process 的 time/CPU/RSS A/B；`59 -> 至多 5` 仍只是调用方工作量假设。参见 [[Weyl 上下文共享的性能与内存证据边界]]。^[weyl-context-identity-and-sharing.md:320-335]
+来源未覆盖内类与实形管线实现、完整派发表及测试正文。因此，本页说明身份与预热机制，不据此补充内类构造触发 dual 的具体流程或更广泛的测试结论。^[atlas-core-domain-values.md:125-126]
 
 ## Sources
 
-- [Weyl 对象身份、dual 历史与安全共享边界](weyl-context-identity-and-sharing.md)
+- [领域值与 Weyl 身份（domain_builtins.rs 上部）](../../sources/atlas-core-domain-values.md)
