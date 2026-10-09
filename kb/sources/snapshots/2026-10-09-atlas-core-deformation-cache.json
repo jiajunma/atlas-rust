@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of domain_builtins.rs lines 2657-3022 for the atlas-core-deformation-cache packet: FullDeformKey's canonical units, the cache discipline (locks never held across recursion, only complete canonically ordered results cached, the active set's explicit cycle detection, cooperative deadlines), the ordinary full-deformation recurrence F(z)=L(z)+Σc_t(1-s)F(t) (= the integer recurrence since (1-s)^2=2(1-s)), the scale-zero base retaining ALL final terms, the per-child scale/readjust/lookup/common-terms recursion, and the twisted variant's post-setup timer with the finalise-flip s-vs-1 coefficient. The block-side common_deformation_terms is not covered.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/domain_builtins.rs",
+   "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+   "bytes": 959480,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  }
+ ]
+}

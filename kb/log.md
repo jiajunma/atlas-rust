@@ -771,3 +771,10 @@ DomainNoValue 的 Skip/Validate/BuildAndDrop 无值门策略：补全名清单�
 build_dual_inner_class 的余根翻转+逐字母对偶、build_real_form 规范弱缓存、
 build_custom_real_form 的新表+基本 Cartan+自定义种子）。维护者直接撰写
 （无 Kimi）；索引与 log 已同步。
+
+新增 `sources/atlas-core-deformation-cache.md` 与快照
+`2026-10-09-atlas-core-deformation-cache.json`：形变机器（canonical 键、
+锁不跨递归、只缓存完整排序结果、active 集检环、协作截止）、普通全形变
+递推 F(z)=L(z)+Σc_t(1-s)F(t)（=(1+s) 展开等价原版整数递推）与 scale-zero
+全保留基底、逐子项 scale/readjust/lookup/common-terms 递归、扭曲版的
+后 setup 计时与翻转系数。维护者直接撰写（无 Kimi）；索引与 log 已同步。

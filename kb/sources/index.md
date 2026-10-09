@@ -632,6 +632,16 @@ Lie 类型——即 dual-identity 路径）、`build_real_form` 规范弱缓存�
 对应[阅读快照](snapshots/2026-10-09-atlas-core-domain-construction.json)；
 维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
 
+[形变缓存机器](atlas-core-deformation-cache.md)记录 `domain_builtins.rs`
+2657–3022（ordinary-full-deform 弧落点）：`FullDeformKey` 的 canonical 单元、
+缓存纪律（锁不跨递归、只缓存完整 canonical 排序结果、`active` 集显式检环、
+协作截止分段检查）、普通全形变递推 `F(z)=L(z)+Σc_t(1-s)F(t)`（因
+`(1-s)²=2(1-s)` 等于原版整数递推）、scale-zero 基底保留全部 final 项、逐子项
+scale→readjust→lookup→common-terms 的 c(1-s) 递归、扭曲版的
+**后 setup 计时**与 finalise 翻转的 s/1 系数。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-deformation-cache.json)；维护者直接
+撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
