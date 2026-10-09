@@ -14,6 +14,7 @@
 - **[[alcove-重心计算与标准参数重建|Alcove 重心计算与标准参数重建]]** — alcove_center 通过墙方程与 radical_basis 约束求唯一有理解，保留 KGB 坐标和 lambda_rho，并在修正子空间校验后通过 sr_gamma 重建参数；来源仅支持结构性说明，未作数学验收。
 - **[[ambient-weyl-见证词与作用方向|ambient Weyl 见证词与作用方向]]** — Weyl_orbit_ws 按权的从右到左作用和余权的从左到右作用组织反射事件，经 ambient Weyl 上下文逐次右乘重建元素并冻结 canonical word。
 - **[[ambient-映射的子商下降验证|Ambient 映射的子商下降验证]]** — validate_induced_map 一次性验证 ambient 映射保持分子与分母关系，失败时区分两类关系错误，使高层能够按需应用映射而不缓存稠密商坐标矩阵。
+- **[[analysis-转换期上下文与活类型要求|Analysis 转换期上下文与活类型要求]]** — Analysis 管理局部绑定、常量标记、循环深度和刚性类型阈值，函数体与 return 操作数通过 ConversionType 共享活类型要求且递归转换时不得持有 RefCell 借用。
 - **[[atlas-类型模型与递归类型图|Atlas 类型模型与递归类型图]]** — 类型子系统包含 axis 类型模型、二阶类型机器及递归 typedef 图安装，后者优先使用命名 RHS 槽位并保留环上匿名后代的身份。
 - **[[atlas-词法-token-模型|Atlas 词法 Token 模型]]** — TokenKind 区分关键字、原始类型、标识符、运算符、指令等类别，Token 同时保存精确源拼写 lexeme、词法解码值 value 与位置 span。
 - **[[atlas-语法前端与运算符优先级归约|Atlas 语法前端与运算符优先级归约]]** — 语法前端结合 LALRPOP 文法与独立的带位置 token 流适配层，formula 模块负责对结构解析器产生的交错序列进行运算符优先级归约。
@@ -76,6 +77,7 @@
 - **[[globalkgb-的回归测试与证据边界|GlobalKgb 的回归测试与证据边界]]** — 源码包含 A1/B2 的逐字节打印测试及 B2 结构不变量测试，但未覆盖错误分支和半单秩零；源包此次未运行测试，且上游字节未核对，不能据此宣称数学验收。
 - **[[grading-shifts-的忠实性不变量|Grading shifts 的忠实性不变量]]** — 构造期检查 grading shift 列线性无关，遇到相关列或零列即拒绝，从而保证可实现 grading 对应的 adjoint fiber 元素唯一。
 - **[[grading-的位向量类型纪律|Grading 的位向量类型纪律]]** — Grading 以 newtype 将 simple-imaginary 根位置与 ambient coweight 坐标区分，置位表示非紧致，根索引遵循确定性根序。
+- **[[idtable-与-typecell-的绑定身份和类型精化|IdTable 与 TypeCell 的绑定身份和类型精化]]** — IdTable 为新定义分配新鲜 cell，使旧代码保留原绑定；TypeCell 按定义处词法下限解释类型，克隆共享精化单元而导入用例不得写入。
 - **[[innerclass-对偶构造与生命周期保持|InnerClass 对偶构造与生命周期保持]]** — original InnerClass 构造立即取得 canonical dual 并强持有 primal 与 dual，Rust 对齐需覆盖该隐式对偶路径及其生命周期，显式 dual 修复不足以证明完整兼容。
 - **[[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]** — twisted_from_involution 在调用方已完成 square 与 involutive 检查的前提下，验证输入属于当前 inner class，并返回分解 θ = w·δ 中的 Weyl 元素 w，失败时报 InvalidBasedAutomorphism。
 - **[[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]** — InnerClass 持有已验证的 BasedRootDatum、有限根系和 distinguished involution，为分解与标签提供上下文，但尚不包含 Cartan fibers、real-form data 或构建 KGB graph 所需的 torus data。
@@ -108,6 +110,7 @@
 - **[[malpha-的模二归约与伴随投影|m_alpha 的模二归约与伴随投影]]** — m_alpha 是余根在 ambient fiber 中的模二像，其伴随像由根配对投影得到；坐标奇性归约必须正确处理负奇数。
 - **[[mod-2-投影与纤维商上的诱导映射|mod-2 投影与纤维商上的诱导映射]]** — mod-2 投影利用根系数的奇性翻转坐标位，FiberToAdjoint::apply 依次取规范代表、执行投影并构造目标纤维元素，每次应用现算而不缓存稠密矩阵。
 - **[[original-atlas-的抽象坐标-ladder-构造|Original Atlas 的抽象坐标 ladder 构造]]** — Original Atlas 使用抽象简单根坐标 Byte_vector 构造 ladder，再通过 Weyl reflection permutation 扩展至所有根，使环境格中的大坐标不参与该阶段的减法。
+- **[[overloadstate-有序重载管理|OverloadState 有序重载管理]]** — 将静态启动重载、forget 移除记录与用户变体合并为有序列表，新增变体执行精确参数孪生替换、过近邻歧义检查或有序插入。
 - **[[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]** — ParabolicPieces 用内部层级的最小右陪集代表元分解生成 piece 索引列表，其字典序复现上游 WeylElt 排序并供 involution 排序及 KGB 重编号使用。
 - **[[primitivisation-索引与符号传播|Primitivisation 索引与符号传播]]** — 针对每个 descent mask 递减遍历元素，沿首个 good ascent 的 cross 链接继承 primitive 索引并依 epsilon 更新符号，遇到 like-nonparity 或 partial-block 边界则标记 DEAD_END。
 - **[[quasisplit-规范化与-grading-的仿射线性求值|Quasisplit 规范化与 grading 的仿射线性求值]]** — Quasisplit 规范化令零 adjoint fiber 元素的 grading 为全一，其余元素通过 canonical ambient representative 与单根奇性向量配对后取反求值。
@@ -156,6 +159,9 @@
 - **[[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]** — TwistedConjugacyClass 保存确定性轨道代表元和对合计数，分类阶段将代表元重建为 Atlas-canonical 形式；CartanClass 拥有该值并承载分解、fiber、实形式标签与实 Cartan 分量数据。
 - **[[type-类型表示与语义等值|Type 类型表示与语义等值]]** — Type 采用 tag+payload 表示，折叠单元素元组与联合；语义等值比较先校验构造器应用，并以递归类型的名义身份作为终止边界。
 - **[[typeassignment-与-inferredtype-推断机器|TypeAssignment 与 InferredType 推断机器]]** — TypeAssignment 管理局部无环替换、实例化与合一，append 连同待决替换导入赋值；InferredType 将类型体与赋值配对，支持作用域调整及函数和构造器匹配。
+- **[[typedcommandevent-类型化命令事件|TypedCommandEvent 类型化命令事件]]** — 以诊断、携带类型与位置的值、报告和输出事件连接类型化管线与会话层，并将报告中的非法 UTF-8 字节分流至 ReportBytes。
+- **[[typedcontext-会话状态与启动初始化|TypedContext 会话状态与启动初始化]]** — TypedContext 汇集类型、全局绑定、求值和重载状态，按当前绑定记录类型位置；Default 播种补全名，new 进一步播种系统变量并将 prelude_log 标为常量。
+- **[[typedexpr-可执行表达式树|TypedExpr 可执行表达式树]]** — 以类型化节点表达值、容器、读写、调用与控制流，并在节点结构中保留求值顺序和诊断信息；本包不覆盖求值实现。
 - **[[typescheme-与类型变量作用域|TypeScheme 与类型变量作用域]]** — TypeScheme 以 body、fixed、degree 描述类型方案，fixed 以下变量为刚性；wrap 为独立洞分配新变量并保留重复变量共享，构造器方案保留声明参数编号及元数。
 - **[[typetable-修订身份与缓存失效|TypeTable 修订身份与缓存失效]]** — revision 通过克隆共享、突变更换的 Arc<()> 提供非语义快照身份，供缓存读者识别修订并防止地址复用，同时保持 Send+Sync。
 - **[[typetable-的稳定身份与活跃绑定|TypeTable 的稳定身份与活跃绑定]]** — TypeTable 将保留的类型定义与活跃名称映射分离，forget 仅移除活名，字段与标签匹配仍搜索全部保留定义并隔离候选自由变量。
@@ -402,6 +408,7 @@
 - **[[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]** — 由 integrality_simples 构造积分子系统的单根数据，提供按生成元编号的访问器，满足公共上下文需求而无需完整根闭包。
 - **[[算符优先级归约栈与奇偶结合性|算符优先级归约栈与奇偶结合性]]** — FormulaStack 在待归约算符优先级更高或同级且为偶数时归约，实现偶数优先级左结合、奇数优先级右结合，并区分首元与二元算符后一元算符的处理边界。
 - **[[类型化内建函数的注册表封装|类型化内建函数的注册表封装]]** — BuiltinFunction 只能由类型化内建注册表构造，携带注册表身份、打印名和参数策略，不具有用户闭包的词法捕获帧。
+- **[[类型化赋值目的地与分发计划|类型化赋值目的地与分发计划]]** — 全局目的地在分析时捕获 cell，局部目的地保留词法坐标，多重赋值先完整求值，再按子项从左到右、整体最后的计划分发。
 - **[[类型化转换与求值管线|类型化转换与求值管线]]** — typed 模块承担 parsed→typed 可执行转换与求值，来源称 convert_expr 在单遍中完成检查与合成，并保留上游整数收窄错误文本中的笔误。
 - **[[类型构造器应用的校验与有限展开|类型构造器应用的校验与有限展开]]** — Applied 保留构造器名称及全部实参；应用校验不展开定义，单层展开保留递归引用，展开次数受绑定数约束以避免残缺自环导致死循环。
 - **[[类型特化与失败回滚语义|类型特化与失败回滚语义]]** — specialise 成功时产生最一般合一子，失败时可能保留部分特化；需回滚的调用方使用 can_specialise，赋值合一则提供 try_unify 等对应接口。
@@ -435,6 +442,7 @@
 - **[[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]** — 通过 Option 表达元素或链接缺失，区分 imaginary ascent 的前向 Cayley 像与 real descent 的逆像，并以奇异生成元的下降状态判定 survives。
 - **[[重复-gcd-实现的语义漂移|重复 gcd 实现的语义漂移]]** — lattice.rs 与 global_kgb.rs 的私有 gcd_u64 对 gcd(0,0) 分别返回 1 与 0，体现重复实现的语义漂移，但正分母约束使各自当前调用点仍安全。
 - **[[重定向表达式的打开前解析|重定向表达式的打开前解析]]** — 会话层通过共享活跃类型环境的表达式解析入口校验 >file／>>file 的重定向体，并在打开输出 sink 前完成解析。
+- **[[重载签名视图缓存与失效纪律|重载签名视图缓存与失效纪律]]** — 缓存仅保存未移位的结构签名及来源信息，Analysis 以表身份变化清缓存，OverloadState 以 TypeTable revision 的 Arc 身份守护缓存且事务克隆不携带缓存。
 - **[[闭包的词法捕获与参数槽布局|闭包的词法捕获与参数槽布局]]** — Closure 通过 Rc 共享函数体并保留定义域帧链，按 SlotShape 分配参数槽；whole 绑定先于元素槽，递归调用在调用帧第 0 槽绑定闭包自身。
 - **[[限制权的商格单射表示restrictedweight|限制权的商格单射表示（RestrictedWeight）]]** — 以 (1−θ)(weight) 编码 X*/ker(1−θ) 的等价类，坐标属于像格表示；split A1 中 α 类编码为 2α，并不表示它等于 2α 的类。
 - **[[限制根的可乘性ismultipliable|限制根的可乘性（is_multipliable）]]** — 通过检查二倍限制权类是否仍为限制根判定可乘性；给定 A2 对合测试覆盖可乘实例，但本包未验收其与 BC 型非约化根系的数学关系。
@@ -446,4 +454,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_443 pages | Generated 2026-10-09T17:47:09.069Z_
+_451 pages | Generated 2026-10-09T17:49:13.347Z_

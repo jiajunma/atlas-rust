@@ -810,6 +810,20 @@
         "闭包的词法捕获与参数槽布局"
       ],
       "compiledAt": "2026-10-09T17:47:08.320Z"
+    },
+    "atlas-core-typed-core.md": {
+      "hash": "853041f26ea2b340e4704801621eaef51b1f4a2b09c8e398d0f3b62c8bfde6e9",
+      "concepts": [
+        "analysis-转换期上下文与活类型要求",
+        "idtable-与-typecell-的绑定身份和类型精化",
+        "overloadstate-有序重载管理",
+        "typedcommandevent-类型化命令事件",
+        "typedcontext-会话状态与启动初始化",
+        "typedexpr-可执行表达式树",
+        "类型化赋值目的地与分发计划",
+        "重载签名视图缓存与失效纪律"
+      ],
+      "compiledAt": "2026-10-09T17:49:12.542Z"
     }
   }
 }

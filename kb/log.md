@@ -1718,3 +1718,27 @@ BuiltinFunction 不透明只能由注册表构造、Vec32/Matrix 列主序/RatVe
 运算元——全部忠实；候选如实保留"Value 已列线性变体"与"phase-B B2 才
 嵌入"的阶段性表述差异。7 页批准；wiki/concepts/ 现有 443 页，剩余
 候选 90。
+
+## 2026年10月10日 第六十二批候选审查：atlas-core-typed-core.md 的 8 页
+
+对照 114 行来源包（维护者直接撰写、typed.rs sha256 614975c5… 与
+after-v5 清单一致）逐页核验：Control/Level/WhileMode 三枚举、赋值目的地
+族（Global 分析时捕获 cell、Local 留词法坐标、MultiAssignmentPlan 整体
+最后、TransformOperation 的用户重载重组为普通调用即脱糖应用）、TypedExpr
+节点面（Captured 冻结重载值带表达式拼写、BarList 直接构矩阵不受用户
+重载拦截、ComponentAssignment 先值后下标、ComponentTransform 范围检查在
+合成读触发、Subscription 领域系数读先接收方再求键而普通订阅先下标、
+FunctionCall 参数按一个值传入多参数为元组、For 的七种聚合与下标类型随
+接收方、Break 的 levels+1、Die 分析通过任何类型求值抛 I die）、Analysis
+字段面（return_type 活结果要求独立当前上下文、loop_depth 分析期拒游离
+break、type_floor、ConversionType 共享单元绝不持 RefCell 借用递归）、
+IdTable 重定义只换名而旧代码保留捕获 cell、TypeCell 按定义处词法下限
+解读且克隆共享精化单元导入不写、OverloadState 的启动表静态+forget/set
+合并单列表、add_user 重放上游 add（孪生原地替换、过近邻保留完整歧义
+措辞、返回前后变体数选报告措辞）、views 缓存纪律（revision Arc 守护、
+只放未移位结构签名、事务克隆不带缓存、ptr::eq 检查同一性）、
+TypedCommandEvent 的 Value 携带类型供 is_void、STARTUP_COMPLETION_NAMES
+的 35 关键字+21 原始类型名+注册序（与第六十五批更正一致）、三系统变量
+不在其中由 new() 播种并标 prelude_log 为 const、type_locations 属于当前
+绑定而非复用槽——全部忠实。8 页批准；wiki/concepts/ 现有 451 页，剩余
+候选 82。
