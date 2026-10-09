@@ -676,6 +676,14 @@ Tarjan 形 SCC（块图消费者）、`ByLastCoordinate` 的**坐标逆序**字�
 [阅读快照](snapshots/2026-10-09-atlas-core-domain-scc-root-table.json)；
 维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
 
+[CLI 前端](atlas-cli-main.md)记录 `atlas-cli/src/main.rs`（175 行，全部）：
+会话帧驱动的 CLI（`FsProvider` 有损 UTF-8、`FsSink`、字节保留的
+`print_events`、rayon 2MiB 工作栈压 RSS、`--path=` 解析、文件参数按
+**普通命令流**喂——上游文件参数的 prelude-capture 是 non-goal、交互横幅
+与 `atlas> ` 循环、退出状态 = 上游 clean 标志：缺包含文件本身不弄脏）。
+对应[阅读快照](snapshots/2026-10-09-atlas-cli-main.json)；维护者直接撰写
+（无 Kimi 调用）。本文件无测试；行为由 HPC 语料门覆盖。结构性阅读。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

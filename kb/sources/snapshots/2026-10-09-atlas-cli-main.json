@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of atlas-cli/src/main.rs for the atlas-cli-main packet: the session-frame-driven CLI (FsProvider's lossy UTF-8, FsSink, print_events' byte-preserving arms, the rayon's 2MiB worker stack for RSS, --path= resolution, file arguments fed as plain command streams, the interactive banner and atlas> loop, and the clean-flag exit status where a missing include alone does not dirty).",
+ "files": [
+  {
+   "path": "crates/atlas-cli/src/main.rs",
+   "sha256": "dafc7e079d4fe56818793808e3383d70598084d8c03fede56cc6f8abcf87ef9c",
+   "bytes": 5978,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  }
+ ]
+}

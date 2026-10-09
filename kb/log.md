@@ -802,3 +802,9 @@ C_denom 一致）+ adjoint 轨道 BFS（尾部递减、完成层反转）+ 词�
 反射词约定（末字母先作用）；块图迭代 SCC + ByLastCoordinate 逆坐标序 +
 宽累积矩阵积 + RootTable::build。维护者直接撰写（无 Kimi）；索引与 log
 已同步。至此 domain_builtins.rs 全区域均有来源包（逐臂数学内容除外）。
+
+新增 `sources/atlas-cli-main.md` 与快照 `2026-10-09-atlas-cli-main.json`：
+CLI 前端全读（FsProvider 有损 UTF-8、字节保留 print_events、rayon 2MiB
+工作栈、--path= 解析、文件按普通命令流喂、clean 退出状态——缺包含不弄脏）。
+维护者直接撰写（无 Kimi）。至此 crates/ 全部三个 crate 的每个模块均有
+来源包或明确交叉引用（两测试模块的组织按引用覆盖）。
