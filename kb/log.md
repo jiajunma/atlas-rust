@@ -1847,3 +1847,20 @@ build_custom_real_form 的 fresh_table→基本（第一个）Cartan→
 RealFormSeed::custom 顺序与 RealFormContext 的 FallibleOnce kgb/rep+
 双形变缓存——全部忠实。8 页批准；wiki/concepts/ 现有 496 页，剩余
 候选 37。
+
+## 2026年10月10日 第六十九批候选审查：atlas-core-domain-validate-print.md 的 8 页
+
+对照 81 行来源包（维护者直接撰写）逐页核验：validate 46 臂的逐臂顺序
+契约（integrality 四件先 check_integrality_dimension、W_refl 的 int_val
+收窄先于索引校验且可观察、KGB 先按 kgb_size 查界、KGB_elt 全部构造检查
+在无值门前、KL_block 先 test_standard、real_form 按参数个数分发）、
+common_block_rows 每次调用新建的兼容性依据（Rep_table 池只是记忆化+
+dominant gamma 修饰符平凡）与 init 按 (x, gamma-lambda) 匹配（单按 x 在
+R 包内有歧义）、located_common_block_rows 与 KL_column/KL_block 共享
+查找序列的刻意区分、partial_block_rows 的种子归约链与 survives 用调用方
+gamma（即使种子先规范化）、完整块路径 mod_reduce 但不 make_dominant 无池
+无修饰符、involution_expression 的 1 基数字/^交叉/x 共轭/e 收尾、
+print_KGB 选择形式的同实形要求与逐字错误、print_gradings 的
+gr_print[i]=gr[sigma[i]] 回拉方向（候选明确警示反向解读）、print_X 与
+print_blockstabilizer 上游无检查、print_real_Weyl 检查须在臂内先跑否则
+静默翻译——全部忠实。8 页批准；wiki/concepts/ 现有 504 页，剩余候选 29。
