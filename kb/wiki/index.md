@@ -10,12 +10,14 @@
 - **[[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]** — CartanClassification::build 构造 inner class 的全部 Cartan 类，聚合各实形式的 Cartan 集、most-split 类、twisted-involution 总数与严格偏序，并共享 twisted 共轭分区供对偶侧复用。
 - **[[cartan-分类的分层预算|Cartan 分类的分层预算]]** — CartanClassificationBudget 分别约束整数格、fiber、Weyl 枚举、对合发现与 peeling；generated-involutions 模式以含 identity 的精确计数上限控制代表元发现，各预算值参与分类缓存键。
 - **[[cartan-矩阵的精确有理有限型检查|Cartan 矩阵的精确有理有限型检查]]** — 以精确有理数沿连通分量传播对称化比例，再通过 LDLᵀ 式分解检查正主元；其与有限型的等价性在来源中仅为代码意图，未经数学验收。
+- **[[cartan-类的强实层-strongrealdata|Cartan 类的强实层 StrongRealData]]** — StrongRealData 保存单个 Cartan 类的平方类、各平方类的 fiber 轨道大小与强代表元，并提供局部弱实形式、平方类和轨道之间的查询及 toAdjoint 原像求解。
 - **[[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]** — add_cartan 重复调用返回已有切片，新轨道须恰好达到分类给出的期望大小，且记录数量达到 max_involutions 时拒绝继续插入。
 - **[[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]** — fundamental class 编为 0，其余按父类编号与上游正虚根顺序进行 BFS 发现；Cayley successor 在比较和存储前先 canonicalize，以保持 Atlas 编号语义。
 - **[[cayley-变换与目标模空间归约|Cayley 变换与目标模空间归约]]** — cayley 执行裸 sigma_mult，再在目标增大的 mod-space 中归约；若目标 Cartan 类尚未加入表，则返回 None。
 - **[[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]** — cayley 以 s·w 的置换查表寻找邻居，目标 Cartan 未添加时返回 None；stage e 要求预先添加该 form 的向上封闭 Cartan 集合。
 - **[[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]** — 链接按元素与生成元平铺存储：Cayley 适用于非紧致 imaginary，逆 Cayley 适用于 real，后者区分单前像 II 型与双前像 I 型，并在编号标准化后按升序安装。
 - **[[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]** — canonical dual 仅在目标尚未建立 WeylGroup 时共享源群身份，已预热目标保持独立，因此 Weyl 元素兼容性取决于对象生命周期和构造历史。
+- **[[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]** — StrongRealClassification 预计算各 form 的 KGB 大小及全局总量；fiber_size(form, cartan) 在 form 不属于指定 Cartan 时返回 Some(0)，使跨全部 Cartan 的求和保持正确。
 - **[[innerclass-对偶构造与生命周期保持|InnerClass 对偶构造与生命周期保持]]** — original InnerClass 构造立即取得 canonical dual 并强持有 primal 与 dual，Rust 对齐需覆盖该隐式对偶路径及其生命周期，显式 dual 修复不足以证明完整兼容。
 - **[[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]** — twisted_from_involution 在调用方已完成 square 与 involutive 检查的前提下，验证输入属于当前 inner class，并返回分解 θ = w·δ 中的 Weyl 元素 w，失败时报 InvalidBasedAutomorphism。
 - **[[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]** — InnerClass 持有已验证的 BasedRootDatum、有限根系和 distinguished involution，为分解与标签提供上下文，但尚不包含 Cartan fibers、real-form data 或构建 KGB graph 所需的 torus data。
@@ -101,10 +103,14 @@
 - **[[对偶根数据与对偶内类构造|对偶根数据与对偶内类构造]]** — 对偶根数据转置 Cartan 并交换根与余根后复用构造校验，对偶内类以 −(q·W0)ᵗ 和 −(q·W0) 分别构造权与余权作用，并分配最长元和根系闭包预算。
 - **[[对合的-1θx-图像基对|对合的 (1−θ)X* 图像基对]]** — 以 n×r 的 lift_mat 与 r×n 的 m_real 表示图像基及坐标映射，满足 lift_mat·m_real = 1−θ。
 - **[[带基数预算的-weyl-群作用枚举|带基数预算的 Weyl 群作用枚举]]** — enumerate_actions 通过 CompactWeyl 枚举并并行物化矩阵，使用显式基数预算；来源描述了字典序输出，但未提供排序测试或独立性能验证。
+- **[[平方类编号与换基不变量|平方类编号与换基不变量]]** — SquareClassId 是商群 (adjoint fiber group)/im(toAdjoint) 在 crate echelon 基下的陪集坐标整数；来源报告其目前与上游编号一致，该一致性依赖共享的 low-pivot RREF 约定，而换基只置换标签，不改变分划结构及大小。
 - **[[幺模矩阵求逆与分解自校验|幺模矩阵求逆与分解自校验]]** — invert_integer_matrix 通过欧几里得行消元求逆、要求对角主元为 ±1 并验证乘积为单位矩阵，build 收尾另校验图像基分解不变式。
 - **[[弱实形式归因的来源与整性门控|弱实形式归因的来源与整性门控]]** — 归因依次校验秩、分类来源、datum、w·δ=θ 分解及代表元身份，并在虚根 grading 提取前要求投影与每个单根的配对为整数，防止空虚基绕过校验。
 - **[[弱实形式的-cartan-集与唯一-most-split-类|弱实形式的 Cartan 集与唯一 most-split 类]]** — 弱实形式数量来自 fundamental partition，每个形式关联一个升序 Cartan 类集合及唯一的 most-split Cartan 类。
 - **[[弱实形式的伴随-cartan-纤维轨道划分|弱实形式的伴随 Cartan 纤维轨道划分]]** — WeakRealFormPartition 将 adjoint Cartan fiber 划分为 W_im 轨道，各轨道对应该 Cartan involution 处的弱实形式，并提供类查询和确定性代表元。
+- **[[强实分类打印视图-strongrealclassprint|强实分类打印视图 StrongRealClassPrint]]** — StrongRealClassPrint 提供与上游 printStrongReal 对齐的类号、模分母约化为非负剩余的 square 分子序列，以及按 partition 顺序排列且可跨类重复的外部 form 编号；上游对应关系来自源码注释，未独立重读验证。
+- **[[强实分类的构造与资源边界|强实分类的构造与资源边界]]** — StrongRealClassification::build 基于已有 Cartan 分类，逐类构造 adjoint fiber、ambient fiber 及 fiber map 的像坐标，用 ModTwoSubquotient 求平方商，并在 fiber 维数超过 MAX_MASK_BITS 时报告 StrongRealResourceLimit。
+- **[[强实形式与-fiber-轨道|强实形式与 fiber 轨道]]** — 强实形式代表元 StrongRealFormRep 由平方类与 fiber group 中的 W_im 轨道确定，并位于一个弱实形式之上；轨道编号依赖求解约定，但轨道大小不受与作用交换的 ker(toAdjoint) 平移影响。
 - **[[强对合数据的弱实形式归属|强对合数据的弱实形式归属]]** — real_form_of 将 twisted 与 theta-fixed rational coweight factor 归属到弱实形式，通过 complex simple roots 的 cross 行走定位 Cartan 代表元，再以 simple-imaginary root 配对为偶数整数判定 noncompact grading；详细接口同时返回 Cartan 类。
 - **[[形变计算的父块抽象|形变计算的父块抽象]]** — KlSumParent 提供 Full 或 Partial 父块的借用视图，DeformParent 持有所需块数据；Partial 按行重构参数，递归驱动保证父块在借用期间存活。
 - **[[形变项计算的边界情形与输出顺序|形变项计算的边界情形与输出顺序]]** — deformation_terms 在 block.length(y)=0 时返回空；奇异集为空时所有元素均为 final，反向累积列表为 [y,y−1,…,0]。
@@ -138,4 +144,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_135 pages | Generated 2026-10-09T16:12:56.299Z_
+_141 pages | Generated 2026-10-09T16:15:35.859Z_

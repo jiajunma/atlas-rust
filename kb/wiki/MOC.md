@@ -12,6 +12,7 @@
 ## Cartan分类
 
 - [[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]
+- [[cartan-类的强实层-strongrealdata|Cartan 类的强实层 StrongRealData]]
 - [[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]
 - [[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]
 - [[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]
@@ -56,6 +57,7 @@
 ## KGB
 
 - [[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]
+- [[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]
 - [[kgb-图与弱实形式|KGB 图与弱实形式]]
 - [[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]
 - [[kgb-生成元状态与下降判定|KGB 生成元状态与下降判定]]
@@ -116,6 +118,7 @@
 - [[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]
 - [[blockgraph-存储布局与坐标定位不变量|BlockGraph 存储布局与坐标定位不变量]]
 - [[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]
+- [[cartan-类的强实层-strongrealdata|Cartan 类的强实层 StrongRealData]]
 - [[kgb-图的混合自包含存储|KGB 图的混合自包含存储]]
 - [[klv-多项式去重池|KLV 多项式去重池]]
 - [[klv-多项式的表示与不变量|KLV 多项式的表示与不变量]]
@@ -296,6 +299,7 @@
 ## 分类算法
 
 - [[cartan-分类的分层预算|Cartan 分类的分层预算]]
+- [[强实分类的构造与资源边界|强实分类的构造与资源边界]]
 
 ## 分类计数
 
@@ -407,6 +411,8 @@
 
 - [[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]
 - [[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]
+- [[平方类编号与换基不变量|平方类编号与换基不变量]]
+- [[强实分类打印视图-strongrealclassprint|强实分类打印视图 StrongRealClassPrint]]
 - [[承载可观测量的适配基adaptedbasis|承载可观测量的适配基（adapted_basis）]]
 
 ## 基选择
@@ -504,6 +510,10 @@
 
 - [[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]
 
+## 平方类
+
+- [[平方类编号与换基不变量|平方类编号与换基不变量]]
+
 ## 并行计算
 
 - [[分窗两相-bfs-构造|分窗两相 BFS 构造]]
@@ -527,6 +537,12 @@
 ## 弱驻留
 
 - [[rootdatum-弱驻留与规范活对象身份|RootDatum 弱驻留与规范活对象身份]]
+
+## 强实形式
+
+- [[cartan-类的强实层-strongrealdata|Cartan 类的强实层 StrongRealData]]
+- [[强实分类打印视图-strongrealclassprint|强实分类打印视图 StrongRealClassPrint]]
+- [[强实形式与-fiber-轨道|强实形式与 fiber 轨道]]
 
 ## 强对合
 
@@ -590,6 +606,7 @@
 
 ## 接口语义
 
+- [[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]
 - [[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]
 
 ## 接口边界
@@ -753,6 +770,8 @@
 
 ## 模二线性代数
 
+- [[平方类编号与换基不变量|平方类编号与换基不变量]]
+- [[强实分类的构造与资源边界|强实分类的构造与资源边界]]
 - [[整数基的模-2-归约|整数基的模 2 归约]]
 
 ## 模二运算
@@ -990,6 +1009,10 @@
 
 - [[weylelement-的置换表示与长度下降不变量|WeylElement 的置换表示与长度下降不变量]]
 
+## 群作用
+
+- [[强实形式与-fiber-轨道|强实形式与 fiber 轨道]]
+
 ## 虚根
 
 - [[虚根的-noncompact-grading|虚根的 noncompact grading]]
@@ -1030,6 +1053,10 @@
 
 - [[基于左下降剥离的规范约化词|基于左下降剥离的规范约化词]]
 
+## 计数
+
+- [[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]
+
 ## 计数排序
 
 - [[tau-packet-与-kgb-元素编号标准化|tau packet 与 KGB 元素编号标准化]]
@@ -1061,6 +1088,7 @@
 ## 资源限制
 
 - [[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]
+- [[强实分类的构造与资源边界|强实分类的构造与资源边界]]
 - [[轨道枚举的规模预算与整数边界|轨道枚举的规模预算与整数边界]]
 
 ## 资源预算
@@ -1074,6 +1102,10 @@
 ## 路径依赖
 
 - [[实投影像基的播种与路径依赖传送|实投影像基的播种与路径依赖传送]]
+
+## 轨道分类
+
+- [[强实形式与-fiber-轨道|强实形式与 fiber 轨道]]
 
 ## 轨道划分
 
@@ -1091,6 +1123,10 @@
 ## 输入验证
 
 - [[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]
+
+## 输出表示
+
+- [[强实分类打印视图-strongrealclassprint|强实分类打印视图 StrongRealClassPrint]]
 
 ## 边界处理
 

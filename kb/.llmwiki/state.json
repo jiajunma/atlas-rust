@@ -244,6 +244,18 @@
         "部分公共块的访问器与边界语义"
       ],
       "compiledAt": "2026-10-09T16:12:55.923Z"
+    },
+    "strong-real.md": {
+      "hash": "154c5c814ac5d539274cf7bfadb3fce4064e0f557038c79f8a9781257359777a",
+      "concepts": [
+        "cartan-类的强实层-strongrealdata",
+        "fiber-大小与-kgb-大小汇总",
+        "平方类编号与换基不变量",
+        "强实分类打印视图-strongrealclassprint",
+        "强实分类的构造与资源边界",
+        "强实形式与-fiber-轨道"
+      ],
+      "compiledAt": "2026-10-09T16:15:35.449Z"
     }
   }
 }

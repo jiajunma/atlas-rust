@@ -1036,3 +1036,12 @@ up_cayley 的 α_s/2 奇偶修正）、StandardReprMod 两条构造路径、bruh
 访问器的 None=UndefBlock 语义、survives 判定、dual() 的部分块限制
 （外出链接保持未定义、KlTable 拒绝、BareBlock 无参数池对偶）、assert 省略
 约定——全部忠实。7 页批准；wiki/concepts/ 现有 135 页，剩余候选 398。
+
+## 2026年10月10日 第十九批候选审查：strong-real.md 的 6 页
+
+对照 81 行来源包逐页核验：SquareClassId 的商空间坐标约定与 stage-(d) 审计的
+上游对齐及换基不变量边界、StrongRealFormRep 的轨道编号依赖与大小不变性、
+StrongRealData 访问器族（含 wrf_preimage_mask 方程与 square_class_representative
+的两处选举差异）、fiber_size 的 Some(0) 求和语义、StrongRealClassPrint 三字段
+与跨类重复编号、MAX_MASK_BITS 资源边界——全部忠实。6 页批准；
+wiki/concepts/ 现有 141 页，剩余候选 392。
