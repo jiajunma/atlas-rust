@@ -213,6 +213,23 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
    collection cron (sacct poll; on FINAL COMPLETED inspect whether the
    repaired Rust matches the oracle on G2 — the witness question).
 
+### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
+
+Audited the root guide's current-state prose while the tunnel is down. Two
+staleness fixes, both in AGENTS.md: (1) the frontier's "Next gate" still
+named before-v4 job3886748 as the G2-v1 predecessor — superseded by the
+migration (direct PREDECESSOR is the linear-ledger chain head after-v5
+job3900050; before-v4 bound via the ported validator); the frontier now also
+carries the prepared/blocked submission state, this runbook's pointer, the
+retry cron, and the KB lane status. (2) The 2026-10-02 Weyl-caller entry
+still described the repair as an "UNVERIFIED candidate … NOT committed" —
+appended a SUPERSEDED 2026-10-06 marker pointing at after-v5 job3900050 and
+production commit `690c2b92`.  Dated historical ledger entries (the
+SUBMITTED_NOT_VERIFIED / NOT-after-verified lines inside their own arcs)
+were left untouched per the file's supersession-marker convention.  Lesson:
+prose asserting *current* state ("now implemented", "pending", the frontier)
+must be revised in the same commit as the transition that invalidates it —
+dated history stays, undated "now" rots.
 
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 

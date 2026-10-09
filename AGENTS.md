@@ -552,9 +552,32 @@ ceiling and default one focused job; do not trade correctness for speed.
   `tests/math/generics/weyl_context_g2_cold_dual.atlas` and
   `tests/math/generics/weyl_context_g2_prewarmed_dual.atlas` (superseding the
   `a81db81c` draft) are NOT truth until the original's complete behavior is
-  captured on HPC;
-  the capture runs as a new `weyl-context-g2-v1` stage whose predecessor is
-  before-v4 job3886748. Then B2/C2, reverse operand orders, inner-class-dual
+  captured on HPC.  The capture pair was migrated in place from the closed
+  before-v4 gate to `weyl-context-g2-v1` (see the 2026-10-09 migration UPDATE
+  below): the direct PREDECESSOR is after-v5 job3900050 — the campaign ledger
+  is strictly linear, so the chain head, not the case-set ancestor — and
+  before-v4 job3886748 is bound historically through the ported
+  `validate_before_v4_result`.  Predictions assume the landed repair
+  generalizes; the pre-registered review in `docs/HANDOFF.md` maps a DIFFERED
+  on exactly `WG_DUAL_OWNER`/`WG_REVERSE_OWNER` to the Cartan-numbering
+  question and anything else to the fixture or a new discrepancy.
+- G2-v1 submission state (2026-10-09): fully prepared and rehearsed — 129
+  checker tests green locally under `umask 022` except the documented
+  local-only 0444-env case; payload 65 frozen 0444 files, overrides manifest
+  `bcc09dbc…`, 1569-file source chain `dff0e90d…`.  BLOCKED on the SSH tunnel
+  (`majj@10.26.14.64`, connection timed out).  The complete resumption
+  runbook (rebuild recipe, reconcile checks, transport, the exact one-shot
+  invoke, post-checks) is `docs/HANDOFF.md` §"G2-V1 SUBMISSION — BLOCKED on
+  the tunnel"; an hourly retry cron checks the tunnel and points at it.
+  Never resubmit any prior stage; reconcile queue/ledger/stage/accounting
+  first.
+- KB lane (parallel, local-only): the source-packet library is complete —
+  23 packets plus the regression-library map cover every module of all three
+  crates, byte-exact snapshots at git base `964f0033`, implementation-stated
+  versus HPC-verified claims separated; index audit fix landed in `5630a1f5`.
+  The wiki COMPILATION step (`./kb/llmwiki compile --review`) is blocked on
+  the user's interactive `codex login` (recorded in `kb/log.md`).
+- After the G2 capture: B2/C2, reverse operand orders, inner-class-dual
   and no-value gates, each with its own original-backed capture; only after
   all of them pass comes the cache work-count BEFORE and any production
   cache edit.
@@ -1138,6 +1161,10 @@ only that bounded claim durable and does not broaden its scope.
   AFTER full-suite run must keep the two A1 fixture tests out of one shared
   parallel process (run them with the serial selector, or `--skip` them in the
   parallel suite), because process-global interning makes them interfere.
+  SUPERSEDED 2026-10-06: the candidate passed its changed-input AFTER gate
+  (after-v5 job3900050, FINAL `COMPLETED 0:0`, both regressions pass) and the
+  validated tree is landed as production commit `690c2b92`; see the frontier
+  and the AFTER-v5/production-commit UPDATEs under "Predecessor transitions".
   Capture stages v1 through v7 are immutable harness failures, not
   mathematical evidence. The latest is v7
   job3884780, FINAL `FAILED 1:0`: the 32-test stage-creation suite passed, then
