@@ -277,6 +277,15 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
   the WI_IC_DUAL_EQ/NEQ/MUL triplet whose cold-share-vs-independent outcome
   is the declared discovery) match the pre-registration model, including
   the original's eager-dual construction background.
+  Same-day no-value fixtures review: `weyl_context_g2_novalue_relations.atlas`
+  (WV_) and `weyl_context_novalue_dual_family.atlas` (XN_) re-read: the
+  WV_ compatible cold-dual control must not error while incompatible
+  relations reject in ALL discarded contexts (begin-sequence, void: cast,
+  void row) with guards before the no-value gate; the XN_ fixture's
+  discarded dual-build lines print through on both engines (the
+  BuildAndDrop-vs-skip divergence is observable only where the build
+  errors), and the invalid-index `dual_real_form(xn_ic,99)` still errors
+  (validation precedes the gate) — all consistent with the model.
 
 ### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
 
