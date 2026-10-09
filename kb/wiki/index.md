@@ -220,6 +220,9 @@
 - **[[全局-tits-传输的测试锚点与证据边界|全局 Tits 传输的测试锚点与证据边界]]** — 源码列出的 10 个测试涵盖规范化、根类型分支、非交换执行顺序、余根方向及中心坐标等行为，但部分错误路径未覆盖，结构性阅读不构成测试执行或数学验收。
 - **[[全局-tits-元素的精确有理环面表示|全局 Tits 元素的精确有理环面表示]]** — GlobalTitsElement 保存完整有理余特征和扭曲对合，将含中心坐标的环面分量规范化到 [0, 2)，向纤维 mod-two 商的规约留待后续处理。
 - **[[全局环面元素的算术历史表示|全局环面元素的算术历史表示]]** — GlobalTorusElement 用有理坐标表示 exp(iπ·numerator/denominator)，构造入口约化而反射后保留非规范分子，加法也仅作有限条件修正，因此算术历史会影响打印形式。
+- **[[全形变中的-split-因子与后代保留|全形变中的 Split 因子与后代保留]]** — scale-zero 基底保留全部 final 项，子项经 scale、deform_readjust、表示查找及 common_deformation_terms 后递归，避免压成单个 K 型而丢失 Split 因子与后代。
+- **[[全形变参数规范化与结果聚合|全形变参数规范化与结果聚合]]** — 分母超出 alcove 界时先取 alcove 中心，对参数的每个 final 组分分别形变、按系数缩放并合并，最终按 canonical KTypePol 项序排序。
+- **[[全形变缓存与递归环检测|全形变缓存与递归环检测]]** — 以 canonical 单元 (x, y_bits, gamma) 为键，仅缓存完整且规范排序的结果；互斥锁只覆盖瞬时读写，active 集显式检测递归环。
 - **[[公共上下文的生成元操作commoncontext|公共上下文的生成元操作（CommonContext）]]** — 将 KGB 生成元作用转运到共轭父单根，实现状态判定、cross、奇偶判定及双向 Cayley 变换，并处理参数修正与奇异标志。
 - **[[公共块对偶变换及-kl-递归的闭合限制|公共块对偶变换及 KL 递归的闭合限制]]** — dual 反转元素顺序、交换 x/y、反射长度并映射下降状态与链接，返回 BareBlock；部分块的未定义链接保持缺失，可能使对偶不满足 KL 递归的链接闭合要求。
 - **[[公共块的构造与元素编号partialblock|公共块的构造与元素编号（PartialBlock）]]** — build_full 构造完整公共块，build 消费按 x 排序的 Bruhat 区间并最终按 (length, x, y) 排序，使编号对应 oracle 打印行号。
@@ -350,6 +353,8 @@
 - **[[强实分类的构造与资源边界|强实分类的构造与资源边界]]** — StrongRealClassification::build 基于已有 Cartan 分类，逐类构造 adjoint fiber、ambient fiber 及 fiber map 的像坐标，用 ModTwoSubquotient 求平方商，并在 fiber 维数超过 MAX_MASK_BITS 时报告 StrongRealResourceLimit。
 - **[[强实形式与-fiber-轨道|强实形式与 fiber 轨道]]** — 强实形式代表元 StrongRealFormRep 由平方类与 fiber group 中的 W_im 轨道确定，并位于一个弱实形式之上；轨道编号依赖求解约定，但轨道大小不受与作用交换的 ker(toAdjoint) 平移影响。
 - **[[强对合数据的弱实形式归属|强对合数据的弱实形式归属]]** — real_form_of 将 twisted 与 theta-fixed rational coweight factor 归属到弱实形式，通过 complex simple roots 的 cross 行走定位 Cartan 代表元，再以 simple-imaginary root 配对为偶数整数判定 noncompact grading；详细接口同时返回 Cartan 类。
+- **[[形变兼容性的证据边界|形变兼容性的证据边界]]** — 结构性阅读和上游行号仅支持实现解释，快照哈希仅标识字节；形变兼容性须以 HPC 差分门验证，不能据此宣称数学验收。
+- **[[形变计算的协作式截止|形变计算的协作式截止]]** — 在计算阶段之间检查截止时间，超限返回 None 且不缓存部分结果；扭曲全形变在 extended_finalise 后才开始计时，setup 成本不计入截止预算。
 - **[[形变计算的父块抽象|形变计算的父块抽象]]** — KlSumParent 提供 Full 或 Partial 父块的借用视图，DeformParent 持有所需块数据；Partial 按行重构参数，递归驱动保证父块在借用期间存活。
 - **[[形变项计算的边界情形与输出顺序|形变项计算的边界情形与输出顺序]]** — deformation_terms 在 block.length(y)=0 时返回空；奇异集为空时所有元素均为 final，反向累积列表为 [y,y−1,…,0]。
 - **[[形变驱动的冻结移植契约|形变驱动的冻结移植契约]]** — Rust 形变驱动按冻结的 domain/deform 契约移植上游入口，约束共享 lambda_rho、block modifier、alcove 收缩与去除记忆化等行为；源码结构阅读不构成数学验收。
@@ -367,6 +372,7 @@
 - **[[扩展块符号调校的-staroracle-实现|扩展块符号调校的 StarOracle 实现]]** — ExtParamOracle 通过重建父块元素的默认扩展服务 tune_signs，PartialBlockOracle 则以 PartialBlock 为后端支持部分扩展块构建后的符号调校。
 - **[[扩展表示上下文-extrepcontext|扩展表示上下文 ExtRepContext]]** — ExtRepContext 以 twisting involution delta 扩展 RepContext，提供根系置换、不动根、诱导 twist 及移位翻转等判定。
 - **[[扭对合与-weyl-平移|扭对合与 Weyl 平移]]** — TwistedInvolution 表示满足 (wθ)²=1 的 Weyl 平移，按 datum 同一性、秩、矩阵复合及内部构造器验证顺序建立根论对合，不承担 Cayley/cross 分解或典范化。
+- **[[扭曲全形变计算流程|扭曲全形变计算流程]]** — 经 distinguished_twist、ExtRepContext 与 extended_finalise 后执行扭曲可约性查找及可取消形变，按 finalise 翻转是否不同赋予 s 或 1 系数，再合并排序。
 - **[[扭曲对合twistedinvolution|扭曲对合（TwistedInvolution）]]** — 按 w 左乘 distinguished 对合 θ 构造 wθ，并重新验证格对合、根置换与余根运输以保证 (wθ)²=1；轨道规范化与 Cayley/cross 分解由其他层负责。
 - **[[扭曲对合的-cayleycross-分解|扭曲对合的 Cayley/Cross 分解]]** — 以 Cayley 根、生成器下标组成的 cross word 及其 WeylAction 表示扭曲对合，并通过重放验证输入；分解在不同实现间不唯一，应比较重放不变量或标签结果。
 - **[[承载可观测量的适配基adaptedbasis|承载可观测量的适配基（adapted_basis）]]** — adapted_basis 同步跟踪左变换的逆并保留上游主元与重排策略，因为选定的基固定 stable_log 代表元及下游 g_rho_check、torus_factor 有理量。
@@ -390,6 +396,7 @@
 - **[[整数矩阵算法的逐操作保真移植|整数矩阵算法的逐操作保真移植]]** — 欠定整数系统的被选解及其坐标奇偶性会影响下游 same_sign，因此 matreduc 复现上游幺模操作序列、符号簿记和 wrapping i32 算术，而不只返回任意正确解。
 - **[[整数线性系统求解与像判定|整数线性系统求解与像判定]]** — has_solution 对角化后检查变换右端的逐坐标可除性，find_solution 无解时返回 None，in_left_image 与 in_right_image 提供像判定，而右端长度不匹配会触发 panic。
 - **[[文件命令兼容性的证据边界|文件命令兼容性的证据边界]]** — 文件内的单元测试提供行为锚点，结构性阅读与移植陈述不构成端到端兼容性或数学验收，文件命令兼容仍需 HPC 差分语料验证。
+- **[[普通全形变的递推关系|普通全形变的递推关系]]** — 遍历每个可约点，使用 F(z)=L(z)+Σ_t c_t·(1-s)·F(t)，并通过 (1-s)²=2(1-s) 对应原版整数递推。
 - **[[普通根系的确定性枚举|普通根系的确定性枚举]]** — RootSystem 从 BasedRootDatum 播种正负简单根并以 BFS 求反射闭包，最终按环境坐标字典序排列根，结果顺序独立于发现顺序。
 - **[[有状态的逐命令会话执行|有状态的逐命令会话执行]]** — 会话外层循环按命令消费和执行 token，使后续词法分类继承此前命令的状态，并支持全新或调用方持有的 TypedContext，禁止预切分整个源文件。
 - **[[有状态词法分析与逐命令执行|有状态词法分析与逐命令执行]]** — Atlas 词法分类受先前命令改变的状态影响，因此会话逐命令执行且不预切分整个文件；词法器支持嵌套注释和逐 token 消费。
@@ -449,6 +456,7 @@
 - **[[类型抽象中的-typefloor-调整|类型抽象中的 type_floor 调整]]** — convert_expr_context 调整类型下限，使类型抽象内的 return 操作数能够引用外层函数要求，并按该要求实际的 fixed 下限解释类型变量。
 - **[[类型构造器应用的校验与有限展开|类型构造器应用的校验与有限展开]]** — Applied 保留构造器名称及全部实参；应用校验不展开定义，单层展开保留递归引用，展开次数受绑定数约束以避免残缺自环导致死循环。
 - **[[类型特化与失败回滚语义|类型特化与失败回滚语义]]** — specialise 成功时产生最一般合一子，失败时可能保留部分特化；需回滚的调用方使用 can_specialise，赋值合一则提供 try_unify 等对应接口。
+- **[[精确-cramer-求解与矩阵辅助|精确 Cramer 求解与矩阵辅助]]** — 矩阵辅助函数提供行主序转置、行数据到 Matrix 值的转换，以及采用分数自由变量消元的精确 Cramer 求解。
 - **[[精确整数矩阵与-bézout-幺模变换|精确整数矩阵与 Bézout 幺模变换]]** — IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。
 - **[[精确整数矩阵约化|精确整数矩阵约化]]** — crate 私有的 matreduc 为 global.w 批内建提供 gcd、recorder 和 column_echelon 等精确约化机制，来源称其逐操作对应固定上游版本 4d3e9449，但本包不构成正确性验收。
 - **[[精确有理矩阵求逆|精确有理矩阵求逆]]** — invert_rational 使用 first-nonzero pivot 的精确有理高斯消元，按列返回逆矩阵；此处秩有界的消元不设置 budget knob。
@@ -507,4 +515,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_504 pages | Generated 2026-10-09T18:03:37.630Z_
+_512 pages | Generated 2026-10-09T18:05:27.097Z_

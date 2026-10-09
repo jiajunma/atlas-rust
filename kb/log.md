@@ -1864,3 +1864,19 @@ print_KGB 选择形式的同实形要求与逐字错误、print_gradings 的
 gr_print[i]=gr[sigma[i]] 回拉方向（候选明确警示反向解读）、print_X 与
 print_blockstabilizer 上游无检查、print_real_Weyl 检查须在臂内先跑否则
 静默翻译——全部忠实。8 页批准；wiki/concepts/ 现有 504 页，剩余候选 29。
+
+## 2026年10月10日 第七十批候选审查：atlas-core-deformation-cache.md 的 8 页
+
+对照 65 行来源包（维护者直接撰写）逐页核验：FullDeformKey=(x,y_bits,
+gamma) 是 canonical 单元而非顶层参数键、锁只在读写瞬间持有不跨递归、
+只缓存完整且 canonical 排序的结果、active 集显式检环（"revisited an
+active parameter"）、deadline_expired 阶段间检查且超限返 None 不缓存部分
+结果、普通递推 F(z)=L(z)+Σc_t(1-s)F(t) 与原版整数递推经 (1-s)²=2(1-s)
+等价、scale-zero 基底保留全部 final 项（set_LKTs）、子项链
+scale→deform_readjust→rep lookup→common_deformation_terms→带 c(1-s) 递归、
+"停在前一点变成单 K 型会丢 Split 因子与后代"的修复课、compute_full_deform
+逐 final 组分形变按系数缩放合并排序、扭曲流程 distinguished_twist→
+ExtRepContext→extended_finalise 且计时在 finalise 之后开始（setup 在截止
+外）、finalise 翻转不同系数为 s 否则为 1、矩阵辅助三件（候选如实声明
+cramer_solution 只记录了"分数自由变量消元"概述而不补充细节）——全部忠实。
+8 页批准；wiki/concepts/ 现有 512 页，剩余候选 21。
