@@ -76,6 +76,7 @@
 
 ## HPC验证
 
+- [[kl-支撑层的测试覆盖与证据边界|KL 支撑层的测试覆盖与证据边界]]
 - [[weyl-语义回归的递进验证门禁|Weyl 语义回归的递进验证门禁]]
 - [[坐标边界修复的-tests-first-验证链|坐标边界修复的 tests-first 验证链]]
 
@@ -121,6 +122,8 @@
 ## KL算法
 
 - [[blocktopology-只读块拓扑接口|BlockTopology 只读块拓扑接口]]
+- [[klsupport逐块-kl-支撑数据|KlSupport：逐块 KL 支撑数据]]
+- [[下降集good-ascent-与本原性|下降集、good ascent 与本原性]]
 
 ## KL表
 
@@ -191,8 +194,10 @@
 - [[fiber-元素的模型来源绑定与规范代表|Fiber 元素的模型来源绑定与规范代表]]
 - [[fibertoadjoint-的按需投影|FiberToAdjoint 的按需投影]]
 - [[kgb-图的混合自包含存储|KGB 图的混合自包含存储]]
+- [[klsupport逐块-kl-支撑数据|KlSupport：逐块 KL 支撑数据]]
 - [[klv-多项式去重池|KLV 多项式去重池]]
 - [[klv-多项式的表示与不变量|KLV 多项式的表示与不变量]]
+- [[rankflags简单生成元位集|RankFlags：简单生成元位集]]
 - [[realformseed-的封装与构造不变量|RealFormSeed 的封装与构造不变量]]
 - [[rootid-与根系索引对齐|RootId 与根系索引对齐]]
 - [[rootset-只读位图集合|RootSet 只读位图集合]]
@@ -285,6 +290,7 @@
 ## 下降集
 
 - [[descenttable-的下降集与-good-ascent-预计算|DescentTable 的下降集与 good ascent 预计算]]
+- [[下降集good-ascent-与本原性|下降集、good ascent 与本原性]]
 
 ## 不动点
 
@@ -365,6 +371,10 @@
 ## 位运算
 
 - [[基于位掩码的-wim-轨道枚举|基于位掩码的 W_im 轨道枚举]]
+
+## 位集
+
+- [[rankflags简单生成元位集|RankFlags：简单生成元位集]]
 
 ## 余权
 
@@ -864,6 +874,10 @@
 
 - [[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]
 
+## 惰性计算
+
+- [[本原索引表的惰性构建|本原索引表的惰性构建]]
+
 ## 成员判定
 
 - [[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]
@@ -920,6 +934,14 @@
 
 - [[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]
 
+## 拓扑遍历
+
+- [[唯一上升像与本原元素回退|唯一上升像与本原元素回退]]
+
+## 拓扑验证
+
+- [[klsupport-的拓扑构造门控|KlSupport 的拓扑构造门控]]
+
 ## 按需计算
 
 - [[fibertoadjoint-的按需投影|FiberToAdjoint 的按需投影]]
@@ -936,6 +958,7 @@
 
 - [[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]
 - [[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]
+- [[唯一上升像与本原元素回退|唯一上升像与本原元素回退]]
 
 ## 接口语义
 
@@ -987,6 +1010,7 @@
 ## 数据结构
 
 - [[blockgraph-存储布局与坐标定位不变量|BlockGraph 存储布局与坐标定位不变量]]
+- [[klsupport逐块-kl-支撑数据|KlSupport：逐块 KL 支撑数据]]
 - [[rootset-只读位图集合|RootSet 只读位图集合]]
 - [[transducer-转移表编码|Transducer 转移表编码]]
 - [[twisted-involution-表与-cartan-轨道存储|Twisted involution 表与 Cartan 轨道存储]]
@@ -1093,6 +1117,18 @@
 
 - [[表示参数的奇偶判定与朝向数|表示参数的奇偶判定与朝向数]]
 
+## 本原元素
+
+- [[唯一上升像与本原元素回退|唯一上升像与本原元素回退]]
+
+## 本原性
+
+- [[下降集good-ascent-与本原性|下降集、good ascent 与本原性]]
+
+## 本原索引
+
+- [[本原索引表的惰性构建|本原索引表的惰性构建]]
+
 ## 权重计算
 
 - [[表示参数构造与权重恢复|表示参数构造与权重恢复]]
@@ -1116,6 +1152,10 @@
 ## 构建验证
 
 - [[伴随-cartan-纤维的构建与下降验证|伴随 Cartan 纤维的构建与下降验证]]
+
+## 构造不变量
+
+- [[klsupport-的拓扑构造门控|KlSupport 的拓扑构造门控]]
 
 ## 构造校验
 
@@ -1242,6 +1282,7 @@
 ## 测试覆盖
 
 - [[involution-表的测试锚点与证据边界|Involution 表的测试锚点与证据边界]]
+- [[kl-支撑层的测试覆盖与证据边界|KL 支撑层的测试覆盖与证据边界]]
 - [[伴随纤维映射的测试证据与覆盖边界|伴随纤维映射的测试证据与覆盖边界]]
 - [[最小环面算法的测试覆盖边界|最小环面算法的测试覆盖边界]]
 - [[图像基算法的测试锚点与证据范围|图像基算法的测试锚点与证据范围]]
@@ -1347,6 +1388,10 @@
 
 - [[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]
 
+## 秩限制
+
+- [[rankflags简单生成元位集|RankFlags：简单生成元位集]]
+
 ## 积分子系统
 
 - [[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]
@@ -1426,6 +1471,10 @@
 
 - [[图像基的典范播种与轨道传送纪律|图像基的典范播种与轨道传送纪律]]
 
+## 算法前置条件
+
+- [[本原索引表的惰性构建|本原索引表的惰性构建]]
+
 ## 算法设计
 
 - [[based-cross-action-的闭式实现|Based cross action 的闭式实现]]
@@ -1499,6 +1548,10 @@
 ## 索引管理
 
 - [[rootid-与根系索引对齐|RootId 与根系索引对齐]]
+
+## 索引结构
+
+- [[length-stop-长度边界表|length-stop 长度边界表]]
 
 ## 紧凑表示
 
@@ -1641,6 +1694,7 @@
 ## 证据边界
 
 - [[involution-表的测试锚点与证据边界|Involution 表的测试锚点与证据边界]]
+- [[kl-支撑层的测试覆盖与证据边界|KL 支撑层的测试覆盖与证据边界]]
 - [[titscoset-逐步约化的类映射依据|TitsCoset 逐步约化的类映射依据]]
 - [[伴随纤维映射的测试证据与覆盖边界|伴随纤维映射的测试证据与覆盖边界]]
 - [[最小环面算法的测试覆盖边界|最小环面算法的测试覆盖边界]]
@@ -1778,6 +1832,7 @@
 ## 错误处理
 
 - [[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]
+- [[klsupport-的拓扑构造门控|KlSupport 的拓扑构造门控]]
 - [[rust-ladder-成员查询的选择性溢出处理|Rust ladder 成员查询的选择性溢出处理]]
 - [[twisted-involution-记录的数学不变量|Twisted involution 记录的数学不变量]]
 - [[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]
@@ -1797,6 +1852,10 @@
 
 - [[twisted-involution-记录的数学不变量|Twisted involution 记录的数学不变量]]
 - [[twisted-kl-和的长度函数选择|twisted KL 和的长度函数选择]]
+
+## 长度排序
+
+- [[length-stop-长度边界表|length-stop 长度边界表]]
 
 ## 阶梯归约
 

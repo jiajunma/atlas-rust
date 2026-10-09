@@ -416,6 +416,20 @@
         "扩展-klv-的-rust-移植边界与有意偏离"
       ],
       "compiledAt": "2026-10-09T16:47:54.574Z"
+    },
+    "kl-support.md": {
+      "hash": "4f1c57502a2f47b0a294d55bf3c4b59beb600e13e3dae9f5fc15da14d31ce716",
+      "concepts": [
+        "kl-支撑层的测试覆盖与证据边界",
+        "klsupport-的拓扑构造门控",
+        "klsupport逐块-kl-支撑数据",
+        "length-stop-长度边界表",
+        "rankflags简单生成元位集",
+        "下降集good-ascent-与本原性",
+        "唯一上升像与本原元素回退",
+        "本原索引表的惰性构建"
+      ],
+      "compiledAt": "2026-10-09T16:49:29.114Z"
     }
   }
 }

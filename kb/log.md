@@ -1203,3 +1203,20 @@ catch(...) 的有意偏离（候选如实指出偏离清单的"不改变可观�
 失败路径行为差异）、未移植项（get_M/down-set defect/check_polys/共享池
 swallow/StandardRepr 侧 ext_kl_matrix 前段）——全部忠实。7 页批准；
 wiki/concepts/ 现有 229 页，剩余候选 304。
+
+## 2026年10月10日 第三十二批候选审查：kl-support.md 的 8 页
+
+对照 79 行来源包逐页核验：RankFlags 的 u32 私有位集与 rank≤32 硬上限、
+set/is_set 无边界检查由构造门控兜底、contains 是超集判定、非 Copy；
+validate_topology 集中检查（rank/长度存在且非降/逐生成元 descent·cayley·
+inverse_cayley 存在/cross 与 Cayley 像在块内）；ImaginaryTypeII 既非下降
+亦非 good ascent 的三分类；length_stop[l] 首个长度≥l、末尾追加 size、
+max_length 显式丢弃记为清理候选；is_primitive（good(x)∩desc_y 为空）与
+is_extremal（desc(x)⊇desc_y）一行组合语义；unique_ascent 按类型取 cross
+像或第一个 Cayley 像；prim_back_up 先自减再判定、失败时 *x 已置 0 的原地
+契约；prepare_prim_index 幂等降序扫描、DEAD_END=usize::MAX、结尾
+哨兵→range、其余→range-1-slot 的反转、"上升像序号更大"如实标注为无防护
+的阅读观察、四访问器未 prepare 即 panic（仅 prim_index 文档显式声明）；
+测试覆盖边界如实（4 个 FakeTopology 锚点、成功路径/判定/索引机制无单元
+测试、经 KL 层 HPC 门覆盖的措辞保留）——全部忠实。8 页批准；
+wiki/concepts/ 现有 237 页，剩余候选 296。
