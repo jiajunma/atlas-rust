@@ -1880,3 +1880,18 @@ ExtRepContext→extended_finalise 且计时在 finalise 之后开始（setup 在
 外）、finalise 翻转不同系数为 s 否则为 1、矩阵辅助三件（候选如实声明
 cramer_solution 只记录了"分数自由变量消元"概述而不补充细节）——全部忠实。
 8 页批准；wiki/concepts/ 现有 512 页，剩余候选 21。
+
+## 2026年10月10日 第七十一批候选审查：atlas-core-support-layer.md 的 7 页
+
+对照 74 行来源包（维护者直接撰写）逐页核验：SourceId(0)=匿名、
+SourcePosition 行列均 1 基、SourceSpan 含头不含尾、ErrorKind 七类别与
+措辞刻意分离（Program=表达式分析失败区别于类型合一）、raw_message 精确
+字节 vs message 转义预览的 new_bytes 分流、warning 报告但不弄脏会话、
+back_trace 最外层在前且 trace() 前插对应 push_front、命令层拷入
+back_trace 系统变量（候选如实标注空回溯时的行为未说明）、SourceText 的
+position 钳制+字符边界+partition_point 与列=Unicode 标量数+1、coercions
+29 条注册保持上游顺序与首中即返线性扫描（mat 上下文必先遇 [vec]->mat）、
+row_coercion 取第一个 from 为行的条目、is_close 三比特与相等先于边界
+检查/void 与 * 只与自己邻近/Tabled/Applied 递归名返 0、broader_eq 平衡序
+（void 最宽、* 最窄、原始吸收可转入者、函数要求参数相等）——全部忠实。
+7 页批准；wiki/concepts/ 现有 519 页，剩余候选 14。

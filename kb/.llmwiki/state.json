@@ -933,6 +933,19 @@
         "精确-cramer-求解与矩阵辅助"
       ],
       "compiledAt": "2026-10-09T18:05:26.298Z"
+    },
+    "atlas-core-support-layer.md": {
+      "hash": "0ccb11cea1a059562ca322e7fee6cd5ce235ab492c814cc80f8e39a7fe68256a",
+      "concepts": [
+        "列表显示的行转换选择",
+        "有序强制转换注册表",
+        "源文本身份与-unicode-位置映射",
+        "类型宽度关系-broadereq",
+        "类型邻近谓词-isclose",
+        "结构化诊断与原始字节保真",
+        "运行时回溯的累积与暴露"
+      ],
+      "compiledAt": "2026-10-09T18:07:34.241Z"
     }
   }
 }
