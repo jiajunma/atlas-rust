@@ -151,6 +151,19 @@
         "逆-cayley-变换的-grading-修复"
       ],
       "compiledAt": "2026-10-09T15:53:17.659Z"
+    },
+    "integer-lattice.md": {
+      "hash": "46317a3945e83c8951e46d80377f5cb3eb223c287a34ae30cdb455a11fa0bd02",
+      "concepts": [
+        "余特征作用的负特征整数子格",
+        "关系格封装与构造预检",
+        "承载可观测量的适配基adaptedbasis",
+        "整数基的模-2-归约",
+        "整数格计算预算integerlatticebudget",
+        "精确整数矩阵与-bézout-幺模变换",
+        "饱和整数核saturatedkernel"
+      ],
+      "compiledAt": "2026-10-09T15:55:43.479Z"
     }
   }
 }

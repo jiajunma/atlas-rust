@@ -53,6 +53,8 @@
 - **[[伴随纤维映射的测试证据与覆盖边界|伴随纤维映射的测试证据与覆盖边界]]** — 九项测试锚定中心核、可加性、矩阵字面量、逐坐标基交织关系、出处拒绝、rank-33 动态秩及部分预算拒绝路径，但多个错误分支和接口直接调用仍未覆盖，本次阅读未运行测试。
 - **[[伴随纤维的资源预算与可恢复错误|伴随纤维的资源预算与可恢复错误]]** — AdjointFiberBudget 限制整数格、持久条目和投影工作量，以受检算术检测溢出；运行期投影预算逐次独立检查，分配失败等情况返回显式错误。
 - **[[余权坐标的投影出处绑定|余权坐标的投影出处绑定]]** — AmbientCoweight 与 AdjointCoweight 将坐标绑定到 Arc<AdjointProjectionModel>，以指针身份和坐标共同判等，并拒绝跨独立投影实例复用坐标。
+- **[[余特征作用的负特征整数子格|余特征作用的负特征整数子格]]** — negative_coweight_eigenspace 直接计算 ker_Z(I + θ_Y)，由于 coweight_matrix() 已存储余特征上的对偶作用，无需再次转置。
+- **[[关系格封装与构造预检|关系格封装与构造预检]]** — RelationMatrix、RelationBasis 和 RelationGenerator 封装关系格操作，在分配、复制、推进迭代器或收集生成元之前执行相应形状与预算检查。
 - **[[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]** — longest_action 从源码计算的 2ρ 出发，按生成元顺序选择正配对反射并左合成，目标为 −2ρ，超预算或无法推进时报不变量错误；数学与复杂度声明尚未验收。
 - **[[分窗两相-bfs-构造|分窗两相 BFS 构造]]** — KGB 枚举以 64 个元素为一窗，先用 Rayon 在只读表与 coset 上计算状态及目标，再顺序 intern 去重并分配编号；并行结构本身不代表已有多核加速证据。
 - **[[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]** — lookup 使用前向根置换作为完整相等性键；跨系统输入受调用方契约约束，种子插入不检查键碰撞，依赖不同 Cartan 轨道的键互不重叠。
@@ -73,18 +75,23 @@
 - **[[弱实形式的-cartan-集与唯一-most-split-类|弱实形式的 Cartan 集与唯一 most-split 类]]** — 弱实形式数量来自 fundamental partition，每个形式关联一个升序 Cartan 类集合及唯一的 most-split Cartan 类。
 - **[[强对合数据的弱实形式归属|强对合数据的弱实形式归属]]** — real_form_of 将 twisted 与 theta-fixed rational coweight factor 归属到弱实形式，通过 complex simple roots 的 cross 行走定位 Cartan 代表元，再以 simple-imaginary root 配对为偶数整数判定 noncompact grading；详细接口同时返回 Cartan 类。
 - **[[形变项计算的边界情形与输出顺序|形变项计算的边界情形与输出顺序]]** — deformation_terms 在 block.length(y)=0 时返回空；奇异集为空时所有元素均为 final，反向累积列表为 [y,y−1,…,0]。
+- **[[承载可观测量的适配基adaptedbasis|承载可观测量的适配基（adapted_basis）]]** — adapted_basis 同步跟踪左变换的逆并保留上游主元与重排策略，因为选定的基固定 stable_log 代表元及下游 g_rho_check、torus_factor 有理量。
 - **[[挠部分打包与-involution-图像基|挠部分打包与 involution 图像基]]** — y_pack 使用 M_real 坐标模 2 打包挠部分，y_lift 恢复 (1−theta)lambda_rho；精确图像基保存在 involution 表中并沿 cross-action BFS 传送。
 - **[[整数列阶梯归约与带符号-gcd-扫描|整数列阶梯归约与带符号 gcd 扫描]]** — build 自底向上扫描并跟踪列操作；gcd_sweep 选最小绝对值主元、记录负主元取正的符号操作，并使用 div_euclid 保持典范像基定向。
+- **[[整数基的模-2-归约|整数基的模 2 归约]]** — reduce_basis_mod_two 将整数基归约为其在 Y/2Y 中张成的子空间信息。
+- **[[整数格计算预算integerlatticebudget|整数格计算预算（IntegerLatticeBudget）]]** — 以矩阵维数、存活工作条目总量、初等操作次数和中间系数位长限制单次精确计算；这些约束属于计算预算，不代表数学秩限制。
 - **[[权与余权的简单反射及算术保护|权与余权的简单反射及算术保护]]** — reflect_weight 与 reflect_coweight 按根余根配对公式实施反射，先校验维度和生成元下标，再以 i128 中间值及受检运算处理溢出。
 - **[[根-involution-的-innerclass-构造与-weyl-因子|根 involution 的 InnerClass 构造与 Weyl 因子]]** — 构造入口在调用方根枚举预算内验证根与余根的传输，并可通过左复合 Weyl word 将任意合格的根 involution 转为保持基的 involution；不同入口保留或丢弃所得 Weyl 因子。
 - **[[根对合诱导的伴随余权作用|根对合诱导的伴随余权作用]]** — 根像的单根坐标构成根作用矩阵；由于根作用已验证为对合，其对偶作用的逆转置等于转置，因而伴随余权作用由转置矩阵给出。
 - **[[根数据的-radical-与-coradical-饱和核基|根数据的 radical 与 coradical 饱和核基]]** — 实现分别对简单根和简单余根坐标矩阵求饱和整数核，并在无根时保留 ambient 格维度；radical_basis 文档首行与实现的措辞差异尚待核对。
 - **[[源余权格到伴随余权格的整数投影|源余权格到伴随余权格的整数投影]]** — 整数投影 Y → P∨ 按源单根顺序计算 pair(root, y) 作为目标坐标，保持可加性且可能具有中心核，因此不应视为同构。
+- **[[精确整数矩阵与-bézout-幺模变换|精确整数矩阵与 Bézout 幺模变换]]** — IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。
 - **[[虚根的-noncompact-grading|虚根的 noncompact grading]]** — simple_grading 按 offset[s] XOR ⟨alpha_s mod 2, torus bits⟩ 判断简单虚根的非紧性，须由调用方守卫根类型；任意虚根的 grading 使用 conjugate-to-simple 循环，非虚根返回 None。
 - **[[表示参数代表元归一化|表示参数代表元归一化]]** — lambda_unique、real_unique 与 gamma_lambda 规范化代表元，其中欧几里得除法 div_euclid(2) 避免负奇数截断导致代表元选择不一致及公式项无法合并。
 - **[[表示参数构造与权重恢复|表示参数构造与权重恢复]]** — 通过 sr_gamma 和 sr 构造标准参数，恢复 lambda-rho、lambda 与 nu，并支持 K-type 转换；lambda-rho 的减半步骤要求坐标和为偶数。
 - **[[表示参数的奇偶判定与朝向数|表示参数的奇偶判定与朝向数]]** — is_parity 结合 KGB 状态转运与根配对比较奇偶，orientation_number 则先作 dominant 化，再利用 real 正根相关权重计算朝向数。
 - **[[跨对偶的-cartan-类对应与扭曲代表元|跨对偶的 Cartan 类对应与扭曲代表元]]** — Cartan 类对应以对偶根像置换定位共轭类，查找失败视为不变量错误；内部代表元构造则在对偶 datum 上重放原 Weyl 字以保留两种格作用及来源信息。
 - **[[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]** — inverse_cayley 先执行 sigma_inv_mult，再以首个配对非平凡的源 mod-space 基向量修复重构出的紧根 grading，随后在虚根目标归约并复核；缺少修复向量时报不变量错误，源根非实或向下 Cartan 类缺失时返回 None。
+- **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 
-_84 pages | Generated 2026-10-09T15:53:17.970Z_
+_91 pages | Generated 2026-10-09T15:55:43.827Z_

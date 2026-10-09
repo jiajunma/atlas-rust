@@ -964,3 +964,13 @@ inner-class 门控而非 datum-only、simple_grading 公式与 IMAGINARY 守卫�
 cross 闭式映射的两步分解加 offset 修正、cayley/inverse_cayley 的目标/源
 mod-space 分工与修复机制、三处上游行号转述限制——全部忠实。7 页批准；
 wiki/concepts/ 现有 84 页，剩余候选 449。
+
+## 2026年10月9日 第十二批候选审查：integer-lattice.md 的 7 页
+
+对照 85 行来源包逐页核验：四字段预算的"计算预算而非秩限制"定位、
+IntegerMatrix 构造顺序、BezoutTransform 的系数来源、关系格族的预检时序
+（preflight_shape/from_i32_iter/try_collect）、saturated_kernel 的幺模右因子
+与零对角元列构造及刻意不用有理行约化、reduce_basis_mod_two 只保留 Y/2Y
+张成、negative_coweight_eigenspace 不再转置的理由、adapted_basis 的
+observable-bearing 动机与逐字主元策略及条目总量预检——全部忠实。
+7 页批准；wiki/concepts/ 现有 91 页，剩余候选 442。
