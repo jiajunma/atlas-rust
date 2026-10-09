@@ -249,6 +249,12 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
   evidence JSONs) and ZERO modifications or deletions.  No payload input
   changed bytes, so the frozen manifest sha `bcc09dbc…` remains valid at
   HEAD without rebuilding.  The tunnel was still down at drill time.
+  Same-day pre-registration consistency check: the prediction table above
+  and `slices/weyl_g2_preregistration_2026_10_09.md` agree on every marker
+  (owner pins false-false MATCH, vacuous prewarm with 3-not-6 mismatches,
+  B2/C2 non-vacuous, guards throw before the no-value gate); the
+  transposed-prewarm fixture's sha is byte-exact `5c207025…` and its
+  `WGT_RECOVERY|737` marker matches the slice record.
 
 ### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
 
