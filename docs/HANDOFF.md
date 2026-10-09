@@ -381,6 +381,16 @@ modifications to `.gitignore`, `README.md`, `docs/DEFORM_DESIGN.md`,
 `tests/math/generics/catalog.json` remain UNTOUCHED and uncommitted.
 Prevention adopted: before staging any path I did not create, diff it
 against HEAD and confirm the delta is only my own edit.
+Related finding (2026-10-10, reported not acted on): 136 links in committed
+docs point at files that exist locally but are NOT git-tracked: 133
+references into 48 untracked `docs/slices/*.md` files (referenced by
+committed AGENTS.md/HANDOFF.md — they work locally but dangle for anyone
+cloning), plus 3 files of the accepted AFTER-v3 root-ladder gate
+(`tests/math/generics/root_ladder_coordinate_boundary.atlas` and its two
+`.oracle.*` goldens, referenced by the committed KB comparison page).
+These are the owner's commit decisions; I have not staged them.  If the
+owner wants them committed, say so and I will do it as a dedicated,
+clearly-labeled commit.
 Scope audit (same day): the three sweeps above are the complete set.  The
 key earlier-window commits (`690c2b92` repair, `964f0033` G2 migration,
 `9f0be600`/`041aad85` payload, `e0bf7358` wiki unblock) are each scoped to
