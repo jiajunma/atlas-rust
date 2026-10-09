@@ -193,6 +193,7 @@
 - **[[中心分类器与根格陪集制表|中心分类器与根格陪集制表]]** — CenterClassifier 用 Cartan 矩阵的伴随矩阵与行列式表示逆矩阵，按基本权子集和的 adjoint 坐标分数部分桶，并记录陪集号及整数移位。
 - **[[中心环面的商对合分类|中心环面的商对合分类]]** — 通过根格的 Smith 适配基计算商对合，对 inv + I 分类得到 compact、complex、split 秩并依序追加环面字母；IntegerLatticeBudget 仅约束此处的 Smith 基计算。
 - **[[中心陪集表驱动的根格移位枚举|中心陪集表驱动的根格移位枚举]]** — shifts(fix, pos, neg) 利用陪集匹配、分数部借位与子集筛选，枚举 fw(fix+A)−fw(B) 的单根坐标，其中 A⊆pos、B⊆neg。
+- **[[二进制补码的置位索引|二进制补码的置位索引]]** — nth_set_bit 按零基序号查找二进制补码串的置位，非负数置位不足时返回 -1，负数则通过其补码的有限清位处理无限置位。
 - **[[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]** — 惰性 cell 只发布完整成功结果，构造失败后应允许重试，且不能缓存首次调用的 Diagnostic 或 SourceSpan，以保留当前调用的错误定位。
 - **[[代表元归因与-tits-搬运的职责边界|代表元归因与 Tits 搬运的职责边界]]** — 归因 helper 仅接受分类已存储的代表元；一般 twisted involution 的归约需借助 table-backed Tits cross actions 同步搬运 torus factor，后续 minimal_torus_part 下降仍依赖分离的 inverse-Cayley 操作。
 - **[[代表元级弱实形式归因|代表元级弱实形式归因]]** — weak_real_form_at_representative 通过 dual fixed-point projection v↦(v+vθ)/2、配对奇偶性和虚根 grading 确定局部轨道，再经 RealFormLabels 映射为全局弱实形式编号。
@@ -220,6 +221,8 @@
 - **[[关系格封装与构造预检|关系格封装与构造预检]]** — RelationMatrix、RelationBasis 和 RelationGenerator 封装关系格操作，在分配、复制、推进迭代器或收集生成元之前执行相应形状与预算检查。
 - **[[典范整数据驻留|典范整数据驻留]]** — IntegralDatumTable 以按 upstream 正根序排列的典范正根表为键，追加分配 id 并复用已有 IntegralDatumItem；典范数据依赖 gamma 所在 alcove，而不只依赖整根系，且跨调用必须保持同一 RootSystem。
 - **[[典范纤维与-k-型等价判定|典范纤维与 K 型等价判定]]** — to_canonical_fiber 沿 canonicalize 给出的词进行复单根 cross；equivalent 先检查 Cartan 类，再比较双方典范纤维中的结果。
+- **[[内建函数元数据与实现分发|内建函数元数据与实现分发]]** — Builtin 汇集名称、参数与结果类型、饥饿求值位及重载可见性，并由 BuiltinImpl 分发标量、领域、打印、关系、补全与泛型实现。
+- **[[内建注册表的启动清单与覆盖边界|内建注册表的启动清单与覆盖边界]]** — builtin_registry() 使用 OnceLock<Vec<Builtin>> 一次初始化 321 个条目、170 个不同名字，尚未覆盖上游完整清单，且与 309 个启动补全名清单分别维护。
 - **[[内类字母的字节解析与规范化|内类字母的字节解析与规范化]]** — checked_inner_class_letters 按字节读取并跳过 ASCII 标点和空白，将 e 归一为 c，依据类型与秩坍缩 s、u；C 消耗两个相同连续因子。
 - **[[内类字母解析的错误模型与诊断顺序|内类字母解析的错误模型与诊断顺序]]** — InnerClassLetterError 区分符号过多、过少、未知符号、复配对失败和无意义的不等秩类，并优先报告未知符号，再检查因子是否存在。
 - **[[内类布局innerclasslayout|内类布局（InnerClassLayout）]]** — 将 distinguished 对合转换为 Lie type、内类字母与 Bourbaki 单根置换；构建依次执行扭转置换、Dynkin 分类、内类字母判定和中心环面处理。
@@ -253,6 +256,7 @@
 - **[[可约点与标准参数-final-化|可约点与标准参数 final 化]]** — reducibility_points 返回按分子分母对升序排列的可约分数，finals_for 以栈驱动 dominant 检查及奇偶、长度下降，生成带整数系数的 final 参数。
 - **[[合成实形的选定余特征|合成实形的选定余特征]]** — elected_square_root 按 distinguished 对合与 Weyl 余权作用运输环面因子，以半平方和 delta + I 调用 stable_log，生成构造器保存的 g_rho_check；非平凡运输尚缺可区分测试断言。
 - **[[合成实形种子算法的门控与资源限制|合成实形种子算法的门控与资源限制]]** — 入口检查内类、维数、置换和整性，并对对合覆盖及空候选给出具名错误；轨道编码限制格秩不超过 63，minimal_torus_part 没有显式预算参数。
+- **[[向量逐项除法与非负余数约定|向量逐项除法与非负余数约定]]** — 源文档描述向量反斜杠除法与百分号取余的上游契约：余数位于 [0,|m|)，商与之配套，例如 [7] % -3 得 [1]、[7] \ -3 得 [-2]。
 - **[[命令抽象语法树与全局声明语义|命令抽象语法树与全局声明语义]]** — Command 表达定义、声明、类型设置和查询等操作，其中 Set 按叶子类型选择全局表，PolymorphicSet 的逗号兄弟独立执行且不整体回滚。
 - **[[命令首指令与文件名扫描|命令首指令与文件名扫描]]** — 仅在命令首识别 <、<<、>、>> 指令，支持带引号或受限字符集的裸文件名，并将该行剩余内容留给会话帧校验。
 - **[[唯一上升像与本原元素回退|唯一上升像与本原元素回退]]** — unique_ascent 对复上升返回 cross 像、对虚 I 型上升返回首个 Cayley 像，其余返回 None；prim_back_up 原地先递减后判定，失败时仍将位置置为 0。
@@ -313,6 +317,7 @@
 - **[[对合的反不变秩|对合的反不变秩]]** — 通过精确整数公式 (rank−trace(θ))/2 计算 −1 特征空间及 X*/ker(1−θ) 的秩，避免浮点计算，并检查算术溢出与结果合法性。
 - **[[对合类型的分层构造验证与错误优先级|对合类型的分层构造验证与错误优先级]]** — 私有字段和门控构造逐层强化不变量；datum、秩、单根像及一般根像检查的固定顺序决定错误优先级，矩阵运算使用 i128 检验算术并收窄至 i32。
 - **[[对角化的行列式符号簿记|对角化的行列式符号簿记]]** — row_minus 与 col_minus 的覆盖、异或及稳定列排列奇偶性决定首个对角元素的符号；源码注释对行变换行列式的保证不一致，源包以测试约束 |det(row)|=1、det(col)=1 为准。
+- **[[尺寸自适应多项式运算与尾零规则|尺寸自适应多项式运算与尾零规则]]** — flex_add 与 flex_sub 先去除两参数尾零，仅在修剪后尺寸相等时修剪结果；convolve 对修剪后的参数求乘积，任一为空则结果为空。
 - **[[局部扩展类型识别与全父块构造|局部扩展类型识别与全父块构造]]** — extended_type 在父块上进行纯组合局部类型识别，ExtBlock::build 在平凡 block modifier 下结合 complete_construction 与 induced 完成全父块构造。
 - **[[局部标签到外部编号的类型组合|局部标签到外部编号的类型组合]]** — RealFormLabels 输出与 ExternalFormOrder 输入同属 fundamental 分区的 WeakRealFormId，因而可推断局部类到内部编号再到外部编号的串联在类型上可行，但两文件互不导入且没有组合代码或测试验证。
 - **[[嵌套包含的-abandon-级联|嵌套包含的 abandon 级联]]** — 包含流中止时，各层从最内层向外报告放弃读取的位置，通过 lexer 偏移回退和 line_map 将当前位置换算为物理行号。
@@ -333,6 +338,7 @@
 - **[[形变计算的父块抽象|形变计算的父块抽象]]** — KlSumParent 提供 Full 或 Partial 父块的借用视图，DeformParent 持有所需块数据；Partial 按行重构参数，递归驱动保证父块在借用期间存活。
 - **[[形变项计算的边界情形与输出顺序|形变项计算的边界情形与输出顺序]]** — deformation_terms 在 block.length(y)=0 时返回空；奇异集为空时所有元素均为 final，反向累积列表为 [y,y−1,…,0]。
 - **[[形变驱动的冻结移植契约|形变驱动的冻结移植契约]]** — Rust 形变驱动按冻结的 domain/deform 契约移植上游入口，约束共享 lambda_rho、block modifier、alcove 收缩与去除记忆化等行为；源码结构阅读不构成数学验收。
+- **[[打印字符串转换与运行时错误的输出契约|打印、字符串转换与运行时错误的输出契约]]** — Print 保留字符串引号并在要值时返回原值，prints、to_string、error 使用剥离字符串引号的拼接语义且仅 prints 添加换行；DomainPrinter 在两个级别均写报告。
 - **[[扩展-klv-多项式表的逐列存储|扩展 KLV 多项式表的逐列存储]]** — ExtKlTable 为每个块元素 y 保存一列多项式池索引，按 x 相对于 y 的 descent set 的 primitive 位置寻址，并提供带符号多项式及系数查询。
 - **[[扩展-klv-的-extremal-与-primitive-判定|扩展 KLV 的 extremal 与 primitive 判定]]** — Extremal 要求 descents(x) 包含 descents(y)，primitive 要求 good_ascents(x) 与 descents(y) 不交；相关集合查询及回溯接口由 DescentTable 提供。
 - **[[扩展-klv-的-rust-移植边界与有意偏离|扩展 KLV 的 Rust 移植边界与有意偏离]]** — 移植采用自有池，推迟共享池和 swallow，省略部分调试检查，并仅覆盖扩展块已构建后的矩阵流程；源码包不提供数学验收或结果等价性的独立证据。
@@ -374,6 +380,7 @@
 - **[[有状态词法分析与逐命令执行|有状态词法分析与逐命令执行]]** — Atlas 词法分类受先前命令改变的状态影响，因此会话逐命令执行且不预切分整个文件；词法器支持嵌套注释和逐 token 消费。
 - **[[有状态词法流的-lalrpop-惰性适配|有状态词法流的 LALRPOP 惰性适配]]** — TokenStream 将 Atlas 词法 token 惰性转换为携带位置的 ParserToken 流，使上下文敏感词法规则独立于文法动作，并将命令边界保留给词法器。
 - **[[有理余权的逐坐标表示与-api-边界|有理余权的逐坐标表示与 API 边界]]** — RationalCoweight 采用 Vec<Rational> 逐坐标存储，通过 dimension 与 to_rationals 提供公开坐标访问，将构造限制在 crate 内，且不提供算术或 Hash。
+- **[[有理向量加减与规范化|有理向量加减与规范化]]** — ratvec 加减依据最小公分母交叉相乘，并通过 RatVec::new 规范化结果；源文档将其作为上游契约陈述，未声称完成行为兼容验收。
 - **[[有理权分子的-checked-仿射反射|有理权分子的 checked 仿射反射]]** — simple_reflect_numerator 在分母不变时以全程 checked 算术执行 v -= alpha_s * (<v, coroot_s> + offset)，支持普通简单反射及带偏移的仿射反射。
 - **[[有理权的公共分母表示与归一化|有理权的公共分母表示与归一化]]** — RationalWeight 使用 Vec<i64> 分子与正 i64 公共分母，构造、加减和缩放执行 gcd 归一化，而 halve 仅翻倍分母并将归一化时机留给调用方。
 - **[[有理权的矩阵作用整性检查与余根配对|有理权的矩阵作用、整性检查与余根配对]]** — RationalWeight 的 apply_matrix 仅作用分子并保持分母，integral_coordinates 显式检查整性，dot_coroot 返回约分后的有理配对值，并保留源码中维度错误字段的填报差异。
@@ -466,7 +473,8 @@
 - **[[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]** — DepthTables 预计算正虚根及基非紧奇偶，depth 按既定根顺序贪心选取极大正交非紧根集，移除非正交候选并翻转与所选根正交但和仍为根的候选的紧性。
 - **[[顶层会话事件的输出规则|顶层会话事件的输出规则]]** — 框架层为非 void 值添加 Value: 前缀、抑制空元组输出，并按当前包含深度为报告添加每层两空格缩进，同时保留字节事件的原始字节。
 - **[[领域内建桥接与上下文句柄|领域内建桥接与上下文句柄]]** — domain_builtins 连接语言层与 atlas-real-group，派发命名函数应用，并通过 Arc 上下文束、急切种子校验、可失败惰性属主和结构比较表达句柄行为；兼容性描述属于实现方陈述。
+- **[[领域调用的无值门策略|领域调用的无值门策略]]** — DomainNoValue 以 Skip、Validate、BuildAndDrop 决定 NoValue 级别的执行深度；补全名不能推导该策略，orientation_nr 注册为 BuildAndDrop。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_466 pages | Generated 2026-10-09T17:53:19.837Z_
+_474 pages | Generated 2026-10-09T17:55:12.537Z_

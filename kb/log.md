@@ -1776,3 +1776,19 @@ factor_transform_call 永不应用 x+1→succ(x) 丢参数优化——全部忠�
 补充第 38 批记录的链接碰撞教训：候选 85526734 的 `[[1,2]]` 位于反引号
 代码段内，批准器正常通过——碰撞校验只针对裸 `[[...]]`，代码段免疫。
 8 页批准；wiki/concepts/ 现有 466 页，剩余候选 67。
+
+## 2026年10月10日 第六十五批候选审查：atlas-core-builtin-registry.md 的 8 页
+
+对照 80 行来源包（维护者直接撰写）逐页核验：Builtin 六字段（hunger
+对应上游饥饿求值位、overload_visible 控制重载/补全可见性）、BuiltinImpl
+六分支（DomainPrinter 两级都写报告且 single_value 产空元组、无值门前无
+诊断；Prints/Print/ToString/Error 四变参泛型的各自契约）、DomainNoValue
+三策略与"补全名清单不是无值策略清单"的 R2 教训（orientation_nr 注册为
+BuildAndDrop）、求值期辅助契约（int_val/long_val 含笔误逐字诊断、向量
+\ /% 的余数总取 [0,|m|) 与 oracle 例 [7]%-3=[1]/[7]\-3=[-2] 复核一致、
+nth_set_bit 的 0 基与非负耗尽得 -1/负值走补码有限清位、flex_add/flex_sub
+只在等修剪尺寸时去结果尾零、convolve 任一修剪后为空则为空、ratvec ± 按
+最小公分母交叉相乘后 RatVec::new 规范化、to_string_aux 对变参元组的字符串
+分量不带引号、prints 加换行而另两个不加）、321 条目/170 名/309 启动名
+三个不同清单统计如实区分、注册表相对上游不全由 REMAINING_BUILTINS.md
+跟踪——全部忠实。8 页批准；wiki/concepts/ 现有 474 页，剩余候选 59。
