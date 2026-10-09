@@ -1338,3 +1338,19 @@ MAX_KEY_GENERATORS=127 与 MAX_MASK_BITS 职责分离、两文件互不导入与
 "局部→内部→外部编号"串联为未验证推断的诚实声明、E6 [1,3] 期望来自
 置换而非 Rust 输出——全部忠实。8 页批准；wiki/concepts/ 现有 288 页，
 剩余候选 245。
+
+## 2026年10月10日 第四十批候选审查：twisted-involution-trio.md 的 6 页
+
+对照 92 行来源包逐页核验：TwistedInvolution 的四步门槛（datum 三连查 →
+三个 RankMismatch（WeylAction 用 rank() 余用 lattice_rank()）→ 双格复合
+w 左 θ 右 → 重走 LatticeInvolution/RootInvolutionData 门控，InvalidInvolution
+为传播而非本体构造点）、compose_matrices 的 actual 恒报 right.len() 怪癖、
+分类的预算闸门先于对合检验（临时矩阵即 drop 不抬 live-entry 记账的注释
+明示）、complex/compact/split 公式与三处 checked_sub、entry%2!=0 含负奇、
+fiber_rank 公式 dim ker((q+I) mod 2) − dim span(plusBasis(q)) mod 2 及
+其防御不一致（saturating_sub 钳零 vs checked_sub 报错、普通减法与普通
+i32、debug 溢出 panic 无防护）如实标注为阅读观察、reflection_word 唯一
+移植点与禁止私有拷贝、to_dominant(reflection(α,2ρ)) 原样反转、贪心首个
+负配对无迭代上限、wrapping 静默回绕+debug_assert 长度+release zip 截断、
+三文件算术策略分层-vs-漂移存疑备查、未测路径清单——全部忠实。6 页批准；
+wiki/concepts/ 现有 294 页，剩余候选 239。

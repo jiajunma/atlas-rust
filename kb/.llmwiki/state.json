@@ -523,6 +523,18 @@
         "非紧虚根正交集的深度计算"
       ],
       "compiledAt": "2026-10-09T17:04:31.370Z"
+    },
+    "twisted-involution-trio.md": {
+      "hash": "b783154e20d31474660cc2dc9bfde380b9a2f64d780f96350452b0fa1220d53c",
+      "concepts": [
+        "cartan-纤维秩与-dualpi0",
+        "对合分类的资源预算与验证顺序",
+        "扭对合与-weyl-平移",
+        "整数对合的-compactcomplexsplit-分类",
+        "根论工具的整数算术与失败语义",
+        "环境根反射字的共享约定"
+      ],
+      "compiledAt": "2026-10-09T17:06:18.216Z"
     }
   }
 }
