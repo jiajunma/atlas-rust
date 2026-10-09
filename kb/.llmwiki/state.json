@@ -190,6 +190,20 @@
         "轨道枚举的规模预算与整数边界"
       ],
       "compiledAt": "2026-10-09T16:00:56.117Z"
+    },
+    "block-graph.md": {
+      "hash": "62fe6166a7f63d8582df3b325bcb8f12920d01f5b79ff9e8ea3cc6b9a58fef9d",
+      "concepts": [
+        "blockdescent-八值状态体系",
+        "blockgraph-存储布局与坐标定位不变量",
+        "twisted-weyl-群的对合对偶映射",
+        "块图的直接与逆-cayley-变换",
+        "块的-bruhat-hasse-图与可比对计数",
+        "完整块图的对偶数据变换",
+        "完整块图的测试覆盖与证据边界",
+        "完整块的-kgb-纤维积"
+      ],
+      "compiledAt": "2026-10-09T16:03:54.216Z"
     }
   }
 }

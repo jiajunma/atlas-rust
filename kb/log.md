@@ -994,3 +994,15 @@ MAX_MASK_BITS/CLASS_SENTINEL/seeded_class 三边界、代表元级归因内核�
 单根）、provenance/分解两门、Tits 搬运职责边界——全部忠实；11 个测试锚点
 （含合成 A1 归因与 rank-33/rank-64 两种不同拒绝）一致。7 页批准；
 wiki/concepts/ 现有 105 页，剩余候选 428。
+
+## 2026年10月10日 第十五批候选审查：block-graph.md 的 8 页
+
+对照 143 行来源包逐页核验：八值 BlockDescent 体系（0x4 规则、TAB 重编号、
+对偶配对）、块级状态判定（complex 看 is_descent、i1/i2 看 cross 动不动、
+r1/r2 看对偶侧）、两种平铺布局（descent 按 z*rank+s、cross 按 s*size+z）、
+first_z_of_x 弱增不变量与 element() 校验、直接与逆 Cayley 共享槽与
+weak-descent 互补语义、i1 单值/i2 双值构建与回填、dual() 的反转/互换/反射
+算术与"第二像仅在有定义时映射"、无序集比较约定、Bruhat Hasse 递归与
+n_bruhat_comparable 的拓扑序前提、HashMap 静默覆盖观察、A1 七测试锚点
+（capture 3501519 对齐）与未覆盖清单——全部忠实。8 页批准；
+wiki/concepts/ 现有 113 页，剩余候选 420。
