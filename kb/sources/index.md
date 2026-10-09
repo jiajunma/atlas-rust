@@ -563,6 +563,17 @@ constructors+`revision: Arc<()>` 非语义快照身份；`matching_bindings` 查
 撰写（无 Kimi 调用）。本区域语义由 A1 限定 HPC 门验收（after-v5）；
 结构性阅读本身不授予验收。
 
+[领域派发与强转](atlas-core-domain-dispatch.md)记录 `domain_builtins.rs`
+中部：`call`/`call_owned_with_printed`/`call_with_printed` 的 call 路径
+（三个同结果类型饥饿乘积走 `hungry_product_owned`；打印侧通道只有
+`partial_extended_KL_block` 用）、166 臂 `match name` 的组织与逐臂
+"arity→提取→调用→包装"契约及校验顺序注释（如无值门之前先跑全部构造
+检查）、`coerce` 的逐标签领域转换（`KpolK` 经 `finals_for`、`PolP` 经
+`expand_final`，canonical 项序）、`build_real_form` 的父级规范弱缓存。
+对应[阅读快照](snapshots/2026-10-09-atlas-core-domain-dispatch.json)；
+维护者直接撰写（无 Kimi 调用）。166 臂的逐臂数学不在本包。结构性阅读，
+不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

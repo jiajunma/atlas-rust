@@ -724,3 +724,10 @@ share_group_into_if_cold、按内容弱 interning）、RootDatumHandle 结构相
 对偶算术、DomainValue 结构等值、多项式系数契约、派发入口与饥饿乘积。
 本区域是 Weyl 修复落点；语义由 after-v5 限定验收，结构性阅读不授予验收。
 维护者直接撰写（无 Kimi）；字节数实测；索引与 log 已同步。
+
+新增 `sources/atlas-core-domain-dispatch.md` 与快照
+`2026-10-09-atlas-core-domain-dispatch.json`：call 路径（三个饥饿乘积 /
+打印侧通道只有 partial_extended_KL_block 用）、166 臂 match 的组织与
+逐臂校验顺序契约、coerce 的逐标签转换（KpolK 的 finals_for、PolP 的
+expand_final，canonical 项序）、build_real_form 的规范弱缓存。维护者
+直接撰写（无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。
