@@ -231,6 +231,19 @@ prose asserting *current* state ("now implemented", "pending", the frontier)
 must be revised in the same commit as the transition that invalidates it —
 dated history stays, undated "now" rots.
 
+### Payload rebuild drill at HEAD `7e40ddd7` (2026-10-09, tunnel-down)
+
+Re-ran runbook steps 1-2 locally: `git archive HEAD` of the 65 resolved
+`STAGE_INPUT_NAMES` (constant references resolved via AST, no import)
+reproduces `overrides.json` sha `bcc09dbc…` exactly — the intervening
+docs/KB commits `964f0033…7e40ddd7` touched none of the 65 payload inputs —
+and the sentinel rehearsal again reached `PRE_FLIGHT_PARENT_OBJECTS_BOUNDARY`
+(all payload-local validators pass on the exact bytes).  Resumption therefore
+needs no re-rehearsal stop unless a later HEAD moves a payload input; the
+remote reconcile (step 3) still runs fresh at submission time.  Drill
+tempdirs (`/tmp/g2-payload-build`, `/tmp/g2_names.txt`) removed; nothing was
+registered as a transport.
+
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 
 The classifier change is committed (`80eaf6d3`):
