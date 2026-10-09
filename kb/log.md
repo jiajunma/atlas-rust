@@ -1950,3 +1950,11 @@ domain_skip 29/19、domain_printer 21/19、domain_relation 22/2）。包三处
 更正后 refresh --stale：4 页原地刷新、4 个再生候选（含新提取的
 readline_completions 页）重审批准；docs/REMAINING_BUILTINS.md 顶部加注
 LATEST 2026-10-10 更正说明。wiki 现 536 页、Fresh。
+
+## 2026年10月10日 kb/index.md 补齐（46 个缺失来源包）
+
+vault 入口索引此前只链接 73 个来源包中的 28 个；按现有表格风格补齐其余
+46 个（链接文字取包 frontmatter 标题，描述列保留"结构性阅读，不作数学
+验收"的诚实后缀；root-ladder-overflow-repair 行保留其 AFTER-v3/ledger
+0003 验收指针）。末尾"后续补充"的过期注记更新为当前状态（73 包全覆盖、
+536 页、Fresh、验收权威在 HPC 门与账本）。74 个 sources/ 链接全部可解析。

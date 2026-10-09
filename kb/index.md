@@ -36,10 +36,57 @@
 | [per-involution (1-θ)X* 图像基对](sources/real-projection.md) | 播种/传送纪律、坐标/lift 接口与分解不变式；结构性阅读，不作数学验收 |
 | [精确整数矩阵约化：matreduc 的逐操作移植](sources/matreduc.md) | 逐操作保真动机、diagonalise 与求解/像判定；结构性阅读，不作数学验收 |
 
+| [伴随 Cartan 纤维：构建、投影与 mod-2 商（adjoint_fiber.rs）](sources/adjoint-fiber.md) | 伴随 Cartan 纤维：构建、投影与 mod-2 商；结构性阅读，不作数学验收 |
+| [Alcove 几何：alcove_center 与 root_vertex_of_alcove](sources/alcove.md) | Alcove 几何：alcove_center 与 root_vertex_of_alcove；结构性阅读，不作数学验收 |
+| [CLI 前端（atlas-cli/main.rs）——会话帧驱动、--path 解析与 clean 退出状态](sources/atlas-cli-main.md) | CLI 前端——会话帧驱动、--path 解析与 clean 退出状态；结构性阅读，不作数学验收 |
+| [内建注册表（typed.rs 5973–11565）——Builtin/BuiltinImpl 面、无值门策略与启动清单](sources/atlas-core-builtin-registry.md) | 内建注册表——Builtin/BuiltinImpl 面、无值门策略与启动清单；结构性阅读，不作数学验收 |
+| [中心分类器与轨道词（domain_builtins.rs 6102–7992）——CenterClassifier 的中心陪集 tabulation 与 adjoint 轨道 BFS/词转换](sources/atlas-core-center-classifier.md) | 中心分类器与轨道词——CenterClassifier 的中心陪集 tabulation 与 adjoint 轨道 BFS/词转换；结构性阅读，不作数学验收 |
+| [转换遍 convert_expr（typed.rs 中部）——in/out 类型模式、族划分与赋值助手契约](sources/atlas-core-convert-expr.md) | 转换遍 convert_expr——in/out 类型模式、族划分与赋值助手契约；结构性阅读，不作数学验收 |
+| [形变缓存机器（domain_builtins.rs 2657–2933）——full/twisted full deformation 的递归、缓存纪律与协作截止](sources/atlas-core-deformation-cache.md) | 形变缓存机器——full/twisted full deformation 的递归、缓存纪律与协作截止；结构性阅读，不作数学验收 |
+| [领域构造管线（domain_builtins.rs 1628–2527）——datum/内类/实形的构造顺序与预算](sources/atlas-core-domain-construction.md) | 领域构造管线——datum/内类/实形的构造顺序与预算；结构性阅读，不作数学验收 |
+| [领域派发与强转（domain_builtins.rs 中部）——call 路径、coerce 与 166 臂派发匹配](sources/atlas-core-domain-dispatch.md) | 领域派发与强转——call 路径、coerce 与 166 臂派发匹配；结构性阅读，不作数学验收 |
+| [块图 SCC 与根表（domain_builtins.rs 3022–5005 + 7992–9606）——strong_components、ByLastCoordinate 序、对合校验与 RootTable](sources/atlas-core-domain-scc-root-table.md) | 块图 SCC 与根表——strong_components、ByLastCoordinate 序、对合校验与 RootTable；结构性阅读，不作数学验收 |
+| [校验与打印（domain_builtins.rs 9730–12263）——46 臂 validate、块打印机与 print_text 面](sources/atlas-core-domain-validate-print.md) | 校验与打印——46 臂 validate、块打印机与 print_text 面；结构性阅读，不作数学验收 |
+| [领域值与 Weyl 身份（domain_builtins.rs 上部）——DatumWeylIdentity、RootDatumHandle 与 DomainValue 面](sources/atlas-core-domain-values.md) | 领域值与 Weyl 身份——DatumWeylIdentity、RootDatumHandle 与 DomainValue 面；结构性阅读，不作数学验收 |
+| [有状态词法器（lex.rs）——TokenKind 面、换行抑制状态机、指令与字符串/注释边界](sources/atlas-core-lex.md) | 有状态词法器——TokenKind 面、换行抑制状态机、指令与字符串/注释边界；结构性阅读，不作数学验收 |
+| [回归测试库地图（session/typed/domain_builtins/session_fixture_tests 的测试模块）——家族组织与原版背书模式](sources/atlas-core-regression-library.md) | 回归测试库地图（session/typed/domain_builtins/session_fixture_tests 的测试模块）——家族组织与原版背书模式；结构性阅读，不作数学验收 |
+| [根编号与 alcove 机器（domain_builtins.rs 5005–5924）——RootNumbering 的 RootNbr 序与 alcove 墙/标签/词](sources/atlas-core-root-numbering-alcove.md) | 根编号与 alcove 机器——RootNumbering 的 RootNbr 序与 alcove 墙/标签/词；结构性阅读，不作数学验收 |
+| [crate 根：atlas-core 语言门面（lib.rs）——15 个公开模块、1 个 crate 私有矩阵约化与兼容契约版本](sources/atlas-core-root.md) | crate 根：atlas-core 语言门面——15 个公开模块、1 个 crate 私有矩阵约化与兼容契约版本；结构性阅读，不作数学验收 |
+| [会话帧：文件包含、输出重定向与顶层输出面（session_frame.rs）](sources/atlas-core-session-frame.md) | 会话帧：文件包含、输出重定向与顶层输出面；结构性阅读，不作数学验收 |
+| [会话外层循环与 SessionEvent 面（session.rs）——逐命令执行、字节保留输出与回归测试库](sources/atlas-core-session.md) | 会话外层循环与 SessionEvent 面——逐命令执行、字节保留输出与回归测试库；结构性阅读，不作数学验收 |
+| [支撑层（diagnostic.rs + source.rs + coercions.rs）——结构化诊断、源位置与强转表/邻近谓词](sources/atlas-core-support-layer.md) | 支撑层——结构化诊断、源位置与强转表/邻近谓词；结构性阅读，不作数学验收 |
+| [语法前端（syntax.rs + grammar.lalrpop）——AST 面、LALRPOP 适配与 Bison 风格诊断](sources/atlas-core-syntax.md) | 语法前端——AST 面、LALRPOP 适配与 Bison 风格诊断；结构性阅读，不作数学验收 |
+| [类型化管线核心数据结构（typed.rs 上部）——TypedExpr 树、Analysis/OverloadState 与 TypedContext](sources/atlas-core-typed-core.md) | 类型化管线核心数据结构——TypedExpr 树、Analysis/OverloadState 与 TypedContext；结构性阅读，不作数学验收 |
+| [TypedExpr 求值（typed.rs 11565–13741）——六族求值、调用机器与回溯渲染](sources/atlas-core-typed-eval.md) | TypedExpr 求值——六族求值、调用机器与回溯渲染；结构性阅读，不作数学验收 |
+| [类型模型（types.rs + types/）——Type 面、TypeTable 与二阶机器](sources/atlas-core-types.md) | 类型模型——Type 面、TypeTable 与二阶机器；结构性阅读，不作数学验收 |
+| [值层（value.rs + linear_values.rs + formula.rs）——Value 面、字节保留串、上游打印格式与算符优先级栈](sources/atlas-core-value-layer.md) | 值层——Value 面、字节保留串、上游打印格式与算符优先级栈；结构性阅读，不作数学验收 |
+| [反射子群轨道与 ambient Weyl 见证（domain_builtins/weyl_subgroup.rs）](sources/atlas-core-weyl-subgroup.md) | 反射子群轨道与 ambient Weyl 见证；结构性阅读，不作数学验收 |
+| [只读块拓扑与块修正子（block_access.rs / block_modifier.rs）](sources/block-access-modifier.md) | 只读块拓扑与块修正子；结构性阅读，不作数学验收 |
+| [Cartan fiber 与伴随 Cartan fiber（cartan_fiber.rs / adjoint_fiber.rs）](sources/cartan-fibers.md) | Cartan fiber 与伴随 Cartan fiber；结构性阅读，不作数学验收 |
+| [Cayley/Cross 分解与整对合分类（cayley_cross.rs / involution_classification.rs）](sources/cayley-cross.md) | Cayley/Cross 分解与整对合分类；结构性阅读，不作数学验收 |
+| [Dynkin 分类器：连通分量、Bourbaki 置换与折叠 Cartan（dynkin.rs）](sources/dynkin.md) | Dynkin 分类器：连通分量、Bourbaki 置换与折叠 Cartan；结构性阅读，不作数学验收 |
+| [StructureError 错误分类学与全局 Tits 交叉作用传输层（error.rs / global_tits.rs）](sources/error-global-tits.md) | StructureError 错误分类学与全局 Tits 交叉作用传输层；结构性阅读，不作数学验收 |
+| [内类范围 KGB 图与 print_X 布局（global_kgb.rs）](sources/global-kgb.md) | 内类范围 KGB 图与 print_X 布局；结构性阅读，不作数学验收 |
+| [对合类型三件套：LatticeInvolution / RootInvolutionData / TwistedInvolution](sources/involution-types.md) | 对合类型三件套：LatticeInvolution / RootInvolutionData / TwistedInvolution；结构性阅读，不作数学验收 |
+| [逐块 KL 支撑数据：KlSupport 与 RankFlags（kl_support.rs）](sources/kl-support.md) | 逐块 KL 支撑数据：KlSupport 与 RankFlags；结构性阅读，不作数学验收 |
+| [内类布局与限制根系（layout.rs / restricted_roots.rs）](sources/layout-restricted-roots.md) | 内类布局与限制根系；结构性阅读，不作数学验收 |
+| [crate 根：60 模块组织、52 条再导出与 A1 原型层（lib.rs）](sources/lib-root.md) | crate 根：60 模块组织、52 条再导出与 A1 原型层；结构性阅读，不作数学验收 |
+| [典范整数据驻留与 Weyl 姿态定位器（locator.rs）](sources/locator.md) | 典范整数据驻留与 Weyl 姿态定位器；结构性阅读，不作数学验收 |
+| [合成实形的选定余特征与初始环面部分（minimal_torus.rs）](sources/minimal-torus.md) | 合成实形的选定余特征与初始环面部分；结构性阅读，不作数学验收 |
+| [内类字母解析与逐字母对合查表（primitive_involution.rs）](sources/primitive-involution.md) | 内类字母解析与逐字母对合查表；结构性阅读，不作数学验收 |
+| [弱实形式标签与外部编号（real_form_labels.rs / real_form_order.rs）](sources/real-form-labels-order.md) | 弱实形式标签与外部编号；结构性阅读，不作数学验收 |
+| [实 Weyl 群与块稳定子：real_weyl.rs 的构造、对偶 fiber 重放与打印层](sources/real-weyl.md) | 实 Weyl 群与块稳定子：real_weyl.rs 的构造、对偶 fiber 重放与打印层；结构性阅读，不作数学验收 |
+| [BasedRootDatum 与对偶内类构造（root_datum.rs / dual.rs）](sources/root-datum-dual.md) | BasedRootDatum 与对偶内类构造；结构性阅读，不作数学验收 |
+| [Root ladder 固定宽度坐标溢出修复](sources/root-ladder-overflow-repair.md) | 溢出即非成员的限定修复与 tests-first 验证链（AFTER-v3 已验收，ledger entry 0003）；结构性阅读，不作数学验收 |
+| [普通根系的确定性枚举：RootSystem、RootId 与梯子底表](sources/root-system.md) | 普通根系的确定性枚举：RootSystem、RootId 与梯子底表；结构性阅读，不作数学验收 |
+| [对偶分量群平凡性与实形命名（topology.rs / form_name.rs）](sources/topology-form-name.md) | 对偶分量群平凡性与实形命名；结构性阅读，不作数学验收 |
+| [扭对合、对合分类与环境根反射字（twisted_involution.rs / involution_classification.rs / root_reflection.rs）](sources/twisted-involution-trio.md) | 扭对合、对合分类与环境根反射字；结构性阅读，不作数学验收 |
+| [Weyl 群阶识别与实形展示层（weyl_size.rs / presentation.rs）](sources/weyl-size-presentation.md) | Weyl 群阶识别与实形展示层；结构性阅读，不作数学验收 |
+
 ## 写作与来源
 
 - [使用说明](README.md)、[维护规则](AGENTS.md)、[页面约定](schema.md)
 - [来源索引](sources/index.md)、[变更日志](log.md)
 - [主题模板](templates/topic.md)、[设计决策模板](templates/decision.md)
 
-后续根据实际开发补充 Weyl 对象身份与缓存、KGB、KLV、变形等主题。该列表只是知识编写方向，不代表已覆盖、已实现或获准执行新的数学 gate。
+上表现已覆盖全部 73 个来源包（536 页概念 wiki 见 [MOC](wiki/MOC.md)，Fresh 无待审候选）。页面均为结构性阅读记录，不代表数学验收；验收以 HPC 门与 append-only 账本为准。
