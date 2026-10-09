@@ -923,3 +923,13 @@ weyl_budget）、严格 Cayley 偏序的 is_below 语义与不可反身不变量
 real_form_of 的 complex-only 行走与 grading 偶整数规则、coch 不返回的理由、
 real_form_of_detailed 的扩展用途——全部忠实。7 页批准；wiki/concepts/ 现有
 53 页，剩余候选 480。
+
+## 2026年10月9日 第八批候选审查：real-projection.md 的 8 页
+
+对照 95 行来源包逐页核验：基对定义与分解不变量、播种/传送纪律（基非唯一、
+列符号/次序差异是携带而非重算的理由）、gcd_sweep 符号纪律（负主元取正 +
+ops 记录 + div_euclid 防定向反转 + E6 involution-187 注释）、幺模逆的
+±1 主元与逐项验证、check_against 收尾自校验、transported 的方阵-only 检查
+与无测试声明、zip 静默截断与 lift panic 面、非受检消元与分配不对称的阅读
+观察——全部忠实；四个测试锚点（含 original3840186 的逐字矩阵字面量）一致。
+8 页批准；wiki/concepts/ 现有 61 页，剩余候选 472。
