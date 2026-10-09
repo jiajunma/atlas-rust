@@ -22,6 +22,7 @@
 - **[[cartan-类的强实层-strongrealdata|Cartan 类的强实层 StrongRealData]]** — StrongRealData 保存单个 Cartan 类的平方类、各平方类的 fiber 轨道大小与强代表元，并提供局部弱实形式、平方类和轨道之间的查询及 toAdjoint 原像求解。
 - **[[cartan-纤维秩与-dualpi0|Cartan 纤维秩与 dualPi0]]** — fiber_rank 计算 q=−θᵀ 对应 dualPi0(q) 的 F₂ 维数，即 dim ker((q+I) mod 2)−dim span(plusBasis(q)) mod 2，作为 Cartan 纤维大小指数；该函数缺少测试且混用普通算术与饱和减法。
 - **[[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]** — add_cartan 重复调用返回已有切片，新轨道须恰好达到分类给出的期望大小，且记录数量达到 max_involutions 时拒绝继续插入。
+- **[[cartangradingdata-与纤维来源一致性|CartanGradingData 与纤维来源一致性]]** — CartanGradingData 汇集一个 Cartan involution 的 grading 数据，检查 datum 与 involution 一致性，并从 adjoint descent 所用的确切 ambient fiber 构建 m_alpha。
 - **[[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]** — fundamental class 编为 0，其余按父类编号与上游正虚根顺序进行 BFS 发现；Cayley successor 在比较和存储前先 canonicalize，以保持 Atlas 编号语义。
 - **[[cayley-变换与目标模空间归约|Cayley 变换与目标模空间归约]]** — cayley 执行裸 sigma_mult，再在目标增大的 mod-space 中归约；若目标 Cartan 类尚未加入表，则返回 None。
 - **[[cayley-回拉与模二-grading-求解|Cayley 回拉与模二 grading 求解]]** — 标签计算结合 Cayley 回拉翻转位、cross 根运送和带哨兵位的 ModTwoSubspace 求解恢复 fundamental 代表；根位置存在不可消余量时返回 ImpossibleGrading。
@@ -44,6 +45,8 @@
 - **[[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]** — StrongRealClassification 预计算各 form 的 KGB 大小及全局总量；fiber_size(form, cartan) 在 form 不属于指定 Cartan 时返回 Some(0)，使跨全部 Cartan 的求和保持正确。
 - **[[fibertoadjoint-的按需投影|FiberToAdjoint 的按需投影]]** — FiberToAdjoint 仅由 fiber_map() 创建，应用时依次获取源规范代表、执行模二伴随投影并构造目标元素，不保存稠密模二矩阵或缓存像。
 - **[[finalsfor-带号重数展开|finals_for 带号重数展开]]** — finals_for 用工作栈按根类型与求值执行反射、Cayley 变换、墙投影和分裂，生成无序带号重数表；它没有显式终止计数，且新任务与结果项的 height 来源不同。
+- **[[grading-shifts-的忠实性不变量|Grading shifts 的忠实性不变量]]** — 构造期检查 grading shift 列线性无关，遇到相关列或零列即拒绝，从而保证可实现 grading 对应的 adjoint fiber 元素唯一。
+- **[[grading-的位向量类型纪律|Grading 的位向量类型纪律]]** — Grading 以 newtype 将 simple-imaginary 根位置与 ambient coweight 坐标区分，置位表示非紧致，根索引遵循确定性根序。
 - **[[innerclass-对偶构造与生命周期保持|InnerClass 对偶构造与生命周期保持]]** — original InnerClass 构造立即取得 canonical dual 并强持有 primal 与 dual，Rust 对齐需覆盖该隐式对偶路径及其生命周期，显式 dual 修复不足以证明完整兼容。
 - **[[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]** — twisted_from_involution 在调用方已完成 square 与 involutive 检查的前提下，验证输入属于当前 inner class，并返回分解 θ = w·δ 中的 Weyl 元素 w，失败时报 InvalidBasedAutomorphism。
 - **[[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]** — InnerClass 持有已验证的 BasedRootDatum、有限根系和 distinguished involution，为分解与标签提供上下文，但尚不包含 Cartan fibers、real-form data 或构建 KGB graph 所需的 torus data。
@@ -72,10 +75,12 @@
 - **[[ktype-表示参数与规范化构造|KType 表示参数与规范化构造]]** — KType 表示去掉 ν 的标准表示参数之 K-限制；sr_k 用 lambda_unique 选取陪集代表并预计算 height，而内部 new 不校验不变量。
 - **[[length-stop-长度边界表|length-stop 长度边界表]]** — 在块元素长度非降的构造保证下，length_stop[l] 记录首个长度不小于 l 的元素位置，并在表末追加块大小 size。
 - **[[locatedblock-稳定块句柄与查询相对姿态|LocatedBlock 稳定块句柄与查询相对姿态]]** — 通过 Arc<PartialBlock>、存储行号和查询相对的 block modifier 暴露块访问；只有 w 与 simple_pi 均为恒等时才允许以平实中心位移直接读取存储行。
+- **[[malpha-的模二归约与伴随投影|m_alpha 的模二归约与伴随投影]]** — m_alpha 是余根在 ambient fiber 中的模二像，其伴随像由根配对投影得到；坐标奇性归约必须正确处理负奇数。
 - **[[mod-2-投影与纤维商上的诱导映射|mod-2 投影与纤维商上的诱导映射]]** — mod-2 投影利用根系数的奇性翻转坐标位，FiberToAdjoint::apply 依次取规范代表、执行投影并构造目标纤维元素，每次应用现算而不缓存稠密矩阵。
 - **[[original-atlas-的抽象坐标-ladder-构造|Original Atlas 的抽象坐标 ladder 构造]]** — Original Atlas 使用抽象简单根坐标 Byte_vector 构造 ladder，再通过 Weyl reflection permutation 扩展至所有根，使环境格中的大坐标不参与该阶段的减法。
 - **[[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]** — ParabolicPieces 用内部层级的最小右陪集代表元分解生成 piece 索引列表，其字典序复现上游 WeylElt 排序并供 involution 排序及 KGB 重编号使用。
 - **[[primitivisation-索引与符号传播|Primitivisation 索引与符号传播]]** — 针对每个 descent mask 递减遍历元素，沿首个 good ascent 的 cross 链接继承 primitive 索引并依 epsilon 更新符号，遇到 like-nonparity 或 partial-block 边界则标记 DEAD_END。
+- **[[quasisplit-规范化与-grading-的仿射线性求值|Quasisplit 规范化与 grading 的仿射线性求值]]** — Quasisplit 规范化令零 adjoint fiber 元素的 grading 为全一，其余元素通过 canonical ambient representative 与单根奇性向量配对后取反求值。
 - **[[rankflags简单生成元位集|RankFlags：简单生成元位集]]** — RankFlags 使用非 Copy 的 u32 位集表示至多 32 个简单生成元，提供超集判定、交集、差集和最低置位查询，set/is_set 自身不检查边界。
 - **[[realformseed-的封装与构造不变量|RealFormSeed 的封装与构造不变量]]** — RealFormSeed 在共享 append-only 表的编号下绑定 grading offset、square-class cocharacter 与种子元素，以私有字段保证 grading_offset 等于 grading_of_simples(cocharacter)。
 - **[[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]** — build 检查 inner class、fundamental class 归一化、强层计数一致性降级及 form id 边界；custom 要求显式 cocharacter 的 simple pairings 为整数且 torus part 复现该 form 的 compact pattern。
@@ -291,10 +296,11 @@
 - **[[轨道枚举的规模预算与整数边界|轨道枚举的规模预算与整数边界]]** — 枚举以 max_elements 限制 2^dimension 的规模，使用不饱和的 u128 比较，并分别检查 63 位掩码限制及保留 u32::MAX 哨兵的类编号容量。
 - **[[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]** — inverse_cayley 先执行 sigma_inv_mult，再以首个配对非平凡的源 mod-space 基向量修复重构出的紧根 grading，随后在虚根目标归约并复核；缺少修复向量时报不变量错误，源根非实或向下 Cartan 类缺失时返回 None。
 - **[[递归-twisted-deformation-与取消语义|递归 twisted deformation 与取消语义]]** — twisted_deformation 无记忆化地递归处理 final、delta-fixed 参数，返回 KType 分裂系数项与 net flip；rank-0 不调用 lookup，可取消变体返回 Ok(None) 且不发布部分多项式。
+- **[[通过增广消元反求-grading-对应元素|通过增广消元反求 grading 对应元素]]** — element_from_grading 对 target XOR base 进行携带基索引标记位的增广消元，检测不可实现的 grading，并按解的标记位异或组合伴随基代表。
 - **[[部分公共块上的扩展块构造与-cofold|部分公共块上的扩展块构造与 cofold]]** — build_partial 使用 x + gamma_lambda 形式测试不动点，在子系统上折叠生成元，并在构造后处理 cofold；当前仅支持恒等生成元姿态，非恒等 bm.simple_pi 显式失败。
 - **[[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]** — 通过 Option 表达元素或链接缺失，区分 imaginary ascent 的前向 Cayley 像与 real descent 的逆像，并以奇异生成元的下降状态判定 survives。
 - **[[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]** — DepthTables 预计算正虚根及基非紧奇偶，depth 按既定根顺序贪心选取极大正交非紧根集，移除非正交候选并翻转与所选根正交但和仍为根的候选的紧性。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_294 pages | Generated 2026-10-09T17:06:18.829Z_
+_300 pages | Generated 2026-10-09T17:07:41.143Z_

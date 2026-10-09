@@ -36,6 +36,7 @@
 - [[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]
 - [[cartan-类的强实层-strongrealdata|Cartan 类的强实层 StrongRealData]]
 - [[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]
+- [[cartangradingdata-与纤维来源一致性|CartanGradingData 与纤维来源一致性]]
 - [[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]
 - [[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]
 - [[twisted-involution-表与-cartan-轨道存储|Twisted involution 表与 Cartan 轨道存储]]
@@ -227,6 +228,10 @@
 - [[扩展-klv-的-rust-移植边界与有意偏离|扩展 KLV 的 Rust 移植边界与有意偏离]]
 - [[整数矩阵算法的逐操作保真移植|整数矩阵算法的逐操作保真移植]]
 
+## Rust类型设计
+
+- [[grading-的位向量类型纪律|Grading 的位向量类型纪律]]
+
 ## Rust设计
 
 - [[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]
@@ -409,6 +414,10 @@
 
 - [[有理权分子的-checked-仿射反射|有理权分子的 checked 仿射反射]]
 
+## 仿射线性映射
+
+- [[quasisplit-规范化与-grading-的仿射线性求值|Quasisplit 规范化与 grading 的仿射线性求值]]
+
 ## 伴随Cartan-fiber
 
 - [[伴随-cartan-fiber-的对合作用构造|伴随 Cartan fiber 的对合作用构造]]
@@ -417,6 +426,10 @@
 
 - [[伴随-cartan-纤维的构建与下降验证|伴随 Cartan 纤维的构建与下降验证]]
 
+## 伴随投影
+
+- [[malpha-的模二归约与伴随投影|m_alpha 的模二归约与伴随投影]]
+
 ## 伴随映射
 
 - [[fibertoadjoint-的按需投影|FiberToAdjoint 的按需投影]]
@@ -424,6 +437,10 @@
 ## 伴随根数据
 
 - [[伴随根数据与余特征格投影|伴随根数据与余特征格投影]]
+
+## 位向量
+
+- [[grading-的位向量类型纪律|Grading 的位向量类型纪律]]
 
 ## 位图
 
@@ -460,6 +477,7 @@
 
 ## 余根
 
+- [[malpha-的模二归约与伴随投影|m_alpha 的模二归约与伴随投影]]
 - [[基本-alcove-墙与整性检测|基本 alcove 墙与整性检测]]
 - [[整子系统的余根加法闭包|整子系统的余根加法闭包]]
 
@@ -688,6 +706,10 @@
 - [[合成实形的选定余特征|合成实形的选定余特征]]
 - [[合成实形种子算法的门控与资源限制|合成实形种子算法的门控与资源限制]]
 
+## 唯一性
+
+- [[grading-shifts-的忠实性不变量|Grading shifts 的忠实性不变量]]
+
 ## 商空间
 
 - [[f₂-商空间的确定性代表元与陪集判定|F₂ 商空间的确定性代表元与陪集判定]]
@@ -798,6 +820,10 @@
 ## 基选择
 
 - [[图像基的典范播种与轨道传送纪律|图像基的典范播种与轨道传送纪律]]
+
+## 增广消元
+
+- [[通过增广消元反求-grading-对应元素|通过增广消元反求 grading 对应元素]]
 
 ## 增量计算
 
@@ -1198,6 +1224,10 @@
 
 - [[repcontext-借用上下文与一致性约束|RepContext 借用上下文与一致性约束]]
 
+## 数据不变量
+
+- [[cartangradingdata-与纤维来源一致性|CartanGradingData 与纤维来源一致性]]
+
 ## 数据共享
 
 - [[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]
@@ -1369,6 +1399,10 @@
 
 - [[klsupport-的拓扑构造门控|KlSupport 的拓扑构造门控]]
 
+## 构造期验证
+
+- [[grading-shifts-的忠实性不变量|Grading shifts 的忠实性不变量]]
+
 ## 构造校验
 
 - [[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]
@@ -1488,9 +1522,11 @@
 
 - [[cayley-回拉与模二-grading-求解|Cayley 回拉与模二 grading 求解]]
 - [[fiber-grading-与-r-群核生成元|fiber grading 与 R-群核生成元]]
+- [[malpha-的模二归约与伴随投影|m_alpha 的模二归约与伴随投影]]
 - [[平方类编号与换基不变量|平方类编号与换基不变量]]
 - [[强实分类的构造与资源边界|强实分类的构造与资源边界]]
 - [[整数基的模-2-归约|整数基的模 2 归约]]
+- [[通过增广消元反求-grading-对应元素|通过增广消元反求 grading 对应元素]]
 
 ## 模二运算
 
@@ -1818,6 +1854,10 @@
 - [[weyl-群的矩阵作用与词级元素双层结构|Weyl 群的矩阵作用与词级元素双层结构]]
 - [[代表元归因与-tits-搬运的职责边界|代表元归因与 Tits 搬运的职责边界]]
 
+## 纤维
+
+- [[cartangradingdata-与纤维来源一致性|CartanGradingData 与纤维来源一致性]]
+
 ## 纤维秩
 
 - [[cartan-纤维秩与-dualpi0|Cartan 纤维秩与 dualPi0]]
@@ -1858,6 +1898,11 @@
 
 - [[weyl-群的紧凑-transducer-表示|Weyl 群的紧凑 Transducer 表示]]
 
+## 紧致性
+
+- [[grading-的位向量类型纪律|Grading 的位向量类型纪律]]
+- [[quasisplit-规范化与-grading-的仿射线性求值|Quasisplit 规范化与 grading 的仿射线性求值]]
+
 ## 线性代数
 
 - [[f₂-上的位打包向量modtwovector|F₂ 上的位打包向量（ModTwoVector）]]
@@ -1871,6 +1916,10 @@
 ## 线性方程
 
 - [[有限域线性求解的规范截面|有限域线性求解的规范截面]]
+
+## 线性无关
+
+- [[grading-shifts-的忠实性不变量|Grading shifts 的忠实性不变量]]
 
 ## 线性映射
 
@@ -1970,6 +2019,7 @@
 - [[cayley-根的长根化与强正交规范化|Cayley 根的长根化与强正交规范化]]
 - [[k-型变形与终止预算|K 型变形与终止预算]]
 - [[ktype-表示参数与规范化构造|KType 表示参数与规范化构造]]
+- [[quasisplit-规范化与-grading-的仿射线性求值|Quasisplit 规范化与 grading 的仿射线性求值]]
 - [[twisted-involution-的三阶段规范化|Twisted involution 的三阶段规范化]]
 - [[内类字母的字节解析与规范化|内类字母的字节解析与规范化]]
 
@@ -2175,6 +2225,10 @@
 ## 逆Cayley变换
 
 - [[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]
+
+## 逆映射
+
+- [[通过增广消元反求-grading-对应元素|通过增广消元反求 grading 对应元素]]
 
 ## 递归算法
 

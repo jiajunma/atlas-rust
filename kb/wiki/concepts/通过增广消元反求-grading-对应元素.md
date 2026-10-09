@@ -1,0 +1,57 @@
+---
+title: 通过增广消元反求 grading 对应元素
+summary: element_from_grading 对 target XOR base 进行携带基索引标记位的增广消元，检测不可实现的 grading，并按解的标记位异或组合伴随基代表。
+sources:
+  - grading.md
+kind: concept
+createdAt: "2026-10-09T14:50:19.229Z"
+updatedAt: "2026-10-09T14:50:19.229Z"
+tags:
+  - 增广消元
+  - 模二线性代数
+  - 逆映射
+aliases:
+  - 通过增广消元反求-grading-对应元素
+  - 通G对
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+---
+
+# 通过增广消元反求 grading 对应元素
+
+`CartanGradingData::element_from_grading(target)` 通过 F₂ 上的增广消元，反求具有指定 grading 的唯一伴随 Cartan fiber 元素。若目标 grading 不可实现，则返回 `StructureError::ImpossibleGrading`；解的唯一性依赖构造阶段检查的 faithful shifts 不变量。^[grading.md:61-67]
+
+## 坐标与求解目标
+
+[[Grading 的位向量类型纪律|Grading]] 的第 `i` 位对应所属模型的第 `i` 个 simple-imaginary 根，置位表示 noncompact。它与 ambient coweight 坐标具有不同含义，即使维数相同也不能混用。^[grading.md:17-27]
+
+在 [[Quasisplit 规范化与 grading 的仿射线性求值|quasisplit 规范化]] 下，伴随 fiber 的零元素对应全一的 `base_grading`。其他元素的 grading 由其 canonical ambient representative 与各单根的模二坐标逐根配对，再对配对结果取反得到；因此逆向求解的右端为 `target XOR base_grading`，其中置位恰好标记目标的 compact 位置。^[grading.md:35-38, grading.md:59-65]
+
+## 增广消元过程
+
+`grading_shifts[i]` 记录第 `i` 个伴随基代表与各单根奇性向量的 F₂ 配对。求解时，每个 shift 列除携带 grading 位外，还附加一个 marker 位，位置为 `imaginary_rank + adjoint_basis_index`，用于记录该列对应的伴随基索引。^[grading.md:47-51, grading.md:61-64]
+
+算法用这些增广列归约右端 `target XOR base_grading`，并通过 marker 位同步累计所用 shift 的组合。归约完成后，若余数的低 `imaginary_rank` 位仍有置位，说明右端无法由 shift 列表示，返回 `StructureError::ImpossibleGrading`。^[grading.md:62-66]
+
+若低位余数为零，则按累计的 marker 位选取伴随基代表，通过 `xor_assign` 汇总为 ambient 代表，从而得到目标 grading 对应的伴随 fiber 元素。这里汇总的是伴随基代表，而不是直接把 grading 位解释为格坐标。^[grading.md:61-67]
+
+## 存在性与唯一性
+
+[[Grading shifts 的忠实性不变量|faithful shifts 不变量]] 要求 shift 列线性无关。构造阶段的 `ensure_faithful_shifts` 在发现相关列时无条件返回 `GradingShiftsNotFaithful`，因此可实现的目标具有唯一的基组合；这一条件不保证所有 grading 都可实现，不在 shift 张成空间中的右端仍会被拒绝。^[grading.md:52-55, grading.md:61-67]
+
+正向接口 `grading(element)` 先取得 canonical representative，再逐根配对取反；外来纤维元素会触发 `CartanFiberMismatch`。因此，正反向转换还受 [[CartanGradingData 与纤维来源一致性|纤维来源一致性]] 约束。^[grading.md:59-60]
+
+## 测试与证据边界
+
+源码测试锚点包括 SC A1 的双向往返、A2 恒等对合的四元素双射，以及 A2 扭转情形对全紧 grading 的 `ImpossibleGrading` 拒绝。另有注入测试直接检查重复 shift 列与零列被拒绝。^[grading.md:54-55, grading.md:73-78]
+
+来源明确指出，`element_from_grading` 入口处的 `RankMismatch` 尚未覆盖，多数溢出与分配分支也未覆盖。该材料属于结构性源码阅读，未执行构建、测试或原版运行，因此这些测试锚点不能视为本次运行验证或新的数学验收结论。^[grading.md:9-13, grading.md:80-81, grading.md:91-91]
+
+## Sources
+
+- [grading.md](grading.md)：紧致 grading：simple-imaginary 根的紧致性位向量。

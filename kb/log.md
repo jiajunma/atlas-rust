@@ -1354,3 +1354,20 @@ i32、debug 溢出 panic 无防护）如实标注为阅读观察、reflection_wo
 负配对无迭代上限、wrapping 静默回绕+debug_assert 长度+release zip 截断、
 三文件算术策略分层-vs-漂移存疑备查、未测路径清单——全部忠实。6 页批准；
 wiki/concepts/ 现有 294 页，剩余候选 239。
+
+## 2026年10月10日 第四十一批候选审查：grading.md 的 6 页
+
+对照 94 行来源包逐页核验：Grading 作为 ModTwoVector newtype 的位语义
+（第 i 位=第 i 个 simple-imaginary 根、置位=NONCOMPACT、与 ambient/adjoint
+坐标维数可同而必须由类型区分）、quasisplit 规范化（零元基点全一、其余为
+canonical 代表的仿射线性求值即逐根 !dot）、逐虚根收集（m_alpha=余根的
+ambient mod-2 像、伴随像经 Π(y)_j=⟨α_j,y⟩ 投影且配对只保留投影内单一
+实现、simple_mod_two 的 %2!=0 含负奇数、B2 (2,−1)→(0,1) 锚点）、刻意不
+接收 ambient fiber 参数而对着 AdjointCartanFiber::ambient_fiber 构建的
+来源绑定（值相等不能表达 fiber 同一性）、ensure_faithful_shifts 的上游
+断言→无条件拒绝转变与"无已知公共路径"的防御声明、element_from_grading
+的增广消元（marker 位=imaginary_rank+adjoint_basis_index、右端 target XOR
+base 标记 compact 位、低位余量置位→ImpossibleGrading、marker 位 xor_assign
+汇总）、唯一性=faithful 不变量但不保证可实现、9 个测试锚点（含 A2 根序
+index 0=α₂、A1×A1 imaginary_rank==0、33 个 A1 因子突破打包位宽）与未
+覆盖清单——全部忠实。6 页批准；wiki/concepts/ 现有 300 页，剩余候选 233。

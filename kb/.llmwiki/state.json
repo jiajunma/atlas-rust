@@ -535,6 +535,18 @@
         "环境根反射字的共享约定"
       ],
       "compiledAt": "2026-10-09T17:06:18.216Z"
+    },
+    "grading.md": {
+      "hash": "0e60a0b7062941306084f4bfa0fcb811f591307ce32bf69491403033aba1674e",
+      "concepts": [
+        "cartangradingdata-与纤维来源一致性",
+        "grading-shifts-的忠实性不变量",
+        "grading-的位向量类型纪律",
+        "malpha-的模二归约与伴随投影",
+        "quasisplit-规范化与-grading-的仿射线性求值",
+        "通过增广消元反求-grading-对应元素"
+      ],
+      "compiledAt": "2026-10-09T17:07:40.524Z"
     }
   }
 }
