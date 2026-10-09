@@ -280,6 +280,35 @@ question).  (2) Only then add contract cases + predictions and migrate a
 capture pair, exactly as the G2 arc did.  Marker prefixes `WB_`/`WBN_` must
 be added to the contract's `_parse_frame` candidate filter at wiring time.
 
+### Reverse-operand fixture drafts (2026-10-09, PROVISIONAL, unwired)
+
+Third arc gate: the v8 A1 capture pinned cross-owner relations in ONE
+operand order only, and A1 cannot observe order at all (its only dual
+product is the commutative `s0*s0`).  G2's noncommuting words can, and
+these fixtures are numbering-convention-independent (no owner-numbering
+probes):
+
+- `tests/math/generics/weyl_context_g2_reverse_operands.atlas` (1272 bytes,
+  sha `83a98c87e109619c370ebf2241a9569ab78cc7a9f04803ebe36efdcacf0de05e`):
+  cold-dual cross-owner products in both orders (`WR_FWD`/`WR_REV`), the
+  cross-coordinate equality/inequality forms, the mixed-owner braid
+  (alternating primal/dual factors through the length-6 relation), and the
+  sharpest pair `WR_FWD_ROOT`/`WR_REV_ROOT`: `root_datum` of the product
+  must be the LEFT operand's datum in both orders — the direct observable
+  of "replay the right word in the left system".  Recovery marker 729.
+- `tests/math/generics/weyl_context_g2_reverse_prewarmed.atlas` (1205 bytes,
+  sha `7768db8b3bd8ff80c997aa18c1baf7e432e829c597690c676c4edf7c2f11d8b5`):
+  the two G2 numberings as incompatible owners rejecting `=`, `!=` and `*`
+  in BOTH operand orders (6 mismatches), plus high/negative word rejections.
+  Recovery marker 735.
+
+Same status and finalization rule as the B2/C2 drafts: NOT truth, NOT
+wired; contract cases + predictions and the `_parse_frame` prefixes
+`WR_`/`WRN_` are added only when this gate is reached after G2 and B2/C2.
+The remaining arc gates (inner-class-dual, no-value) are deliberately NOT
+drafted yet: their fixture design needs the G2/B2/C2 capture outcomes and
+an `inner_class` constructor survey first.
+
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 
 The classifier change is committed (`80eaf6d3`):

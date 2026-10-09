@@ -1,0 +1,24 @@
+{ G2 Weyl reverse-operand cold witness: a cross-owner product replays the
+  right operand's word in the LEFT operand's system, so operand order
+  exercises different replay directions. A1 could not observe this (its only
+  dual product is the commutative s0*s0); G2's noncommuting words can.
+  WR_FWD_ROOT/WR_REV_ROOT pin the product's owner to the left operand's
+  datum. Provisional until complete original behavior is captured on HPC.
+  No atlas scripts. }
+set wr_rd=simply_connected(Lie_type("G2"),true)
+set wr_s0=W_elt(wr_rd,[0])
+set wr_s1=W_elt(wr_rd,[1])
+set wr_dual=dual(wr_rd)
+set wr_dual_s0=W_elt(wr_dual,[0])
+set wr_dual_s1=W_elt(wr_dual,[1])
+prints("WR_SAME|",word(wr_s0*wr_s1),"|",word(wr_s1*wr_s0))
+prints("WR_FWD|",word(wr_s0*wr_dual_s1))
+prints("WR_REV|",word(wr_dual_s1*wr_s0))
+prints("WR_FWD_EQ|",wr_s0*wr_dual_s1=wr_s0*wr_s1)
+prints("WR_REV_EQ|",wr_dual_s1*wr_s0=wr_s1*wr_s0)
+prints("WR_FWD_NEQ|",wr_s0*wr_dual_s1!=wr_s1*wr_s0)
+prints("WR_REV_NEQ|",wr_dual_s1*wr_s0!=wr_s0*wr_s1)
+prints("WR_FWD_ROOT|",root_datum(wr_s0*wr_dual_s1)=wr_rd)
+prints("WR_REV_ROOT|",root_datum(wr_dual_s1*wr_s0)=wr_dual)
+prints("WR_MIXED_BRAID|",wr_s0*wr_dual_s1*wr_s0*wr_dual_s1*wr_s0*wr_dual_s1=wr_dual_s1*wr_s0*wr_dual_s1*wr_s0*wr_dual_s1*wr_s0)
+prints("WR_RECOVERY|",729)

@@ -583,8 +583,11 @@ ceiling and default one focused job; do not trade correctness for speed.
   cache edit.  Provisional B2/C2 fixture drafts already exist
   (`weyl_context_b2c2_cold_dual.atlas` sha `9809d0f2…`,
   `weyl_context_b2c2_prewarmed_dual.atlas` sha `e542d380…` — the cross-type
-  dual witness; NOT wired into any contract/stager/catalog, predictions
-  wait for the G2 numbering-convention answer; see `docs/HANDOFF.md`).
+  dual witness), as do numbering-independent G2 reverse-operand drafts
+  (`weyl_context_g2_reverse_operands.atlas` sha `83a98c87…`,
+  `weyl_context_g2_reverse_prewarmed.atlas` sha `7768db8b…`); all four are
+  NOT wired into any contract/stager/catalog, predictions wait for the G2
+  numbering-convention answer; see `docs/HANDOFF.md`.
 - Everything below the frontier entries is historical evidence carrying its
   own supersession markers. A historical "next target" or "reprofile" note
   never reactivates itself; only the latest unsuperseded state of a claim

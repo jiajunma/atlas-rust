@@ -1,0 +1,26 @@
+{ G2 Weyl prewarmed reverse-operand rejection discovery: incompatible owners
+  (the two G2 numberings) reject relations in BOTH operand orders, and every
+  error recovers. The A1 capture pinned rejection in one operand order only;
+  this fixture pins the symmetric direction. Provisional until complete
+  original behavior is captured on HPC. No atlas scripts. }
+set wrn_true=simply_connected(Lie_type("G2"),true)
+set wrn_false=simply_connected(Lie_type("G2"),false)
+set wrn_true_w=W_elt(wrn_true,[0])
+set wrn_false_w=W_elt(wrn_false,[1])
+prints("WRN_EQ_FWD|",wrn_true_w=wrn_false_w)
+prints("WRN_AFTER_EQ_FWD|",word(wrn_true_w))
+prints("WRN_EQ_REV|",wrn_false_w=wrn_true_w)
+prints("WRN_AFTER_EQ_REV|",word(wrn_false_w))
+prints("WRN_NEQ_FWD|",wrn_true_w!=wrn_false_w)
+prints("WRN_AFTER_NEQ_FWD|",word(wrn_true_w))
+prints("WRN_NEQ_REV|",wrn_false_w!=wrn_true_w)
+prints("WRN_AFTER_NEQ_REV|",word(wrn_false_w))
+wrn_true_w*wrn_false_w
+prints("WRN_AFTER_MUL_FWD|",word(wrn_true_w))
+wrn_false_w*wrn_true_w
+prints("WRN_AFTER_MUL_REV|",word(wrn_false_w))
+W_elt(wrn_true,[2])
+prints("WRN_AFTER_HIGH|",word(wrn_true_w))
+W_elt(wrn_true,[-1])
+prints("WRN_AFTER_NEGATIVE|",word(wrn_true_w))
+prints("WRN_RECOVERY|",735)
