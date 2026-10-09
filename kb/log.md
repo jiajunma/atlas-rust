@@ -1576,3 +1576,16 @@ right_multiply_simple 重建+weyl_elt_value 冻结）、BuildAndDrop 只构造
 （9 类型×2 编号×2 isogeny×2 作用的空子群不变量、独立穷举闭包交叉核验、
 全单子群逐等、丢弃前诊断匹配）——全部忠实。7 页批准；wiki/concepts/
 现有 377 页，剩余候选 156。
+
+## 2026年10月10日 第五十三批候选审查：atlas-core-center-classifier.md 的 7 页
+
+对照 60 行来源包（维护者直接撰写、git base 964f0033）逐页核验：
+CenterClassifier 的 (adjugate, det) 制表与 rem_euclid 分桶/div_euclid
+入 shift_of、与上游 C_denom 一致为移植陈述如实标注、shifts 的借位规则
+（fix_entry≤entry 直减，否则 rts+1 且 entry-=fix_entry-det）与
+pos & subset == subset 输出条件；adjoint 轨道机器的共享 BFS 核（finish
+后递减、层完成反转递增）、basic_orbit_adjoint 的前 i+1 生成元 Levi 子商、
+vertex_orbit 的模变体沿 label>1 扩展、convert_to_words 的反射词左乘父段、
+reflection_word 的首个下降降到单根再逆序回溯、word_act_root/
+word_act_weight 均为最后一个字母先作用、与 subgroup 包见证序的约定配对
+——全部忠实。7 页批准；wiki/concepts/ 现有 384 页，剩余候选 149。

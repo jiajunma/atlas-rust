@@ -4,6 +4,7 @@
 
 - **[[a1-加中心环面边界-fixture-与历史-oracle|A1 加中心环面边界 fixture 与历史 oracle]]** — 11 个 A1+torus case 覆盖 root/coroot 交换、两种编号及 i32 边界，Rust 完整输出与历史 original-backed capture 比较；AFTER 作业未重跑原版，证据不推广至更高 rank 或一般根系。
 - **[[a1-迁移原型层与对偶格类型设计|A1 迁移原型层与对偶格类型设计]]** — crate 私有的 A1 原型层处于待替换状态，其中无校验的 LatticeVector(Vec<i32>) 计划由 Weight/Coweight 的编译期对偶格区分取代；原型 RootDatum 与 BasedRootDatum 是不同类型。
+- **[[adjoint-轨道的分层有序-bfs|adjoint 轨道的分层有序 BFS]]** — adjoint_orbit_bfs 是共享轨道遍历核心，通过将新元素插入 finish 之后保持尾部递减，并在每层完成后反转为递增来维护遍历顺序。
 - **[[alcove-分母界守卫|Alcove 分母界守卫]]** — denominator_exceeds_alcove_bound 判断 denominator > 2^rank，并在 rank ≥ 63 时返回 false，以避免有符号 i64 移位导致阈值失真。
 - **[[alcove-墙标签与标签排序|Alcove 墙标签与标签排序]]** — 墙分量的标签来自余根间取正的唯一原始整数关系，可由环境余根坐标求核；全部墙按标签降序排列，同标签按 RootNbr 排序。
 - **[[alcove-墙集与整值墙筛选|Alcove 墙集与整值墙筛选]]** — wall_set 计算 gamma 经小 dominant 位移所达 alcove 的墙余根，记录在 gamma 上取整的墙，并按余根不可相减条件筛选。
@@ -95,6 +96,7 @@
 - **[[klv-递归与-μ-修正的多项式运算|KLV 递归与 μ-修正的多项式运算]]** — 多项式引擎提供加减、乘以 1+q、次数平移和带 μ 系数的修正运算，以及 q=-1 求值，支持 KLV 递归所需的计算。
 - **[[ktype-表示参数与规范化构造|KType 表示参数与规范化构造]]** — KType 表示去掉 ν 的标准表示参数之 K-限制；sr_k 用 lambda_unique 选取陪集代表并预计算 height，而内部 new 不校验不变量。
 - **[[length-stop-长度边界表|length-stop 长度边界表]]** — 在块元素长度非降的构造保证下，length_stop[l] 记录首个长度不小于 l 的元素位置，并在表末追加块大小 size。
+- **[[levi-子商轨道与顶点轨道扩展|Levi 子商轨道与顶点轨道扩展]]** — basic_orbit_adjoint 构造 Cartan 前 i+1 个生成元的 Levi 子商轨道，vertex_orbit 则提供用于沿 label>1 最终扩展的模变体。
 - **[[locatedblock-稳定块句柄与查询相对姿态|LocatedBlock 稳定块句柄与查询相对姿态]]** — 通过 Arc<PartialBlock>、存储行号和查询相对的 block modifier 暴露块访问；只有 w 与 simple_pi 均为恒等时才允许以平实中心位移直接读取存储行。
 - **[[malpha-的模二归约与伴随投影|m_alpha 的模二归约与伴随投影]]** — m_alpha 是余根在 ambient fiber 中的模二像，其伴随像由根配对投影得到；坐标奇性归约必须正确处理负奇数。
 - **[[mod-2-投影与纤维商上的诱导映射|mod-2 投影与纤维商上的诱导映射]]** — mod-2 投影利用根系数的奇性翻转坐标位，FiberToAdjoint::apply 依次取规范代表、执行投影并构造目标纤维元素，每次应用现算而不缓存稠密矩阵。
@@ -153,6 +155,7 @@
 - **[[weyl-群的矩阵作用与词级元素双层结构|Weyl 群的矩阵作用与词级元素双层结构]]** — WeylAction 表示携带根 datum 的全格矩阵作用，WeylElement 表示枚举根的置换，两层通过 action_permutation 与 from_action 桥接互查。
 - **[[weyl-群的紧凑-transducer-表示|Weyl 群的紧凑 Transducer 表示]]** — 采用 du Cloux / van Leeuwen 的抛物子商表示，以固定栈数组的各项索引 W_{i-1}\W_i 的极小陪集代表元，并通过逐生成元 transducer 实现乘法；文档标注复杂度为 O(length)，本包不提供性能验收。
 - **[[weyl-群阶模块与实形展示模块的架构边界|Weyl 群阶模块与实形展示模块的架构边界]]** — 两模块互不导入，仅共享同一 StructureError 类型；现有证据无法确认 CartanClassification 内部是否调用 Weyl 群阶入口。
+- **[[weyl-词对根与权的作用顺序|Weyl 词对根与权的作用顺序]]** — word_act_root 与 word_act_weight 均采用最后一个字母先作用的约定，这是理解反射词组合与轨道词转换的关键顺序约束。
 - **[[weyl-语义回归的递进验证门禁|Weyl 语义回归的递进验证门禁]]** — 以独立进程原版捕获和 BEFORE/fix/AFTER 回归验证语义；已落地 A1 验收仅覆盖限定输入，G2 非对称编号、B2/C2、操作数顺序及独占元素生命周期等仍需后续见证。
 - **[[weylaction-的对偶全格作用|WeylAction 的对偶全格作用]]** — 在 character 与 cocharacter 全格上维护反射矩阵及复合作用，反射构造使用检查算术，但矩阵复合包含未经检查的 i32 收窄。
 - **[[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]** — 源码 derive 等值逐字段比较且包含 datum 值，因此“相等即矩阵作用相等”的概述须限定于 datum 值相同的情形。
@@ -160,7 +163,9 @@
 - **[[weylelt-的固定数组与容量边界|WeylElt 的固定数组与容量边界]]** — WeylElt 使用 [u8; WEYL_MAX_RANK] 固定栈数组，支持枚举与 twisted scan 中的零堆分配；WEYL_MAX_RANK=32 是表示上界，不能解释为元素枚举预算。
 - **[[下降集good-ascent-与本原性|下降集、good ascent 与本原性]]** — 元素 x 相对 desc(y) 本原当且仅当 good(x) 与 desc(y) 不相交，极端性要求 desc(x) 包含 desc(y)；ImaginaryTypeII 既不属于下降也不属于 good ascent。
 - **[[严格-cayley-偏序|严格 Cayley 偏序]]** — is_below 描述非空 single-root Cayley links 链的 more-compact 方向，fundamental class 位于其他类之下，有效类的自比较恒为 Some(false)。
+- **[[中心分类器与根格陪集制表|中心分类器与根格陪集制表]]** — CenterClassifier 用 Cartan 矩阵的伴随矩阵与行列式表示逆矩阵，按基本权子集和的 adjoint 坐标分数部分桶，并记录陪集号及整数移位。
 - **[[中心环面的商对合分类|中心环面的商对合分类]]** — 通过根格的 Smith 适配基计算商对合，对 inv + I 分类得到 compact、complex、split 秩并依序追加环面字母；IntegerLatticeBudget 仅约束此处的 Smith 基计算。
+- **[[中心陪集表驱动的根格移位枚举|中心陪集表驱动的根格移位枚举]]** — shifts(fix, pos, neg) 利用陪集匹配、分数部借位与子集筛选，枚举 fw(fix+A)−fw(B) 的单根坐标，其中 A⊆pos、B⊆neg。
 - **[[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]** — 惰性 cell 只发布完整成功结果，构造失败后应允许重试，且不能缓存首次调用的 Diagnostic 或 SourceSpan，以保留当前调用的错误定位。
 - **[[代表元归因与-tits-搬运的职责边界|代表元归因与 Tits 搬运的职责边界]]** — 归因 helper 仅接受分类已存储的代表元；一般 twisted involution 的归约需借助 table-backed Tits cross actions 同步搬运 torus factor，后续 minimal_torus_part 下降仍依赖分离的 inverse-Cayley 操作。
 - **[[代表元级弱实形式归因|代表元级弱实形式归因]]** — weak_real_form_at_representative 通过 dual fixed-point projection v↦(v+vθ)/2、配对奇偶性和虚根 grading 确定局部轨道，再经 RealFormLabels 映射为全局弱实形式编号。
@@ -208,6 +213,7 @@
 - **[[反射子群轨道与生成元约束下的优势化|反射子群轨道与生成元约束下的优势化]]** — Weyl_orbit 使用给定的有符号根生成元执行优势化和轨道扩展；空生成元必须保持输入不变，修正原版初始优势化忽略生成元的 R3 反例。
 - **[[反射子群轨道与见证的独立验证|反射子群轨道与见证的独立验证]]** — 测试以空子群不变量、独立穷举闭包、逐见证重建和全单子群轨道顺序对齐检验实现；该源包仅报告结构性阅读和测试锚点，不构成数学验收。
 - **[[反射子群轨道的稳定排序规则|反射子群轨道的稳定排序规则]]** — 轨道沿用 rootdata.cpp 的 BitMap 排序：BFS 仅对新层去重并保留首次插入，内部稳定器按 RootNbr 排序，用户生成元顺序控制优势化与扩展。
+- **[[反射词的首个下降构造|反射词的首个下降构造]]** — reflection_word 沿首个下降将根降到单根，再逆序回溯构造共轭反射词；simple_reflect_root_nbr 提供单根反射对根编号的作用。
 - **[[反射闭包的防御性不变量|反射闭包的防御性不变量]]** — Closure 插入候选时先验证根与余根自配对等于 2，再检查重复根的余根及简单坐标一致性，重复候选不占用新增根数额度。
 - **[[可约点与标准参数-final-化|可约点与标准参数 final 化]]** — reducibility_points 返回按分子分母对升序排列的可约分数，finals_for 以栈驱动 dominant 检查及奇偶、长度下降，生成带整数系数的 final 参数。
 - **[[合成实形的选定余特征|合成实形的选定余特征]]** — elected_square_root 按 distinguished 对合与 Weyl 余权作用运输环面因子，以半平方和 delta + I 调用 stable_log，生成构造器保存的 g_rho_check；非平凡运输尚缺可区分测试断言。
@@ -376,8 +382,9 @@
 - **[[限制权的商格单射表示restrictedweight|限制权的商格单射表示（RestrictedWeight）]]** — 以 (1−θ)(weight) 编码 X*/ker(1−θ) 的等价类，坐标属于像格表示；split A1 中 α 类编码为 2α，并不表示它等于 2α 的类。
 - **[[限制根的可乘性ismultipliable|限制根的可乘性（is_multipliable）]]** — 通过检查二倍限制权类是否仍为限制根判定可乘性；给定 A2 对合测试覆盖可乘实例，但本包未验收其与 BC 型非约化根系的数学关系。
 - **[[限制根系的纤维聚合与有序查询|限制根系的纤维聚合与有序查询]]** — RestrictedRootSystem 校验 datum 与格秩后，跳过限制为零的根并按限制权聚合纤维，以坐标字典序存储供二分查询；其 rank 取对合的反不变秩。
+- **[[陪集树到-weyl-词的转换|陪集树到 Weyl 词的转换]]** — convert_to_words 沿陪集树展开，每一步将反射词左乘到父段条目上，并与子群见证序及词对权的作用约定配对。
 - **[[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]** — DepthTables 预计算正虚根及基非紧奇偶，depth 按既定根顺序贪心选取极大正交非紧根集，移除非正交候选并翻转与所选根正交但和仍为根的候选的紧性。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_377 pages | Generated 2026-10-09T17:27:58.296Z_
+_384 pages | Generated 2026-10-09T17:29:35.184Z_
