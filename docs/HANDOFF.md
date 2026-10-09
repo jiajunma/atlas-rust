@@ -242,6 +242,14 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
    collection cron (sacct poll; on FINAL COMPLETED inspect whether the
    repaired Rust matches the oracle on G2 — the witness question).
 
+  Drill 2026-10-10 (payload integrity at HEAD `f8a5ba25`): the 65 payload
+  inputs are exact existing file paths; `git diff --name-status 041aad85..HEAD`
+  over `hpc/ crates/ tests/ .agents/ tools/ Cargo.* rust-toolchain.toml`
+  shows 12 pure additions (10 drafted post-G2 witness fixtures + 2 upstream
+  evidence JSONs) and ZERO modifications or deletions.  No payload input
+  changed bytes, so the frozen manifest sha `bcc09dbc…` remains valid at
+  HEAD without rebuilding.  The tunnel was still down at drill time.
+
 ### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
 
 Audited the root guide's current-state prose while the tunnel is down. Two
