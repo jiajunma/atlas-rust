@@ -6,9 +6,12 @@ including HPC-only execution and the local worktree preflight.
 
 ## Selected knowledge compiler
 
-Use llm-wiki-compiler, pinned to 1.4.0-rc.2 in package.json and pnpm-lock.yaml.
-This is an intentional prerelease pin containing the code/link preservation
-fixes missing from 1.3.0. Upgrade only as an explicit maintenance change after
+Use llm-wiki-compiler, pinned to 1.4.2 in package.json and pnpm-lock.yaml.
+The original prerelease pin 1.4.0-rc.2 carried the code/link preservation
+fixes missing from 1.3.0; the move to 1.4.2 on 2026-10-09 was an explicit
+reviewed maintenance change because rc.2's strict JSON schema was rejected
+(HTTP 400) by the Codex provider, which upstream changelog #266 fixes.
+Upgrade only as an explicit maintenance change after
 reading release notes and reviewing the lockfile; never silently follow latest.
 The installed upstream package is not locally patched.
 

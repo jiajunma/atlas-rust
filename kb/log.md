@@ -1110,3 +1110,18 @@ job3873400 证明两域一核三处失败 → 修复 → AFTER-v3 job3875239 全
 0003-a1-torus-root-coroot-ladder-boundary 已 accepted/math_pass——候选
 如实标注为歧义而非擅自消解）、"不授予性能/排名/更广数学验收"的限定声明——
 全部忠实。6 页批准；wiki/concepts/ 现有 184 页，剩余候选 349。
+
+## 2026年10月10日 第二十六批候选审查：cartan-fibers.md 的 8 页
+
+对照 171 行来源包逐页核验：子商公式 ker_F2(I+θ_Y)/red_2 ker_Z(I+θ_Y)
+与 low-pivot 坐标约定（同构声明如实标注为注释声明）、先分母后分子的构造
+顺序与预算执行点、分子按行不转置加 from_ones XOR 实现对角 +I、元素
+ptr_eq 绑定的 provenance 语义与 CartanFiberMismatch 锚点、canonical 代表
+与基代表 XOR 关系、validate_induced_map 的分子/分母双层下降与按需应用、
+伴随构造五门控（DatumMismatch → InvolutionMismatch → 分配前预算 16r²+rn
+与 2n²r → 逐根作用矩阵按列写入 → transpose_square 的逆转置论证如实标注）
+——全部忠实；A2 twisted 作用矩阵字面量与 transpose 关系核验一致，覆盖缺口
+（DatumMismatch 无锚点、from_source 隐含一致）如实保留，跨页链接目标全部
+可解析（两页为已上线页、六页为本批或管线内候选）。另修正 kb/AGENTS.md 的
+编译器 pin 记录与 package.json 的 1.4.2 保持一致。8 页批准；
+wiki/concepts/ 现有 192 页，剩余候选 341。

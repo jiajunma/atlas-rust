@@ -3,6 +3,7 @@
 ## Concepts
 
 - **[[a1-加中心环面边界-fixture-与历史-oracle|A1 加中心环面边界 fixture 与历史 oracle]]** — 11 个 A1+torus case 覆盖 root/coroot 交换、两种编号及 i32 边界，Rust 完整输出与历史 original-backed capture 比较；AFTER 作业未重跑原版，证据不推广至更高 rank 或一般根系。
+- **[[ambient-映射的子商下降验证|Ambient 映射的子商下降验证]]** — validate_induced_map 一次性验证 ambient 映射保持分子与分母关系，失败时区分两类关系错误，使高层能够按需应用映射而不缓存稠密商坐标矩阵。
 - **[[based-cross-action-的闭式实现|Based cross action 的闭式实现]]** — cross 使用单一逐元素闭式映射，实现 sigma_mult(s, .) 后接 mult_sigma_inv(., twist(s)) 并加入 offset 修正的作用，结果在目标处归约。
 - **[[based-involution-验证与生成元-twist|Based involution 验证与生成元 twist]]** — based_involution_twist 要求 involution 置换根系、正确传输余根且将简单根映为简单根；generator_twist 给出 distinguished involution 诱导的简单生成元置换。
 - **[[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]** — 区分格秩与半单秩，按固定顺序验证 Cartan 矩阵、根与余根的数量、维度及配对，支持中心环面和纯环面且不设全局秩上限。
@@ -11,6 +12,8 @@
 - **[[blockmodifier-块修正子|BlockModifier 块修正子]]** — BlockModifier 组合 BlockLocator 与有理权平移，提供恒等构造、无校验包装及保留整根系定位信息的重置操作；该功能切片尚未接入现存消费方。
 - **[[blocktopology-只读块拓扑接口|BlockTopology 只读块拓扑接口]]** — 以密封 trait 提供 KL 所需的最小只读块表面，并依赖秩、长度排序、格子存在性和链接范围等结构不变量；支持引用及 Arc 包装的动态 trait 对象。
 - **[[bruhat-偏序的-hasse-图构造|Bruhat 偏序的 Hasse 图构造]]** — bruhat_hasse 通过首个严格良下降的 cross 或逆 Cayley 像及上升扩展生成直接下邻，无此下降时收集 RealTypeII 的第一逆 Cayley 分量；索引和 expect 依赖构造不变量。
+- **[[cartan-fiber-的先分母后分子构造|Cartan fiber 的先分母后分子构造]]** — 构造先计算整数负特征格并模二约化作为分母，再按余特征作用矩阵的行计算 I+θ_Y 的有限域右核作为分子，最后建立子商；整数预算与有限域分配防护分别生效。
+- **[[cartan-fiber-的有限域子商模型|Cartan fiber 的有限域子商模型]]** — CartanFiber 采用 ker_F2(I+θ_Y)/red_2 ker_Z(I+θ_Y) 的子商坐标与 low-pivot 归约基；其与 Y^θ/(I+θ_Y)Y 的同构仅作为代码注释声明记录，未获本包数学验收。
 - **[[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]** — CartanClassification::build 构造 inner class 的全部 Cartan 类，聚合各实形式的 Cartan 集、most-split 类、twisted-involution 总数与严格偏序，并共享 twisted 共轭分区供对偶侧复用。
 - **[[cartan-分类的分层预算|Cartan 分类的分层预算]]** — CartanClassificationBudget 分别约束整数格、fiber、Weyl 枚举、对合发现与 peeling；generated-involutions 模式以含 identity 的精确计数上限控制代表元发现，各预算值参与分类缓存键。
 - **[[cartan-矩阵的精确有理有限型检查|Cartan 矩阵的精确有理有限型检查]]** — 以精确有理数沿连通分量传播对称化比例，再通过 LDLᵀ 式分解检查正主元；其与有限型的等价性在来源中仅为代码意图，未经数学验收。
@@ -24,7 +27,9 @@
 - **[[coxeter-矩阵的分型查表|Coxeter 矩阵的分型查表]]** — coxeter_entry 根据连通 Dynkin 分型及 Bourbaki 生成元编号计算 Coxeter 矩阵项，在线性图中按编号距离与类型分派，并为 D/E 型采用分叉规则。
 - **[[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]** — 链接按元素与生成元平铺存储：Cayley 适用于非紧致 imaginary，逆 Cayley 适用于 real，后者区分单前像 II 型与双前像 I 型，并在编号标准化后按升序安装。
 - **[[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]** — canonical dual 仅在目标尚未建立 WeylGroup 时共享源群身份，已预热目标保持独立，因此 Weyl 元素兼容性取决于对象生命周期和构造历史。
+- **[[fiber-元素的模型来源绑定与规范代表|Fiber 元素的模型来源绑定与规范代表]]** — 元素相等要求 Arc 模型指针与坐标同时相等，独立构造的同坐标元素不相等；商坐标选取基代表的 XOR 给出 low-pivot 约定下的确定性 ambient 代表。
 - **[[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]** — StrongRealClassification 预计算各 form 的 KGB 大小及全局总量；fiber_size(form, cartan) 在 form 不属于指定 Cartan 时返回 Some(0)，使跨全部 Cartan 的求和保持正确。
+- **[[fibertoadjoint-的按需投影|FiberToAdjoint 的按需投影]]** — FiberToAdjoint 仅由 fiber_map() 创建，应用时依次获取源规范代表、执行模二伴随投影并构造目标元素，不保存稠密模二矩阵或缓存像。
 - **[[innerclass-对偶构造与生命周期保持|InnerClass 对偶构造与生命周期保持]]** — original InnerClass 构造立即取得 canonical dual 并强持有 primal 与 dual，Rust 对齐需覆盖该隐式对偶路径及其生命周期，显式 dual 修复不足以证明完整兼容。
 - **[[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]** — twisted_from_involution 在调用方已完成 square 与 involutive 检查的前提下，验证输入属于当前 inner class，并返回分解 θ = w·δ 中的 Weyl 元素 w，失败时报 InvalidBasedAutomorphism。
 - **[[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]** — InnerClass 持有已验证的 BasedRootDatum、有限根系和 distinguished involution，为分解与标签提供上下文，但尚不包含 Cartan fibers、real-form data 或构建 KGB graph 所需的 torus data。
@@ -95,7 +100,10 @@
 - **[[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]** — 惰性 cell 只发布完整成功结果，构造失败后应允许重试，且不能缓存首次调用的 Diagnostic 或 SourceSpan，以保留当前调用的错误定位。
 - **[[代表元归因与-tits-搬运的职责边界|代表元归因与 Tits 搬运的职责边界]]** — 归因 helper 仅接受分类已存储的代表元；一般 twisted involution 的归约需借助 table-backed Tits cross actions 同步搬运 torus factor，后续 minimal_torus_part 下降仍依赖分离的 inverse-Cayley 操作。
 - **[[代表元级弱实形式归因|代表元级弱实形式归因]]** — weak_real_form_at_representative 通过 dual fixed-point projection v↦(v+vθ)/2、配对奇偶性和虚根 grading 确定局部轨道，再经 RealFormLabels 映射为全局弱实形式编号。
+- **[[伴随-cartan-fiber-的对合作用构造|伴随 Cartan fiber 的对合作用构造]]** — 伴随 fiber 构造先核对 datum 与源对合，再按列提取 simple-root 作用并转置得到余特征作用，复用 CartanFiber 构造并验证投影下降；转置等于逆转置的理由来自对合性注释。
 - **[[伴随-cartan-纤维的构建与下降验证|伴随 Cartan 纤维的构建与下降验证]]** — AdjointCartanFiber 在检查 datum、对合与预算后构造伴随半单商上的有限 F₂ 纤维，并通过 validate_induced_map 验证源纤维映射的下降条件；来源仅为结构性阅读，不代表数学验收。
+- **[[伴随-fiber-的分配前资源预算|伴随 fiber 的分配前资源预算]]** — 伴随构造在目标矩阵分配前检查半单秩 r、持久条目估计 16r²+rn 与投影工作估计 2n²r，并在单次余特征投影时另行检查 nr 的工作量上限。
+- **[[伴随根数据与余特征格投影|伴随根数据与余特征格投影]]** — 伴随根数据采用 simple-root 与 fundamental-coweight 对偶基，AdjointProjection 通过源余特征与各 simple root 的配对计算目标坐标，并允许中心方向落入核。
 - **[[伴随纤维映射的测试证据与覆盖边界|伴随纤维映射的测试证据与覆盖边界]]** — 九项测试锚定中心核、可加性、矩阵字面量、逐坐标基交织关系、出处拒绝、rank-33 动态秩及部分预算拒绝路径，但多个错误分支和接口直接调用仍未覆盖，本次阅读未运行测试。
 - **[[伴随纤维的资源预算与可恢复错误|伴随纤维的资源预算与可恢复错误]]** — AdjointFiberBudget 限制整数格、持久条目和投影工作量，以受检算术检测溢出；运行期投影预算逐次独立检查，分配失败等情况返回显式错误。
 - **[[余权坐标的投影出处绑定|余权坐标的投影出处绑定]]** — AmbientCoweight 与 AdjointCoweight 将坐标绑定到 Arc<AdjointProjectionModel>，以指针身份和坐标共同判等，并拒绝跨独立投影实例复用坐标。
@@ -187,4 +195,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_184 pages | Generated 2026-10-09T16:34:43.673Z_
+_192 pages | Generated 2026-10-09T16:38:18.623Z_

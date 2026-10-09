@@ -335,6 +335,20 @@
         "坐标边界修复的-tests-first-验证链"
       ],
       "compiledAt": "2026-10-09T16:34:43.186Z"
+    },
+    "cartan-fibers.md": {
+      "hash": "889ff8b1782f1ed9103bd071f0f75960bb4cb3accbd86d3c39ae5e90603c81a8",
+      "concepts": [
+        "ambient-映射的子商下降验证",
+        "cartan-fiber-的先分母后分子构造",
+        "cartan-fiber-的有限域子商模型",
+        "fiber-元素的模型来源绑定与规范代表",
+        "fibertoadjoint-的按需投影",
+        "伴随-cartan-fiber-的对合作用构造",
+        "伴随-fiber-的分配前资源预算",
+        "伴随根数据与余特征格投影"
+      ],
+      "compiledAt": "2026-10-09T16:38:18.134Z"
     }
   }
 }
