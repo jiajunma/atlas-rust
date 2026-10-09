@@ -7,7 +7,7 @@ kind: concept
 createdAt: "2026-10-09T14:59:38.938Z"
 updatedAt: "2026-10-09T14:59:38.938Z"
 tags:
-  - Alcove
+  - alcove
   - 根系算法
   - Weyl群
 aliases:

@@ -8,7 +8,7 @@ createdAt: "2026-10-09T15:03:24.587Z"
 updatedAt: "2026-10-09T15:03:24.587Z"
 tags:
   - 虚根
-  - Grading
+  - grading
   - 基线对齐
 aliases:
   - 基本虚根-grading-的位置约束

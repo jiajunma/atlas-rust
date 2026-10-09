@@ -10,9 +10,6 @@
 - [[alcove-墙集与整值墙筛选|Alcove 墙集与整值墙筛选]]
 - [[基本-alcove-的墙数|基本 Alcove 的墙数]]
 - [[由基本-alcove-构造-weyl-词|由基本 Alcove 构造 Weyl 词]]
-
-## Alcove
-
 - [[基于-alcove-的整数据定位流程|基于 alcove 的整数据定位流程]]
 - [[基本-alcove-墙与整性检测|基本 alcove 墙与整性检测]]
 
@@ -160,9 +157,6 @@
 - [[cayley-回拉与模二-grading-求解|Cayley 回拉与模二 grading 求解]]
 - [[specialgrading-的分区代表与位集编码|specialGrading 的分区代表与位集编码]]
 - [[虚根上的基-grading-扩展|虚根上的基 grading 扩展]]
-
-## Grading
-
 - [[基本虚根-grading-的位置约束|基本虚根 grading 的位置约束]]
 
 ## HPC

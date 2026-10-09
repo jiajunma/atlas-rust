@@ -7,7 +7,7 @@ kind: concept
 createdAt: "2026-10-09T14:59:44.308Z"
 updatedAt: "2026-10-09T14:59:44.308Z"
 tags:
-  - Alcove
+  - alcove
   - 余根
   - 整性判定
 aliases:
