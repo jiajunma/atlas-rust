@@ -1486,3 +1486,24 @@ Weyl 侧 s_i∘w∘s_{δ(i)} 重建、crossed_word 前向顺序与不预检生�
 (0,7/3)→(1,1/3)、A2 (1/3,1/2)→(5/6,3/2)+s1∘s0∘s1）、10 测试与未覆盖
 清单、潜在 panic 面阅读观察——全部忠实。7 页批准；wiki/concepts/ 现有
 341 页，剩余候选 192。
+
+## 2026年10月10日 第四十八批候选审查：global-kgb.md 的 8 页
+
+对照 113 行来源包逐页核验：GlobalTorusElement 的"构造入口约化、反射不再
+约化"算术历史纪律（B2 元素 15 的 [0,-1]/2 锚点）、add 的 lcm+gcd+每坐标
+至多一次 [2,4) 条件减法、negative_at 整性门槛与奇为紧、fingerprint 的
+θ+I 饱和像适应基投影+rem_euclid 与幺模左因子无损性论证（注释声明如实
+标注）、fundamental_fiber 与 build_owned 同公式保基序、from_ones 对角
+xor、square_class_generators 的非主元位置升序当选、fundamental_coweights
+的 [C|I] 精确消元与 lcm 公分母、build 六阶段（A 装 Cartan→B 长度区间 BFS
+与 hasTwistedCommutation 的 (change>0)==has_left_descent→C 包元数据与
+format_involution_word 字符怪癖→D 播种 2^generators×2^fiber_rank 全落包 0
+与 (identity_id, fingerprint) 去重→E 包区间 BFS 的 cross length parity/
+虚根 imaginary_cross_act/实根 cross 像=自身/新指纹只入正开启包/Cartan 类
+一致/Cayley 仅 ImaginaryNoncompact 且逆槽首写居 .0→F 打印头偏移
+exp_2pi(dual_two_rho,4)）、收尾 "element status" 扫描与 cross 槽无哨兵的
+推断如实标注为推断、查询层 status/cross 参数顺序相反与 torus_label vs
+print_layout 错误语义不一致的字节事实、无 Eq 由 GlobalKgbPrint 承担快照
+比较、render 的 setw 复现细节、4 测试（三个逐字节+B2 结构）与无错误分支
+/半单秩 0 有意未测（weyl_transducer.rs:485 panic）——全部忠实。8 页批准；
+wiki/concepts/ 现有 349 页，剩余候选 184。

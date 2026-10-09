@@ -42,6 +42,7 @@
 - **[[cayleycross-的下降剥离算法|Cayley/Cross 的下降剥离算法]]** — 验证 datum 与 w∘δ 的一致性后，按生成器升序选择首个下降，依据 Real 或 Complex 根类执行不同反射步骤，并在步进前检查剥离预算；终止性论证仅为源码声明。
 - **[[compactweyl-构造与生成元编号映射|CompactWeyl 构造与生成元编号映射]]** — CompactWeyl 从 Cartan 矩阵分类 Dynkin 图，反转 B/C/D 型的生成元次序，再逐内部生成元构造 transducer；d_out 与 piece_offset 分别处理内外编号及局部到全局内部编号的映射。
 - **[[coxeter-矩阵的分型查表|Coxeter 矩阵的分型查表]]** — coxeter_entry 根据连通 Dynkin 分型及 Bourbaki 生成元编号计算 Coxeter 矩阵项，在线性图中按编号距离与类型分派，并为 D/E 型采用分叉规则。
+- **[[cross-与-cayley-闭包的根类型规则|cross 与 Cayley 闭包的根类型规则]]** — 闭包按复根、虚根和实根分别处理 cross，检查长度奇偶、包边界及 Cartan 类一致性；Cayley 仅作用于非紧虚根，原样克隆环面部分并按写入顺序记录逆像。
 - **[[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]** — 链接按元素与生成元平铺存储：Cayley 适用于非紧致 imaginary，逆 Cayley 适用于 real，后者区分单前像 II 型与双前像 I 型，并在编号标准化后按升序安装。
 - **[[descenttable-的下降集与-good-ascent-预计算|DescentTable 的下降集与 good ascent 预计算]]** — DescentTable 按元素和生成元预计算 descents 与至多具有一个向上邻居的 good ascents，并在秩超过 MAX_FOLDED_RANK 时返回资源限制错误。
 - **[[descvalue-扩展下降分类|DescValue 扩展下降分类]]** — DescValue 以 One、Two、Three 三族组织 32 种下降类型，通过奇偶枚举值、类型谓词、生成元长度与链接数描述局部结构。
@@ -57,6 +58,9 @@
 - **[[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]** — StrongRealClassification 预计算各 form 的 KGB 大小及全局总量；fiber_size(form, cartan) 在 form 不属于指定 Cartan 时返回 Some(0)，使跨全部 Cartan 的求和保持正确。
 - **[[fibertoadjoint-的按需投影|FiberToAdjoint 的按需投影]]** — FiberToAdjoint 仅由 fiber_map() 创建，应用时依次获取源规范代表、执行模二伴随投影并构造目标元素，不保存稠密模二矩阵或缓存像。
 - **[[finalsfor-带号重数展开|finals_for 带号重数展开]]** — finals_for 用工作栈按根类型与求值执行反射、Cayley 变换、墙投影和分裂，生成无序带号重数表；它没有显式终止计数，且新任务与结果项的 height 来源不同。
+- **[[globalkgb-查询接口与-printx-布局兼容|GlobalKgb 查询接口与 print_X 布局兼容]]** — 查询层使用扁平表和返回 None 的边界访问，status 与 cross 的参数顺序及环面标签错误处理存在差异；打印层复现 print_X 的字符格式、字段宽度和缺失标记。
+- **[[globalkgb-的分阶段广度优先构造|GlobalKgb 的分阶段广度优先构造]]** — GlobalKgb::build 依次完成 Cartan 登记、按长度生成对合、包数据派生、基本纤维播种、cross/Cayley 闭包和打印头偏移计算，并检查计数与状态完整性。
+- **[[globalkgb-的回归测试与证据边界|GlobalKgb 的回归测试与证据边界]]** — 源码包含 A1/B2 的逐字节打印测试及 B2 结构不变量测试，但未覆盖错误分支和半单秩零；源包此次未运行测试，且上游字节未核对，不能据此宣称数学验收。
 - **[[grading-shifts-的忠实性不变量|Grading shifts 的忠实性不变量]]** — 构造期检查 grading shift 列线性无关，遇到相关列或零列即拒绝，从而保证可实现 grading 对应的 adjoint fiber 元素唯一。
 - **[[grading-的位向量类型纪律|Grading 的位向量类型纪律]]** — Grading 以 newtype 将 simple-imaginary 根位置与 ambient coweight 坐标区分，置位表示非紧致，根索引遵循确定性根序。
 - **[[innerclass-对偶构造与生命周期保持|InnerClass 对偶构造与生命周期保持]]** — original InnerClass 构造立即取得 canonical dual 并强持有 primal 与 dual，Rust 对齐需覆盖该隐式对偶路径及其生命周期，显式 dual 修复不足以证明完整兼容。
@@ -166,6 +170,7 @@
 - **[[全局-tits-传输的上下文一致性校验|全局 Tits 传输的上下文一致性校验]]** — 构造及交叉作用通过 validate_context 检查根数据一致性，并核对 w·δ 的权与余权矩阵是否匹配存储对合，分别以 DatumMismatch 和 DistinguishedInvolutionMismatch 表达失败。
 - **[[全局-tits-传输的测试锚点与证据边界|全局 Tits 传输的测试锚点与证据边界]]** — 源码列出的 10 个测试涵盖规范化、根类型分支、非交换执行顺序、余根方向及中心坐标等行为，但部分错误路径未覆盖，结构性阅读不构成测试执行或数学验收。
 - **[[全局-tits-元素的精确有理环面表示|全局 Tits 元素的精确有理环面表示]]** — GlobalTitsElement 保存完整有理余特征和扭曲对合，将含中心坐标的环面分量规范化到 [0, 2)，向纤维 mod-two 商的规约留待后续处理。
+- **[[全局环面元素的算术历史表示|全局环面元素的算术历史表示]]** — GlobalTorusElement 用有理坐标表示 exp(iπ·numerator/denominator)，构造入口约化而反射后保留非规范分子，加法也仅作有限条件修正，因此算术历史会影响打印形式。
 - **[[公共上下文的生成元操作commoncontext|公共上下文的生成元操作（CommonContext）]]** — 将 KGB 生成元作用转运到共轭父单根，实现状态判定、cross、奇偶判定及双向 Cayley 变换，并处理参数修正与奇异标志。
 - **[[公共块对偶变换及-kl-递归的闭合限制|公共块对偶变换及 KL 递归的闭合限制]]** — dual 反转元素顺序、交换 x/y、反射长度并映射下降状态与链接，返回 BareBlock；部分块的未定义链接保持缺失，可能使对偶不满足 KL 递归的链接闭合要求。
 - **[[公共块的构造与元素编号partialblock|公共块的构造与元素编号（PartialBlock）]]** — build_full 构造完整公共块，build 消费按 x 排序的 Bruhat 区间并最终按 (length, x, y) 排序，使编号对应 oracle 打印行号。
@@ -176,6 +181,7 @@
 - **[[内类字母的字节解析与规范化|内类字母的字节解析与规范化]]** — checked_inner_class_letters 按字节读取并跳过 ASCII 标点和空白，将 e 归一为 c，依据类型与秩坍缩 s、u；C 消耗两个相同连续因子。
 - **[[内类字母解析的错误模型与诊断顺序|内类字母解析的错误模型与诊断顺序]]** — InnerClassLetterError 区分符号过多、过少、未知符号、复配对失败和无意义的不等秩类，并优先报告未知符号，再检查因子是否存在。
 - **[[内类布局innerclasslayout|内类布局（InnerClassLayout）]]** — 将 distinguished 对合转换为 Lie type、内类字母与 Bourbaki 单根置换；构建依次执行扭转置换、Dynkin 分类、内类字母判定和中心环面处理。
+- **[[内类范围的-globalkgb-图|内类范围的 GlobalKgb 图]]** — GlobalKgb 枚举同一内类全部强实形的 KGB 元素，并按扭对合组织 tau 包；当前移植未包含任意 GlobalTitsElement 播种构造器及 Bruhat/Hasse 层。
 - **[[最低主元索引的典范-rref-子空间|最低主元索引的典范 RREF 子空间]]** — ModTwoSubspace 通过升序消元及插入后的旧行消元保持与插入顺序无关的典范既约行阶梯基，支持秩与成员判定。
 - **[[最小环面算法的测试覆盖边界|最小环面算法的测试覆盖边界]]** — 现有四个测试锚点均为 rank 2 紧致内类，正例均满足 coch == factor，未以可区分断言刻画非平凡运输，也未覆盖非紧致 distinguished、多数错误分支和秩上限门控。
 - **[[最小环面部分的-grading-轨道搜索|最小环面部分的 grading 轨道搜索]]** — 算法用 LIFO 栈与 BTreeSet<u64> 遍历 grading 轨道，在置位方向施加余根奇偶平移和 grading 翻转，筛选满足目标约束的候选并按位向量整数序取最小值。
@@ -211,8 +217,10 @@
 - **[[基于左下降剥离的规范约化词|基于左下降剥离的规范约化词]]** — canonical_word 按 WeylInterface 的内部生成子序逐次剥离最小左 descent，获得该序下字典序最小的约化词，并检查每步长度恰减一。
 - **[[基于生成元闭包的-twisted-共轭分区|基于生成元闭包的 twisted 共轭分区]]** — generated_twisted_conjugacy_partition 通过生成元闭包构造完整分区，以 twisted involutions 数量计预算、每类仅实例化一个 lattice involution，并使用紧凑根置换查询成员；外部 Cartan 编号仍由 CartanClassification 选举。
 - **[[基于轨道的折叠-cartan-矩阵|基于轨道的折叠 Cartan 矩阵]]** — folded_cartan 按轨道构造折叠根与折叠余根，并依 crate 的配对约定累加 cartan[a][b]；它检查索引越界，但将轨道完整性、不交性、覆盖性及输出合法性留给调用方。
+- **[[基于饱和像适应基的-kgb-去重指纹|基于饱和像适应基的 KGB 去重指纹]]** — fingerprint 将 log_2pi 分子投影到 θ+I 饱和像的适应基并按分母取模，利用基变换的幺模性质保持判别信息，结合对合标识完成元素去重。
 - **[[基本-alcove-墙与整性检测|基本 alcove 墙与整性检测]]** — fundamental_alcove_walls 由全部单根和逐 Dynkin 分量最高余根对应的负根构成，int_item 分别以分子配对值等于 0 或负分母判定 gamma 是否落墙。
 - **[[基本余权的精确构造|基本余权的精确构造]]** — fundamental_coweights 将 Cartan 矩阵逆的各列按实际 simple coroot 展开，得到满足根配对为 Kronecker δ、radical 分量为零的 full lattice-rank 有理坐标。
+- **[[基本纤维与平方类播种|基本纤维与平方类播种]]** — 基本纤维播种结合 dualPi0(−δ^t) 子商、平方类生成元和精确求得的基本余权位移，将纤维 lift 叠入恒等对合包，并检查初始元素的指纹互异性。
 - **[[基本虚根-grading-的位置约束|基本虚根 grading 的位置约束]]** — 算法在基本虚单根基上构造紧致性起始位与 datum-单根目标约束，按位置匹配 crate 的根序；与上游前导段配对的一致性依赖其排序不变量，尚属注释声明。
 - **[[墙分量的本原-coroot-关系|墙分量的本原 Coroot 关系]]** — labels_for_component 对墙 coroot 列矩阵作 Gauss-Jordan 消元，要求恰有一个自由列，再通过通分、最大公约数约化及符号调整生成本原整数关系。
 - **[[墙连通分量与重心分数约束|墙连通分量与重心分数约束]]** — root_components 以非零 bracket 关系通过并查集划分墙，barycentre_eq 将整值墙分数固定为零，并按非整值墙数量及本原关系系数设置其余约束。
@@ -344,4 +352,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_341 pages | Generated 2026-10-09T17:19:40.444Z_
+_349 pages | Generated 2026-10-09T17:21:22.223Z_
