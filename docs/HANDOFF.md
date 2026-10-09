@@ -281,7 +281,11 @@ manifest reproduces `bcc09dbc…`, sentinel rehearsal reached
 `PRE_FLIGHT_PARENT_OBJECTS_BOUNDARY`.  Resumption remains pre-verified at
 current HEAD.  Tempdirs removed again.  (Later same day: `git diff
 72491eb6..327057e0` over the 65 names is empty — the ASCII fixes touched
-only unwired drafts; resumption remains pre-verified at `327057e0`.)
+only unwired drafts; resumption remains pre-verified at `327057e0`.  And
+the six harness suites re-run at `3385d433` under umask 022: 129 tests,
+128 pass, the single error is the documented local-only 0444-env case
+`test_stager_pin_counts_predecessor_and_source_are_exact`, green on HPC
+by precedent — the rehearsal state is unchanged at HEAD.)
 
 ### Upstream HEAD moved (2026-10-09, read-only finding)
 
