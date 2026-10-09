@@ -1237,3 +1237,20 @@ kgp_set 的 Levi 生成元静默跳过/先 second 后 first/shift=eval/2 不查�
 equivalent 的同 Cartan 类→双 to_canonical_fiber→严格相等流程、测试锚点
 普查（9 个，其中两个 su21 测试仅 eprintln! 无断言如实标注为观察型）与未
 覆盖清单——全部忠实。7 页批准；wiki/concepts/ 现有 244 页，剩余候选 289。
+
+## 2026年10月10日 第三十四批候选审查：real-weyl.md 的 8 页
+
+对照 196 行来源包逐页核验：RealWeyl 根列表统一存 primal RootId、
+imaginary/real 按 upstream RootNbr 键排序而 complex 保留
+makeSimpleComplex 输出序、对偶侧 real_compact/real_orth 经余根向量映回、
+real_type/real_compact_type 用转置子系统 Cartan（B/C 互换入口，Sp(4,R)
+Cartan#3→B2 锚点 (2,3)）、real_r 填对偶侧 R-群向量而 imaginary_r 填
+primal 侧的交错归属、fiber_side 的 grading 线性扩张与 parity_dot 平移、
+Σbracket 必偶否则不变量错误、simple_basis 的"候选移除即终止外层扫描"
+上游怪癖保留、r_vectors 按自由列升序的核生成元序（[free]+含 free 位的
+主元行）、复根生成元 s_rn·s_θ(rn) 的构造顺序、dual_side 每次调用重建无
+缓存的原因（−θ 只是典范对偶代表之共轭 tw·w0）与"是否有意未确认/仅性能
+线索"的如实标注、七 fixture 表与 rev 4d3e9449/2026-08-11 逐字节复制的
+测试注释声明、冒号不一致的字节契约、format_word 空词 e 与 1-based 逗号、
+两个按构造不可达的 .expect、printDualRealWeyl 与 NDEBUG 尺寸断言未移植——
+全部忠实。8 页批准；wiki/concepts/ 现有 252 页，剩余候选 281。

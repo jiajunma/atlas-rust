@@ -443,6 +443,20 @@
         "典范纤维与-k-型等价判定"
       ],
       "compiledAt": "2026-10-09T16:51:16.166Z"
+    },
+    "real-weyl.md": {
+      "hash": "c2abff1f99ce834d16a30a27c92e28c167d6ba6975c3743f867e71aba843c767",
+      "concepts": [
+        "fiber-grading-与-r-群核生成元",
+        "weyl-群生成元的规范词构造",
+        "复根子系统选择与扭曲轨道大小",
+        "实-weyl-层的-oracle-测试与证据边界",
+        "实-weyl-群与块稳定子的构造",
+        "实-weyl-群打印的字节兼容契约",
+        "对偶-cartan-fiber-链的临时重建",
+        "对偶根映射与-cartan-矩阵转置"
+      ],
+      "compiledAt": "2026-10-09T16:53:01.179Z"
     }
   }
 }
