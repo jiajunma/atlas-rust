@@ -263,6 +263,13 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
   semantics, and the prewarmed fixture's NON-vacuous rejection chain
   (both C2 numberings prewarmed; `wbn_dual=wbn_target_a` true,
   `=wbn_target_b` false; relation/product guards throw) all match.
+  Same-day G2 reverse-operand review: `weyl_context_g2_reverse_operands.atlas`
+  and `weyl_context_g2_reverse_prewarmed.atlas` re-read: the cold fixture's
+  replay-direction pins (WR_FWD word [0,1] / WR_REV word [1,0], owner =
+  left operand both ways, mixed six-factor braid) and the prewarmed
+  fixture's symmetric rejection (both numberings incompatible in BOTH
+  operand orders, high/negative entry diagnostics, all errors recover)
+  match the model.
 
 ### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
 
