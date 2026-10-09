@@ -23,6 +23,7 @@
 - **[[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]** — add_cartan 重复调用返回已有切片，新轨道须恰好达到分类给出的期望大小，且记录数量达到 max_involutions 时拒绝继续插入。
 - **[[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]** — fundamental class 编为 0，其余按父类编号与上游正虚根顺序进行 BFS 发现；Cayley successor 在比较和存储前先 canonicalize，以保持 Atlas 编号语义。
 - **[[cayley-变换与目标模空间归约|Cayley 变换与目标模空间归约]]** — cayley 执行裸 sigma_mult，再在目标增大的 mod-space 中归约；若目标 Cartan 类尚未加入表，则返回 None。
+- **[[cayley-回拉与模二-grading-求解|Cayley 回拉与模二 grading 求解]]** — 标签计算结合 Cayley 回拉翻转位、cross 根运送和带哨兵位的 ModTwoSubspace 求解恢复 fundamental 代表；根位置存在不可消余量时返回 ImpossibleGrading。
 - **[[cayley-根的长根化与强正交规范化|Cayley 根的长根化与强正交规范化]]** — 逆序重放中由 cross 字母反射已收集的 Cayley 根，再验证双向正交、将 B2 正交短根对替换为长根和差，并取正排序；强正交是访问器文档声明的输出保证。
 - **[[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]** — cayley 以 s·w 的置换查表寻找邻居，目标 Cartan 未添加时返回 None；stage e 要求预先添加该 form 的向上封闭 Cartan 集合。
 - **[[cayley-链的双层无效性与-partialblock-适配|Cayley 链的双层无效性与 PartialBlock 适配]]** — 外层 None 表示无效格子，内层 None 表示未定义链；PartialBlock 适配交换生成元与元素参数，并按下降状态将不可用的 Cayley 链编码为 Some((None, None))。
@@ -87,6 +88,7 @@
 - **[[rootset-只读位图集合|RootSet 只读位图集合]]** — RootSet 以稳定根序上的位图存储成员，公开 contains 对越界返回 false、iter 按索引升序遍历，构造与插入仅供内部使用。
 - **[[rust-ladder-成员查询的选择性溢出处理|Rust ladder 成员查询的选择性溢出处理]]** — build_ladder_bottoms 仅将 root/coroot 成员查询中的 ArithmeticOverflow 解释为 false，独立执行两类查询并传播其他错误，同时保持底层减法、排序、布局和公共 API 不变。
 - **[[rust-weyl-内核与抽象群的无环所有权模型|Rust Weyl 内核与抽象群的无环所有权模型]]** — 分离 datum 坐标内核与抽象 Weyl 群身份可表达共享语义并避免 handle 与 context 的强引用环；核心身份修复已落地，后续缓存共享设计仍需独立验证。
+- **[[specialgrading-的分区代表与位集编码|specialGrading 的分区代表与位集编码]]** — special_grading_key 全枚举 fiber 下标，在最大 popcount 候选中取最高下标，于 fiber 秩内取补后映射到 twist-fixed 简单生成元位集，生成元 0 对应最低位，枚举宽度受 MAX_MASK_BITS 限制。
 - **[[splitinteger-分裂整数系数|SplitInteger 分裂整数系数]]** — SplitInteger 用两个 i32 表示满足 s²=1 的 a+b·s，以 wrapping 算术实现分裂乘法及乘以 1−s 等操作，承载形变多项式系数。
 - **[[stablelog选举的稳定对数|stable_log：选举的稳定对数]]** — 通过非负 mod 1 归约与 adapted-basis 坐标选举，构造恰好位于 ξᵀ 的 +1 特征空间的对数；要求归约后尾部 adapted-basis 坐标为整数。
 - **[[standardrepr-标准表示参数|StandardRepr 标准表示参数]]** — 以 x、打包挠部分、无穷小特征 gamma 和派生 height 表示标准参数；相等性不比较 height，未定义参数的操作受不变量检查约束。
@@ -97,6 +99,7 @@
 - **[[titselement-的元素表示与正规形契约|TitsElement 的元素表示与正规形契约]]** — TitsElement 以 (involution, torus bits) 表示元素，依赖 InvolutionTable 的链接而不携带逐元素 Weyl 数据；new 仅检查编号和维数，不自动归约，RAW bits 的派生排序仅对 reduced 代表元具有语义。
 - **[[torus-部分的模二矩阵传输|Torus 部分的模二矩阵传输]]** — 该实现使用记录中 WeylAction 的模二矩阵传输，替代上游 push_across 与 pull_across 的 word walks；源文档未据此给出性能结论。
 - **[[transducer-转移表编码|Transducer 转移表编码]]** — 每个抛物子商对应一个 Transducer，其平铺转移表以 entry<size 表示 shift，以 entry≥size 表示 transduction，并通过 entry-size 解码输出生成元。
+- **[[twist-fixed-生成元的有序基校验|twist-fixed 生成元的有序基校验]]** — verified_generator_map 要求 twist-fixed 简单生成元数量等于伴随 fiber 维数，并逐位验证实际有序基以保障 grading 掩码的数值比较语义，拒绝下标大于等于 127 的生成元。
 - **[[twisted-cross-action-的-bfs-轨道构建|Twisted cross-action 的 BFS 轨道构建]]** — 通过 s_g·w·s_twist(g) 生成邻居，以前向根置换去重，并在遍历中保存 cross_links，使构建后的 cross 访问成为存储直查。
 - **[[twisted-involution-枚举与共轭轨道分区|Twisted involution 枚举与共轭轨道分区]]** — twisted_involutions 提供稳定的对合列表，twisted_conjugacy_partition 构建带成员查询的完整 Weyl twisted-conjugacy 分区，classes 接口是其薄封装；轨道代表不保证 Atlas-canonical，且结果不等同于 Cartan classes。
 - **[[twisted-involution-的三阶段规范化|Twisted involution 的三阶段规范化]]** — canonicalize 依次使正实根与正虚根之和 dominant、限制到与两者正交的简单生成元、确保残余 complex subsystem 的 positivity，并按执行顺序返回 twisted conjugation 生成元；受限版本全程结合 active 集合。
@@ -205,12 +208,15 @@
 - **[[对合类型的分层构造验证与错误优先级|对合类型的分层构造验证与错误优先级]]** — 私有字段和门控构造逐层强化不变量；datum、秩、单根像及一般根像检查的固定顺序决定错误优先级，矩阵运算使用 i128 检验算术并收窄至 i32。
 - **[[对角化的行列式符号簿记|对角化的行列式符号簿记]]** — row_minus 与 col_minus 的覆盖、异或及稳定列排列奇偶性决定首个对角元素的符号；源码注释对行变换行列式的保证不一致，源包以测试约束 |det(row)|=1、det(col)=1 为准。
 - **[[局部扩展类型识别与全父块构造|局部扩展类型识别与全父块构造]]** — extended_type 在父块上进行纯组合局部类型识别，ExtBlock::build 在平凡 block modifier 下结合 complete_construction 与 induced 完成全父块构造。
+- **[[局部标签到外部编号的类型组合|局部标签到外部编号的类型组合]]** — RealFormLabels 输出与 ExternalFormOrder 输入同属 fundamental 分区的 WeakRealFormId，因而可推断局部类到内部编号再到外部编号的串联在类型上可行，但两文件互不导入且没有组合代码或测试验证。
 - **[[带基数预算的-weyl-群作用枚举|带基数预算的 Weyl 群作用枚举]]** — enumerate_actions 通过 CompactWeyl 枚举并并行物化矩阵，使用显式基数预算；来源描述了字典序输出，但未提供排序测试或独立性能验证。
 - **[[平方类编号与换基不变量|平方类编号与换基不变量]]** — SquareClassId 是商群 (adjoint fiber group)/im(toAdjoint) 在 crate echelon 基下的陪集坐标整数；来源报告其目前与上游编号一致，该一致性依赖共享的 low-pivot RREF 约定，而换基只置换标签，不改变分划结构及大小。
 - **[[幺模矩阵求逆与分解自校验|幺模矩阵求逆与分解自校验]]** — invert_integer_matrix 通过欧几里得行消元求逆、要求对角主元为 ±1 并验证乘积为单位矩阵，build 收尾另校验图像基分解不变式。
 - **[[弱实形式归因的来源与整性门控|弱实形式归因的来源与整性门控]]** — 归因依次校验秩、分类来源、datum、w·δ=θ 分解及代表元身份，并在虚根 grading 提取前要求投影与每个单根的配对为整数，防止空虚基绕过校验。
 - **[[弱实形式的-cartan-集与唯一-most-split-类|弱实形式的 Cartan 集与唯一 most-split 类]]** — 弱实形式数量来自 fundamental partition，每个形式关联一个升序 Cartan 类集合及唯一的 most-split Cartan 类。
 - **[[弱实形式的伴随-cartan-纤维轨道划分|弱实形式的伴随 Cartan 纤维轨道划分]]** — WeakRealFormPartition 将 adjoint Cartan fiber 划分为 W_im 轨道，各轨道对应该 Cartan involution 处的弱实形式，并提供类查询和确定性代表元。
+- **[[弱实形式的外部编号与严格排序|弱实形式的外部编号与严格排序]]** — ExternalFormOrder 建立内部弱实形编号与外部编号的双射，按 depth 和 specialGrading 位集严格升序排列，拒绝并列并断言 quasisplit 居末；compact 为 external 0 仅为文档声明。
+- **[[弱实形式的局部到全局标签映射|弱实形式的局部到全局标签映射]]** — RealFormLabels 将逐 Cartan 的局部弱实类映射到 fundamental 分区的全局编号，并通过 datum、对合、因子化及 fiber 来源门控约束输入，以首标签为 quasisplit 类作为锚点。
 - **[[强代表下降到基本纤维|强代表下降到基本纤维]]** — minimal_torus_part 按外部编号顺序选择首个左下降生成元，通过逆 Cayley 或 based twisted 共轭将强代表下降到基本纤维，并约化环面部分。
 - **[[强实分类打印视图-strongrealclassprint|强实分类打印视图 StrongRealClassPrint]]** — StrongRealClassPrint 提供与上游 printStrongReal 对齐的类号、模分母约化为非负剩余的 square 分子序列，以及按 partition 顺序排列且可跨类重复的外部 form 编号；上游对应关系来自源码注释，未独立重读验证。
 - **[[强实分类的构造与资源边界|强实分类的构造与资源边界]]** — StrongRealClassification::build 基于已有 Cartan 分类，逐类构造 adjoint fiber、ambient fiber 及 fiber map 的像坐标，用 ModTwoSubquotient 求平方商，并在 fiber 维数超过 MAX_MASK_BITS 时报告 StrongRealResourceLimit。
@@ -269,6 +275,7 @@
 - **[[线性映射下降到子商的条件验证|线性映射下降到子商的条件验证]]** — 诱导映射必须同时将源分子映入目标分子、源分母映入目标分母；仅检查商基代表不足以保证映射良定义。
 - **[[结构性源码阅读的验证与覆盖限制|结构性源码阅读的验证与覆盖限制]]** — 来源记录源码快照和已有测试锚点，但本次未执行测试或数学验收，亦未核对上游字节；例外型部分分支、错误路径及若干实形情形仍缺少测试覆盖。
 - **[[继承正系中的子系统单根提取|继承正系中的子系统单根提取]]** — 分别从虚根与实根中选取简单坐标全非负的候选，通过候选与集合内其他成员之差的正坐标判定筛选子系统单根，输出保持 RootId 升序。
+- **[[虚根上的基-grading-扩展|虚根上的基 grading 扩展]]** — base_grading_extension 精确求解转置的 bracket 索引子 Cartan 系统，以虚单根坐标系数和的奇偶扩展 grading，并显式检查虚根性，因为坐标整性不足以判定虚根。
 - **[[虚根的-noncompact-grading|虚根的 noncompact grading]]** — simple_grading 按 offset[s] XOR ⟨alpha_s mod 2, torus bits⟩ 判断简单虚根的非紧性，须由调用方守卫根类型；任意虚根的 grading 使用 conjugate-to-simple 循环，非虚根返回 None。
 - **[[表示参数代表元归一化|表示参数代表元归一化]]** — lambda_unique、real_unique 与 gamma_lambda 规范化代表元，其中欧几里得除法 div_euclid(2) 避免负奇数截断导致代表元选择不一致及公式项无法合并。
 - **[[表示参数差的整根系正交化|表示参数差的整根系正交化]]** — make_diff_integral_orthogonal 借助整根子系统编码和 theta_1_preimage 减去差在 (1-θ)X* 中的固定原像，使结果与指定参数的整根系正交，并对零差短路。
@@ -280,7 +287,8 @@
 - **[[递归-twisted-deformation-与取消语义|递归 twisted deformation 与取消语义]]** — twisted_deformation 无记忆化地递归处理 final、delta-fixed 参数，返回 KType 分裂系数项与 net flip；rank-0 不调用 lookup，可取消变体返回 Ok(None) 且不发布部分多项式。
 - **[[部分公共块上的扩展块构造与-cofold|部分公共块上的扩展块构造与 cofold]]** — build_partial 使用 x + gamma_lambda 形式测试不动点，在子系统上折叠生成元，并在构造后处理 cofold；当前仅支持恒等生成元姿态，非恒等 bm.simple_pi 显式失败。
 - **[[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]** — 通过 Option 表达元素或链接缺失，区分 imaginary ascent 的前向 Cayley 像与 real descent 的逆像，并以奇异生成元的下降状态判定 survives。
+- **[[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]** — DepthTables 预计算正虚根及基非紧奇偶，depth 按既定根顺序贪心选取极大正交非紧根集，移除非正交候选并翻转与所选根正交但和仍为根的候选的紧性。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_280 pages | Generated 2026-10-09T17:02:29.902Z_
+_288 pages | Generated 2026-10-09T17:04:31.968Z_

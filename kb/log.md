@@ -1320,3 +1320,21 @@ Imaginary=0、[id_of([1,1])] 等）——全部忠实。批准过程中发现两
 （broken citation targets）；已改写为 pmatrix 形式并复核后批准，教训记入
 kb/AGENTS.md 第 5 条。另有四个未来批次候选存在同类模式，到批处理。7 页
 批准；wiki/concepts/ 现有 280 页，剩余候选 253。
+
+## 2026年10月10日 第三十九批候选审查：real-form-labels-order.md 的 8 页
+
+对照 112 行来源包逐页核验：RealFormLabels 五道构造门控的顺序与错误名、
+Cayley 回拉翻转位（root+alpha 为根的个数为奇则翻转）、根列表 cross 运送
+须全为 distinguished 虚根、base_grading_extension 的转置 bracket 子 Cartan
+精确求解与"整性不是虚根判据"的显式门控、增广 ModTwoSubspace（根位置+哨兵
+位）与余量置位→ImpossibleGrading、quasisplit 首标签锚点（空分区必然触发）；
+ExternalFormOrder 的 depth 升序+specialGrading 位集平局、Rust 断言严格序
+而上游是不稳定 std::sort、"compact 深度 0 为 external 0"仅文档声明显式
+区分、DepthTables 的 M=C^T 有理逆列和与整性闸门、贪心极大正交集的短根对
+紧性翻转、候选如实标注"极大≠最大基数无证明"、depth 内无效果空转循环的
+死代码观察、special_grading_key 的 >= 替换取最大 popcount 最高下标与
+取补 unslice、verified_generator_map 逐位校验实际有序基（非抽象双射）、
+MAX_KEY_GENERATORS=127 与 MAX_MASK_BITS 职责分离、两文件互不导入与
+"局部→内部→外部编号"串联为未验证推断的诚实声明、E6 [1,3] 期望来自
+置换而非 Rust 输出——全部忠实。8 页批准；wiki/concepts/ 现有 288 页，
+剩余候选 245。

@@ -1,0 +1,52 @@
+---
+title: specialGrading 的分区代表与位集编码
+summary: special_grading_key 全枚举 fiber 下标，在最大 popcount 候选中取最高下标，于 fiber 秩内取补后映射到 twist-fixed 简单生成元位集，生成元 0 对应最低位，枚举宽度受 MAX_MASK_BITS 限制。
+sources:
+  - real-form-labels-order.md
+kind: concept
+createdAt: "2026-10-09T15:05:15.013Z"
+updatedAt: "2026-10-09T15:05:15.013Z"
+tags:
+  - grading
+  - 位集编码
+  - 分区代表
+aliases:
+  - specialgrading-的分区代表与位集编码
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+---
+
+# specialGrading 的分区代表与位集编码
+
+`special_grading_key` 实现 `specialGrading` 的 PARTITION 重载：从分区类中选取代表，将其转换为 twist-fixed 简单生成元上的无符号位集，作为弱实形式外部编号中同 depth 情况下的排序键。生成元 0 对应最低位，因此生成元编号直接影响位集的数值比较。^[real-form-labels-order.md:51-57, real-form-labels-order.md:72-75]
+
+## 分区代表的选择
+
+实现以类代表为种子，按升序扫描 fiber 下标 `0..2^dimension`，在该类中选择 popcount 最大的代表。更新条件使用 `>=`，因此遇到相同 popcount 时会保留后扫描到的候选，最终取得最大 popcount 候选中 fiber 下标最高者。^[real-form-labels-order.md:72-75]
+
+选定代表后，算法在 fiber 秩限定的位宽内取补，再将补集 unslice 到 twist-fixed 简单生成元上。最终位集使用生成元编号作为位位置；`special_grading(external)` 返回相应实形式的排序位集，其文档和字段注释将位 g 为 1 解释为生成元 g 对应 noncompact imaginary。^[real-form-labels-order.md:72-80]
+
+## 有序基与编码约束
+
+位集编码依赖具体的有序基。`verified_generator_map` 要求按升序排列的 twist-fixed 简单生成元数量等于伴随 fiber 维数，并逐位校验实际有序基；仅有抽象双射并不足够，因为 `special_grading_key` 按该数值顺序比较掩码。相关约束见 [[twist-fixed 生成元的有序基校验]]。^[real-form-labels-order.md:68-70]
+
+生成元下标达到或超过 127（`MAX_KEY_GENERATORS`）时会被拒绝。fiber 位宽另受 `MAX_MASK_BITS` 限制；代表选择中的全枚举是实现事实，其安全性依赖这一限制，而该常量的数值未在本来源包中给出。^[real-form-labels-order.md:68-75, real-form-labels-order.md:101-102]
+
+## 在外部编号中的作用
+
+[[弱实形式的外部编号与严格排序]]首先按 depth 升序排列，depth 相同时再比较上述 `specialGrading` 位集。Rust 移植要求 `(depth, grading)` 构成严格序：若两项排序键完全相同，就报告 `"strict (depth, grading) order"` 不变量违例；同时要求 quasisplit 位于末尾。^[real-form-labels-order.md:51-58]
+
+## 测试与证据边界
+
+Spin(8) 测试覆盖同 depth 情况下通过 grading 键获得严格排序，并检查 compact 在首、split 在末。E6 twisted 测试覆盖生成元坐标映射，期望映射为 `[1, 3]`，其期望值来自给定置换而非 Rust 输出。^[real-form-labels-order.md:82-86]
+
+这些材料属于源码结构性阅读，不构成数学正确性验收。外部编号层几乎全部失败路径尚无测试锚点；E6 覆盖仅限生成元映射，标签层与外部编号层也没有组合测试。本次知识维护未执行 Atlas、Cargo、测试或 benchmark。^[real-form-labels-order.md:10-13, real-form-labels-order.md:98-104, real-form-labels-order.md:108-112]
+
+## Sources
+
+- [弱实形式标签与外部编号（real_form_labels.rs / real_form_order.rs）](real-form-labels-order.md)

@@ -509,6 +509,20 @@
         "格对合latticeinvolution"
       ],
       "compiledAt": "2026-10-09T17:02:29.360Z"
+    },
+    "real-form-labels-order.md": {
+      "hash": "1941572ec78b4058b4475f8b18beb2e7db1ca04960779cf6140d72d0d0270013",
+      "concepts": [
+        "cayley-回拉与模二-grading-求解",
+        "specialgrading-的分区代表与位集编码",
+        "twist-fixed-生成元的有序基校验",
+        "局部标签到外部编号的类型组合",
+        "弱实形式的外部编号与严格排序",
+        "弱实形式的局部到全局标签映射",
+        "虚根上的基-grading-扩展",
+        "非紧虚根正交集的深度计算"
+      ],
+      "compiledAt": "2026-10-09T17:04:31.370Z"
     }
   }
 }
