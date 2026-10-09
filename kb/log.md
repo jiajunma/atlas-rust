@@ -1371,3 +1371,22 @@ base 标记 compact 位、低位余量置位→ImpossibleGrading、marker 位 xo
 汇总）、唯一性=faithful 不变量但不保证可实现、9 个测试锚点（含 A2 根序
 index 0=α₂、A1×A1 imaginary_rank==0、33 个 A1 因子突破打包位宽）与未
 覆盖清单——全部忠实。6 页批准；wiki/concepts/ 现有 300 页，剩余候选 233。
+
+## 2026年10月10日 第四十二批候选审查：dynkin.md 的 6 页
+
+对照 115 行来源包逐页核验：classify 输入契约（方形/对角 2/非对角
+-3..=0/零模式对称但不校验数值配对）、first-fresh-vertex 顺序与
+first-match 合并的分量构造（分量按最小顶点升序）、秩二特判
+（乘积 2 时 cartan[i][j]==-1 判 C 否则判 B 且保序——历史 B2/C2 编号
+教训落点；乘积 3 判 G 且 cartan[i][j]!=-1 时交换使短根在前）、高秩度数
+分析（度≥4 报错、端点<2 报环、label 3 报 oversized G、第二多重边报错、
+多重边与 fork 并存报错、lower/upper∈端点分判 B/C、否则 F、无多重边时
+|star[fork]∩端点|==1 判 E 否则 D）、各型起点选择（A 最小端点、B/C 移除
+lower/upper、D4 任取/高秩 D 取长臂末端、E 的短臂唯一交点与长臂超两步交换、
+F 移除 lower 邻居）与逐步最小未访问邻居遍历、D 型中断只补 fork 短臂、
+bourbaki_permutation 的 result[i]=占据 Bourbaki 位置 i 的原顶点方向、
+folded_cartan 的 cofold 公式（注释声称边重数相同未验证如实保留）、长度 2
+轨道取第一成员余根/长度 3 取两者和、C(i,j) 的下标方向（i 选余根轨道、j
+选根轨道）、IndexOutOfRange{index:a.max(b)}、不校验轨道完整性/输出合法性、
+6 个全成功路径测试与 E7/E8/高秩 D/错误路径无锚点——全部忠实。6 页批准；
+wiki/concepts/ 现有 306 页，剩余候选 227。
