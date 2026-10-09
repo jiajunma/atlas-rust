@@ -52,6 +52,12 @@ refresh's fixed behavior is known from the diff.
   theme as the project's named-update UB lesson.  `main.w`, `error.cpp/h`:
   macOS/readline portability.  New script `cell_graph.at` (75 lines);
   `Levi_subgroups.at` (41+/1-) adds `from_no_Cplus`/`minus` friend versions.
+- Negative record: `axis.w` is NOT in the delta, so the documented
+  field-assignment out-of-bounds UB (checked-build abort at
+  `field_assignment::assign`, index 315 into a two-field tuple; see the
+  named-update slice in AGENTS.md) persists at `5ae51193`.  The pin's
+  labeled original defects stay labeled; none is silently fixed by this
+  delta except the rat/int zero-division guards above.
 
 ## Refresh discipline (unchanged)
 
