@@ -1,0 +1,36 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "2e96bbb6",
+ "working_tree": true,
+ "scope": "Weyl owner/dual repair landed and HPC-accepted: AFTER-v5 job3900050 FINAL COMPLETED 0:0 (bounded A1 scope, all release flags FALSE), validated tree committed as production 690c2b92. Snapshot binds the landed Rust bytes (unchanged since; crates/ clean at git_base). Also binds the pinned-upstream source reading behind docs/slices/weyl_g2_preregistration_2026_10_09.md (atlas-types.w, rootdata.cpp/h, prerootdata.h/cpp at upstream commit 7e1b958c7aa9456769cc9cf09ac1542814b4800a; fetched copies were removed after reading and are identified by the commit pin plus file:line citations, not by local hashes).",
+ "source_prediction_snapshot": "2026-10-01-weyl-context-source-prediction.json",
+ "regression_snapshot": "2026-10-02-weyl-core-regressions.json",
+ "after_freeze_snapshot": "2026-10-03-weyl-core-after-gate-freeze.json",
+ "commits": [
+  "690c2b92",
+  "64f7af22",
+  "2e96bbb6"
+ ],
+ "files": [
+  {
+   "path": "crates/atlas-core/src/domain_builtins.rs",
+   "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+   "committed": "690c2b92",
+   "note": "DatumWeylIdentity (lazy kernel + abstract group cells), process-level weak registry keyed by (BasedRootDatum, prefers_coroots), RootDatumHandle::interned, dual_root_datum (transpose + swap + flip, no renumbering), share_group_into_if_cold. Matches the frozen REPAIRED_SOURCE_HASHES prefix e6987e7c recorded in the after-gate evidence."
+  },
+  {
+   "path": "crates/atlas-core/src/session.rs",
+   "sha256": "969cdb27ccae61ca4fe3e36219801037d475517bee3614fead553024818307e7",
+   "committed": "690c2b92",
+   "note": "Migrated call sites plus the two original-backed Weyl regression tests; sha matches the frozen v8-era record 969cdb27 (the tests landed unchanged with the repair)."
+  }
+ ],
+ "acceptance": {
+  "job": "3900050",
+  "report_sha256_prefix": "3288480d",
+  "evidence": "tests/reference/hpc/math_weyl_context_core_after_v5_acceptance_2026_10_06.json",
+  "scope": "bounded A1 Weyl owner/dual semantics only; acceptance_eligible and all math/cache/performance/rank release flags FALSE"
+ },
+ "next_gate": "weyl-context-g2-v1 capture (prepared, blocked on the SSH tunnel; see docs/HANDOFF.md)"
+}

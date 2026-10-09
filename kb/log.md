@@ -821,3 +821,12 @@ KB 自洽审计（只读）：发现 `atlas-core-center-classifier.md` 缺索引
 快照已在，索引漏记），已补上；另有一个 2026-10-01 的候选快照无索引链接——
 那是被 -v2 取代的**保留历史**快照（按纪律保留，不需索引链接）。审计结果：
 73 包全部链接、85 快照全部存在、frontmatter 全部合规。
+
+更新 `sources/weyl-context-identity-and-sharing.md` 至修复落地状态：AFTER-v4
+过度断言失败与 AFTER-v5 job3900050 验收（A1 限定、flags 全 FALSE）、生产提交
+`690c2b92` 的整树落地规则、上游 pin `7e1b958c` 行级确认（dualise 不重新编号、
+转置 canonical dual 对 G2 不可直接构造、RootDatum `=` 为 interned 指针相等、
+Weyl guard 先于 no-value gate、乘积保留左 owner、W_elt 强持有 datum、
+inner_class_value::build eager dual）、G2 预期与预热空转分析、arc 现状。
+新快照 `2026-10-09-weyl-owner-dual-landed.json` 绑定落地字节（与 after-gate
+冻结哈希前缀一致）；历史小节以追记/标记保留。索引条目同步；维护者直接撰写。

@@ -17,16 +17,20 @@ entry 的 limitations 为准。历史 candidate snapshots 保留不改写。
 
 [Weyl 对象身份、dual 历史与安全共享边界](weyl-context-identity-and-sharing.md)
 记录 original 的 weak root-datum interning、datum-local lazy WeylGroup、
-history-dependent `dual()` identity，以及当前 Rust 每次重建 context 和结构关系
-路径的差异。对应
+history-dependent `dual()` identity，以及 Rust 侧的对应落地实现（内容+偏好
+弱驻留、cold-share、左侧坐标重放）。对应
 [源码推断快照](snapshots/2026-10-01-weyl-context-source-prediction.json)
-绑定当前 Rust 字节、两个 core-only A1 fixture、已接受的 rank-one profile 和冻结
+绑定修复前 Rust 字节、两个 core-only A1 fixture、已接受的 rank-one profile 和冻结
 original 源码。旧预测快照保持原样；后继
 [原版回归快照](snapshots/2026-10-02-weyl-core-regressions.json)记录 v8 已证实的
 两处 A1 差异和新原版 goldens；[AFTER-v1 gate 冻结快照](snapshots/2026-10-03-weyl-core-after-gate-freeze.json)
-绑定已提交的 after 三件套、修复补丁与离线核验的 repaired manifest。AFTER-v1
-尚未提交 HPC（SecureLink 隧道中断），语义修复与 cache A/B 均未验收。生成页仍待
-compiler 授权及 hold-all 审查，不能把来源包更新视作已批准的生成内容。
+绑定已提交的 after 三件套、修复补丁与离线核验的 repaired manifest；
+[落地快照](snapshots/2026-10-09-weyl-owner-dual-landed.json)绑定 AFTER-v5
+验收（job3900050，A1 限定）与生产提交 `690c2b92` 的字节，以及 pin `7e1b958c`
+的上游行级确认（转置 canonical dual 不可由 SC/adjoint 直接构造、指针相等、
+guard 先于 no-value gate、左 owner 乘积、W_elt 强持有、inner-class eager dual）。
+语义修复已在 A1 限定范围验收；cache A/B 未验收，G2 capture 备好待隧道恢复。
+生成页仍待 compiler 授权及 hold-all 审查，不能把来源包更新视作已批准的生成内容。
 
 [KGB 图的结构与构造](kgb-graph-structure.md)记录 `kgb_graph.rs` 的数据布局、
 build 门控、分窗两相 BFS（Rayon 纯计算 + 顺序 intern）、上游一致的排序键与

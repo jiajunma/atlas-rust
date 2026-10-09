@@ -6,14 +6,16 @@ ingestedAt: 2026-10-05T18:00:04Z
 
 # Weyl 对象身份、dual 历史与安全共享边界
 
-编辑状态：**AFTER-v1/v2 均为 harness 失败（均不涉及数学）；v3 迁移已提交推送
-（93abd29b），HPC 提交因 SecureLink 隧道再次中断而暂缓**。
+编辑状态：**修复已落地并验收：AFTER-v5 job3900050 FINAL COMPLETED 0:0
+（A1 限定范围，全部 release flag 保持 FALSE），验证树以生产提交 `690c2b92`
+落地；下一 gate 是 G2 非对称 interface-order 见证（g2-v1 已备好并彩排，
+因隧道中断暂缓提交，重试由 cron 驱动）**。
 本来源包
 解释性能线索为何同时触及可观察语义；它不是缓存实现、数学验收或加速结论。
 旧 discovery catalog 的 `source_predicted_not_captured` 是不可改写的历史输入；
-当前事实来自独立审查的 v8 capture、BEFORE-v4 job3886748 与新建的 regression
-catalog，不把预测数组改称 golden。编译器生成页仍未刷新，外部 provider 重试的
-既有授权阻碍未解除。
+当前事实来自独立审查的 v8 capture、BEFORE-v4 job3886748、AFTER-v5 job3900050
+与新建的 regression catalog，不把预测数组改称 golden。编译器生成页仍未刷新，
+外部 provider 重试的既有授权阻碍未解除。
 
 ## 2026-10-06 AFTER v1/v2 harness 失败与 v3 迁移
 
@@ -51,6 +53,54 @@ catalog，不把预测数组改称 golden。编译器生成页仍未刷新，外
 经验教训（亦见根 AGENTS.md 2026-10-06 条目）：stage 版本递进时 sbatch 标签
 同样是受版本约束的内容；凡引用裸 `PREDECESSOR` 的历史 validator 都必须在启动前
 审计并做本地重绑定。
+
+## 2026-10-09 AFTER-v5 验收、生产落地与上游逐行确认
+
+- AFTER-v4 job3899885 FINAL FAILED（harness 过度断言，非数学）：v4 分类器要求
+  预热的 stderr 逐字节相等，而两侧 error envelope 排版不同；v5 在 contract 层改为
+  有序 error summary 比较（`_error_summaries`/`_stderr_equal` 形状），
+  其余输入逐字节不变。
+- AFTER-v5 job3900050 FINAL `COMPLETED 0:0`（cu006）：13 条命令全部 exit0
+  （127 checker、release build、632 项 inventory、两个回归、ladder 对照）；
+  源码 manifest 恰为 `84a3fbfd…`（1,567 文件），证明构建与测试跑在完成
+  kernel-system 迁移后的树上；cold_dual 完全字节相等，prewarmed_dual 在
+  stdout/退出码/有序 error summary 下一致。report SHA `3288480d…`；验收证据
+  `math_weyl_context_core_after_v5_acceptance_2026_10_06.json`。**接受范围仍是
+  A1 限定语义**：不授予 cache/performance/memory/rank 或更广数学 release。
+- 生产落地规则（commit `690c2b92`，41 文件）：整树对照 v5 源码 manifest
+  逐字节核验（0 缺失、0 不符、0 多余），因此全部 `crates/**` 变更作为一个
+  构建一致单元提交，而不是挑修复涉及的 5 个文件；docs/meta 留给 owner 的
+  未提交工作区。教训：当 gate 验证整树 manifest 时，忠实的生产落地就是
+  逐字节比对后的整树，而不是未单独验证过的子集。
+- 上游逐行确认（pin `7e1b958c`，详见
+  `docs/slices/weyl_g2_preregistration_2026_10_09.md`）把本包前文对 original
+  生命周期的描述钉到行级：`PreRootDatum::dualise` 只交换 roots/coroots 并翻转
+  preference（prerootdata.h:101）；新 RootDatum 从**转置** Cartan 重新编号
+  （rootdata.cpp:820），而 DualTag 元数据 dual 保持原序（rootdata.cpp:867-873
+  注释，仅 Fokko 用）；RootDatum `=` 是 interned **指针**相等
+  （atlas-types.w:1370-1374）；W_elt 关系/乘法的 `&W0!=&W1` guard 在
+  no-value gate **之前**抛出（atlas-types.w:2576-2613），乘积保留**左**操作数
+  owner；`W_elt_value` 强持有 `shared_root_datum`（2459-2471），元素存活期间
+  datum 不会失效；`inner_class_value::build` 立即调用 `srd->dual()` 并强持有
+  primal 与 dual（3306/3234）。
+- 由此导出的 G2 预期（capture 前的登记，不是结论）：G2 的 canonical dual 带有
+  转置 coroot 矩阵，任何 `adjoint(G2,·)` 都构造不出来，故 `WG_DUAL_OWNER`/
+  `WG_REVERSE_OWNER` 在两个引擎都应打印 **false**（冻结 contract 的 `true`
+  预测失准，capture 会记录为预测失准而非引擎分歧）；预热 fixture 的 dual 侧
+  三元组按构造是空转的（`adjoint(G2,false)` 不是 canonical dual，无法占用
+  cold-share 槽位），预期两个引擎都不抛错。真正的 G2 预热拒绝见证需要后续
+  fixture 用显式 `root_datum(id_mat(2), mat:[[2,-3],[-1,2]], false)` 预热转置
+  内容。B2/C2 不受影响且更锐利：C2 的固定 Cartan 正是 B2 的转置，故
+  `dual(SC(B2,true))` 与 `adjoint(C2,false)` 内容一致。
+- G2 arc 现状：g2-v1 payload 65 文件冻结并彩排通过（overrides manifest
+  `bcc09dbc…`，源码链 1,569 文件 `dff0e90d…`），因隧道中断暂缓提交；六个后续
+  见证 fixture（B2/C2 一对、reverse operands 一对、inner-class-dual、no-value、
+  sole-WeylElt lifetime）已起草为 provisional、未接线，结构经 Kimi probe
+  复核；群论预测经独立整数 Coxeter 计算交叉核对。逐 gate 递进顺序不变。
+- 新快照
+  [`2026-10-09-weyl-owner-dual-landed.json`](snapshots/2026-10-09-weyl-owner-dual-landed.json)
+  绑定落地字节（domain_builtins.rs `e6987e7c…`、session.rs `969cdb27…`，
+  与 after-gate 冻结记录一致）与上游行级阅读。
 
 ## 2026-10-03 AFTER-v1 gate 冻结（后被提交并失败，见 2026-10-06 节）
 
@@ -137,6 +187,10 @@ Atlas 语言的 RootDatum `=`/`!=` 比较的也是这个 canonical `shared_ptr` 
 
 ## 当前 Rust 的差异
 
+（2026-10-09 注：本节描述修复前的 Rust 行为，两条差异均已由落地的修复消除；
+保留原文作历史对照，当前生产行为见开头 2026-10-09 节与"候选 Rust 所有权模型"
+节中已实现的部分。）
+
 当前 `RootDatumHandle` 只有 `Arc<BasedRootDatum>` 加构造 provenance，并以
 结构方式实现 `Eq`/`PartialEq`。每次 `build_weyl_context` 都重新枚举
 `RootSystem`、重新构造 `WeylInterface`，随后把完整 handle、system 和 interface
@@ -200,7 +254,10 @@ canonical target 仍 cold 时把 source 的 group 装入 target，prewarmed targ
 no-value 级别同样执行），再在左侧坐标系重放右侧 external word。八个 handle
 构造点全部经过私有 `interned` 构造器；结构性 RootDatum `Eq`/`Debug` 不变。
 补丁 `hpc/patches/weyl_context_core_repair.patch` 仅验证过能从已接受基线
-重建工作区字节，未经 HPC AFTER gate，不授予任何验收。
+重建工作区字节，未经 HPC AFTER gate，不授予任何验收。（2026-10-09 追记：
+该候选已经 AFTER-v5 验收并以 `690c2b92` 落地为生产行为，见开头
+2026-10-09 节；下文"当前 Rust 的差异"一节描述的是修复前状态，保留作
+历史对照。）
 
 original capture 已证实 A1 的上述可观察差异。以下仍是后续共享设计提案，
 不是本轮已实现方案；先做语义修复，再分别验证缓存与性能。设计方向是两个
@@ -265,6 +322,12 @@ operand order、inner-class dual construction 和 `no_value` relations。只有�
 顺序、fresh-process 的 time/CPU/RSS A/B。`59 -> 至多 5` 只是 caller-level
 work-count 假设，不是已测加速。
 
+（2026-10-09 状态：A1 AFTER 已验收落地；G2 capture pair 已就地迁移为
+`weyl-context-g2-v1` 并彩排冻结，等隧道恢复后提交；上述全部后续见证——含
+本节原列四项之外的 sole-WeylElt lifetime——已起草为 provisional fixture，
+逐个 gate 接线；逐 pin 的上游源码预期登记在
+`docs/slices/weyl_g2_preregistration_2026_10_09.md`。）
+
 内存方向也不能预报成单调节省。多个 WeylElt 同时存活时共享 RootSystem 应减少
 重复对象；`elliptic.at` 的值却是短命的，owner 强持有一个 kernel 可能令 peak
 RSS 不变甚至略升。后续报告必须同时给出 live owner/kernel/build 数、分配和
@@ -273,6 +336,7 @@ peak RSS，不能只引用 `Arc`/`Weak` 设计。
 ## 来源与限制
 
 精确读取身份见
+[`2026-10-09-weyl-owner-dual-landed.json`](snapshots/2026-10-09-weyl-owner-dual-landed.json)；
 历史源码推断见
 [`2026-10-01-weyl-context-source-prediction.json`](snapshots/2026-10-01-weyl-context-source-prediction.json)；
 增量证据见
