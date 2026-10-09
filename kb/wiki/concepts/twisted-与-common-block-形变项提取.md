@@ -1,0 +1,60 @@
+---
+title: twisted 与 common-block 形变项提取
+summary: twisted_deformation_terms 为 final、delta-fixed 父块元素提取整数系数形变项，wrapper 将 c 转为 Split(c,−c)；common_deformation_terms 则沿 contributions 路径处理 lookup 返回的 partial block。
+sources:
+  - deformation-drivers.md
+kind: concept
+createdAt: "2026-10-09T14:44:58.512Z"
+updatedAt: "2026-10-09T14:44:58.512Z"
+tags:
+  - 形变项
+  - 公共块
+  - 系数转换
+aliases:
+  - twisted-与-common-block-形变项提取
+  - T与C形
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+---
+
+# twisted 与 common-block 形变项提取
+
+形变项提取分别由 `twisted_deformation_terms` 与 `common_deformation_terms` 承担：前者针对 final、delta-fixed 父块元素提取 twisted 形变项，后者针对 `RepTable::lookup` 返回的 partial block 提取 common-block 形变项。两者对应不同的父块与奇异集处理路径。^[deformation-drivers.md:105-114]
+
+## Twisted 形变项
+
+`twisted_deformation_terms` 移植自 `Rep_table::twisted_deformation_terms`，所述入口采用平凡的 [[BlockModifier 块修正子|block modifier]]。输入元素 `y` 必须是 final、delta-fixed，且使用 **PARENT 块编号**；返回值为 `(StandardRepr, int)` 对，顺序为 finals 反向累积顺序（reverse-accumulated finals）。^[deformation-drivers.md:107-111]
+
+包装层把每个整数系数 `c` 转换为 `Split(c, -c)`，再按 `SR_poly` 顺序排序。因此，提取函数的返回顺序与包装层多项式的排序应分别理解。[[SplitInteger 分裂整数系数|SplitInteger]] 中 `Split(c, -c)` 表示 \(c(1-s)\)，与形变记号
+\[
+D(z)=\sum c\bigl(L(t)+2D(t)\bigr),\qquad
+F(z)=L(z)+(1-s)D(z)
+\]
+中的系数因子相对应。^[deformation-drivers.md:16-16, deformation-drivers.md:52-59, deformation-drivers.md:107-111]
+
+## Common-block 形变项
+
+`common_deformation_terms` 对 `RepTable::lookup` 返回的 [[公共块的构造与元素编号（PartialBlock）|PartialBlock]] 求形变项，对应上游 `repr.cpp:1933-2025`，沿用 `contributions(block, block.singular(bm,gamma), y)` 路径。该路径显式通过 `bm` 与 `gamma` 确定奇异集。^[deformation-drivers.md:112-114]
+
+在真积分子系统上，父块为 `PartialBlock`。每行参数重构使用该行存储的 `gamma_lambda`，并结合 lookup 返回的 block modifier，经 `RepContext::sr_with_modifier` 完成；这一方式对应上游 `common_block::sr`。完整块路径则由调用方一次性提供共同的 `lambda_rho`，调用方须保证所有形变项共享该值，因为完整块中逐元素的 `lambda_rho` 实际可能不同。^[deformation-drivers.md:29-37]
+
+## 父块、奇异集与边界情形
+
+[[形变计算的父块抽象|KlSumParent]] 区分 `Full` 与 `Partial` 两种借用视图：前者持有 `BlockGraph` 和调用方提供的常量 `lambda_rho`，后者持有 `PartialBlock` 与可选的 `BlockModifier`，按行重构自己的 `lambda_rho`。递归 twisted deformation 使用拥有数据的 `DeformParent`，并通过 `as_kl_sum_parent` 提供借用；在形变项提取借用块视图期间，所选父块必须保持存活。^[deformation-drivers.md:85-93]
+
+平凡 block modifier 下，`simple_singular_flags` 对应 `common_block::singular(gamma)`；`singular_orbits_at` 给出 extended block 在 `gamma` 处的 singular-orbit flags。Partial parent 同样折叠其子系统生成元的 singular set。上游依赖 modifier 的奇异轨道计算与 plain simple-coroot singular set 的一致性，在这里以 `bm` 平凡为条件。^[deformation-drivers.md:40-43, deformation-drivers.md:77-81]
+
+`IntegralBlockScope` 通过 coroot 与 `gamma` 是否整配对区分积分子系统。无根整配对时，common block 是长度为零的单例 `{p}`，形变项为空；递归 twisted deformation 对该情形也不调用 `lookup`。对真积分子系统，来源中的完整块移植入口要求显式失败，不能默默在完整块上计算；该限制应与单独提供的 partial-block 路径区分。^[deformation-drivers.md:63-75, deformation-drivers.md:130-132]
+
+## 证据范围
+
+本说明依据 `deform.rs` 的结构性阅读，所记录字节来自 dirty 工作区快照。上游文件行号转述自源码注释，未独立重读上游；来源包未执行构建、测试或原版运行，因此不构成数学验收、性能或并行结论。形变计算的正确性仍属于独立的 [[HPC 验收证据链]]。^[deformation-drivers.md:9-16, deformation-drivers.md:138-146]
+
+## Sources
+
+- [deformation-drivers.md](deformation-drivers.md) — 形变驱动：twisted 与 block 形变。

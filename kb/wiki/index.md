@@ -39,6 +39,7 @@
 - **[[repcontext-借用上下文与一致性约束|RepContext 借用上下文与一致性约束]]** — 借用 inner class、involution 表与 KGB 图，共享根 datum 派生常量，并通过一致性检查确保上下文使用同一底层结构。
 - **[[rootdatum-弱驻留与规范活对象身份|RootDatum 弱驻留与规范活对象身份]]** — original Atlas 按完整 PreRootDatum 内容及 preference 弱驻留 RootDatum，以存活对象的指针身份实现相等性；重型对象可释放，但轻量索引键仍保留。
 - **[[rust-weyl-内核与抽象群的无环所有权模型|Rust Weyl 内核与抽象群的无环所有权模型]]** — 分离 datum 坐标内核与抽象 Weyl 群身份可表达共享语义并避免 handle 与 context 的强引用环；核心身份修复已落地，后续缓存共享设计仍需独立验证。
+- **[[splitinteger-分裂整数系数|SplitInteger 分裂整数系数]]** — SplitInteger 用两个 i32 表示满足 s²=1 的 a+b·s，以 wrapping 算术实现分裂乘法及乘以 1−s 等操作，承载形变多项式系数。
 - **[[stablelog选举的稳定对数|stable_log：选举的稳定对数]]** — 通过非负 mod 1 归约与 adapted-basis 坐标选举，构造恰好位于 ξᵀ 的 +1 特征空间的对数；要求归约后尾部 adapted-basis 坐标为整数。
 - **[[standardrepr-标准表示参数|StandardRepr 标准表示参数]]** — 以 x、打包挠部分、无穷小特征 gamma 和派生 height 表示标准参数；相等性不比较 height，未定义参数的操作受不变量检查约束。
 - **[[tau-packet-与-kgb-元素编号标准化|tau packet 与 KGB 元素编号标准化]]** — 实现按 involution 长度、Weyl 长度和 WeylElt::pieces 字典序排列 involution，再以稳定计数排序组织 tau packet 并保留包内 BFS 顺序；源码声明此编号复现上游，但本包未独立验证。
@@ -51,7 +52,9 @@
 - **[[twisted-involution-的规范约化表达式|Twisted involution 的规范约化表达式]]** — canonical_involution_expr 按外部生成元编号选择字典序最小的约化 twisted-involution expression，以 s 编码 cross、!s 编码 twisted conjugation，其终止性依赖输入确为当前 inner class 的 twisted involution 的 Weyl part。
 - **[[twisted-involution-表与-cartan-轨道存储|Twisted involution 表与 Cartan 轨道存储]]** — KGB stage b 按 Cartan 添加顺序连续存储 twisted involution 轨道，轨道内采用 external-order BFS，并为记录分配全局连续的 InvolutionId。
 - **[[twisted-involution-记录的数学不变量|Twisted involution 记录的数学不变量]]** — 记录构建检查种子长度 (W_length+#Cayley)/2 的奇偶性、BFS 长度步进、(2ρ+θ·2ρ)/2 的整性，以及传送投影与当前 θ 的相容性。
+- **[[twisted-kl-和的长度函数选择|twisted KL 和的长度函数选择]]** — twisted_kl_sum 与 twisted_kl_column_at_s 均计算 q=s 处的交错 twisted KL 和，但符号分别由 extended block 和 parent block 的长度函数决定。
 - **[[twisted-weyl-群的对合对偶映射|Twisted Weyl 群的对合对偶映射]]** — dual_involution 在对合矩阵上对应负转置，实现从对偶最长元出发，按原约化字自右向左右乘对偶扭曲生成元，并要求共享外部生成元编号。
+- **[[twisted-与-common-block-形变项提取|twisted 与 common-block 形变项提取]]** — twisted_deformation_terms 为 final、delta-fixed 父块元素提取整数系数形变项，wrapper 将 c 转为 Split(c,−c)；common_deformation_terms 则沿 contributions 路径处理 lookup 返回的 partial block。
 - **[[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]** — TwistedConjugacyClass 保存确定性轨道代表元和对合计数，分类阶段将代表元重建为 Atlas-canonical 形式；CartanClass 拥有该值并承载分解、fiber、实形式标签与实 Cartan 分量数据。
 - **[[weakrealformid-的确定性编号与上游对齐|WeakRealFormId 的确定性编号与上游对齐]]** — 按轨道最小 canonical-coordinate 掩码升序编号，identity 轨道为 class 0；来源记载内部编号已完成上游对齐，外部 FormNumberMap 顺序仍需 adapter 置换。
 - **[[weyl-上下文共享的性能与内存证据边界|Weyl 上下文共享的性能与内存证据边界]]** — 重复上下文构造和采样热点支持优化调查，但构建次数假设与探针计时不证明加速；共享可能延长内核存活，需独立测量构建数、分配及 time/CPU/RSS。
@@ -100,7 +103,9 @@
 - **[[弱实形式的-cartan-集与唯一-most-split-类|弱实形式的 Cartan 集与唯一 most-split 类]]** — 弱实形式数量来自 fundamental partition，每个形式关联一个升序 Cartan 类集合及唯一的 most-split Cartan 类。
 - **[[弱实形式的伴随-cartan-纤维轨道划分|弱实形式的伴随 Cartan 纤维轨道划分]]** — WeakRealFormPartition 将 adjoint Cartan fiber 划分为 W_im 轨道，各轨道对应该 Cartan involution 处的弱实形式，并提供类查询和确定性代表元。
 - **[[强对合数据的弱实形式归属|强对合数据的弱实形式归属]]** — real_form_of 将 twisted 与 theta-fixed rational coweight factor 归属到弱实形式，通过 complex simple roots 的 cross 行走定位 Cartan 代表元，再以 simple-imaginary root 配对为偶数整数判定 noncompact grading；详细接口同时返回 Cartan 类。
+- **[[形变计算的父块抽象|形变计算的父块抽象]]** — KlSumParent 提供 Full 或 Partial 父块的借用视图，DeformParent 持有所需块数据；Partial 按行重构参数，递归驱动保证父块在借用期间存活。
 - **[[形变项计算的边界情形与输出顺序|形变项计算的边界情形与输出顺序]]** — deformation_terms 在 block.length(y)=0 时返回空；奇异集为空时所有元素均为 final，反向累积列表为 [y,y−1,…,0]。
+- **[[形变驱动的冻结移植契约|形变驱动的冻结移植契约]]** — Rust 形变驱动按冻结的 domain/deform 契约移植上游入口，约束共享 lambda_rho、block modifier、alcove 收缩与去除记忆化等行为；源码结构阅读不构成数学验收。
 - **[[承载可观测量的适配基adaptedbasis|承载可观测量的适配基（adapted_basis）]]** — adapted_basis 同步跟踪左变换的逆并保留上游主元与重排策略，因为选定的基固定 stable_log 代表元及下游 g_rho_check、torus_factor 有理量。
 - **[[挠部分打包与-involution-图像基|挠部分打包与 involution 图像基]]** — y_pack 使用 M_real 坐标模 2 打包挠部分，y_lift 恢复 (1−theta)lambda_rho；精确图像基保存在 involution 表中并沿 cross-action BFS 传送。
 - **[[整数列阶梯归约与带符号-gcd-扫描|整数列阶梯归约与带符号 gcd 扫描]]** — build 自底向上扫描并跟踪列操作；gcd_sweep 选最小绝对值主元、记录负主元取正的符号操作，并使用 div_euclid 保持典范像基定向。
@@ -112,6 +117,7 @@
 - **[[根对合诱导的伴随余权作用|根对合诱导的伴随余权作用]]** — 根像的单根坐标构成根作用矩阵；由于根作用已验证为对合，其对偶作用的逆转置等于转置，因而伴随余权作用由转置矩阵给出。
 - **[[根数据的-radical-与-coradical-饱和核基|根数据的 radical 与 coradical 饱和核基]]** — 实现分别对简单根和简单余根坐标矩阵求饱和整数核，并在无根时保留 ambient 格维度；radical_basis 文档首行与实现的措辞差异尚待核对。
 - **[[源余权格到伴随余权格的整数投影|源余权格到伴随余权格的整数投影]]** — 整数投影 Y → P∨ 按源单根顺序计算 pair(root, y) 作为目标坐标，保持可加性且可能具有中心核，因此不应视为同构。
+- **[[积分块范围与奇异集|积分块范围与奇异集]]** — IntegralBlockScope 根据 coroot 与 gamma 的整配对区分 Singleton、Full 和 ProperSubsystem，并结合奇异集确定计算范围；源文对真积分子系统的显式失败要求与后续 partial 支持描述存在适用边界不清。
 - **[[精确整数矩阵与-bézout-幺模变换|精确整数矩阵与 Bézout 幺模变换]]** — IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。
 - **[[精确有理矩阵求逆|精确有理矩阵求逆]]** — invert_rational 使用 first-nonzero pivot 的精确有理高斯消元，按列返回逆矩阵；此处秩有界的消元不设置 budget knob。
 - **[[虚根的-noncompact-grading|虚根的 noncompact grading]]** — simple_grading 按 offset[s] XOR ⟨alpha_s mod 2, torus bits⟩ 判断简单虚根的非紧性，须由调用方守卫根类型；任意虚根的 grading 使用 conjugate-to-simple 循环，非虚根返回 None。
@@ -121,6 +127,8 @@
 - **[[跨对偶的-cartan-类对应与扭曲代表元|跨对偶的 Cartan 类对应与扭曲代表元]]** — Cartan 类对应以对偶根像置换定位共轭类，查找失败视为不变量错误；内部代表元构造则在对偶 datum 上重放原 Weyl 字以保留两种格作用及来源信息。
 - **[[轨道枚举的规模预算与整数边界|轨道枚举的规模预算与整数边界]]** — 枚举以 max_elements 限制 2^dimension 的规模，使用不饱和的 u128 比较，并分别检查 63 位掩码限制及保留 u32::MAX 哨兵的类编号容量。
 - **[[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]** — inverse_cayley 先执行 sigma_inv_mult，再以首个配对非平凡的源 mod-space 基向量修复重构出的紧根 grading，随后在虚根目标归约并复核；缺少修复向量时报不变量错误，源根非实或向下 Cartan 类缺失时返回 None。
+- **[[递归-twisted-deformation-与取消语义|递归 twisted deformation 与取消语义]]** — twisted_deformation 无记忆化地递归处理 final、delta-fixed 参数，返回 KType 分裂系数项与 net flip；rank-0 不调用 lookup，可取消变体返回 Ok(None) 且不发布部分多项式。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
+- **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_120 pages | Generated 2026-10-09T16:06:57.620Z_
+_128 pages | Generated 2026-10-09T16:09:56.799Z_

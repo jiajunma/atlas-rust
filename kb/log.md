@@ -1016,3 +1016,13 @@ wiki/concepts/ 现有 113 页，剩余候选 420。
 UndefBlock 哨兵及零/恒等回退、mu 的 None 二义性、fill 的幂等与两条递归路径
 的分派条件、运算集与上游逐条对应——全部忠实；4 个测试锚点与未测面清单一致。
 7 页批准；wiki/concepts/ 现有 120 页，剩余候选 413。
+
+## 2026年10月10日 第十七批候选审查：deformation-drivers.md 的 8 页
+
+对照 151 行来源包逐页核验：SplitInteger 的 wrapping 算术与逐条上游对应、
+两个 twisted KL 和的长度函数差异（扩展块自身 vs 父块）、KlSumParent/
+DeformParent 的借用/拥有分工与存活纪律、lambda_rho 一次提供契约及 SL(2,R)
+反例、IntegralBlockScope 三变体与 A1 ν=[1]/2 陷阱、奇异集在平凡 bm 下的
+一致性条件、递归 twisted_deformation 的 flip/收缩/取消语义、
+block_deformation_to_height 的逆向顺序与 consumed flags 及 plug_hole 填表
+差异——全部忠实。8 页批准；wiki/concepts/ 现有 128 页，剩余候选 405。

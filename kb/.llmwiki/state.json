@@ -217,6 +217,20 @@
         "klv-递归与-μ-修正的多项式运算"
       ],
       "compiledAt": "2026-10-09T16:06:57.240Z"
+    },
+    "deformation-drivers.md": {
+      "hash": "7c850efb86bc06d6f74afdbcfa6f1d1abe45a3b98dba3909d6d1e0ab31bd3921",
+      "concepts": [
+        "splitinteger-分裂整数系数",
+        "twisted-kl-和的长度函数选择",
+        "twisted-与-common-block-形变项提取",
+        "形变计算的父块抽象",
+        "形变驱动的冻结移植契约",
+        "积分块范围与奇异集",
+        "递归-twisted-deformation-与取消语义",
+        "高度受限的块形变"
+      ],
+      "compiledAt": "2026-10-09T16:09:56.389Z"
     }
   }
 }
