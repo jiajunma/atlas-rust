@@ -4,7 +4,7 @@
   must participate in the SAME owner-identity scheme as the explicit
   constructors. WI_ROUTE_* anchor the routing; WI_IC_DUAL_* test whether the
   inner-class-routed dual shares the primal's abstract Weyl group (cold-dual
-  compatible) or is an independent owner (rejects) — either outcome is a
+  compatible) or is an independent owner (rejects); either outcome is a
   captured discovery. WI_DUAL_OWNER_* re-probe the numbering convention so
   this fixture is self-contained. Provisional until complete original
   behavior is captured on HPC. No atlas scripts. }

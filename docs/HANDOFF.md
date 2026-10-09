@@ -288,8 +288,8 @@ product is the commutative `s0*s0`).  G2's noncommuting words can, and
 these fixtures are numbering-convention-independent (no owner-numbering
 probes):
 
-- `tests/math/generics/weyl_context_g2_reverse_operands.atlas` (1272 bytes,
-  sha `83a98c87e109619c370ebf2241a9569ab78cc7a9f04803ebe36efdcacf0de05e`):
+- `tests/math/generics/weyl_context_g2_reverse_operands.atlas` (1238 bytes,
+  sha `652fbf81612286821a26b5d2dd1dd3142c3a3984bd5f44dc9fe9265070c4b2a4`):
   cold-dual cross-owner products in both orders (`WR_FWD`/`WR_REV`), the
   cross-coordinate equality/inequality forms, the mixed-owner braid
   (alternating primal/dual factors through the length-6 relation), and the
@@ -318,8 +318,8 @@ the standard template idiom), and `dual` has InnerClass and RealForm
 overloads (`di := dual(ic)` in the strong_real_*_dual_order_probe
 fixtures); `dual(dual(rd))=rd` is an established suite assertion.
 
-- `tests/math/generics/weyl_context_g2_inner_class_dual.atlas` (1695 bytes,
-  sha `dffd7f44cc1868500e5fadfbe424539848dbf0d941027e32b355217656922cd6`):
+- `tests/math/generics/weyl_context_g2_inner_class_dual.atlas` (1692 bytes,
+  sha `83c714938739f6e3068fe53ea4bf9e6ae88cbadc7c39bf7b85856fd45795017e`):
   routes SC(G2,true) through `inner_class(rd,identity)` +
   `quasisplit_form` + `root_datum` and tests the datum and W_elt relations
   against the direct constructors; then compares `dual(InnerClass)` routed
@@ -368,6 +368,35 @@ Same status: NOT truth, NOT wired; prefixes `WV_`/`WL_` for `_parse_frame`
 at wiring time.  With these two, all seven witnesses from the 2026-10-03
 slice are now drafted: G2 (frozen in the g2-v1 payload), B2/C2, reverse
 operands, inner-class-dual, no-value, sole-WeylElt lifetime.
+
+### Kimi structural review of the fixture drafts (2026-10-09)
+
+Routine-task delegation per hard rule 12.  Task: a STRUCTURAL-only review
+(bracket balance, idiom-set conformance, marker conventions,
+reference-shape fidelity) of the seven draft fixtures against the two
+frozen G2 files; no mathematics, no edits (probe profile has no tools).
+Runner: `tools/kimi_subagent.py`, model `kimi-code/k3-256k`, profile
+`.agents/kimi/probe.md`, CLI 2.1.1.  Frozen prompt 16538 bytes sha
+`0a53d7070e3df09cc98159067ee20956e065b5257695847046391df797431910`
+(reference pair + all drafts embedded verbatim; no repository access).
+Attempt 1 timed out at 180s with zero assistant output (banner only;
+wrapper SIGTERM cleanup verified, no live group members) — a launch-quality
+failure, not a task rejection.  Attempt 2 (`--timeout 300`, fresh evidence
+dir) completed exit0 in 291s; session
+`session_c62be486-ec2b-488d-b322-d911952ed6d1`; stdout.jsonl sha
+`7bf1c99f3b069862350a6927c4ed01a499004f7f1a104c7cdc4af9506ff64649`.
+
+Result: 7/7 drafts structurally clean; three informational observations.
+Independent verification (grep/non-ASCII scan): CONFIRMED the two real
+ones — a dead `wr_dual_s0` binding in the reverse-operands fixture
+(removed; new sha above) and a non-ASCII em-dash in the inner-class header
+(replaced with `;`; new sha above); the third (recovery integers 727-736
+distinct) also confirmed.  No suggestion rejected; no edit applied without
+re-reading the file.  Lesson: for single-shot probe prompts of this size
+(~16KB embedded source), 180s is too tight for `kimi-code/k3-256k` — budget
+300s, and treat a zero-output timeout as retryable once before falling
+back to a local review.  Evidence dirs `/tmp/kimi-fixture-review-*` and the
+prompt file were removed after hashing (not registered transports).
 
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 
