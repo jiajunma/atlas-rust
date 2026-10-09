@@ -34,9 +34,10 @@ layers.
 - `format`: stable text and machine-readable event/file encodings.
 
 The core must make global mutable state explicit in an `InterpreterContext`.
-The parser grammar constructs syntax only; it does not perform evaluator side
-effects. Generated parser sources are disposable build artifacts and are never
-hand-edited.
+(One deliberate exception: the process-global Weyl owner-identity registry —
+see §5.)  The parser grammar constructs syntax only; it does not perform
+evaluator side effects. Generated parser sources are disposable build
+artifacts and are never hand-edited.
 
 ### `atlas-cli`
 
@@ -89,6 +90,20 @@ layer, so semantic equality can be checked independently of wording.
 The runtime owns values through explicit handles or enums. Borrowed source text
 is used only during lexing/parsing; AST and runtime strings own their data.
 Cycles use an arena/handle design rather than pervasive interior mutability.
+
+The accepted exception to per-session state is the Weyl owner-identity
+registry (`DATUM_WEYL_IDENTITIES` in `domain_builtins.rs`): a process-global
+weak interning table keyed by complete datum content plus coroot preference,
+with lazily initialized per-datum coordinate-kernel and abstract-Weyl-group
+cells. This mirrors the oracle's own process-global statics
+(`root_datum_value::pool/hash/store` and the `W_ptr` cold-target sharing in
+`atlas-types.w`): because the compatibility target interns per process,
+per-session interning would change observable cross-command behavior, so the
+global table is the faithful choice. Cells never point back to handles (no
+ownership cycles), and only complete successful values are published. Known
+consequence: tests sharing a process can interfere through the registry, so
+the A1 Weyl fixture tests run under the serial selector. HPC-accepted in the
+bounded A1 scope at AFTER-v5 (job 3900050) and landed in commit `690c2b92`.
 
 ## 6. Numeric ownership and overflow
 
