@@ -71,6 +71,7 @@
 - **[[standardrepr-标准表示参数|StandardRepr 标准表示参数]]** — 以 x、打包挠部分、无穷小特征 gamma 和派生 height 表示标准参数；相等性不比较 height，未定义参数的操作受不变量检查约束。
 - **[[tau-packet-与-kgb-元素编号标准化|tau packet 与 KGB 元素编号标准化]]** — 实现按 involution 长度、Weyl 长度和 WeylElt::pieces 字典序排列 involution，再以稳定计数排序组织 tau packet 并保留包内 BFS 顺序；源码声明此编号复现上游，但本包未独立验证。
 - **[[titscoset-的-grading-offset-与完整-inner-class-门控|TitsCoset 的 grading offset 与完整 inner-class 门控]]** — TitsCoset 从 inner class 一次性建表，接受调用方指定的 grading offset，并要求完整 inner-class 相等，以防同一 datum 下不同 distinguished involution 的 twist 与 transport 被混用。
+- **[[titscoset-逐步约化的类映射依据|TitsCoset 逐步约化的类映射依据]]** — Rust 在每个中间目标对合处约化而上游仅在末尾约化，其最终约化类不变的依据是操作在模二商上为类映射；本包仅记录该注释论据，未进行数学验收。
 - **[[titselement-的元素表示与正规形契约|TitsElement 的元素表示与正规形契约]]** — TitsElement 以 (involution, torus bits) 表示元素，依赖 InvolutionTable 的链接而不携带逐元素 Weyl 数据；new 仅检查编号和维数，不自动归约，RAW bits 的派生排序仅对 reduced 代表元具有语义。
 - **[[torus-部分的模二矩阵传输|Torus 部分的模二矩阵传输]]** — 该实现使用记录中 WeylAction 的模二矩阵传输，替代上游 push_across 与 pull_across 的 word walks；源文档未据此给出性能结论。
 - **[[transducer-转移表编码|Transducer 转移表编码]]** — 每个抛物子商对应一个 Transducer，其平铺转移表以 entry<size 表示 shift，以 entry≥size 表示 transduction，并通过 entry-size 解码输出生成元。
@@ -118,6 +119,8 @@
 - **[[共享-kl-表的惰性构造与回调并发约定|共享 KL 表的惰性构造与回调并发约定]]** — with_kl_table 惰性构造共享 KL 表并在整个回调期间持有记录局部互斥锁；禁止同线程对任何块嵌套调用，重入在获取另一记录锁前返回 RepInvariantViolation。
 - **[[关系格封装与构造预检|关系格封装与构造预检]]** — RelationMatrix、RelationBasis 和 RelationGenerator 封装关系格操作，在分配、复制、推进迭代器或收集生成元之前执行相应形状与预算检查。
 - **[[典范整数据驻留|典范整数据驻留]]** — IntegralDatumTable 以按 upstream 正根序排列的典范正根表为键，追加分配 id 并复用已有 IntegralDatumItem；典范数据依赖 gamma 所在 alcove，而不只依赖整根系，且跨调用必须保持同一 RootSystem。
+- **[[最小环面算法的测试覆盖边界|最小环面算法的测试覆盖边界]]** — 现有四个测试锚点均为 rank 2 紧致内类，正例均满足 coch == factor，未以可区分断言刻画非平凡运输，也未覆盖非紧致 distinguished、多数错误分支和秩上限门控。
+- **[[最小环面部分的-grading-轨道搜索|最小环面部分的 grading 轨道搜索]]** — 算法用 LIFO 栈与 BTreeSet<u64> 遍历 grading 轨道，在置位方向施加余根奇偶平移和 grading 翻转，筛选满足目标约束的候选并按位向量整数序取最小值。
 - **[[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]** — longest_action 从源码计算的 2ρ 出发，按生成元顺序选择正配对反射并左合成，目标为 −2ρ，超预算或无法推进时报不变量错误；数学与复杂度声明尚未验收。
 - **[[分窗两相-bfs-构造|分窗两相 BFS 构造]]** — KGB 枚举以 64 个元素为一窗，先用 Rayon 在只读表与 coset 上计算状态及目标，再顺序 intern 去重并分配编号；并行结构本身不代表已有多核加速证据。
 - **[[利用饱和核与模二秩计算整对合分类|利用饱和核与模二秩计算整对合分类]]** — 令 plus_rank = rank − rank(ker(θ+I))，以 (θ+I) mod 2 的行空间秩得到 complex，再求 compact 与 split；内部函数要求调用方保证对合前提。
@@ -126,6 +129,8 @@
 - **[[单反射下的图像基传送|单反射下的图像基传送]]** — 沿单反射 s 更新 L′=sL、M′=Ms，保持 L′M′=1−θ′；传送使用 checked i64 算术，其结果可与重新归约所得基存在列符号或列次序差异。
 - **[[反射闭包的防御性不变量|反射闭包的防御性不变量]]** — Closure 插入候选时先验证根与余根自配对等于 2，再检查重复根的余根及简单坐标一致性，重复候选不占用新增根数额度。
 - **[[可约点与标准参数-final-化|可约点与标准参数 final 化]]** — reducibility_points 返回按分子分母对升序排列的可约分数，finals_for 以栈驱动 dominant 检查及奇偶、长度下降，生成带整数系数的 final 参数。
+- **[[合成实形的选定余特征|合成实形的选定余特征]]** — elected_square_root 按 distinguished 对合与 Weyl 余权作用运输环面因子，以半平方和 delta + I 调用 stable_log，生成构造器保存的 g_rho_check；非平凡运输尚缺可区分测试断言。
+- **[[合成实形种子算法的门控与资源限制|合成实形种子算法的门控与资源限制]]** — 入口检查内类、维数、置换和整性，并对对合覆盖及空候选给出具名错误；轨道编码限制格秩不超过 63，minimal_torus_part 没有显式预算参数。
 - **[[图像坐标计算与提升映射|图像坐标计算与提升映射]]** — coordinates(v)=m_real·v 给出 (1−θ)v 的图像基坐标，lift(c)=lift_mat·c 将坐标映回 X*。
 - **[[图像基接口的维度与算术安全边界|图像基接口的维度与算术安全边界]]** — 源码阅读指出短 weight 被静默补零式处理、过长提升坐标会 panic、传送仅检查方阵性且不自行复核分解，以及求逆算术和内存分配检查的不对称。
 - **[[图像基的典范播种与轨道传送纪律|图像基的典范播种与轨道传送纪律]]** — 图像基不由 θ 唯一决定：在 canonical involution 处进行列 echelon 归约播种，再沿 cross-action BFS 传送，以保持代表元与 y_lift 所依赖的精确基选择。
@@ -141,6 +146,7 @@
 - **[[基于生成元闭包的-twisted-共轭分区|基于生成元闭包的 twisted 共轭分区]]** — generated_twisted_conjugacy_partition 通过生成元闭包构造完整分区，以 twisted involutions 数量计预算、每类仅实例化一个 lattice involution，并使用紧凑根置换查询成员；外部 Cartan 编号仍由 CartanClassification 选举。
 - **[[基本-alcove-墙与整性检测|基本 alcove 墙与整性检测]]** — fundamental_alcove_walls 由全部单根和逐 Dynkin 分量最高余根对应的负根构成，int_item 分别以分子配对值等于 0 或负分母判定 gamma 是否落墙。
 - **[[基本余权的精确构造|基本余权的精确构造]]** — fundamental_coweights 将 Cartan 矩阵逆的各列按实际 simple coroot 展开，得到满足根配对为 Kronecker δ、radical 分量为零的 full lattice-rank 有理坐标。
+- **[[基本虚根-grading-的位置约束|基本虚根 grading 的位置约束]]** — 算法在基本虚单根基上构造紧致性起始位与 datum-单根目标约束，按位置匹配 crate 的根序；与上游前导段配对的一致性依赖其排序不变量，尚属注释声明。
 - **[[完整块图的对偶数据变换|完整块图的对偶数据变换]]** — BlockGraph::dual 通过反转元素编号、交换两侧坐标、反射长度及映射状态和链接生成对偶块，其中长度反射依赖末元素长度最大，双值 Cayley 像保持原顺序。
 - **[[完整块图的测试覆盖与证据边界|完整块图的测试覆盖与证据边界]]** — 源码列有七个秩一 A1 测试，覆盖对偶、Cayley 与部分 Bruhat 行为，但未覆盖多生成元布局、若干状态和失败分支；本包仅作结构性阅读，不提供运行或数学验收结论。
 - **[[完整块的-kgb-纤维积|完整块的 KGB 纤维积]]** — 完整块将实形式与对偶实形式的完整 KGB 集按对偶 twisted involution 配对，并保留两侧原始 KGB 坐标编号；缺失的对偶包不贡献元素。
@@ -157,6 +163,7 @@
 - **[[弱实形式归因的来源与整性门控|弱实形式归因的来源与整性门控]]** — 归因依次校验秩、分类来源、datum、w·δ=θ 分解及代表元身份，并在虚根 grading 提取前要求投影与每个单根的配对为整数，防止空虚基绕过校验。
 - **[[弱实形式的-cartan-集与唯一-most-split-类|弱实形式的 Cartan 集与唯一 most-split 类]]** — 弱实形式数量来自 fundamental partition，每个形式关联一个升序 Cartan 类集合及唯一的 most-split Cartan 类。
 - **[[弱实形式的伴随-cartan-纤维轨道划分|弱实形式的伴随 Cartan 纤维轨道划分]]** — WeakRealFormPartition 将 adjoint Cartan fiber 划分为 W_im 轨道，各轨道对应该 Cartan involution 处的弱实形式，并提供类查询和确定性代表元。
+- **[[强代表下降到基本纤维|强代表下降到基本纤维]]** — minimal_torus_part 按外部编号顺序选择首个左下降生成元，通过逆 Cayley 或 based twisted 共轭将强代表下降到基本纤维，并约化环面部分。
 - **[[强实分类打印视图-strongrealclassprint|强实分类打印视图 StrongRealClassPrint]]** — StrongRealClassPrint 提供与上游 printStrongReal 对齐的类号、模分母约化为非负剩余的 square 分子序列，以及按 partition 顺序排列且可跨类重复的外部 form 编号；上游对应关系来自源码注释，未独立重读验证。
 - **[[强实分类的构造与资源边界|强实分类的构造与资源边界]]** — StrongRealClassification::build 基于已有 Cartan 分类，逐类构造 adjoint fiber、ambient fiber 及 fiber map 的像坐标，用 ModTwoSubquotient 求平方商，并在 fiber 维数超过 MAX_MASK_BITS 时报告 StrongRealResourceLimit。
 - **[[强实形式与-fiber-轨道|强实形式与 fiber 轨道]]** — 强实形式代表元 StrongRealFormRep 由平方类与 fiber group 中的 W_im 轨道确定，并位于一个弱实形式之上；轨道编号依赖求解约定，但轨道大小不受与作用交换的 ker(toAdjoint) 平移影响。
@@ -192,6 +199,7 @@
 - **[[梯子底成员查询的坐标溢出语义|梯子底成员查询的坐标溢出语义]]** — 梯子底查询中 checked_sub 溢出视为差值非成员，因为超出 i32 范围的精确差不可能等于存储坐标；其他错误仍传播，上游十一例与本地八组的覆盖差异待核。
 - **[[正根集的单根提取|正根集的单根提取]]** — pos_simples 要求输入按 upstream 正根序排序，通过 bracket(β, α) 的正性及反射像的正负判断 α 或 β 是否非单根，其配对符号判据对应 simpleBasis 的论证。
 - **[[源余权格到伴随余权格的整数投影|源余权格到伴随余权格的整数投影]]** — 整数投影 Y → P∨ 按源单根顺序计算 pair(root, y) 作为目标坐标，保持可加性且可能具有中心核，因此不应视为同构。
+- **[[环面部分的模二表示与余权提升|环面部分的模二表示与余权提升]]** — 初始环面部分由 factor − coch 的整数坐标奇偶性编码，下降后以 coch + lift(tp) 提升为余权，供虚单根紧致性配对使用。
 - **[[种子下方的-bruhat-区间生成|种子下方的 Bruhat 区间生成]]** — bruhat_below 经 Bruhat_generator::block_below 生成种子下方的标准模参数区间，作为部分公共块构造的输入。
 - **[[积分块范围与奇异集|积分块范围与奇异集]]** — IntegralBlockScope 根据 coroot 与 gamma 的整配对区分 Singleton、Full 和 ProperSubsystem，并结合奇异集确定计算范围；源文对真积分子系统的显式失败要求与后续 partial 支持描述存在适用边界不清。
 - **[[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]** — 由 integrality_simples 构造积分子系统的单根数据，提供按生成元编号的访问器，满足公共上下文需求而无需完整根闭包。
@@ -210,4 +218,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_207 pages | Generated 2026-10-09T16:42:35.342Z_
+_215 pages | Generated 2026-10-09T16:44:39.140Z_

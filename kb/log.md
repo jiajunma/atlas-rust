@@ -1155,3 +1155,18 @@ LOCATOR_COROOT_REGRESSION）、A2 两切片驻留不同 item 的"典范性依赖
 而非仅整根系"记录、IntegralDatumTable 不持有 RootSystem 的未定义风险与
 debug_assert 仅 debug 生效等边界——全部忠实。8 页批准；
 wiki/concepts/ 现有 207 页，剩余候选 326。
+
+## 2026年10月10日 第二十九批候选审查：minimal-torus.md 的 8 页
+
+对照 108 行来源包逐页核验：elected_square_root 的门序
+（RankMismatch→DatumMismatch）、word.iter().rev() 重建与 from_action
+往返钉字方向、运输顺序（先 distinguished 余权矩阵后元素余权作用）与
+stable_log 唯一预算透传；minimal_torus_part 的四道入口门（含 actual 取两
+长度较大者、rank>63 的 mask bits 预算门）、torus-part 整性与奇偶置位、
+首个左下降生成元（Real→逆 Cayley 且 Ok(None) 亦错误，否则 cross_pregated）、
+末尾幂等 coset.reduce 的决定性情形、"逐步约化不动最终类"如实标注为注释
+声明、逐位置配对 vs 上游前导段约定的翻译差异及其一致性边界、轨道游走的
+LIFO+BTreeSet<u64> 与 2^rank 上限、ModTwoVector 整数序选举、空候选具名
+错误对应上游断言、测试覆盖边界如实记录（三正例皆 coch==factor、测试 3 与
+测试 2 首组输入相同、encode 的 Result 为预留）——全部忠实。8 页批准；
+wiki/concepts/ 现有 215 页，剩余候选 318。
