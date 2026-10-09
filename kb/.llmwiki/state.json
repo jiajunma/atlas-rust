@@ -756,6 +756,20 @@
         "重定向表达式的打开前解析"
       ],
       "compiledAt": "2026-10-09T17:39:45.295Z"
+    },
+    "atlas-core-types.md": {
+      "hash": "edc0eb9616980c96a180f067edb08c5e48251f862b683469410863b9b5db50a7",
+      "concepts": [
+        "type-类型表示与语义等值",
+        "typeassignment-与-inferredtype-推断机器",
+        "typescheme-与类型变量作用域",
+        "typetable-修订身份与缓存失效",
+        "typetable-的稳定身份与活跃绑定",
+        "类型构造器应用的校验与有限展开",
+        "类型特化与失败回滚语义",
+        "递归类型定义的图级安装"
+      ],
+      "compiledAt": "2026-10-09T17:41:57.237Z"
     }
   }
 }

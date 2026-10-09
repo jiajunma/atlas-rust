@@ -1,0 +1,54 @@
+---
+title: TypeScheme 与类型变量作用域
+summary: TypeScheme 以 body、fixed、degree 描述类型方案，fixed 以下变量为刚性；wrap 为独立洞分配新变量并保留重复变量共享，构造器方案保留声明参数编号及元数。
+sources:
+  - atlas-core-types.md
+kind: concept
+createdAt: "2026-10-09T14:38:33.320Z"
+updatedAt: "2026-10-09T14:38:33.320Z"
+tags:
+  - 多态
+  - 类型方案
+  - 变量作用域
+aliases:
+  - typescheme-与类型变量作用域
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+---
+
+# TypeScheme 与类型变量作用域
+
+`TypeScheme` 是 Atlas 类型模型中二阶机器的一部分，以 `body`、`fixed` 和 `degree` 描述类型体及其变量作用域。类型变量节点表示为 `Type::Variable(usize)`；变量是否刚性由外围 scheme 的 `fixed` 阈值决定，而不是由节点自身记录。^[atlas-core-types.md:24-29, atlas-core-types.md:58-65]
+
+## 变量编号与作用域
+
+在配套的 `TypeAssignment` 中，编号小于 `fixed` 的变量为刚性变量，区间 `[fixed, fixed+degree)` 内的变量参与无环替换。因此，理解变量编号时必须同时考虑外围作用域，而不能只看 `Variable(usize)` 的数字。^[atlas-core-types.md:66-70]
+
+`TypeScheme::wrap` 按类型遍历中的首次出现顺序打包变量：不同的 `Undetermined` 洞获得不同的新变量，重复出现的显式变量号则共享同一槽位。由此，scheme 不含独立的 `Undetermined` 洞，同时保留原有变量之间的共享关系。^[atlas-core-types.md:63-65, atlas-core-types.md:76-77]
+
+`TypeScheme::constructor` 保留声明的参数个数（arity）与参数编号，包括类型体中未使用的形式参数。这与 `Type::Applied(TypeNumber, Vec<Type>)` 保留构造器名称和实参的规则相呼应：即使结构展开包含未使用的形式参数，应用也保留这些信息。^[atlas-core-types.md:27-29, atlas-core-types.md:63-65]
+
+## 实例化与推断约束
+
+`TypeAssignment::instantiate` 为 scheme 导入一个新鲜实例，并保持刚性变量不变。`append` 导入另一赋值时，则必须连同其待决替换一起导入，否则会静默丢失已经形成的推断约束。替换属于一次分析或重载试验，不属于全局绑定。^[atlas-core-types.md:66-77]
+
+[[TypeAssignment 与 InferredType 推断机器|InferredType]] 将类型体与赋值配对，提供 `from_scheme`、`wrap`、`bake`、`wring_out` 以及 `raise_floor`、`lower_floor` 等操作。相关作用域错误包括 `ScopeCapture`、`VariableOutOfRange` 和 `UndeterminedInAssignment`；二阶机器还提供 `substitute_parameters` 与 `shift(t, fixed, amount)`。^[atlas-core-types.md:60-75]
+
+合一失败并不自动恢复先前状态：`TypeAssignment::unify` 可能留下部分变异，需要回滚语义时使用 `try_unify`。这延续了 [[Type 类型表示与语义等值|Type]] 层 `specialise` 的行为约定，后者需要通过 `can_specialise` 预先检查回滚场景。^[atlas-core-types.md:36-37, atlas-core-types.md:66-70]
+
+## 候选匹配中的作用域隔离
+
+`TypeTable::matching_bindings` 为每个候选绑定尝试一个新鲜的形式构造器应用，同时保留接收方的刚性下限，并隔离候选的自由变量。这一规则用于在全部保留定义中查找字段或标签元数据，相关查找机制见 [[基于保留类型定义的投影解析]]。^[atlas-core-types.md:51-53]
+
+## 证据边界
+
+源材料记录 `polymorphic` 部分有 37 个测试，但本包属于结构性阅读，不据此声称语言验收。上游行号是实现方的移植陈述；类型行为兼容仍以 HPC 语言语料门为准。^[atlas-core-types.md:9-18, atlas-core-types.md:84-91]
+
+## Sources
+
+- [atlas-core-types.md](atlas-core-types.md)

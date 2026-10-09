@@ -1652,3 +1652,23 @@ TypeTable 活跃可见、has_virtual_group 的 Ok(None) 续行、重定向体打
 解析）、TokenStream 惰性转换与 Bison 措辞渲染（措辞可精化如实声明）、
 51 测试边界——全部忠实。8 页批准；wiki/concepts/ 现有 413 页，剩余
 候选 120。
+
+## 2026年10月10日 第五十八批候选审查：atlas-core-types.md 的 8 页
+
+对照 91 行来源包（维护者直接撰写）逐页核验。前置计数核对：候选称
+"Prim::ALL 20 个原始类型"——对照 types.rs:84 的 `pub const ALL:
+[Prim; 20]`，真实确为 20（Void 不在其中，void 即空元组），与 lex.rs
+的 21 名列表（含 "void"）是两份不同清单，本包计数正确无需更正。
+核验要点：Type 九变体与 rigidity 由外围 scheme fixed 阈值决定、
+specialise 唯一变异路径与失败部分特化的上游语义（回滚先
+can_specialise）、expanded 的 Cow 与循环上界=绑定数、equivalent 先
+validate_applications 两侧再结构递归、递归名终止边界、validate_• 
+不展开定义而 expand_application 只展一层、TypeTable 四组件与 forget
+只摘活名、matching_bindings 查全部保留定义（axis-types.w:1454）、
+revision: Arc<()> 的非语义快照身份语义（克隆共享/突变即换/阻地址复用/
+保 Send+Sync）与已验收跨命令缓存门的交叉引用、TypeScheme::wrap 的首次
+出现序与重复变量共享槽位、constructor 保留声明 arity 含未用参数、
+TypeAssignment 的 [fixed,fixed+degree) 无环替换与 append 连同待决替换
+导入、unify 失败部分变异 vs try_unify 回滚、InferredType 接口清单、
+recursive.rs 的命名 RHS 槽位优先与环上匿名后代保留身份、59 测试分布——
+全部忠实。8 页批准；wiki/concepts/ 现有 421 页，剩余候选 112。

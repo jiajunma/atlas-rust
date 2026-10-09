@@ -150,6 +150,11 @@
 - **[[twisted-weyl-群的对合对偶映射|Twisted Weyl 群的对合对偶映射]]** — dual_involution 在对合矩阵上对应负转置，实现从对偶最长元出发，按原约化字自右向左右乘对偶扭曲生成元，并要求共享外部生成元编号。
 - **[[twisted-与-common-block-形变项提取|twisted 与 common-block 形变项提取]]** — twisted_deformation_terms 为 final、delta-fixed 父块元素提取整数系数形变项，wrapper 将 c 转为 Split(c,−c)；common_deformation_terms 则沿 contributions 路径处理 lookup 返回的 partial block。
 - **[[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]** — TwistedConjugacyClass 保存确定性轨道代表元和对合计数，分类阶段将代表元重建为 Atlas-canonical 形式；CartanClass 拥有该值并承载分解、fiber、实形式标签与实 Cartan 分量数据。
+- **[[type-类型表示与语义等值|Type 类型表示与语义等值]]** — Type 采用 tag+payload 表示，折叠单元素元组与联合；语义等值比较先校验构造器应用，并以递归类型的名义身份作为终止边界。
+- **[[typeassignment-与-inferredtype-推断机器|TypeAssignment 与 InferredType 推断机器]]** — TypeAssignment 管理局部无环替换、实例化与合一，append 连同待决替换导入赋值；InferredType 将类型体与赋值配对，支持作用域调整及函数和构造器匹配。
+- **[[typescheme-与类型变量作用域|TypeScheme 与类型变量作用域]]** — TypeScheme 以 body、fixed、degree 描述类型方案，fixed 以下变量为刚性；wrap 为独立洞分配新变量并保留重复变量共享，构造器方案保留声明参数编号及元数。
+- **[[typetable-修订身份与缓存失效|TypeTable 修订身份与缓存失效]]** — revision 通过克隆共享、突变更换的 Arc<()> 提供非语义快照身份，供缓存读者识别修订并防止地址复用，同时保持 Send+Sync。
+- **[[typetable-的稳定身份与活跃绑定|TypeTable 的稳定身份与活跃绑定]]** — TypeTable 将保留的类型定义与活跃名称映射分离，forget 仅移除活名，字段与标签匹配仍搜索全部保留定义并隔离候选自由变量。
 - **[[weakrealformid-的确定性编号与上游对齐|WeakRealFormId 的确定性编号与上游对齐]]** — 按轨道最小 canonical-coordinate 掩码升序编号，identity 轨道为 class 0；来源记载内部编号已完成上游对齐，外部 FormNumberMap 顺序仍需 adapter 置换。
 - **[[weyl-上下文共享的性能与内存证据边界|Weyl 上下文共享的性能与内存证据边界]]** — 重复上下文构造和采样热点支持优化调查，但构建次数假设与探针计时不证明加速；共享可能延长内核存活，需独立测量构建数、分配及 time/CPU/RSS。
 - **[[weyl-作用到根排列的转换|Weyl 作用到根排列的转换]]** — action_permutation 先检查 datum 一致性，再逐根施加 Weyl 作用并反查 RootId 形成排列；源码注释以对偶反射一致性解释为何不另行复查余根运输。
@@ -382,6 +387,8 @@
 - **[[积分块范围与奇异集|积分块范围与奇异集]]** — IntegralBlockScope 根据 coroot 与 gamma 的整配对区分 Singleton、Full 和 ProperSubsystem，并结合奇异集确定计算范围；源文对真积分子系统的显式失败要求与后续 partial 支持描述存在适用边界不清。
 - **[[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]** — 由 integrality_simples 构造积分子系统的单根数据，提供按生成元编号的访问器，满足公共上下文需求而无需完整根闭包。
 - **[[类型化转换与求值管线|类型化转换与求值管线]]** — typed 模块承担 parsed→typed 可执行转换与求值，来源称 convert_expr 在单遍中完成检查与合成，并保留上游整数收窄错误文本中的笔误。
+- **[[类型构造器应用的校验与有限展开|类型构造器应用的校验与有限展开]]** — Applied 保留构造器名称及全部实参；应用校验不展开定义，单层展开保留递归引用，展开次数受绑定数约束以避免残缺自环导致死循环。
+- **[[类型特化与失败回滚语义|类型特化与失败回滚语义]]** — specialise 成功时产生最一般合一子，失败时可能保留部分特化；需回滚的调用方使用 can_specialise，赋值合一则提供 try_unify 等对应接口。
 - **[[精确整数矩阵与-bézout-幺模变换|精确整数矩阵与 Bézout 幺模变换]]** — IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。
 - **[[精确整数矩阵约化|精确整数矩阵约化]]** — crate 私有的 matreduc 为 global.w 批内建提供 gcd、recorder 和 column_echelon 等精确约化机制，来源称其逐操作对应固定上游版本 4d3e9449，但本包不构成正确性验收。
 - **[[精确有理矩阵求逆|精确有理矩阵求逆]]** — invert_rational 使用 first-nonzero pivot 的精确有理高斯消元，按列返回逆矩阵；此处秩有界的消元不设置 budget knob。
@@ -402,6 +409,7 @@
 - **[[运算符扫描与复合赋值融合|运算符扫描与复合赋值融合]]** — 普通运算符可跨空白和注释与 := 融合为 OperatorBecomes，而关系符连续段、裸 ! 及专用运算符分支遵循各自的扫描与换行规则。
 - **[[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]** — inverse_cayley 先执行 sigma_inv_mult，再以首个配对非平凡的源 mod-space 基向量修复重构出的紧根 grading，随后在虚根目标归约并复核；缺少修复向量时报不变量错误，源根非实或向下 Cartan 类缺失时返回 None。
 - **[[递归-twisted-deformation-与取消语义|递归 twisted deformation 与取消语义]]** — twisted_deformation 无记忆化地递归处理 final、delta-fixed 参数，返回 KType 分裂系数项与 net flip；rank-0 不调用 lookup，可取消变体返回 Ok(None) 且不发布部分多项式。
+- **[[递归类型定义的图级安装|递归类型定义的图级安装]]** — 递归 typedef 安装优先保留命名右侧槽位，并为环上的匿名后代保留身份；调用方将类型表与全部生成成员共同暂存。
 - **[[通过增广消元反求-grading-对应元素|通过增广消元反求 grading 对应元素]]** — element_from_grading 对 target XOR base 进行携带基索引标记位的增广消元，检测不可实现的 grading，并按解的标记位异或组合伴随基代表。
 - **[[部分公共块上的扩展块构造与-cofold|部分公共块上的扩展块构造与 cofold]]** — build_partial 使用 x + gamma_lambda 形式测试不动点，在子系统上折叠生成元，并在构造后处理 cofold；当前仅支持恒等生成元姿态，非恒等 bm.simple_pi 显式失败。
 - **[[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]** — 通过 Option 表达元素或链接缺失，区分 imaginary ascent 的前向 Cayley 像与 real descent 的逆像，并以奇异生成元的下降状态判定 survives。
@@ -416,4 +424,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_413 pages | Generated 2026-10-09T17:39:46.058Z_
+_421 pages | Generated 2026-10-09T17:41:58.010Z_
