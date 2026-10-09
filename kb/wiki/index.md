@@ -34,17 +34,22 @@
 - **[[fiber-元素的模型来源绑定与规范代表|Fiber 元素的模型来源绑定与规范代表]]** — 元素相等要求 Arc 模型指针与坐标同时相等，独立构造的同坐标元素不相等；商坐标选取基代表的 XOR 给出 low-pivot 约定下的确定性 ambient 代表。
 - **[[fiber-大小与-kgb-大小汇总|fiber 大小与 KGB 大小汇总]]** — StrongRealClassification 预计算各 form 的 KGB 大小及全局总量；fiber_size(form, cartan) 在 form 不属于指定 Cartan 时返回 Some(0)，使跨全部 Cartan 的求和保持正确。
 - **[[fibertoadjoint-的按需投影|FiberToAdjoint 的按需投影]]** — FiberToAdjoint 仅由 fiber_map() 创建，应用时依次获取源规范代表、执行模二伴随投影并构造目标元素，不保存稠密模二矩阵或缓存像。
+- **[[finalsfor-带号重数展开|finals_for 带号重数展开]]** — finals_for 用工作栈按根类型与求值执行反射、Cayley 变换、墙投影和分裂，生成无序带号重数表；它没有显式终止计数，且新任务与结果项的 height 来源不同。
 - **[[innerclass-对偶构造与生命周期保持|InnerClass 对偶构造与生命周期保持]]** — original InnerClass 构造立即取得 canonical dual 并强持有 primal 与 dual，Rust 对齐需覆盖该隐式对偶路径及其生命周期，显式 dual 修复不足以证明完整兼容。
 - **[[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]** — twisted_from_involution 在调用方已完成 square 与 involutive 检查的前提下，验证输入属于当前 inner class，并返回分解 θ = w·δ 中的 Weyl 元素 w，失败时报 InvalidBasedAutomorphism。
 - **[[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]** — InnerClass 持有已验证的 BasedRootDatum、有限根系和 distinguished involution，为分解与标签提供上下文，但尚不包含 Cartan fibers、real-form data 或构建 KGB graph 所需的 torus data。
 - **[[involution-表的测试锚点与证据边界|Involution 表的测试锚点与证据边界]]** — 源码测试锚点覆盖 A1、B2、扭转 A2、投影传送及部分守卫，但若干错误分支未覆盖，本文的结构性阅读不构成测试执行、数学验收或性能证据。
 - **[[k-型公式的记忆化与截断复用|K 型公式的记忆化与截断复用]]** — k_type_formula 以所有者内部严格 K 型身份 (x, lambda_rho) 缓存公式，可能返回更高截断的缓存结果，调用方导出前须自行截断到请求高度。
 - **[[k-型公式缓存的锁外计算与提交复核|K 型公式缓存的锁外计算与提交复核]]** — 公式生成期间不持有共享互斥锁，提交时重新检查缓存；若并发调用已提交更大截断的公式，则保留该公式，但来源未提供性能或并行效果验证。
+- **[[k-型变形与终止预算|K 型变形与终止预算]]** — made_dominant、made_theta_stable 和 normalised 通过 cross、反射及下降消除实现变形，并分别用权重缺陷、图大小或组合预算限制迭代。
+- **[[k-型实现的测试锚点与证据边界|K 型实现的测试锚点与证据边界]]** — 测试涵盖 split A1 契约、部分展开及表示往返，但两个 su(2,1) 测试仅打印观察值，kgp_set 和多类错误分支未覆盖，结构性阅读不构成数学验收。
+- **[[k-型谓词链与调用前提|K 型谓词链与调用前提]]** — 标准性、支配性、非零性、半终结性、正规性和终结性由根配对及 KGB 状态判定，其中部分前提依赖调用方而不在谓词内检查。
 - **[[kgb-图与弱实形式|KGB 图与弱实形式]]** — KGB 集合描述 K 在旗簇 G/B 上的轨道；本实现从 RealFormSeed 构造每个弱实形式对应的 KgbGraph，元素为各 involution 之上的 Tits 元素。
 - **[[kgb-图的混合自包含存储|KGB 图的混合自包含存储]]** — 图复制各 involution 位置的数据及 cocharacter，使除 torus_factor 外的访问器脱离 involution 表；torus_factor 仍需表中逐 involution 的 theta 来计算精确有理数结果。
 - **[[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]** — 构造检查 inner class、形式索引及种子绑定，并要求状态槽仅写一次、Cayley 目标的 involution 长度增加一、最终元素数等于分类预言的 kgb_size；这些检查不构成数学正确性验收。
 - **[[kgb-生成元状态与下降判定|KGB 生成元状态与下降判定]]** — 生成元状态由根类型及 imaginary grading 分为四类；real 恒为 descent，imaginary 恒非 descent，complex 根据 cross 目标的 involution 长度是否更短判定。
 - **[[kgb-种子代表元的可观测影响|KGB 种子代表元的可观测影响]]** — stable_log 的 adapted-basis 代表元选举固定 g_rho_check，进而固定下游每个 torus_factor 的有理数值，是 KGB 种子 x0 构造中的可观测选择。
+- **[[kgpset-的-levi-生成元遍历|kgp_set 的 Levi 生成元遍历]]** — kgp_set 先构造 theta-stable 元，再以其实单根为 Levi 生成元开展位图限界 BFS；无法映射的生成元被跳过，实根分支的奇偶前提由调用方承担。
 - **[[kl-支撑层的测试覆盖与证据边界|KL 支撑层的测试覆盖与证据边界]]** — 四个 FakeTopology 单元测试覆盖基本位操作和三条构造拒绝路径，构造成功路径、判定方法及本原索引机制无单元测试；来源称其经 KL 层 HPC 门覆盖，但本次未执行验证或核实上游引用。
 - **[[klsupport-的拓扑构造门控|KlSupport 的拓扑构造门控]]** — 构造前集中验证秩容量、长度存在且非降、逐生成元拓扑数据存在及链接目标合法，从而在可失败边界检查拓扑不变量。
 - **[[klsupport逐块-kl-支撑数据|KlSupport：逐块 KL 支撑数据]]** — KlSupport 为块元素预计算下降集、good-ascent 集和 length-stop 表，并以本原索引组织 KLV 多项式列；来源仅完成结构性阅读，未作数学验收。
@@ -55,6 +60,7 @@
 - **[[klv-表的幂等逐列填充算法|KLV 表的幂等逐列填充算法]]** — fill 跳过已完成列，按直接递归条件选择 recursion_column 加 complete_primitives，或进入包含 nice and real 与 endgame 情形的一般递归路径。
 - **[[klv-表的逐列存储与句柄设计|KLV 表的逐列存储与句柄设计]]** — KlTableHandle 按块逐列存储 primitive 位置对应的多项式池索引和非零 μ 对，通过 holes 标记未计算列，并支持借用与 Arc 共享句柄。
 - **[[klv-递归与-μ-修正的多项式运算|KLV 递归与 μ-修正的多项式运算]]** — 多项式引擎提供加减、乘以 1+q、次数平移和带 μ 系数的修正运算，以及 q=-1 求值，支持 KLV 递归所需的计算。
+- **[[ktype-表示参数与规范化构造|KType 表示参数与规范化构造]]** — KType 表示去掉 ν 的标准表示参数之 K-限制；sr_k 用 lambda_unique 选取陪集代表并预计算 height，而内部 new 不校验不变量。
 - **[[length-stop-长度边界表|length-stop 长度边界表]]** — 在块元素长度非降的构造保证下，length_stop[l] 记录首个长度不小于 l 的元素位置，并在表末追加块大小 size。
 - **[[locatedblock-稳定块句柄与查询相对姿态|LocatedBlock 稳定块句柄与查询相对姿态]]** — 通过 Arc<PartialBlock>、存储行号和查询相对的 block modifier 暴露块访问；只有 w 与 simple_pi 均为恒等时才允许以平实中心位移直接读取存储行。
 - **[[mod-2-投影与纤维商上的诱导映射|mod-2 投影与纤维商上的诱导映射]]** — mod-2 投影利用根系数的奇性翻转坐标位，FiberToAdjoint::apply 依次取规范代表、执行投影并构造目标纤维元素，每次应用现算而不缓存稠密矩阵。
@@ -129,6 +135,7 @@
 - **[[共享-kl-表的惰性构造与回调并发约定|共享 KL 表的惰性构造与回调并发约定]]** — with_kl_table 惰性构造共享 KL 表并在整个回调期间持有记录局部互斥锁；禁止同线程对任何块嵌套调用，重入在获取另一记录锁前返回 RepInvariantViolation。
 - **[[关系格封装与构造预检|关系格封装与构造预检]]** — RelationMatrix、RelationBasis 和 RelationGenerator 封装关系格操作，在分配、复制、推进迭代器或收集生成元之前执行相应形状与预算检查。
 - **[[典范整数据驻留|典范整数据驻留]]** — IntegralDatumTable 以按 upstream 正根序排列的典范正根表为键，追加分配 id 并复用已有 IntegralDatumItem；典范数据依赖 gamma 所在 alcove，而不只依赖整根系，且跨调用必须保持同一 RootSystem。
+- **[[典范纤维与-k-型等价判定|典范纤维与 K 型等价判定]]** — to_canonical_fiber 沿 canonicalize 给出的词进行复单根 cross；equivalent 先检查 Cartan 类，再比较双方典范纤维中的结果。
 - **[[最小环面算法的测试覆盖边界|最小环面算法的测试覆盖边界]]** — 现有四个测试锚点均为 rank 2 紧致内类，正例均满足 coch == factor，未以可区分断言刻画非平凡运输，也未覆盖非紧致 distinguished、多数错误分支和秩上限门控。
 - **[[最小环面部分的-grading-轨道搜索|最小环面部分的 grading 轨道搜索]]** — 算法用 LIFO 栈与 BTreeSet<u64> 遍历 grading 轨道，在置位方向施加余根奇偶平移和 grading 翻转，筛选满足目标约束的候选并按位向量整数序取最小值。
 - **[[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]** — longest_action 从源码计算的 2ρ 出发，按生成元顺序选择正配对反射并左合成，目标为 −2ρ，超预算或无法推进时报不变量错误；数学与复杂度声明尚未验收。
@@ -240,4 +247,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_237 pages | Generated 2026-10-09T16:49:29.655Z_
+_244 pages | Generated 2026-10-09T16:51:16.681Z_

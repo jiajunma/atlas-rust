@@ -1220,3 +1220,20 @@ is_extremal（desc(x)⊇desc_y）一行组合语义；unique_ascent 按类型取
 测试覆盖边界如实（4 个 FakeTopology 锚点、成功路径/判定/索引机制无单元
 测试、经 KL 层 HPC 门覆盖的措辞保留）——全部忠实。8 页批准；
 wiki/concepts/ 现有 237 页，剩余候选 296。
+
+## 2026年10月10日 第三十三批候选审查：ktype.md 的 7 页
+
+对照 87 行来源包逐页核验：KType 表示（lam_rho 恒为 (1−θ_x)X* 陪集的
+lambda_unique 当选代表、规范化只在 sr_k 一次、height 预计算、(1+θ)λ 公式）、
+new 不校验不变量而 crate 外只能经 sr_k 的纪律划分、theta_plus_1_eval 四
+项公式、六谓词前提（is_nonzero 假设 is_standard 但不检查、is_normal 因
+total 而不查四联前提、is_final 的 ic/Real 奇配对/Complex 下降拒绝与 inc
+放行）、三变形的终止预算（weight_defect / 图大小"慷慨"界 /
+weight_defect+图大小+1）与各自错误名、finals_for 的五分支结构（含
+type-2 移位项 λ_ρ+α、Real 的 shift=(eval+1)/2 投影与逆 Cayley 分裂、
+None→"parity real inverse Cayley"）、height 来源不对称（todo 项重算 vs
+结果项沿用）如实标注为阅读观察、simple_reflect 第三参数 im_wt=0/lr=1、
+kgp_set 的 Levi 生成元静默跳过/先 second 后 first/shift=eval/2 不查奇偶、
+equivalent 的同 Cartan 类→双 to_canonical_fiber→严格相等流程、测试锚点
+普查（9 个，其中两个 su21 测试仅 eprintln! 无断言如实标注为观察型）与未
+覆盖清单——全部忠实。7 页批准；wiki/concepts/ 现有 244 页，剩余候选 289。
