@@ -1,15 +1,14 @@
 ---
 title: Grading shifts 的忠实性不变量
-summary: 构造期无条件拒绝线性相关或为零的 grading shift 列，从而保证每个可实现 grading 对应唯一的伴随纤维元素。
+summary: 构造期无条件拒绝线性相关或为零的 grading shift 列，确保每个可实现 grading 对应唯一伴随纤维元素。
 sources:
   - grading.md
 kind: concept
 createdAt: "2026-10-09T14:50:18.916Z"
-updatedAt: "2026-10-09T20:54:14.301Z"
+updatedAt: "2026-10-09T22:31:16.925Z"
 tags:
+  - 紧致分级
   - 构造不变量
-  - 线性独立
-  - 分级
 aliases:
   - grading-shifts-的忠实性不变量
   - GS的
@@ -32,15 +31,17 @@ tags:
   - grading
   - 线性无关
   - 构造不变量
+aliases:
+  - grading-shifts-的忠实性不变量
 ---
 
 # Grading shifts 的忠实性不变量
 
-Grading shifts 的忠实性不变量要求 `CartanGradingData` 的 shift 列在 F₂ 上线性无关。构造期的 `ensure_faithful_shifts` 无条件拒绝相关列，返回 `GradingShiftsNotFaithful`。这一不变量保证每个可实现的 grading 对应唯一的伴随纤维（adjoint fiber）元素。^[grading.md:47-55, grading.md:61-67]
+Grading shifts 的忠实性不变量要求 `CartanGradingData` 的 shift 列在 F₂ 上线性无关。构造期的 `ensure_faithful_shifts` 无条件拒绝相关列，返回 `GradingShiftsNotFaithful`；该不变量保证每个可实现的 grading 对应唯一的伴随纤维（adjoint fiber）元素。^[grading.md:47-55, grading.md:61-67]
 
 ## Shift 的含义
 
-[[Grading 的位向量类型纪律|Grading]] 的第 `i` 位对应所属模型的第 `i` 个 simple-imaginary 根，置位表示 noncompact。这些位置不能与 ambient coweight 坐标混用；即使维数相同，也必须通过类型区分。^[grading.md:17-27]
+[[Grading 的位向量类型纪律|Grading]] 的第 `i` 位对应所属模型的第 `i` 个 simple-imaginary 根，置位表示 noncompact。这些位置与 ambient coweight 坐标不同，即使维数相同，也必须通过类型区分。^[grading.md:17-27]
 
 `grading_shifts[i]` 记录第 `i` 个伴随基代表与各 simple-imaginary 根的坐标奇性向量之间的 F₂ 配对。坐标奇性通过 `*coordinate % 2 != 0` 提取，包含负奇数。访问器 `grading_shift(adjoint_basis_index)` 以 `adjoint_fiber().dimension()` 为索引上界。^[grading.md:47-51, grading.md:68-69]
 
@@ -50,19 +51,19 @@ Grading shifts 的忠实性不变量要求 `CartanGradingData` 的 shift 列在 
 
 `ensure_faithful_shifts` 检查 shift 列的线性独立性；若插入某列时 `insert` 返回 `false`，便以 `GradingShiftsNotFaithful` 拒绝构造。重复列和零列均由注入测试直接覆盖。源码注释将此要求对应到上游 `cartanclass.cpp:172` 的断言，Rust 实现则将其改为无条件拒绝。^[grading.md:52-55]
 
-源码注释说明，没有已知公共构造路径能够产生相关 shift 列，因此这是一项防御性检查，不能据此认定正常公共构造已知会触发该错误。^[grading.md:52-55]
+源码注释说明，没有已知公共构造路径能够产生相关 shift 列，因此这是一项防御性检查；来源没有记录正常公共构造触发该错误的实例。^[grading.md:52-55]
 
 ## 逆向求解与唯一性
 
-[[通过增广消元反求 grading 对应元素|element_from_grading(target)]] 使用增广消元恢复伴随纤维元素。每列携带 grading 位，以及位于 `imaginary_rank + adjoint_basis_index` 的 marker 位；归约右端时，同时累计所用 shift 的组合。右端为 `target XOR base`，由于基点全一，其置位恰好标记目标 grading 的 compact 位置。^[grading.md:61-65]
+`element_from_grading(target)` 使用增广消元恢复伴随纤维元素。每列携带 grading 位，以及位于 `imaginary_rank + adjoint_basis_index` 的 marker 位；归约右端时，同时累计所用 shift 的组合。右端为 `target XOR base`，由于基点全一，其置位恰好标记目标 grading 的 compact 位置。^[grading.md:61-65]
 
-若归约结果的低 `imaginary_rank` 位仍有置位，则目标 grading 不可实现，返回 `StructureError::ImpossibleGrading`。否则，算法按 marker 位选取伴随基代表，通过 `xor_assign` 汇总为 ambient 代表。构造期的忠实性不变量保证可实现目标的解唯一，但不保证任意目标 grading 都可实现。^[grading.md:65-67]
+若归约结果的低 `imaginary_rank` 位仍有置位，则目标 grading 不可实现，返回 `StructureError::ImpossibleGrading`。否则，算法按 marker 位选取伴随基代表，通过 `xor_assign` 汇总为 ambient 代表。构造期的忠实性不变量保证可实现目标的解唯一，但不保证任意目标 grading 都可实现。^[grading.md:65-67, grading.md:74-76]
 
 ## 测试与证据边界
 
 直接相关的测试锚点包括注入重复列和零列时拒绝构造，以及 A2 恒等对合下的四元素双射，其 shift 构成置换矩阵。A2 扭转情形拒绝全 compact grading；该例中伴随纤维维数为零，`grading_shift(0)` 返回 `None`，体现了唯一性与可实现性的区别。^[grading.md:52-55, grading.md:73-78]
 
-来源属于结构性源码阅读，未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。记录的未覆盖分支包括 `build` 的两处 `IndexOutOfRange`、多数溢出与分配分支，以及 `element_from_grading` 入口的 `RankMismatch`。^[grading.md:9-13, grading.md:80-81, grading.md:91-91]
+来源属于结构性源码阅读，未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。记录的未覆盖分支包括 `build` 的两处 `IndexOutOfRange`、多数溢出与分配分支，以及 `element_from_grading` 入口的 `RankMismatch`。^[grading.md:9-13, grading.md:80-81, grading.md:91-94]
 
 ## Sources
 

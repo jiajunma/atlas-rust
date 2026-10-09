@@ -5,7 +5,7 @@ sources:
   - strong-real.md
 kind: concept
 createdAt: "2026-10-09T15:12:40.298Z"
-updatedAt: "2026-10-09T21:10:52.902Z"
+updatedAt: "2026-10-09T22:49:20.762Z"
 tags:
   - Cartan分类
   - 强实形式
@@ -24,7 +24,7 @@ promptModifiers:
 
 ---
 title: Cartan 类的强实层 StrongRealData
-summary: StrongRealData 保存单个 Cartan 类的平方类、fiber 轨道大小与强代表元，并提供局部弱实形式归属和 toAdjoint 原像查询。
+summary: StrongRealData 保存单个 Cartan 类的平方类、fiber 轨道大小与强代表元，并提供局部弱实形式归属、平方类代表及 toAdjoint 原像查询。
 sources:
   - strong-real.md
 kind: concept
@@ -56,9 +56,9 @@ provenanceState: extracted
 
 ### 局部弱实形式与轨道
 
-`central_square_class(local)`、`strong_real_form(local)` 和 `fiber_size(local)` 分别提供局部弱实形式对应的平方类、强代表元与 fiber 大小查询。`orbit_elements(square, orbit)` 查询指定轨道的元素，`weak_real_of_orbit` 查询轨道对应的弱实形式，后者对应上游 `Fiber::toWeakReal`。^[strong-real.md:43-47]
+`central_square_class(local)`、`strong_real_form(local)` 和 `fiber_size(local)` 分别查询局部弱实形式对应的平方类、强代表元与 fiber 大小。`orbit_elements(square, orbit)` 查询指定轨道的元素，`weak_real_of_orbit` 查询轨道对应的弱实形式，后者对应上游 `Fiber::toWeakReal`。^[strong-real.md:43-47]
 
-`wrf_preimage_mask(local)` 提供满足 $\mathrm{toAdjoint}(y)=\mathrm{wrf\_rep}-\mathrm{class\_base}$ 的 fiber 元素 $y$，用于查询局部弱实形式代表元相对于平方类基点的原像。^[strong-real.md:44-45]
+`wrf_preimage_mask(local)` 提供满足 $\mathrm{toAdjoint}(y)=\mathrm{wrf\_rep}-\mathrm{class\_base}$ 的 fiber 元素 $y$，即局部弱实形式代表元相对于平方类基点之差的原像。^[strong-real.md:44-45]
 
 ## 构建与整体分类
 

@@ -5,9 +5,10 @@ sources:
   - strong-real.md
 kind: concept
 createdAt: "2026-10-09T15:12:26.826Z"
-updatedAt: "2026-10-09T21:10:53.247Z"
+updatedAt: "2026-10-09T22:49:15.196Z"
 tags:
   - 强实形式
+  - 群作用
   - 纤维轨道
 aliases:
   - 强实形式与-fiber-轨道
@@ -42,7 +43,7 @@ provenanceState: extracted
 
 ## 代表元与编号约定
 
-代表元表示为 `StrongRealFormRep { fiber_orbit, square_class }`。其中，`fiber_orbit` 的编号依赖本 crate 消元时选取的具体解，上游采用不同约定；轨道大小则不依赖这一选择，因为来自 $\ker(\mathrm{toAdjoint})$ 的平移与作用交换。^[strong-real.md:34-37]
+代表元表示为 `StrongRealFormRep { fiber_orbit, square_class }`。其中，`fiber_orbit` 的编号依赖本 crate 消元时选取的具体解，上游采用不同约定；轨道大小不依赖这一选择，因为来自 $\ker(\mathrm{toAdjoint})$ 的平移与作用交换。^[strong-real.md:34-37]
 
 `SquareClassId` 是商空间 $(\text{adjoint fiber group})/\operatorname{im}(\mathrm{toAdjoint})$ 中陪集在本 crate 阶梯基下的坐标整数。来源记录的排序审计表明，在所读版本中，本 crate 的基选举与上游一致，因此编号等于上游 `printStrongReal` 的 `class #N`。这一对应依赖双方共享的 low-pivot RREF 约定；任一侧换基只会置换标签，不改变分区结构与各项大小。参见 [[平方类编号与换基不变量]]。^[strong-real.md:26-30]
 
@@ -50,7 +51,7 @@ provenanceState: extracted
 
 每个 Cartan 类的强实层由 [[Cartan 类的强实层 StrongRealData|StrongRealData]] 保存，包含平方类集合、逐平方类的 fiber 轨道大小及强代表元。`square_class_count()` 查询平方类数，`square_classes()` 按升序提供平方类，`fiber_orbit_count(square)` 查询指定平方类的轨道数。`square_class_representative(square)` 选取该类中编号最小的局部弱实类；上游 `makeRealFormPartition` 选取遍历时遇到的第一个 form。^[strong-real.md:39-43]
 
-`central_square_class(local)` 和 `strong_real_form(local)` 提供局部弱实形式对应的平方类与强代表元；`fiber_size(local)` 查询 fiber 大小。`orbit_elements(square, orbit)` 提供指定轨道的元素，`weak_real_of_orbit` 给出轨道所属的弱实形式，对应上游 `Fiber::toWeakReal`。^[strong-real.md:43-47]
+`central_square_class(local)` 和 `strong_real_form(local)` 提供局部弱实形式对应的平方类与强代表元，`fiber_size(local)` 查询 fiber 大小。`orbit_elements(square, orbit)` 提供指定轨道的元素，`weak_real_of_orbit` 给出轨道所属的弱实形式，对应上游 `Fiber::toWeakReal`。^[strong-real.md:43-47]
 
 `wrf_preimage_mask(local)` 给出满足 $\mathrm{toAdjoint}(y)=\mathrm{wrf\_rep}-\mathrm{class\_base}$ 的 fiber 元素 $y$，将局部弱实形式代表元与相应平方类的基点联系起来。^[strong-real.md:44-45]
 
@@ -66,7 +67,9 @@ provenanceState: extracted
 
 ## 证据范围
 
-本页依据对 `strong_real.rs` 的结构性阅读，所读字节来自 dirty 工作区快照。分类实现的正确性属于其自身的 HPC 证据链，来源包不重述或扩展该证据。来源中的上游行号转述自源码注释，未独立重读上游，可能随版本演进而漂移；来源未执行构建、测试或原版运行，不含数学验收、性能或并行结论。^[strong-real.md:9-15, strong-real.md:70-77]
+本页依据对 `strong_real.rs` 的结构性阅读，所读字节来自 dirty 工作区快照。分类实现的正确性属于其自身的 HPC 证据链，来源包不重述或扩展该证据。^[strong-real.md:9-15]
+
+来源中的上游行号转述自源码注释，未独立重读上游，可能随版本演进而漂移。来源包未执行构建、测试或原版运行，不包含数学验收、性能或并行结论。^[strong-real.md:70-77]
 
 ## Sources
 

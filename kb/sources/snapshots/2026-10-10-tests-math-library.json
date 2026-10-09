@@ -1,0 +1,45 @@
+{
+    "schema": "atlas-kb-reading-snapshot-v1",
+    "date": "2026-10-10",
+    "git_base": "65c9005a",
+    "working_tree": true,
+    "scope": "Structural inventory of the mathematical test and benchmark library for the tests-math-library packet: tests/math/{catalog,benchmarks,baseline}.json schemas and headline contents (8 groups x 8 operations, 3 KGB benchmark cases, dual-repo pin), the 31 templates/, generics/ (atlas-generic-language-probes-v1, 273 cases, 363 .atlas + 52 oracle goldens), progressive/ (22 rank-1 gate fixtures), rank6/ (atlas-rank6-inventory-v1 five-key catalog), tests/fixtures/ (353 .atlas + 1 .at), and tests/reference/ (oracle metadata + HPC evidence + append-only acceptance index seed). Working-tree caveat: tests/math/catalog.json, tests/math/generics/catalog.json and tests/math/README.md carry owner's uncommitted modifications; tests/math/rank6/catalog.json is untracked. The packet documents these dirty bytes' structure; owner's edits remain owner's to commit.",
+    "files": [
+        {
+            "path": "tests/math/catalog.json",
+            "sha256": "3aa63ca8cfaeda76509582674a0670f6433e851b23c139c2710837dbd07142d7",
+            "bytes": 20269,
+            "note": "MODIFIED in working tree (owner's pending edits, +72 lines vs HEAD eddc03a6); hash identifies the dirty bytes actually read"
+        },
+        {
+            "path": "tests/math/benchmarks.json",
+            "sha256": "44529e64dec6cdc6066094002af3202bd5cee0bd5cd4fc229d669483af0ec323",
+            "bytes": 468,
+            "note": "clean relative to git_base"
+        },
+        {
+            "path": "tests/math/baseline.json",
+            "sha256": "0edee53bb01bc9b5716c2fa3633911d0e0474b30f78be6ac099d20d006150da3",
+            "bytes": 949,
+            "note": "clean relative to git_base; the Rust pin 05625c5d it records is a historical baseline archive point, not current HEAD"
+        },
+        {
+            "path": "tests/math/README.md",
+            "sha256": "4e280613fdc9137356b87a33f133961ddb7524a121008f5301b1ae4c1587372a",
+            "bytes": 42904,
+            "note": "MODIFIED in working tree (owner's running log, +473 lines vs HEAD); read for evidence-discipline conventions, not for per-arc status"
+        },
+        {
+            "path": "tests/math/generics/catalog.json",
+            "sha256": "cbe61f716feffd18579b6c4fb7be1ca331bc33699b10ce6398c488cd4fc4ae53",
+            "bytes": 91816,
+            "note": "MODIFIED in working tree (owner's pending edits); hash identifies the dirty bytes actually read"
+        },
+        {
+            "path": "tests/math/rank6/catalog.json",
+            "sha256": "ed445f94074c406f2d6e9d56ed9e1a6da8efc848c11696e87944b5736cb1f277",
+            "bytes": 2280,
+            "note": "UNTRACKED at snapshot time; hash identifies the bytes actually read"
+        }
+    ]
+}

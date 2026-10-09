@@ -1,68 +1,88 @@
 ---
 title: Weyl 语义回归的递进验证门禁
-summary: 以独立进程原版捕获和 BEFORE/fix/AFTER 回归验证语义；已落地 A1 验收仅覆盖限定输入，G2 非对称编号、B2/C2、操作数顺序及独占元素生命周期等仍需后续见证。
+summary: AFTER-v5 与生产提交 690c2b92 仅确立限定 A1 语义验收，G2 编号、B2/C2、操作数顺序、隐式对偶及独占元素生命周期仍需后续 gate。
 sources:
   - weyl-context-identity-and-sharing.md
 kind: concept
 createdAt: "2026-10-09T15:17:15.306Z"
-updatedAt: "2026-10-09T15:17:15.306Z"
+updatedAt: "2026-10-09T22:53:38.078Z"
+tags:
+  - 回归测试
+  - 证据范围
+  - HPC
+aliases:
+  - weyl-语义回归的递进验证门禁
+confidence: 1
+provenanceState: merged
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: Weyl 语义回归的递进验证门禁
+summary: 通过原版捕获与 BEFORE/fix/AFTER 回归验证 Weyl 身份和构造历史语义；A1 修复已限定验收落地，后续语义、性能与内存门禁仍须独立完成。
+sources:
+  - weyl-context-identity-and-sharing.md
+kind: concept
 tags:
   - 回归测试
   - 证据范围
   - HPC验证
 aliases:
   - weyl-语义回归的递进验证门禁
-confidence: 0.99
-provenanceState: merged
-modelId: codex-cli-default
-promptVersion: v6
-promptModifiers:
-  - lang=zh-CN
-  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
 ---
 
 # Weyl 语义回归的递进验证门禁
 
-Weyl 语义回归的递进验证门禁采用先捕获 original Atlas 行为、建立回归、验证修复前失败，再验证修复后通过的流程。它首先约束对象身份、dual 构造历史和错误行为；缓存、工作量、速度与内存收益须在后续独立验证，不能由语义回归通过直接推出。^[weyl-context-identity-and-sharing.md:138-157,263-265,320-324]
+Weyl 语义回归采用“原版行为捕获 → 建立回归 → BEFORE 证明修复前失败 → 修复 → AFTER 证明通过”的递进流程。其首要目标是保持对象身份、dual 构造历史与错误行为；缓存、构建次数、速度和内存收益需要后续独立验证。截至来源的 2026-10-09 更新，A1 限定语义修复已验收并落地，不能据此宣称更高 rank 或性能验证完成。^[weyl-context-identity-and-sharing.md:138-157, weyl-context-identity-and-sharing.md:63-74, weyl-context-identity-and-sharing.md:320-330]
 
-## 为什么需要历史敏感的回归
+## 历史敏感的兼容性
 
-original Atlas 的 Weyl 元素兼容性取决于 WeylGroup 对象身份。`dual()` 仅在 canonical target 尚未建立 Weyl group 时共享 source 的 group；目标已经预热时不会覆盖。二元 `=`、`!=`、`*` 先检查 group 地址，不兼容则抛出 `Weyl group mismatch`，且检查先于 `no_value` gate。因此，仅比较根数据结构或根排列不足以保持语义，测试必须覆盖[[dual 预热历史与 Weyl 群兼容性]]。^[weyl-context-identity-and-sharing.md:174-187]
+original Atlas 的 `dual()` 仅在 canonical target 尚未建立 Weyl group 时共享 source 的 group；目标已经预热时不覆盖已有 group。Weyl 元素的 `=`、`!=`、`*` 在产生结果前检查 WeylGroup 地址，不同则抛出 `Weyl group mismatch`，且检查先于 `no_value` gate。因此，兼容性包含 owner 的存活期与[[dual 预热历史与 Weyl 群兼容性|dual 预热历史]]，不能仅由根数据结构或根排列判断。^[weyl-context-identity-and-sharing.md:174-187]
 
-修复前 Rust 在 cold canonical-dual 情形错误拒绝原版允许的乘法，并给出相反的关系结果；在独立预热的不兼容 owner 情形，关系运算又错误返回布尔值而未拒绝。HPC job `3884807` 的独立检查确认了这些差异，并绑定完整原始输出、冻结原版 binary、源码和输入。^[weyl-context-identity-and-sharing.md:140-146]
+HPC capture job `3884807` 确认了修复前 Rust 的两类相反错误：cold canonical-dual 情形中，原版允许关系比较和乘法，Rust 却给出相反的关系结果并拒绝乘法；独立预热的不兼容 owner 情形中，原版拒绝关系与乘法，Rust 的关系运算却返回布尔值。独立检查绑定了完整原始输出、冻结原版 binary、源码和输入。^[weyl-context-identity-and-sharing.md:140-146]
 
-## tests-first 与证据链
+## tests-first 与证据纪律
 
-回归以四份原版 stdout/stderr golden 为依据，在 `session.rs` 中建立两个普通 `#[test]`，完整比较输出及有序 `(ErrorKind, message)`。测试不使用 `should_panic`，也不把 Rust 的错误输出当作预期结果。original 与 Rust 应各自在 fresh process 中保存完整输出、顺序、退出状态、wall time 和 RSS。^[weyl-context-identity-and-sharing.md:148-151,309-311]
+回归固定四份原版 stdout/stderr golden，在 `session.rs` 中使用两个普通 `#[test]`，完整比较输出及有序 `(ErrorKind, message)`；不使用 `should_panic`，也不把 Rust 的错误输出作为预期结果。original 与 Rust 各自在 fresh process 中保存完整输出、顺序、退出状态、wall time 和 RSS。^[weyl-context-identity-and-sharing.md:148-151, weyl-context-identity-and-sharing.md:309-311]
 
-BEFORE gate 必须实际运行并证明目标回归失败。检查器或 driver 自检失败只说明验证设施有问题，不能充当预期的 Rust 语义失败证据，也不能据此解锁生产修复；应保留原始 stage，通过后继 gate 重新完成 BEFORE，再进入修复和 AFTER。这一纪律属于[[HPC 验收证据链]]。^[weyl-context-identity-and-sharing.md:153-157]
+BEFORE 必须实际执行目标回归并证明预期失败。首个 BEFORE job `3884862` 在 checker/driver 自检阶段失败，尚未执行 Cargo、Atlas 或数学回归，因此不能作为 Rust 语义失败证据，也不能解锁生产修复。原始 stage 应保留，修正后的后继须重新完成独立 HPC BEFORE；这一要求属于[[HPC 验收证据链]]。^[weyl-context-identity-and-sharing.md:153-157]
 
-## A1 首层门禁
+源码预测与捕获结果必须分开保存。旧 discovery catalog 的 `source_predicted_not_captured` 是历史输入，不能修改预测数组后将其称为 golden；实际回归依据独立审查的 capture 和完整原版输出建立。^[weyl-context-identity-and-sharing.md:13-18, weyl-context-identity-and-sharing.md:208-212]
 
-两个 core-only A1 fixture 覆盖同一 owner、alias、fresh-equal datum、两个 warm-source/cold-target dual 方向，以及重新绑定后的旧值寿命；同时检查 `word`、`length`、`root_permutation`、`root_datum`、`=`、`!=`、`*`。错误路径覆盖 preference-distinct owner、cold source/prewarmed canonical target、owner/dual mismatch、越界与负 generator，并在每次错误后设置 recovery marker。^[weyl-context-identity-and-sharing.md:301-307]
+## A1 首层门禁及其上限
 
-A1 的证明力有限：跨 dual 的乘法只有 $s_0s_0=1$，不能发现错误的生成元重编号或直接复合外部坐标系根排列的问题。寿命用例中仍有 `wc_alias` 保持旧 RootDatum 存活，因而未证明仅靠 WeylElt 就能维持 datum 生命周期。Atlas 输出也不能证明 fresh-equal owner 使用独立 coordinate cell；这些问题需要另设 lifetime fixture 和 HPC-only `Weak`/work-count 单元守卫。^[weyl-context-identity-and-sharing.md:313-318]
+两个 core-only A1 fixture 覆盖 same owner、alias、fresh-equal datum、两个 warm-source/cold-target dual 方向，以及重新绑定后的旧值寿命；观察 `word`、`length`、`root_permutation`、`root_datum`、`=`、`!=`、`*`。错误路径包括 preference-distinct owner、cold source/prewarmed canonical target、owner/dual mismatch、越界与负 generator，每次错误后均设置 recovery marker。^[weyl-context-identity-and-sharing.md:301-307]
+
+A1 跨 dual 的乘法只有 \(s_0s_0=1\)，无法揭示错误的生成元重编号或直接复合外部坐标系根排列的问题。寿命用例仍由 `wc_alias` 保持旧 RootDatum 存活，未证明仅靠 WeylElt 就能维持 datum 生命周期；Atlas 输出也不能证明 fresh-equal owner 使用独立 coordinate cell。这些缺口分别需要额外 lifetime fixture 和 HPC-only `Weak`/work-count 单元守卫。^[weyl-context-identity-and-sharing.md:313-318]
 
 ## AFTER 验收与生产落地
 
-AFTER-v4 因要求预热情形的 stderr 逐字节相等而失败，原因是两侧错误外层格式不同；AFTER-v5 将该契约改为有序 error summary 比较，其余输入保持逐字节不变。该调整区分了错误语义与输出封装格式。^[weyl-context-identity-and-sharing.md:59-62]
+AFTER 的失败需要区分验证设施错误与目标语义错误。AFTER-v1 因源码 manifest 摘要比较对象错误而失败；AFTER-v2 因 sbatch 标签未随 stage 迁移，在任何 gate 前失败。后继修复保留历史证据，并将 sbatch 标签纳入检查；无报告的前驱不虚构 report 哈希。^[weyl-context-identity-and-sharing.md:22-43]
 
-AFTER-v5 job `3900050` 最终为 `COMPLETED 0:0`，13 条命令全部 exit0，涵盖 127 项 checker、release build、632 项 inventory、两个回归和 ladder 对照。cold_dual 完全字节相等；prewarmed_dual 的 stdout、退出码及有序 error summary 一致。验收记录为 `math_weyl_context_core_after_v5_acceptance_2026_10_06.json`，范围仍限于 A1 语义，不授予缓存、性能、内存、rank 或更广数学 release。^[weyl-context-identity-and-sharing.md:63-69]
+AFTER-v4 要求预热情形的 stderr 逐字节相等，但两侧错误外层格式不同，因此被归为 harness 过度断言。AFTER-v5 将该项契约改为有序 error summary 比较，其余输入逐字节不变。^[weyl-context-identity-and-sharing.md:59-62]
 
-修复以生产提交 `690c2b92` 落地。由于 gate 验证的是整树源码 manifest，落地前对照其逐字节核验，确认无缺失、不符或多余文件，再将全部 `crates/**` 变更作为一个构建一致单元提交；不能把未经单独验证的修复子集视为同一验证对象。^[weyl-context-identity-and-sharing.md:70-74]
+AFTER-v5 job `3900050` 最终为 `COMPLETED 0:0`，13 条命令全部 exit0，涵盖 127 项 checker、release build、632 项 inventory、两个回归和 ladder 对照。cold_dual 完全字节相等；prewarmed_dual 的 stdout、退出码及有序 error summary 一致。来源列出的验收记录为 `math_weyl_context_core_after_v5_acceptance_2026_10_06.json`，report SHA 前缀为 `3288480d…`；接受范围仅为 A1 限定语义，不授予 cache、performance、memory、rank 或更广数学 release。^[weyl-context-identity-and-sharing.md:63-69]
 
-## 后续门禁与预测边界
+修复以生产提交 `690c2b92` 落地。由于 gate 验证整树源码 manifest，生产落地前逐字节比对确认零缺失、零不符、零多余，再将全部 `crates/**` 变更作为同一构建单元提交；仅挑选修复涉及的文件不能保持已验证树的一致性。^[weyl-context-identity-and-sharing.md:70-74]
 
-A1 之后仍须依次覆盖 G2 的非对称 interface-order 见证、B2/C2、两个乘法操作数顺序、inner-class dual construction 和 `no_value` relations，并补充 sole-WeylElt lifetime 见证。截至来源记录的 2026-10-09 状态，G2 capture pair 已迁移为 `weyl-context-g2-v1` 并彩排冻结，但因隧道中断暂缓提交；后续 fixture 仍为 provisional，不能视为已通过。^[weyl-context-identity-and-sharing.md:95-100,320-330]
+## 后续语义门禁与预测修正
 
-后续测试还必须区分源码预测与实测结论。上游逐行阅读表明，G2 canonical dual 的转置 coroot 内容不能由 `adjoint(G2,·)` 构造，因此既有 owner 预测需要修正；使用 `adjoint(G2,false)` 的预热也不能占用 canonical dual 的 cold-share 槽位。真正的 G2 预热拒绝见证需用显式转置内容构造。此类 capture 前登记仍是预测，不能改称 golden。^[weyl-context-identity-and-sharing.md:75-94]
+A1 之后仍须逐步覆盖 G2 非对称 interface-order 见证、B2/C2、两个乘法操作数顺序、inner-class dual construction、`no_value` relations，以及 sole-WeylElt lifetime。截至来源记录的 2026-10-09 状态，`weyl-context-g2-v1` 已冻结并彩排，因隧道中断暂缓提交；后续见证仍为 provisional，不能视为已通过。^[weyl-context-identity-and-sharing.md:95-100, weyl-context-identity-and-sharing.md:320-330]
 
-## 性能与内存门禁
+G2 还说明 fixture 本身需要源码核对：canonical dual 带转置 coroot 矩阵，不能由 `adjoint(G2,·)` 构造。因此，capture 前登记将 `WG_DUAL_OWNER` 与 `WG_REVERSE_OWNER` 的预期修正为两个引擎均输出 `false`，原 contract 的 `true` 属于预测失准，不能预先归类为引擎分歧。相关背景见[[Canonical dual 的转置根数据与 G2 预热见证]]。^[weyl-context-identity-and-sharing.md:75-89]
 
-只有后续语义 gate 全部通过，才进入 one-build work-count 测试，再进行同节点、交替顺序、fresh-process 的 time/CPU/RSS A/B。`59 -> 至多 5` 只是 caller-level 构建次数假设，并非已经测得的加速；相关解释应与[[Weyl 上下文共享的性能与内存证据边界]]一致。^[weyl-context-identity-and-sharing.md:320-324]
+使用 `adjoint(G2,false)` 的预热无法占用 canonical dual 的 cold-share 槽位，预期不会产生所需的拒绝行为；真正的 G2 预热拒绝见证需要显式构造转置内容。B2/C2 则不同：C2 的固定 Cartan 正是 B2 的转置，`dual(SC(B2,true))` 与 `adjoint(C2,false)` 内容一致。这些仍是捕获前的登记预期。^[weyl-context-identity-and-sharing.md:86-94]
 
-内存也不能预报为单调减少。多个 WeylElt 同时存活时，共享 RootSystem 可能减少重复对象；但对于短命元素，owner 强持有 kernel 可能使 peak RSS 不变甚至略升。后续报告需要同时记录 live owner/kernel/build 数、分配和 peak RSS，不能仅凭 `Arc`/`Weak` 的所有权设计宣称收益。^[weyl-context-identity-and-sharing.md:332-335]
+## 工作量、性能与内存门禁
+
+只有后续语义 gate 全部通过，才能加入 one-build work-count 测试，再进行同节点、交替顺序、fresh-process 的 time/CPU/RSS A/B。`59 → 至多 5` 只是 caller-level 构建次数假设，并非实测加速；详见[[Weyl 上下文共享的性能与内存证据边界]]。^[weyl-context-identity-and-sharing.md:320-324]
+
+内存收益也不能预报为单调减少。多个 WeylElt 同时存活时共享 RootSystem 应减少重复对象，但短命元素场景中，owner 强持有 kernel 可能使 peak RSS 不变甚至略升。后续报告必须同时给出 live owner/kernel/build 数、分配和 peak RSS，不能仅凭 `Arc`/`Weak` 设计宣称节省内存。^[weyl-context-identity-and-sharing.md:332-335]
 
 ## Sources
 
-- [weyl-context-identity-and-sharing.md](../sources/weyl-context-identity-and-sharing.md)
+- [weyl-context-identity-and-sharing.md](../../sources/weyl-context-identity-and-sharing.md) — Weyl 对象身份、dual 历史与安全共享边界。

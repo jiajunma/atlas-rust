@@ -1,11 +1,11 @@
 ---
 title: DescValue 扩展下降分类
-summary: DescValue 以 One、Two、Three 三族共 32 个变体表示扩展下降类型，奇数枚举值表示下降，并提供生成元长度、链接数及局部性质判定。
+summary: DescValue 包含 One、Two、Three 三族共 32 个变体，以奇数枚举值标记下降，并提供局部性质、生成元长度及链接数量查询。
 sources:
   - extended-block.md
 kind: concept
 createdAt: "2026-10-09T14:47:26.925Z"
-updatedAt: "2026-10-09T20:52:16.827Z"
+updatedAt: "2026-10-09T22:29:26.019Z"
 tags:
   - 扩展块
   - 下降分类
@@ -22,7 +22,7 @@ promptModifiers:
 
 ---
 title: DescValue 扩展下降分类
-summary: DescValue 用 One、Two、Three 三族共 32 个变体描述扩展块的局部下降类型，奇数枚举值表示下降，并提供生成元长度、链接数及像的性质等查询。
+summary: DescValue 以 One、Two、Three 三族共 32 个变体描述扩展下降类型，提供下降判定、像的性质、折叠生成元长度和链接数查询。
 sources:
   - extended-block.md
 kind: concept
@@ -35,13 +35,13 @@ aliases:
 
 # DescValue 扩展下降分类
 
-`DescValue` 是[[扩展块与 δ-不动部分|扩展块]]中的 32 值扩展下降分类，按 `One*`、`Two*`、`Three*` 三族排列。扩展块取普通块的 $\delta$-不动部分，并将生成元折叠进 $\delta$-轨道；`DescValue` 提供下降判定、像的性质、折叠生成元长度与链接数等局部结构查询。^[extended-block.md:19-33]
+`DescValue` 是[[扩展块与 δ-不动部分|扩展块]]中的 32 值扩展下降分类，按 `One*`、`Two*`、`Three*` 三族排列。扩展块取普通块的 $\delta$-不动部分，并将生成元折叠进 $\delta$-轨道；该分类提供下降判定、像的性质、折叠生成元长度与链接数等局部结构查询。^[extended-block.md:19-33]
 
-## 分类与谓词
+## 分类与查询规则
 
-`is_descent` 以枚举值的奇偶性判定下降：奇数枚举值对应下降。分类提供十二个谓词，包括 `is_complex`、`is_unique_image`、`has_double_image` 和 `is_like_noncompact`，分别涉及复类型、唯一像、双像及类似非紧类型等性质。来源未逐项列出全部变体和谓词定义。^[extended-block.md:24-33]
+`is_descent` 通过枚举值的奇偶性判定下降：奇数枚举值对应下降。分类提供十二个谓词，包括 `is_complex`、`is_unique_image`、`has_double_image` 和 `is_like_noncompact`。来源未逐项展开全部 32 个变体或十二个谓词的定义。^[extended-block.md:24-33]
 
-`generator_length` 按 `One*`、`Two*`、`Three*` 三族分别返回折叠生成元长度 1、2、3。`link_count` 给出链接数；`OneRealNonparity` 和 `OneImaginaryCompact` 是零链接类型，不记录 cross action。^[extended-block.md:29-31]
+`generator_length` 按 `One*`、`Two*`、`Three*` 三族分别返回折叠生成元长度 1、2、3。`link_count` 给出链接数；`OneRealNonparity` 和 `OneImaginaryCompact` 属于零链接类型，不记录 cross action。^[extended-block.md:29-31]
 
 ## 偶数长度差链接
 
@@ -51,11 +51,11 @@ aliases:
 
 `extended_type` 在父块上执行纯组合的局部类型识别，相关构造见[[局部扩展类型识别与全父块构造]]。扩展块通过 `descent_type(s, n)` 提供下降类型查询。^[extended-block.md:44-50, extended-block.md:71-77]
 
-[[折叠生成元与 fold_orbits|折叠生成元]]由 `ExtGen { kind: ExtGenKind, s0, s1 }` 表示，`ExtGenKind::One/Two/Three` 的 `length()` 同样返回 1、2、3。这里的生成元长度应与扩展块元素长度区分：元素的 `length(n)` 等于 `parent.length(z(n))`，其中 `z(n)` 是扩展元素的父块索引，参见[[扩展块与父块的索引映射]]。^[extended-block.md:37-42, extended-block.md:73-77]
+[[折叠生成元与 fold_orbits|折叠生成元]]由 `ExtGen { kind: ExtGenKind, s0, s1 }` 表示，其 `length()` 同样按 `One/Two/Three` 返回 1、2、3。生成元长度与扩展块元素长度是不同的查询：元素的 `length(n)` 等于 `parent.length(z(n))`，其中 `z(n)` 是扩展元素的父块索引，参见[[扩展块与父块的索引映射]]。^[extended-block.md:37-42, extended-block.md:73-77]
 
 ## 证据范围
 
-本页依据 `ext_block.rs` 的结构性阅读材料，其快照记录的是 dirty 工作区字节。材料中的上游行号转述自源码注释，未独立重读上游，可能随版本演进而漂移。^[extended-block.md:9-15, extended-block.md:81-85]
+本页依据 `ext_block.rs` 的结构性阅读材料，所读快照记录的是 dirty 工作区字节。材料中的上游行号转述自源码注释，未独立重读上游，可能随版本演进而漂移。^[extended-block.md:9-15, extended-block.md:81-85]
 
 来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。扩展块正确性属于其自身的 HPC 证据链，包括 ext-KL/unitarity gate；本材料不重述或扩展该证据。^[extended-block.md:10-11, extended-block.md:90-90]
 

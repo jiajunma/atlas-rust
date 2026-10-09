@@ -1,14 +1,14 @@
 ---
 title: atlas-core 回归测试库的家族组织
-summary: 四个测试模块按名称前缀呈现会话、类型转换、求值与领域内建等测试家族；本包仅描述组织，不覆盖逐测试内容。
+summary: 四个测试模块按名称前缀组织会话、类型转换、求值及领域内建测试；来源仅描述组织，不覆盖逐测试内容。
 sources:
   - atlas-core-regression-library.md
 kind: concept
 createdAt: "2026-10-09T14:31:56.011Z"
-updatedAt: "2026-10-09T20:35:10.087Z"
+updatedAt: "2026-10-09T22:17:40.552Z"
 tags:
   - 回归测试
-  - 代码组织
+  - 语言实现
 aliases:
   - atlas-core-回归测试库的家族组织
 confidence: 1
@@ -36,23 +36,25 @@ aliases:
 
 # atlas-core 回归测试库的家族组织
 
-atlas-core 语言层回归测试库的本次地图覆盖 `session.rs`、`typed.rs`、`domain_builtins.rs` 和 `session_fixture_tests.rs` 四个测试模块，按测试名称前缀和模块职责描述其家族组织。来源仅完成结构性阅读，不包含逐测试内容审查；测试的可执行正确性由 HPC 门验收。^[atlas-core-regression-library.md:9-13]
+atlas-core 语言层回归测试库的地图覆盖 `session.rs`、`typed.rs`、`domain_builtins.rs` 和 `session_fixture_tests.rs` 四个测试模块，描述其组织与测试家族。来源仅完成结构性阅读，不包含逐测试内容审查；测试的可执行正确性由 HPC 门验收。^[atlas-core-regression-library.md:9-13]
 
 ## 模块与测试家族
 
-`session.rs` 包含 201 个测试。较大的前缀家族包括 `named`（10）、`while`（8），以及 `polynomial`、`operator`、`generic`、`for`（各 7）；其他家族有 `weyl`、`torus`、`returns`（各 6），`completion`、`byte`（各 5），以及 `recursive`、`psp4`、`overload`、`matrix`（各 4）。^[atlas-core-regression-library.md:17-20]
+`session.rs` 包含 201 个测试。较大的名称前缀家族包括 `named`（10）、`while`（8），以及 `polynomial`、`operator`、`generic`、`for`（各 7）；其他家族有 `weyl`、`torus`、`returns`（各 6），`completion`、`byte`（各 5），以及 `recursive`、`psp4`、`overload`、`matrix`（各 4）。^[atlas-core-regression-library.md:17-20]
 
 `typed.rs` 包含 133 个测试，以 `convert*`（31）和 `overload*`（15）为较大的家族；其余列举的家族包括 `evaluate*`（10），`multi*`、`expect*`（各 8），`matrix*`、`domain*`（各 6），`execute*`（5），以及 `arbitrary*`、`apply*`（各 4）。^[atlas-core-regression-library.md:23-25]
 
-`domain_builtins.rs` 包含 92 个测试。前缀家族涉及提取助手 `as_*`（18）、构造 `build_*`（16），以及 `block*`（15）、`print*`（11）、`weyl*`（10）、`twisted*`、`relation*`（各 9）、`cartan*`（7）、`validate*`、`simple*`、`root*`、`lazy*`（各 6）。这些数字保留来源列出的家族计数。^[atlas-core-regression-library.md:26-29]
+`domain_builtins.rs` 包含 92 个测试。来源列举的家族包括提取助手 `as_*`（18）、构造 `build_*`（16），以及 `block*`（15）、`print*`（11）、`weyl*`（10）、`twisted*`、`relation*`（各 9）、`cartan*`（7），还有 `validate*`、`simple*`、`root*`、`lazy*`（各 6）。^[atlas-core-regression-library.md:26-29]
 
 `session_fixture_tests.rs` 包含 17 个测试，经 `session::run_source` 执行完整流程，将命令恢复、类型转换和求值一起纳入回归。该模块刻意不保留已移除的动态求值器作为第二实现，相关主题见 [[会话全流程回归测试]]。^[atlas-core-regression-library.md:30-32]
 
 ## 原版背书的回归模式
 
-`session.rs` 中的原版背书回归通过 `include_str!` 载入 `tests/math/generics/` 下的 fixture，并逐字节比对 `.oracle.stdout` 与 `.oracle.stderr`；`weyl_context_core_cold_dual_original` 是这一模式的示例。语言层共有 244 处 `include_str!` 将 fixture 直接绑定到测试，参见 [[原版背书的语言层回归测试]]。^[atlas-core-regression-library.md:20-22, atlas-core-regression-library.md:39-39]
+`session.rs` 中的原版背书回归通过 `include_str!` 载入 `tests/math/generics/` 下的 fixture，并逐字节比对 `.oracle.stdout` 与 `.oracle.stderr`；`weyl_context_core_cold_dual_original` 是这一模式的示例。^[atlas-core-regression-library.md:20-22]
 
 每个 HPC 差分发现的差异都须先在测试库中形成回归。fixture 与 `.oracle.*` 金标存放于 `tests/math/generics/`；金标只能来自原版的完整捕获，例如 Weyl A1 的 v8 冻结 goldens，不能用 Rust 输出充当金标。相关方法见 [[基于原版金标的差分回归]]。^[atlas-core-regression-library.md:36-38]
+
+语言层共有 244 处 `include_str!` 将 fixture 直接绑定到测试，构成 [[原版背书的语言层回归测试]] 的组织基础。^[atlas-core-regression-library.md:39-39]
 
 ## 验收证据与覆盖边界
 

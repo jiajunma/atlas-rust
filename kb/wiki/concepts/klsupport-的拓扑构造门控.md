@@ -1,14 +1,14 @@
 ---
 title: KlSupport 的拓扑构造门控
-summary: 构造集中检查秩容量、长度存在且非降、逐生成元拓扑数据存在以及链接目标合法，避免列填充深处因这些不变量失效而 panic。
+summary: 构造集中验证秩容量、长度存在且非降、逐生成元拓扑数据存在及链接目标合法，避免列填充深处因这些不变量失效而 panic。
 sources:
   - kl-support.md
 kind: concept
 createdAt: "2026-10-09T14:55:39.214Z"
-updatedAt: "2026-10-09T20:58:22.179Z"
+updatedAt: "2026-10-09T22:35:37.017Z"
 tags:
-  - 拓扑验证
-  - 错误处理
+  - 输入验证
+  - 拓扑不变量
 aliases:
   - klsupport-的拓扑构造门控
 confidence: 1
@@ -22,7 +22,7 @@ promptModifiers:
 
 ---
 title: KlSupport 的拓扑构造门控
-summary: KlSupport 在构造前集中检查秩容量、长度存在且非降、逐生成元拓扑数据存在及链接目标合法；本原索引仍有独立的准备前提与顺序假定。
+summary: KlSupport 在构造期集中检查秩容量、长度存在且非降、逐生成元拓扑数据存在及链接目标合法；本原索引仍有独立的准备前提与顺序假定。
 sources:
   - kl-support.md
 kind: concept
@@ -36,7 +36,7 @@ aliases:
 
 # KlSupport 的拓扑构造门控
 
-`KlSupport<B: BlockTopology>` 为块元素预计算下降集、good-ascent 集和 length-stop 表，并提供懒填充的本原索引表。构造器 `new` 首先调用 `validate_topology`，在可失败的构造边界集中检查拓扑不变量，避免将相关错误留到列填充深处触发 panic。^[kl-support.md:16-21, kl-support.md:32-39]
+`KlSupport<B: BlockTopology>` 为每个块元素预计算下降集、good-ascent 集和 length-stop 表，并提供懒填充的本原索引表。构造器 `new` 首先调用 `validate_topology`，在可失败的构造边界集中检查拓扑不变量，避免相关不变量失效时在列填充深处触发 panic。^[kl-support.md:16-21, kl-support.md:32-39]
 
 ## 构造校验
 
@@ -52,7 +52,7 @@ aliases:
 
 ## 门控的边界
 
-[[本原索引表的惰性构建]]采用降序扫描，并沿唯一上升像继承索引。该过程依赖“上升像序号更大”的假定；来源将其标为阅读观察，明确指出没有显式防护。因此，这一条件不属于构造门控已强制验证的顺序保证。^[kl-support.md:49-52, kl-support.md:70-71]
+本原索引表采用降序扫描，并沿 `unique_ascent` 链继承索引。该过程依赖“上升像序号更大”的假定；来源将其标为阅读观察，并明确指出没有显式防护。因此，不能将这一假定视为构造门控已经强制验证的顺序保证。^[kl-support.md:49-52, kl-support.md:70-71]
 
 本原索引访问还有独立的调用前提：`prim_index`、`nr_of_primitives`、`col_size` 和 `self_index` 都要求先对同一下降集调用 `prepare_prim_index`，否则会因 map 缺键而 panic。只有 `prim_index` 的文档注释显式写出这一前置条件。^[kl-support.md:53-55]
 

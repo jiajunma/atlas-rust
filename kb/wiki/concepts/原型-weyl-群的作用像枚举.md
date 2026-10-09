@@ -5,10 +5,10 @@ sources:
   - lib-root.md
 kind: concept
 createdAt: "2026-10-09T14:58:50.807Z"
-updatedAt: "2026-10-09T21:00:56.618Z"
+updatedAt: "2026-10-09T22:38:04.471Z"
 tags:
   - Weyl群
-  - 群枚举
+  - 轨道枚举
 aliases:
   - 原型-weyl-群的作用像枚举
   - 原W群
@@ -38,17 +38,19 @@ aliases:
 
 # 原型 Weyl 群的作用像枚举
 
-`PrototypeWeylGroup` 是 `atlas-real-group` crate 中 [[A1 迁移原型层与对偶格类型设计|A1 迁移原型层]]的 Weyl 群实现。该层全部为 `pub(crate)`，实现注释标明待替换（pending replacement）；其群元素枚举采用广度优先搜索（BFS），以元素对全部单根的作用像作为键。^[lib-root.md:30-44]
+`PrototypeWeylGroup` 是 `atlas-real-group` crate 中 [[A1 迁移原型层与对偶格类型设计|A1 迁移原型层]]的 Weyl 群实现。该层全部为 `pub(crate)`，实现注释标明待替换（pending replacement）。其枚举采用广度优先搜索（BFS），以群元素对全部单根的作用像作为键。^[lib-root.md:10-14, lib-root.md:30-44]
 
 ## 作用像与枚举对象
 
-枚举键记录一个群元素对全部单根的作用像，用于识别群元素。它与原型 `RootDatum::roots()` 的根枚举有所区别：后者从正负单根出发，用 FIFO BFS 计算根的反射闭包，输出按坐标字典序排序的根向量。两者虽然都采用 BFS，枚举对象分别是群元素与根。^[lib-root.md:39-44]
+枚举键记录一个群元素对全部单根的作用像，用于识别群元素。原型采用单根基坐标，单根为 \(e_i\)，单余根为 Cartan 矩阵的第 \(j\) 列；构造约定见 [[原型 RootDatum 的构造校验与配对约定]]。^[lib-root.md:34-44]
 
-原型的根数据构造约定见 [[原型 RootDatum 的构造校验与配对约定]]。其中单根为 \(e_i\)，单余根为 Cartan 矩阵的第 \(j\) 列；原型 `RootDatum` 与 `root_datum` 模块中的 `BasedRootDatum` 是不同类型。^[lib-root.md:34-38, lib-root.md:55-58]
+群元素枚举与 `RootDatum::roots()` 的根枚举具有不同的对象：前者枚举 Weyl 群元素，后者以正负单根播种，通过 FIFO BFS 构造反射闭包，并将所得根向量按坐标字典序排序。原型 `RootDatum` 与 `root_datum` 模块中的 `BasedRootDatum` 也是不同类型。^[lib-root.md:39-44, lib-root.md:55-58]
 
 ## 容量限制与失败行为
 
-发现新元素时，若 `elements.len() >= 65_536`，枚举返回 `WeylGroupTooLarge`；成功枚举的群阶至多为 `65_536`。这一限制针对群元素数量。原型根闭包另有 `LIMIT = 4096`，第 4097 个互异根向量触发 `RootSystemTooLarge`，相关约束见 [[反射闭包的防御性不变量]]。^[lib-root.md:39-44]
+枚举新元素时，容量检查条件为 `elements.len() >= 65_536`，触发时返回 `WeylGroupTooLarge`；成功枚举的群阶至多为 `65_536`。^[lib-root.md:42-43]
+
+根闭包具有独立的容量限制：`LIMIT = 4096`，第 4097 个互异根向量触发 `RootSystemTooLarge`。根闭包计算还使用 `i128` 中间精度并收窄至 `i32`，溢出时报 `ArithmeticOverflow`；这些约束属于 [[反射闭包的防御性不变量]]。^[lib-root.md:39-41]
 
 ## 词的作用方向
 
@@ -56,9 +58,9 @@ aliases:
 
 ## 测试与证据边界
 
-来源列出的三个文件级测试锚点是：A1 反射取负、固定根按标志判为非紧虚根，以及 `i32::MAX` 坐标配对准确返回 `ArithmeticOverflow` 而非回绕。该清单未列出专门针对 Weyl 群 BFS 枚举、容量边界或逆序作用的测试；测试范围可结合 [[原型层的测试锚点与证据边界]] 阅读。^[lib-root.md:51-58]
+来源列出的三个文件级测试锚点为：A1 反射取负、固定根按标志判为非紧虚根，以及 `i32::MAX` 坐标配对恰报 `ArithmeticOverflow` 而非回绕。该清单未列出专门针对 Weyl 群 BFS 枚举、容量边界或逆序作用的测试；相关范围见 [[原型层的测试锚点与证据边界]]。^[lib-root.md:51-58]
 
-本页依据 crate 门面与原型层的结构性阅读，不构成数学验收。来源所述知识维护未执行 Atlas、Cargo、测试或 benchmark，因此上述测试锚点也不代表该次维护取得了新的测试运行结果。^[lib-root.md:9-14, lib-root.md:62-66]
+本页依据 crate 门面与原型层的结构性阅读，不构成数学验收。来源所述知识维护未执行 Atlas、Cargo、测试或 benchmark，因此上述测试锚点不代表该次维护取得了新的测试运行结果。^[lib-root.md:9-14, lib-root.md:62-66]
 
 ## Sources
 

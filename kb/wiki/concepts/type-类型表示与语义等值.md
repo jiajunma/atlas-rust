@@ -1,11 +1,11 @@
 ---
 title: Type 类型表示与语义等值
-summary: Type 采用 tag+payload 表示并折叠单元素元组与联合；语义等值先校验构造器应用，再以递归名义身份作为比较终止边界。
+summary: Type 以 tag+payload 表示类型并折叠单元素元组和联合；语义等值先校验构造器应用，再以递归名义身份作为比较终止边界。
 sources:
   - atlas-core-types.md
 kind: concept
 createdAt: "2026-10-09T14:38:06.029Z"
-updatedAt: "2026-10-09T20:45:58.820Z"
+updatedAt: "2026-10-09T22:22:13.433Z"
 tags:
   - 类型系统
   - 语义等值
@@ -22,7 +22,7 @@ promptModifiers:
 
 ---
 title: Type 类型表示与语义等值
-summary: Type 采用 tag+payload 表示，折叠单元素元组与联合；语义等值比较先校验构造器应用，并以递归类型的名义身份作为终止边界。
+summary: Type 采用 tag+payload 表示，折叠单元素元组与联合；语义等值先校验构造器应用，再以递归名义身份作为比较终止边界。
 sources:
   - atlas-core-types.md
 kind: concept
@@ -32,6 +32,7 @@ tags:
   - 语义等值
 aliases:
   - type-类型表示与语义等值
+provenanceState: extracted
 ---
 
 # Type 类型表示与语义等值
@@ -42,9 +43,9 @@ aliases:
 
 `Type` 包含 `Undetermined`、`Variable(usize)`、`Primitive`、`Function(Box<(Type, Type)>)`、`Row`、`Tuple`、`Union`、`Tabled(TypeNumber)` 和 `Applied(TypeNumber, Vec<Type>)`。`Undetermined` 显示为 `*`，仅由 `specialise` 收窄；变量是否刚性由外围 scheme 的 `fixed` 阈值决定，不记录在变量节点上，参见 [[TypeScheme 与类型变量作用域]]。^[atlas-core-types.md:24-29]
 
-`Prim` 提供 20 个原始类型，`Prim::ALL` 保持上游 `prim_names` 的顺序，`Prim::name()` 返回上游拼写，例如 `KgbElt` 对应 `"KGBElt"`。函数类型以元组承载多个参数；空元组表示 `void`，`Type::tuple` 与 `union_of` 会折叠长度为 1 的输入。^[atlas-core-types.md:22-29]
+`Prim` 提供 20 个原始类型，`Prim::ALL` 保持上游 `prim_names` 的顺序，`Prim::name()` 返回上游拼写，例如 `KgbElt` 对应 `"KGBElt"`。函数类型以元组承载多个参数；`Type::tuple` 与 `union_of` 会折叠长度为 1 的输入。^[atlas-core-types.md:22-29]
 
-`Tabled` 表示按名字进行名义比较的递归项。`Applied` 保留构造器的名字与实参，即使展开后的结构没有使用某个形式参数，也不会因此丢弃该实参。字段与变体名称由 [[TypeTable 的稳定身份与活跃绑定|TypeTable]] 保存，而非嵌入类型结构。^[atlas-core-types.md:13-15, atlas-core-types.md:27-29, atlas-core-types.md:41-44]
+`Tabled` 表示按名字进行名义比较的递归项。`Applied` 保留构造器的名字与实参，即使展开后的结构没有使用某个形式参数，也仍保留该实参。字段与变体名称由 [[TypeTable 的稳定身份与活跃绑定|TypeTable]] 保存，而非嵌入类型结构。^[atlas-core-types.md:13-15, atlas-core-types.md:27-29, atlas-core-types.md:41-44]
 
 ## 展开与应用校验
 
@@ -60,9 +61,9 @@ aliases:
 
 ## 特化与失败行为
 
-`specialise(&mut self, pattern)` 是唯一允许的变异路径，成功时得到最一般合一子（MGU）。失败时，`self` 可能已部分特化；这是上游语义，不提供“提交或回滚”保证。需要回滚的调用方应先使用 `can_specialise`，参见 [[类型特化与失败回滚语义]]。^[atlas-core-types.md:15-17, atlas-core-types.md:36-37]
+`specialise(&mut self, pattern)` 是唯一允许的变异路径，成功时得到最一般合一子（MGU）。失败时，`self` 可能已部分特化；这是上游语义，不提供“提交或回滚”保证。需要回滚的调用方应先使用 `can_specialise`。^[atlas-core-types.md:15-17, atlas-core-types.md:36-37]
 
-更进一步的替换与合一由 [[TypeAssignment 与 InferredType 推断机器]] 承担。`TypeAssignment` 在 `[fixed, fixed+degree)` 范围维护无环替换，`fixed` 以下的变量保持刚性；替换属于一次分析或重载试验，不属于全局绑定。^[atlas-core-types.md:66-77]
+进一步的替换与合一由 [[TypeAssignment 与 InferredType 推断机器]] 承担。`TypeAssignment` 在 `[fixed, fixed+degree)` 范围维护无环替换，`fixed` 以下的变量保持刚性；替换属于一次分析或重载试验，不属于全局绑定。^[atlas-core-types.md:66-77]
 
 ## 证据边界
 
@@ -70,4 +71,4 @@ aliases:
 
 ## Sources
 
-- [atlas-core-types.md](atlas-core-types.md) — 类型模型（types.rs + types/）。
+- [atlas-core-types.md](../../sources/atlas-core-types.md) — 类型模型（types.rs + types/）。

@@ -543,6 +543,28 @@ draft) — strip both before comparing.  Final: **585 concepts / 76 sources
 / Fresh / 0 pending / zero red links (933 indexed names)**; logged in
 `kb/log.md` 2026-10-10.  Editorial only — not mathematical acceptance.
 
+Follow-up 3 (2026-10-10, benchmark-library packet): one more
+maintainer-written packet, `tests-math-library`, documents the structure of
+`tests/math` / `tests/fixtures` / `tests/reference` (the three top-level
+JSON schemas, 8 groups × 8 operations, 31 templates, the generics probe
+catalog's 273 cases, the 22 progressive rank-1 gates, the rank-6 inventory,
+and the evidence discipline — goldens only from original full streams,
+inventory ≠ correctness percentage, harness failure ≠ mathematical
+failure).  The snapshot honestly marks the owner's uncommitted edits and
+the untracked rank6 catalog as dirty bytes.  The compile recompiled all 77
+sources → **519 held candidates** (505 refreshes + 14 new pages), all
+reviewed (sieve: 252 pass; 258 B-tier = 357 flags eyeballed; 9 C-tier
+resolved individually — the weyl-perf "76/58/52" flags were decimal-split
+artifacts of 14.52/14.58/345.76 which are verbatim in the packet; the 14
+new pages were each read in full; a reverse token-loss sweep over the 505
+refreshes flagged 213, and the 6 worst were verified as extraction
+artifacts or faithful condensations).  One candidate was gate-rejected on
+a retitled sibling link (`整对合的预算门与检查顺序` → the approved
+《整对合分类的预算门与检查顺序》) and approved after retargeting per
+rule 5.  Final: **599 concepts / 77 sources / Fresh / 0 pending / zero red
+links (951 indexed names)**; logged in `kb/log.md` 2026-10-10.  Editorial
+only — not mathematical acceptance.
+
 ### Upstream HEAD moved (2026-10-09, read-only finding)
 
 A fresh `git ls-remote` at 2026-10-09T13:14:20Z resolves upstream

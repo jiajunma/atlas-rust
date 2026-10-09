@@ -1,15 +1,15 @@
 ---
 title: GlobalKgb 查询接口与 print_X 布局兼容
-summary: 查询使用扁平表和越界返回 None 的访问器，status 与 cross 参数顺序相反；打印复现字段宽度与缺失标记，但环面标签查询和打印的错误传播不同。
+summary: 查询采用扁平表和越界返回 None 的访问器，status 与 cross 参数顺序相反；打印保留字段宽度与缺失标记，环面标签查询和打印的错误传播不同。
 sources:
   - global-kgb.md
 kind: concept
 createdAt: "2026-10-09T14:49:39.618Z"
-updatedAt: "2026-10-09T20:53:48.256Z"
+updatedAt: "2026-10-09T22:30:49.461Z"
 tags:
-  - 接口设计
-  - 错误语义
-  - 输出兼容
+  - KGB
+  - 接口契约
+  - 打印兼容
 aliases:
   - globalkgb-查询接口与-printx-布局兼容
   - G查P布
@@ -24,27 +24,28 @@ promptModifiers:
 
 ---
 title: GlobalKgb 查询接口与 print_X 布局兼容
-summary: GlobalKgb 查询使用扁平表和返回 None 的边界访问；print_X 布局保留参数顺序、错误传播差异、字段宽度、打印字及环面标签的算术历史。
+summary: GlobalKgb 使用扁平查询表与越界返回 None 的访问器；print_X 保留字段宽度、打印字和环面标签的算术历史，标签查询与打印的错误传播不同。
 sources:
   - global-kgb.md
 kind: concept
 tags:
-  - 查询接口
-  - 打印布局
-  - 兼容性
+  - 接口设计
+  - 错误语义
+  - 输出兼容
 aliases:
   - globalkgb-查询接口与-printx-布局兼容
+  - G查P布
 ---
 
 # GlobalKgb 查询接口与 print_X 布局兼容
 
-`GlobalKgb` 枚举同一内类全部强实形的 KGB 元素，并按扭对合划分 tau 包。实现移植上游 `kgb::global_KGB` 的相关功能和 `kgb_io::print_X` 版式；从任意 `GlobalTitsElement` 播种的第二构造器及 Bruhat/Hasse 层尚未移植。^[global-kgb.md:10-15]
+`GlobalKgb` 枚举同一内类全部强实形的 KGB 元素，并按扭对合划分 tau 包。实现覆盖上游 `kgb::global_KGB` 的相关功能及 `kgb_io::print_X` 版式；从任意 `GlobalTitsElement` 播种的第二构造器和 Bruhat/Hasse 层尚未移植。^[global-kgb.md:10-15]
 
 ## 查询接口与错误语义
 
-cross、Cayley 等表使用扁平索引 `x * semisimple_rank + generator`，访问器通过 `.get` 读取，越界返回 `None`。参数顺序需要区分：`status(element, generator)` 与 `cross(generator, element)` 相反，后者沿用上游 `KGB_base::cross(s, x)` 的约定。^[global-kgb.md:84-87]
+cross、Cayley 等表采用扁平索引 `x * semisimple_rank + generator`，访问器通过 `.get` 读取，越界返回 `None`。调用时须区分参数顺序：`status(element, generator)` 与 `cross(generator, element)` 相反，后者沿用上游 `KGB_base::cross(s, x)` 的约定。^[global-kgb.md:84-87]
 
-环面标签查询与打印布局构造具有不同的错误语义：`torus_label()` 将 `log_2pi` 的错误转为 `None`，而 `print_layout` 会传播同一错误。`GlobalKgb` 仅派生 `Clone, Debug`，没有实现 `Eq`；快照比较需借助 `GlobalKgbPrint`。^[global-kgb.md:87-90]
+环面标签查询与打印布局构造的错误语义不同：`torus_label()` 将 `log_2pi` 的错误转为 `None`，`print_layout` 则传播同一错误。`GlobalKgb` 仅派生 `Clone, Debug`，没有实现 `Eq`；快照比较需借助 `GlobalKgbPrint`。^[global-kgb.md:87-90]
 
 ## print_X 布局约定
 
@@ -54,7 +55,7 @@ cross、Cayley 等表使用扁平索引 `x * semisimple_rank + generator`，访�
 
 打印头偏移先累加正根的余根坐标，得到 `dual_two_rho`，再通过 `exp_2pi(dual_two_rho, 4).log_2pi()` 计算。^[global-kgb.md:75-76]
 
-环面标签体现 [[全局环面元素的算术历史表示]]：构造入口进行约化，但 `simple_reflect` 后不再约化，因此输出可以包含负分子。B2 元素 15 的 `[0,-1]/2` 是这一行为的锚点；`log_2pi` 返回分子与两倍分母之比，仅进行 gcd 归一化。^[global-kgb.md:19-29]
+环面标签保留[[全局环面元素的算术历史表示]]：构造入口进行约化，但 `simple_reflect` 后不再约化，因此输出可以包含负分子。B2 元素 15 的 `[0,-1]/2` 是这一行为的测试锚点；`log_2pi` 返回分子与两倍分母之比，仅进行 gcd 归一化。^[global-kgb.md:19-29]
 
 ## 测试锚点与覆盖边界
 
@@ -62,9 +63,9 @@ cross、Cayley 等表使用扁平索引 `x * semisimple_rank + generator`，访�
 
 另一个 B2 结构测试检查 17 个元素、包大小 `[8,2,2,2,2,1]`、包字 `["e","1^e","2^e","1x2^e","2x1^e","1^2x1^e"]`，以及 cross 对合性与 Cayley 配对。相关证据范围见 [[GlobalKgb 的回归测试与证据边界]]。^[global-kgb.md:98-100]
 
-现有测试没有覆盖错误分支。半单秩为 0 的平凡群和一维环面也有意未测，因为共享内类机制会在空生成元集合上 panic，修复超出本模块范围。维度匹配、非零分母及直接索引等隐式前提遭到破坏时会 panic；`reduce_raw`、`evaluate_at` 等处的 `2 * denominator` 使用普通乘法，溢出时在 debug 下 panic、在 release 下回绕。^[global-kgb.md:101-105]
+现有测试没有覆盖错误分支。半单秩为 0 的平凡群和一维环面也有意未测，因为共享内类机制会在空生成元集合上 panic，修复超出本模块范围。维度匹配、非零分母及直接下标索引等隐式前提遭到破坏时会 panic；`reduce_raw`、`evaluate_at` 等处的 `2 * denominator` 使用普通乘法，溢出时在 debug 下 panic、在 release 下回绕。^[global-kgb.md:101-105]
 
-本页依据结构性源码阅读与已有测试锚点，不构成数学验收。源文档中的上游行号转录自代码注释，未核对上游文件字节；该次知识维护也未执行 Atlas、Cargo、测试或 benchmark。^[global-kgb.md:9-15, global-kgb.md:109-113]
+本页依据结构性源码阅读与源文档记录的测试锚点，不构成数学验收。源文档中的上游行号转录自代码注释，未核对上游文件字节；该次知识维护也未执行 Atlas、Cargo、测试或 benchmark。^[global-kgb.md:9-15, global-kgb.md:109-113]
 
 ## Sources
 

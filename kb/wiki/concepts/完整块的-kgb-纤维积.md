@@ -1,15 +1,15 @@
 ---
 title: 完整块的 KGB 纤维积
-summary: 完整块按 twisted involution 的对偶关系配对两侧完整 KGB 集，保留各自编号；缺失对偶包不贡献元素，重复包键会静默覆盖。
+summary: 完整块按 twisted involution 的对偶关系配对两侧完整 KGB 集并保留各自编号；缺失对偶包不贡献元素，重复包键会静默覆盖。
 sources:
   - block-graph.md
 kind: concept
 createdAt: "2026-10-09T14:41:08.924Z"
-updatedAt: "2026-10-09T20:48:16.339Z"
+updatedAt: "2026-10-09T22:24:46.319Z"
 tags:
-  - 表示论
   - 块图
   - KGB
+  - 构造算法
 aliases:
   - 完整块的-kgb-纤维积
   - 完K纤
@@ -24,14 +24,14 @@ promptModifiers:
 
 ---
 title: 完整块的 KGB 纤维积
-summary: 完整块按 twisted involution 的对偶关系配对两个完整 KGB 集，保留各自坐标编号；缺失对偶包不贡献元素，对偶包索引中的重复键会静默覆盖。
+summary: 完整块按 twisted involution 的对偶关系配对两侧完整 KGB 集，保留各自编号；缺失对偶包不贡献元素，对偶包索引中的重复键会静默覆盖。
 sources:
   - block-graph.md
 kind: concept
 tags:
+  - 表示论
   - 块图
   - KGB
-  - 对偶
 aliases:
   - 完整块的-kgb-纤维积
   - 完K纤
@@ -40,7 +40,7 @@ provenanceState: extracted
 
 # 完整块的 KGB 纤维积
 
-完整块是一个实形式的 [[KGB 图与弱实形式|KGB 图]]与其对偶实形式的 KGB 图，按 twisted involution 及其对偶配对形成的纤维积。每个块元素由坐标对 \((x,y)\) 表示，两侧元素所属的对合包必须满足对偶配对关系；坐标保留各自完整 KGB 集中的编号。^[block-graph.md:17-33]
+完整块是一个实形式的 [[KGB 图与弱实形式|KGB 图]]与其对偶实形式的 KGB 图，按 twisted involution 及其对偶配对形成的纤维积。每个块元素由坐标对 \((x,y)\) 表示，两侧元素所属的对合包须满足对偶配对关系；坐标保留各自完整 KGB 集中的编号。^[block-graph.md:17-33]
 
 ## 对合的对偶配对
 
@@ -72,7 +72,7 @@ provenanceState: extracted
 
 七个测试全部限于 A1，未覆盖多生成元、空对偶包或空块、`element` 失败分支等情形。相关覆盖范围见 [[完整块图的测试覆盖与证据边界]]。^[block-graph.md:117-126]
 
-来源属于结构性源码阅读，本包未执行构建、测试或原版运行，不含数学验收、性能或并行结论。块枚举的正确性属于独立的 HPC 证据链，本包不重述或扩展其结论；其中上游行号转述自源码注释，未独立重读上游。^[block-graph.md:9-13, block-graph.md:139-139]
+来源属于结构性源码阅读，本包未执行构建、测试或原版运行，不含数学验收、性能或并行结论。块枚举的正确性属于独立的 HPC 证据链，本包不重述或扩展其结论；其中上游行号转述自源码注释，未独立重读上游。^[block-graph.md:9-13, block-graph.md:139-143]
 
 ## Sources
 

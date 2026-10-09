@@ -1,11 +1,11 @@
 ---
 title: clean 标志与 CLI 退出状态
-summary: CLI 退出状态遵循会话的 clean 标志：语法、类型和运行时错误导致非零退出，缺失包含文件本身不使 clean 失效。
+summary: CLI 依据会话 clean 标志确定退出状态：语法、类型和运行时错误导致非零退出，缺失包含文件本身不使 clean 失效。
 sources:
   - atlas-cli-main.md
 kind: concept
 createdAt: "2026-10-09T14:25:27.501Z"
-updatedAt: "2026-10-09T20:29:16.947Z"
+updatedAt: "2026-10-09T22:11:46.540Z"
 tags:
   - CLI
   - 错误处理
@@ -27,21 +27,13 @@ summary: CLI 退出状态遵循会话的 clean 标志：语法、类型和运行
 sources:
   - atlas-cli-main.md
 kind: concept
-createdAt: "2026-10-09T14:25:27.501Z"
-updatedAt: "2026-10-09T14:25:27.501Z"
 tags:
-  - 退出状态
+  - CLI
   - 错误处理
   - 会话管理
 aliases:
   - clean-标志与-cli-退出状态
-confidence: 1
 provenanceState: extracted
-modelId: codex-cli-default
-promptVersion: v6
-promptModifiers:
-  - lang=zh-CN
-  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
 ---
 
 # clean 标志与 CLI 退出状态
@@ -52,11 +44,11 @@ promptModifiers:
 
 CLI 通过会话帧，在文件参数或 stdin 上运行一个共享会话；会话机器位于 `atlas-core`，CLI 依照其 clean 纪律决定退出状态。相关机制见 [[会话 clean 标志与诊断分流]]、[[SessionFrame 会话帧与文件包含语义]] 和 [[会话帧驱动的 CLI 执行模型]]。^[atlas-cli-main.md:10-13, atlas-cli-main.md:35-43]
 
-诊断输出与退出状态有各自的处理依据：`Diagnostic` 事件经 `frame.describe_bytes` 生成出处、源行和 caret 标记后写入 stderr，退出状态则依据 clean 标志。因此，缺少包含文件本身不能作为非零退出的判据。参见 [[CLI 事件输出与源码诊断]]。^[atlas-cli-main.md:22-25, atlas-cli-main.md:35-37]
+`Diagnostic` 事件经 `frame.describe_bytes` 生成包含出处、源行和 caret 标记的诊断，并写入 stderr。诊断的输出路径与 clean 标志所决定的退出状态应分别理解，尤其应保留“缺少包含文件本身不置 clean 为失败”的例外。参见 [[CLI 事件输出与源码诊断]]。^[atlas-cli-main.md:22-25, atlas-cli-main.md:35-37]
 
 ## 输入处理边界
 
-文件参数被刻意作为普通命令流处理，上游文件参数的 prelude-capture 语义不在此实现目标内。stdin 非终端时读入后运行，终端输入则进入 `run_interactive`。这些输入约定构成理解 CLI 行为的边界，参见 [[交互式与非交互式输入分流]]。^[atlas-cli-main.md:30-34]
+文件参数被刻意作为普通命令流处理，上游文件参数的 prelude-capture 语义不在此实现目标内。stdin 非终端时读入后运行，终端输入则进入 `run_interactive`。相关输入机制见 [[交互式与非交互式输入分流]]。^[atlas-cli-main.md:30-34]
 
 ## 证据范围
 
@@ -64,4 +56,4 @@ CLI 通过会话帧，在文件参数或 stdin 上运行一个共享会话；会
 
 ## Sources
 
-- [CLI 前端（atlas-cli/main.rs）——会话帧驱动、--path 解析与 clean 退出状态](atlas-cli-main.md)
+- [CLI 前端（atlas-cli/main.rs）——会话帧驱动、--path 解析与 clean 退出状态](../../sources/atlas-cli-main.md)

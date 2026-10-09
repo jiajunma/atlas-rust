@@ -1,15 +1,15 @@
 ---
 title: 保留首批独立列的典范截面（CanonicalModTwoSection）
-summary: 保留首批独立输入列并丢弃依赖列，以至多 64 位源掩码求解动态维数目标；同一分解可复用，目标不在像中时返回 None。
+summary: 保留首批独立输入列并丢弃依赖列，以至多 64 位源掩码求解动态维数目标；分解可复用，目标不在像中时返回 None。
 sources:
   - mod-two.md
 kind: concept
 createdAt: "2026-10-09T15:02:23.782Z"
-updatedAt: "2026-10-09T21:03:21.221Z"
+updatedAt: "2026-10-09T22:40:34.629Z"
 tags:
-  - 有限域
-  - 线性求解
+  - 模二线性代数
   - 典范截面
+  - 资源边界
 aliases:
   - 保留首批独立列的典范截面canonicalmodtwosection
 confidence: 1
@@ -23,37 +23,39 @@ promptModifiers:
 
 ---
 title: 保留首批独立列的典范截面（CanonicalModTwoSection）
-summary: 按输入顺序保留首批独立列，以至多 64 位源掩码为动态目标求解，并复用同一分解；3×4 穷举测试锚定有解时返回数值最小的源掩码。
+summary: 按输入顺序保留首批独立列，以至多 64 位源掩码求解动态维数目标；同一分解可复用，目标不在像中时返回 None。
 sources:
   - mod-two.md
 kind: concept
 tags:
-  - 线性映射
+  - 有限域
+  - 线性求解
   - 典范截面
-  - 位掩码
+aliases:
+  - 保留首批独立列的典范截面canonicalmodtwosection
 ---
 
 # 保留首批独立列的典范截面（CanonicalModTwoSection）
 
-`CanonicalModTwoSection` 为 $\mathbb{F}_2$ 线性映射在其像上选择确定性的源代表。它对应上游 `BinaryMap::section`：按输入列顺序保留首批独立列，丢弃依赖列，并复用一次分解求解同一映射的所有目标。^[mod-two.md:51-60]
+`CanonicalModTwoSection` 为 $\mathbb{F}_2$ 线性映射在其像上选择确定性的源代表。它对应上游 `BinaryMap::section`：按输入顺序保留首批独立列，丢弃依赖列，并以一次分解求解同一映射的多个目标。^[mod-two.md:51-60]
 
-## 独立列的选择规则
+## 独立列的选择
 
-列的保留取决于输入列的线性独立性。依赖列必须丢弃，即使其源标记在增广空间中仍然独立。源码注释指出，这一区分固定了可观测的实形种子代表，对应上游 `bitvector.cpp` 截面构造中遗忘零化列的行为；相关背景见 [[KGB 种子代表元的可观测影响]]。^[mod-two.md:53-55]
+列是否保留取决于它相对于此前保留列的线性独立性。依赖列被丢弃，即使其源标记在增广空间中仍然独立。源码注释指出，这一区分固定了可观测的实形种子代表，对应上游 `bitvector.cpp` 截面构造中遗忘零化列的行为；相关背景见 [[KGB 种子代表元的可观测影响]]。^[mod-two.md:53-55]
 
 ## 表示与容量边界
 
-源坐标打包为 `u64` 掩码，因此输入列数最多为 64；当 `columns.len() > 64` 时，返回 `ResourceLimitExceeded { limit: 64 }`。目标向量仍采用动态表示，64 列限制不意味着目标空间至多为 64 维，源材料明确列出了 130 维动态目标测试。动态向量表示可参见 [[F₂ 上的位打包向量（ModTwoVector）]]。^[mod-two.md:55-59, mod-two.md:89-89]
+源坐标打包为 `u64` 掩码，输入列数最多为 64；若 `columns.len() > 64`，返回 `ResourceLimitExceeded { limit: 64 }`。目标向量仍采用动态表示，因此 64 列限制约束的是源坐标数量，目标维数可以超过 64。来源列出了 130 维动态目标测试；动态向量表示参见 [[F₂ 上的位打包向量（ModTwoVector）]]。^[mod-two.md:55-60, mod-two.md:89-89]
 
 ## 求解与分解复用
 
-`solve(target)` 按行升序消元，并累积源解掩码。最终以 `Ok(remainder.is_zero().then_some(solution))` 返回结果：目标属于保留列张成的空间时返回 `Some(solution)`，否则返回 `None`。同一映射的多个目标共用一次分解。^[mod-two.md:57-60]
+`solve(target)` 按行升序消元，同时累积源解掩码。最终返回 `Ok(remainder.is_zero().then_some(solution))`：目标属于保留列张成的空间时，结果为 `Ok(Some(solution))`；否则为 `Ok(None)`。同一映射的所有目标可复用已有分解。^[mod-two.md:57-60]
 
-## 确定性与证据边界
+## 确定性与测试证据
 
-源码中的穷举测试遍历全部 $2^{12}$ 个 $3\times4$ 映射，以及每个映射的 8 个目标，锚定这一范围内的确定性：有解时，返回的解等于数值最小的源掩码。其他测试覆盖 64 列通过、65 列拒绝，以及 130 维动态目标。^[mod-two.md:59-60, mod-two.md:85-89]
+源码中的穷举测试遍历全部 $2^{12}$ 个 $3\times4$ 映射及每个映射的 8 个目标，锚定这一范围内的确定性：有解时，返回值等于数值最小的源掩码。其他测试覆盖 64 列通过、65 列拒绝，以及 130 维动态目标。^[mod-two.md:59-60, mod-two.md:85-89]
 
-上述测试信息来自结构性源码阅读。来源材料未执行构建、测试或原版运行，不构成数学验收，也不提供性能或并行结论。整个 `mod_two.rs` 的多数 `ArithmeticOverflow` 与 `AllocationFailed` 分支仍缺少测试覆盖；相关范围见 [[模二线性代数的测试锚点与验收边界]]。^[mod-two.md:9-13, mod-two.md:89-93, mod-two.md:103-103]
+这些测试信息来自结构性源码阅读。来源材料未执行构建、测试或原版运行，不包含数学验收、性能或并行结论；整个 `mod_two.rs` 的多数 `ArithmeticOverflow` 与 `AllocationFailed` 分支仍缺少测试覆盖。^[mod-two.md:9-13, mod-two.md:89-93, mod-two.md:103-103]
 
 ## Sources
 

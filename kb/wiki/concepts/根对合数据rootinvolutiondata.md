@@ -1,14 +1,15 @@
 ---
 title: 根对合数据（RootInvolutionData）
-summary: 在格对合之上验证根置换与逐根余根运输，排除固定根却错误移动余根中心环面坐标的作用。
+summary: 在格对合之上验证根置换及逐根余根运输，排除固定根却错误移动余根中心环面坐标的作用。
 sources:
   - involution-types.md
 kind: concept
 createdAt: "2026-10-09T14:53:23.183Z"
-updatedAt: "2026-10-09T20:56:29.667Z"
+updatedAt: "2026-10-09T22:33:37.862Z"
 tags:
   - 根数据
-  - 构造不变量
+  - 对合
+  - 构造校验
 aliases:
   - 根对合数据rootinvolutiondata
 confidence: 1
@@ -22,13 +23,13 @@ promptModifiers:
 
 ---
 title: 根对合数据（RootInvolutionData）
-summary: 在格对合之上验证根置换及逐根余根运输，保存根分类与继承正系中的虚根、实根子系统单根。
+summary: 在格对合之上验证根置换与逐根余根运输，保存根分类及继承正系中的虚根、实根子系统单根。
 sources:
   - involution-types.md
 kind: concept
 tags:
   - 根数据
-  - 根系自同构
+  - 构造不变量
   - Rust设计
 aliases:
   - 根对合数据rootinvolutiondata
@@ -37,19 +38,19 @@ provenanceState: extracted
 
 # 根对合数据（RootInvolutionData）
 
-`RootInvolutionData` 在 [[格对合（LatticeInvolution）]] 的配对保持对合之上，验证作用是否置换枚举根系，并将每个存储余根运输到像根对应的余根。它保存底层格对合、各根的像与分类，以及虚根和实根子系统在继承正系中的单根。^[involution-types.md:13-15, involution-types.md:34-47, involution-types.md:82-97]
+`RootInvolutionData` 在配对保持的格对合 `LatticeInvolution` 之上，验证作用是否置换枚举根系，并将每个存储余根运输到像根对应的余根。它保存底层格对合、各根的像与分类，以及虚根和实根子系统在继承正系中的单根。^[involution-types.md:34-47, involution-types.md:82-97]
 
 ## 数学约束与类型边界
 
-`LatticeInvolution` 分别存储并共同验证 character 与 cocharacter 格上的作用，保证两个作用均为对合且保持配对，但不保证保持有限根系。`RootInvolutionData` 补充根置换与余根运输验证：仅保持配对仍可能允许“固定所有根，却移动余根中心环面坐标”的作用通过，因此余根运输是独立且必要的构造条件。^[involution-types.md:63-71, involution-types.md:82-84]
+`LatticeInvolution` 分别存储 character 与 cocharacter 格上的作用，并共同验证两者均为对合且保持配对，但不保证保持有限根系。`RootInvolutionData` 补充根置换与余根运输验证：仅保持配对仍可能允许“固定所有根，却移动余根中心环面坐标”的作用通过，因此不能省略余根运输条件。^[involution-types.md:63-71, involution-types.md:82-84]
 
-构造器不独立检查根置换的平方是否为恒等；这一性质依赖底层 `LatticeInvolution` 的代数对合验证。相关构造纪律见 [[对合类型的分层构造验证与错误优先级]]。^[involution-types.md:67-71, involution-types.md:144-145]
+构造器不独立检查根置换的平方是否为恒等；这一性质依赖底层 `LatticeInvolution` 的代数对合验证。相关构造纪律见 [[对合类型的分层构造验证与错误优先级]]。^[involution-types.md:144-145]
 
 ## 构造与错误优先级
 
 构造入口为 `RootInvolutionData::new(&RootSystem, LatticeInvolution) -> Result<Self, _>`。字段全部私有，实例必须经过构造验证。^[involution-types.md:34-39, involution-types.md:142-143]
 
-构造先检查 datum 一致性，再检查秩，分别可能返回 `DatumMismatch` 与 `RankMismatch`。随后执行 `validate_simple_root_images`，最后进入逐根主循环；单根级错误因此优先于主循环中的泛型错误。^[involution-types.md:86-91]
+构造先检查 datum 一致性，再检查秩，分别可能返回 `DatumMismatch` 与 `RankMismatch`。随后执行 `validate_simple_root_images`，最后进入逐根主循环；单根级错误优先于主循环中的泛型错误。各阶段的错误如下表所示。^[involution-types.md:86-91]
 
 | 验证阶段 | 失败情形 | 错误 |
 | --- | --- | --- |
@@ -58,13 +59,11 @@ provenanceState: extracted
 | 逐根主循环 | 根的像不是根 | `InvalidRootAutomorphism` |
 | 逐根主循环 | 余根运输不符 | `InvalidRootDatumAutomorphism` |
 
-这些错误及其先后顺序构成构造器的诊断约定，区分单根级问题与遍历全部根时发现的问题。^[involution-types.md:86-91]
-
 ## 根分类与子系统单根
 
-对于根 \(\alpha\)，分类按固定顺序进行：若 \(\theta(\alpha)=\alpha\)，则为 `Imaginary`（虚根）；否则若 \(\theta(\alpha)=-\alpha\)，则为 `Real`（实根）；其余为 `Complex`（复根）。负根坐标通过逐坐标 `checked_neg` 计算。参见 [[对合下的虚根、实根与复根分类]]。^[involution-types.md:91-92]
+对于根 \(\alpha\)，分类按固定顺序进行：若 \(\theta(\alpha)=\alpha\)，则为 `Imaginary`（虚根）；否则若 \(\theta(\alpha)=-\alpha\)，则为 `Real`（实根）；其余为 `Complex`（复根）。负根通过逐坐标 `checked_neg` 计算。参见 [[对合下的虚根、实根与复根分类]]。^[involution-types.md:91-92]
 
-`subsystem_simple_roots` 分别计算虚根与实根子系统的单根。它选取该类中简单坐标全非负的根，继承原根系的正系，并按 `RootId` 升序处理候选；当候选满足与集合内另一成员及某正坐标向量有关的差分可分解条件时跳过，否则入选。输出同样按 `RootId` 升序排列，具体顺序有测试锚定。参见 [[继承正系中的子系统单根提取]]。^[involution-types.md:94-97]
+`subsystem_simple_roots` 分别计算虚根与实根子系统的单根。它选取该类中简单坐标全非负的根，继承原根系的正系，并按 `RootId` 升序处理候选；候选若可分解为集合内另一成员与某正坐标向量的差，则跳过，否则入选。输出按 `RootId` 升序排列，具体顺序有测试锚定。^[involution-types.md:94-97]
 
 ## 查询接口
 

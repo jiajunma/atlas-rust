@@ -731,6 +731,15 @@ Program 诊断、局部名永不接受显式参数、`forward_formals` 把组内
 [阅读快照](snapshots/2026-10-10-atlas-core-type-groups.json)；维护者直接
 撰写（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
 
+[数学测试与基准库结构](tests-math-library.md)记录 `tests/math/`、
+`tests/fixtures/` 与 `tests/reference/` 的结构：顶层三 JSON 的 schema 与
+群×操作清单（8 群 × 8 操作 + 拒绝模板 + 语言操作 + 13 grids）、31 个
+模板、generics 探针库（273 用例）、progressive 秩 1 门、rank6 清单与
+证据纪律（金标只来自原版完整流、清单≠正确率、append-only 账本种子）。
+对应[阅读快照](snapshots/2026-10-10-tests-math-library.json)——取证时
+三个文件带 owner 未提交修改、rank6 目录清单未跟踪，快照已如实标注；
+维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

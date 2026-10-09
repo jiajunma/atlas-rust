@@ -1,15 +1,15 @@
 ---
 title: LocatedBlock 稳定块句柄与查询相对姿态
-summary: 以共享块句柄、存储行号和 block modifier 表达查询定位，仅当 w 与 simple_pi 均为恒等时允许通过中心位移直接读取存储行。
+summary: LocatedBlock 提供共享块句柄、存储行号及查询相对姿态，仅在 modifier 的 w 与 simple_pi 均为恒等时允许以中心位移直接读取存储行。
 sources:
   - rep-table.md
 kind: concept
 createdAt: "2026-10-09T15:09:16.106Z"
-updatedAt: "2026-10-09T21:08:15.856Z"
+updatedAt: "2026-10-09T22:46:09.911Z"
 tags:
   - 块存储
   - 表示参数
-  - 姿态变换
+  - 接口契约
 aliases:
   - locatedblock-稳定块句柄与查询相对姿态
 confidence: 1
@@ -23,7 +23,7 @@ promptModifiers:
 
 ---
 title: LocatedBlock 稳定块句柄与查询相对姿态
-summary: LocatedBlock 提供共享块、存储行号及查询相对姿态；仅当 block modifier 的 w 与 simple_pi 均为恒等时，消费者才能用平实中心位移直接读取存储行。
+summary: LocatedBlock 提供共享块、存储行号及查询相对姿态；仅当 block modifier 的 w 与 simple_pi 均为恒等时，消费者才能通过平实中心位移直接读取存储行。
 sources:
   - rep-table.md
 kind: concept
@@ -37,7 +37,7 @@ aliases:
 
 # LocatedBlock 稳定块句柄与查询相对姿态
 
-`LocatedBlock` 是共享公共块存储向消费者提供的稳定块句柄，同时携带查询相对于已存块的姿态数据。存储面向一个实形式；当查询的积分子系统在某个 Weyl 姿态下与已存块匹配时，系统复用该块，并由 `block_modifier` 记录姿态差。reduced 键及其 Smith codec 保持私有，消费者获得稳定句柄与查询相对代表元。^[rep-table.md:19-27]
+`LocatedBlock` 是共享公共块存储向消费者提供的稳定块句柄，同时携带查询相对于已存块的姿态数据。存储面向一个实形式：当查询的积分子系统在某个 Weyl 姿态下与已存块匹配时，系统复用该块，并由 `block_modifier` 记录姿态差。reduced 键及其 Smith codec 保持私有，消费者获得稳定句柄与查询相对代表元。^[rep-table.md:19-27]
 
 ## 块对象与查询位置
 
@@ -69,4 +69,4 @@ aliases:
 
 ## Sources
 
-- [rep-table.md](../../sources/rep-table.md) — 共享块存储：reduced 键控复用与 RepTableOwner
+- [rep-table.md](../../sources/rep-table.md) — 共享块存储：reduced 键控复用与 RepTableOwner。

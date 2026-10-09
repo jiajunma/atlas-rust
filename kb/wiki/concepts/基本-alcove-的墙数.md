@@ -1,14 +1,14 @@
 ---
 title: 基本 Alcove 的墙数
-summary: 基本 alcove 的墙由单余根及每个不可约分量的一条最低余根组成，数量为秩加分量数，本实现仅用该数量进行 Too few walls 检查。
+summary: 基本 alcove 的墙由单余根与每个不可约分量的一条最低余根组成，数量为秩加分量数，本实现仅以该数量进行 Too few walls 检查。
 sources:
   - atlas-core-root-numbering-alcove.md
 kind: concept
 createdAt: "2026-10-09T14:32:45.918Z"
-updatedAt: "2026-10-09T20:35:51.547Z"
+updatedAt: "2026-10-09T22:18:17.889Z"
 tags:
   - alcove
-  - 根系
+  - 输入校验
 aliases:
   - 基本-alcove-的墙数
   - 基A的
@@ -23,7 +23,7 @@ promptModifiers:
 
 ---
 title: 基本 Alcove 的墙数
-summary: 基本 Alcove 的墙由单余根及每个不可约分量的一条最低余根组成，墙数为秩加分量数；fundamental_alcove_wall_count 中仅该大小用于“Too few walls”检查。
+summary: 基本 Alcove 的墙由单余根及每个不可约分量的一条最低余根组成，墙数为秩加分量数；该数量用于 Too few walls 检查。
 sources:
   - atlas-core-root-numbering-alcove.md
 kind: concept
@@ -39,14 +39,14 @@ tags:
 
 ## 实现与可观察行为
 
-`fundamental_alcove_wall_count` 提供基本 Alcove 的墙数，用于 `"Too few walls"` 检查。就这一检查而言，只有墙集的大小可观察，具体墙的选择和排列不属于该检查的可观察内容。^[atlas-core-root-numbering-alcove.md:45-48]
+`fundamental_alcove_wall_count` 提供基本 Alcove 的墙数，用于 `"Too few walls"` 检查。就这一检查而言，只有墙集的大小可观察，具体墙的选择与排列不属于该检查的可观察内容。^[atlas-core-root-numbering-alcove.md:45-48]
 
-墙数检查与墙集的构造、排序是不同的处理环节：`wall_set` 确定由 `gamma` 的小 dominant 位移所达 Alcove 的墙余根；`sorted_by_label` 则按分量标签降序排列全部墙，并列时按 RootNbr 序排列。相关说明见 [[Alcove 墙集与整值墙筛选]] 与 [[Alcove 墙标签与标签排序]]。^[atlas-core-root-numbering-alcove.md:29-32, atlas-core-root-numbering-alcove.md:40-41]
+相关的墙集构造由 `wall_set` 完成：它确定由 `gamma` 的小 dominant 位移所达 Alcove 的墙余根，并收集在 `gamma` 上取整的墙，详见 [[Alcove 墙集与整值墙筛选]]。墙的排序则由 `sorted_by_label` 完成，按分量标签降序排列，并列时按 RootNbr 序排列，详见 [[Alcove 墙标签与标签排序]]。^[atlas-core-root-numbering-alcove.md:29-32, atlas-core-root-numbering-alcove.md:40-41]
 
 ## 证据边界
 
-本说明依据 `domain_builtins.rs` 中根编号与 Alcove 机器的结构性阅读，不代表数学验收。上游行号引用属于实现方的移植陈述；根编号与 Alcove 行为的兼容性仍以 HPC 差分门为准，参见 [[HPC 验收证据链]]。^[atlas-core-root-numbering-alcove.md:9-14, atlas-core-root-numbering-alcove.md:55-56]
+本说明依据 `crates/atlas-core/src/domain_builtins.rs` 中根编号与 Alcove 机器的结构性阅读，不构成数学验收。源材料中的上游行号属于实现方的移植陈述；编号与 Alcove 行为的兼容性仍以 [[HPC 验收证据链|HPC 差分门]] 为准。^[atlas-core-root-numbering-alcove.md:9-14, atlas-core-root-numbering-alcove.md:55-56]
 
 ## Sources
 
-- [根编号与 alcove 机器（domain_builtins.rs 5005–5924）](atlas-core-root-numbering-alcove.md)
+- [根编号与 alcove 机器（domain_builtins.rs 5005–5924）](../../sources/atlas-core-root-numbering-alcove.md)

@@ -5,11 +5,11 @@ sources:
   - weyl-transducer.md
 kind: concept
 createdAt: "2026-10-09T15:19:00.355Z"
-updatedAt: "2026-10-09T21:15:24.474Z"
+updatedAt: "2026-10-09T22:55:01.665Z"
 tags:
   - Rust设计
   - 存储表示
-  - 容量限制
+  - 容量约束
 aliases:
   - weylelt-的固定数组与容量边界
 confidence: 1
@@ -23,13 +23,13 @@ promptModifiers:
 
 ---
 title: WeylElt 的固定数组与容量边界
-summary: WeylElt 使用固定栈数组 [u8; 32] 表示 Weyl 元素；32 是表示容量上界，不是元素枚举预算。
+summary: WeylElt 使用固定栈数组 [u8; 32] 表示 Weyl 元素，在枚举与 twisted scan 中无需为元素表示分配堆内存；32 是表示上界，不是元素枚举预算。
 sources:
   - weyl-transducer.md
 kind: concept
 tags:
-  - Weyl群
-  - 存储布局
+  - Rust设计
+  - 存储表示
   - 容量限制
 aliases:
   - weylelt-的固定数组与容量边界
@@ -46,19 +46,19 @@ provenanceState: extracted
 
 ## 表示容量与枚举预算
 
-`WEYL_MAX_RANK = 32` 对应上游 `utilities/constants.h` 中的 `RANK_MAX`。源码注释明确将它界定为**表示上界，而非元素枚举预算**，并以 complex rank 6 使用 12 个 pieces 为例，提示应区分 rank 与表示所用的 piece 数量。^[weyl-transducer.md:31-32]
+`WEYL_MAX_RANK = 32` 对应上游 `utilities/constants.h` 的 `RANK_MAX`。源码注释明确指出，32 是**表示上界，不是元素枚举预算**；例如 complex rank 6 使用 12 个 pieces，因此不能直接将 rank 与所用 piece 数量等同。^[weyl-transducer.md:31-32]
 
-元素数组与转移表使用不同的整数类型：`WeylElt` 的数组项为 `u8`，`EltPiece = u16`，`Generator = usize`，这些类型均为 `pub(crate)`。`UNDEF_PIECE` 与 `UNDEF_GEN` 都取 `u16::MAX`，用于标记 transducer 表中的哨兵，相关编码见 [[Transducer 转移表编码]]。^[weyl-transducer.md:28-33]
+元素数组项与表相关类型需要区分：`WeylElt` 的数组项为 `u8`，`EltPiece = u16`，而 `Generator = usize`；这三个类型别名均为 `pub(crate)`。`UNDEF_PIECE` 与 `UNDEF_GEN` 都取 `u16::MAX`，是 transducer 表使用的哨兵，参见 [[Transducer 转移表编码]]。^[weyl-transducer.md:28-33]
 
 ## Piece 与生成元编号
 
 每个抛物子商对应一个 `Transducer`。`CompactWeyl::new(cartan)` 先分类 Dynkin 图，再反转 B/C/D 型以确定内部顺序，最后为每个内部生成元构造 transducer。`piece_offset(i)` 将 piece 的局部字母转换为全局内部编号，`d_out()` 将内部编号映射为外部编号，详见 [[CompactWeyl 构造与生成元编号映射]]。^[weyl-transducer.md:44-49]
 
-固定数组中的 piece 也用于恢复 [[Weyl 元素的规范词]]。`canonical_word(external_word)` 接受任意外部编号词，不要求输入约化；它经 `inner_mult` 重建元素，再按 piece 递增顺序拼接选定的 piece words，并通过 `d_out` 将字母映射回外部编号。结果只依赖元素本身，不依赖输入词的选择。^[weyl-transducer.md:53-56]
+各 piece 还用于恢复 [[Weyl 元素的规范词]]。`canonical_word(external_word)` 接受任意外部编号词，不要求输入约化；它经 `inner_mult` 重建元素，再按 piece 递增顺序拼接选定的 piece words，并通过 `d_out` 将字母映射回外部编号。结果只依赖元素本身，不依赖输入词的选择。^[weyl-transducer.md:53-56]
 
 ## 证据边界
 
-来源属于结构性源码阅读，所读 `weyl_transducer.rs` 字节记录于 dirty 工作区快照。容量门控等正确性问题属于模块自身的 HPC 证据链，来源未重述或扩展这些结论。^[weyl-transducer.md:9-15]
+来源属于结构性源码阅读，所读 `weyl_transducer.rs` 字节记录于 dirty 工作区快照。容量门控等正确性问题属于模块自身的 HPC 证据链，来源没有重述或扩展这些结论。^[weyl-transducer.md:9-15]
 
 来源未执行构建、测试或原版运行，不提供数学验收、实测性能或并行结论。涉及的上游行号转述自源码注释，未独立重读上游，可能随版本演进而漂移。^[weyl-transducer.md:65-68]
 

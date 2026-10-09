@@ -1,14 +1,14 @@
 ---
 title: atlas-real-group 的 crate 门面与数学值边界
-summary: lib.rs 组织 60 个模块声明及 52 条根部再导出，定位为实约化群数学值与解释器领域值的适配边界，不承担语法或输出策略。
+summary: lib.rs 组织 60 个模块声明及 52 条根部再导出，承载实约化群数学值与解释器领域值的适配边界，不承担语法或输出策略。
 sources:
   - lib-root.md
 kind: concept
 createdAt: "2026-10-09T14:58:34.376Z"
-updatedAt: "2026-10-09T21:00:34.938Z"
+updatedAt: "2026-10-09T22:37:43.839Z"
 tags:
   - Rust架构
-  - 模块接口
+  - 模块组织
 aliases:
   - atlas-real-group-的-crate-门面与数学值边界
   - A的C门
@@ -19,6 +19,19 @@ promptVersion: v6
 promptModifiers:
   - lang=zh-CN
   - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: atlas-real-group 的 crate 门面与数学值边界
+summary: lib.rs 通过 60 个模块声明与 52 条根部再导出组织实约化群的数学值接口，不承担 Atlas 语法或输出策略，并保留 crate 内可见的 A1 迁移原型层。
+sources:
+  - lib-root.md
+kind: concept
+tags:
+  - Rust架构
+  - 模块接口
+aliases:
+  - atlas-real-group-的-crate-门面与数学值边界
 ---
 
 # atlas-real-group 的 crate 门面与数学值边界
@@ -45,14 +58,16 @@ A1 原型层中的类型全部为 `pub(crate)`，实现注释标记其等待替�
 
 原型层还包含 `PrototypeWeylGroup`、`RootType`、`CartanInvolution` 和 `RealReductiveGroup`。`CartanInvolution` 校验 \(M^2=I\) 及单根像属于根系，但其 `compact_imaginary` 标志是未经校验的调用方断言，来源说明它已被 `Grading` 取代。`RealReductiveGroup::simple_real_rank` 的含义刻意窄于 real rank。^[lib-root.md:42-49]
 
-原型 `RootDatum` 与 `root_datum` 模块中的 `BasedRootDatum` 名称相近，但并非同一类型。解释门面时应保留这一区分，不能将原型行为直接归于 [[BasedRootDatum：带基根数据与构造不变量]]。^[lib-root.md:57-58]
+原型 `RootDatum` 与 `root_datum` 模块中的 `BasedRootDatum` 名称相近，但并非同一类型。原型构造会调用 `BasedRootDatum::standard` 校验器，但这不意味着两者具有相同的表示或行为；相关类型见 [[BasedRootDatum：带基根数据与构造不变量]]。^[lib-root.md:34-38, lib-root.md:57-58]
 
 ## 测试与证据范围
 
-本文件包含三个测试锚点：A1 反射取负、固定根按标志判为非紧虚根，以及 `i32::MAX` 坐标配对返回 `ArithmeticOverflow` 而非回绕。它们覆盖门面文件中的局部原型行为，不代表其他模块的完整验证；参见 [[原型层的测试锚点与证据边界]]。^[lib-root.md:51-58]
+本文件包含三个测试锚点：A1 反射取负、固定根按标志判为非紧虚根，以及 `i32::MAX` 坐标配对返回 `ArithmeticOverflow` 而非回绕。最后一项还间接要求 `StructureError: PartialEq`。这些锚点覆盖门面文件中的局部原型行为，参见 [[原型层的测试锚点与证据边界]]。^[lib-root.md:51-54]
 
-来源属于结构性阅读，不声称数学验收。其覆盖范围限于 crate 门面与原型层，不包括各模块内部实现或 `weyl_size`／`global_tits` 的消费者。来源通过快照记录 Git base、文件字节 SHA-256 与草案调用信息，并明确本次知识维护未执行 Atlas、Cargo、测试或 benchmark。^[lib-root.md:9-14, lib-root.md:55-66]
+来源属于经维护者对照源码核对的结构性阅读，不声称数学验收。其覆盖范围限于 crate 门面与原型层，不包括各模块内部实现或 `weyl_size`／`global_tits` 的消费者。^[lib-root.md:9-14, lib-root.md:55-58]
+
+精确读取身份记录于 `2026-10-06-lib-root.json`，绑定 Git base、文件字节 SHA-256 与草案调用记录。本次知识维护未执行 Atlas、Cargo、测试或 benchmark，因此上述测试锚点不应被解读为本次执行的通过结果。^[lib-root.md:62-66]
 
 ## Sources
 
-- [lib-root.md](../../sources/lib-root.md) — crate 根：60 模块组织、52 条再导出与 A1 原型层（lib.rs）
+- [lib-root.md](../../sources/lib-root.md) — crate 根：60 模块组织、52 条再导出与 A1 原型层（lib.rs）。

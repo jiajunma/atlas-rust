@@ -1,15 +1,14 @@
 ---
 title: 整数列阶梯归约与带符号 gcd 扫描
-summary: 归约自底向上扫描，以最小绝对值主元、负主元取正记录和 div_euclid 消元保持选定像基的定向。
+summary: 归约自底向上扫描，记录负主元取正的符号并用 div_euclid 消元，零列擦除时将核列逐列轮转至右端。
 sources:
   - real-projection.md
 kind: concept
 createdAt: "2026-10-09T15:06:30.859Z"
-updatedAt: "2026-10-09T21:06:23.321Z"
+updatedAt: "2026-10-09T22:44:01.303Z"
 tags:
   - 整数矩阵
   - 消元算法
-  - 符号约定
 aliases:
   - 整数列阶梯归约与带符号-gcd-扫描
   - 整G扫
@@ -24,20 +23,22 @@ promptModifiers:
 
 ---
 title: 整数列阶梯归约与带符号 gcd 扫描
-summary: 列阶梯归约自底向上扫描，通过记录负主元取正操作、使用 div_euclid 并同步传递列操作，保留图像基的具体选择与符号定向。
+summary: 列阶梯归约自底向上扫描，通过记录负主元取正操作、使用 div_euclid 并同步施加列操作，保留图像基的具体选择与符号定向。
 sources:
   - real-projection.md
 kind: concept
 tags:
-  - 整数消元
+  - 整数矩阵
+  - 消元算法
   - 符号约定
 aliases:
   - 整数列阶梯归约与带符号-gcd-扫描
+provenanceState: extracted
 ---
 
 # 整数列阶梯归约与带符号 gcd 扫描
 
-整数列阶梯归约用于构造对合 $\theta$ 的 $(1-\theta)X^*$ 图像基对：`lift_mat` 是像的列阶梯基，大小为 $n\times r$；`m_real` 大小为 $r\times n$，满足 $\mathrm{lift\_mat}\,\mathrm{m\_real}=1-\theta$。相关定义见 [[对合的 (1−θ)X* 图像基对]]。^[real-projection.md:21-25]
+整数列阶梯归约用于构造对合 $\theta$ 的 $(1-\theta)X^*$ 图像基对。`lift_mat` 是大小为 $n\times r$ 的像的列阶梯基，`m_real` 是大小为 $r\times n$ 的坐标矩阵，二者满足 $\mathrm{lift\_mat}\,\mathrm{m\_real}=1-\theta$。相关定义见 [[对合的 (1−θ)X* 图像基对]]。^[real-projection.md:21-25]
 
 ## 归约流程与基选择
 
@@ -57,19 +58,19 @@ aliases:
 
 ## 播种与轨道传送
 
-列阶梯归约在 Cartan 轨道的 canonical involution 处用于播种，随后沿 cross-action BFS 传送基对。对单反射 $s$，传送采用 $L'=sL$、$M'=Ms$，保持 $(sL)(Ms)=s(1-\theta)s=1-\theta'$。传送所得基与对 $1-\theta'$ 重新归约的结果会有列符号或列次序差异，因此上游将基保存在记录中携带。参见 [[图像基的典范播种与轨道传送纪律]]、[[单反射下的图像基传送]]。^[real-projection.md:29-34, real-projection.md:53-58]
+列阶梯归约在 Cartan 轨道的 canonical involution 处用于播种，随后沿 cross-action BFS 传送基对。对单反射 $s$，传送采用 $L'=sL$、$M'=Ms$，保持分解不变式 $(sL)(Ms)=s(1-\theta)s=1-\theta'$。传送所得基与对 $1-\theta'$ 重新归约所得的基可能存在列符号或列次序差异，因此上游将基保存在记录中携带。参见 [[图像基的典范播种与轨道传送纪律]]、[[单反射下的图像基传送]]。^[real-projection.md:29-34, real-projection.md:53-58]
 
 ## 测试锚点与实现边界
 
-带符号 gcd 扫描具有针对 original3840186 的逐字锚点：输入矩阵 $\begin{pmatrix}8&-12\\4&-6\end{pmatrix}$，预期 pivot 为 $2$，image 为 $\begin{pmatrix}0&4\\0&2\end{pmatrix}$，columns 为 $\begin{pmatrix}-3&2\\-2&1\end{pmatrix}$。这些具体矩阵记录了归约所选择的结果。^[real-projection.md:73-75]
+带符号 gcd 扫描具有针对 original3840186 的逐字锚点：输入矩阵 $\begin{pmatrix}8&-12\\4&-6\end{pmatrix}$，预期 pivot 为 $2$，image 为 $\begin{pmatrix}0&4\\0&2\end{pmatrix}$，columns 为 $\begin{pmatrix}-3&2\\-2&1\end{pmatrix}$。这一锚点保留了归约结果的具体矩阵形式。^[real-projection.md:73-75]
 
-其他锚点覆盖斜环面对合 $\theta=\begin{pmatrix}-7&12\\-4&7\end{pmatrix}$ 与斜乘积的像基字面量，其中 `lift_mat` 为 $\begin{pmatrix}4\\2\end{pmatrix}$，`m_real` 为 $\begin{pmatrix}2&-3\end{pmatrix}$；边界测试覆盖恒等对合的零秩像，以及 $-I$ 的满秩像，后者满足 `lift_mat = 2I`。`transported` 没有测试。^[real-projection.md:75-77]
+其他锚点覆盖斜环面对合 $\theta=\begin{pmatrix}-7&12\\-4&7\end{pmatrix}$ 与斜乘积的像基字面量，包括 `lift_mat` 为 $\begin{pmatrix}4\\2\end{pmatrix}$、`m_real` 为 $\begin{pmatrix}2&-3\end{pmatrix}$；边界测试覆盖恒等对合的零秩像，以及 $-I$ 的满秩像，后者满足 `lift_mat = 2I`。来源记录 `transported` 没有测试。^[real-projection.md:75-77]
 
 算术与分配检查存在不一致：`invert_integer_matrix` 的消元使用非受检普通算术，与文件其余部分的 checked 风格不同；分配同时使用 `try_reserve_exact` 和 `vec!`、`to_vec`、`collect`。相关限制见 [[图像基接口的维度与算术安全边界]]。^[real-projection.md:69-71]
 
 ## 证据范围
 
-来源属于结构性阅读，未执行构建、测试或原版运行，不提供新的数学验收、性能或并行结论。上游行号转述自源码注释，未独立重读上游，可能随版本演进漂移；本说明也不扩展该实现已有的 HPC 证据链。^[real-projection.md:9-17, real-projection.md:87-92]
+来源属于结构性阅读，未执行构建、测试或原版运行，不提供新的数学验收、性能或并行结论。上游行号转述自源码注释，未独立重读上游，可能随版本演进漂移；本说明不扩展该实现已有的 signed-projection、fundamental-lattice gate 等 HPC 证据链。^[real-projection.md:9-17, real-projection.md:87-92]
 
 ## Sources
 

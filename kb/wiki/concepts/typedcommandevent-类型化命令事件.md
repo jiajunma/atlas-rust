@@ -5,10 +5,9 @@ sources:
   - atlas-core-typed-core.md
 kind: concept
 createdAt: "2026-10-09T14:37:11.993Z"
-updatedAt: "2026-10-09T14:37:11.993Z"
+updatedAt: "2026-10-09T22:21:30.156Z"
 tags:
   - 命令事件
-  - 会话接口
   - 字节保真
 aliases:
   - typedcommandevent-类型化命令事件
@@ -18,27 +17,44 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+---
+
+---
+title: TypedCommandEvent 类型化命令事件
+summary: 类型化命令事件包含诊断、携带类型和源码跨度的值、报告及输出；会话层据值类型判断 is_void，非法 UTF-8 报告字节由 ReportBytes 保留。
+sources:
+  - atlas-core-typed-core.md
+kind: concept
+tags:
+  - 命令事件
+  - 会话接口
+  - 字节保真
+aliases:
+  - typedcommandevent-类型化命令事件
+provenanceState: extracted
 ---
 
 # TypedCommandEvent 类型化命令事件
 
-`TypedCommandEvent` 是 Atlas 类型化管线中的命令事件类型，包含诊断、携带类型的值、报告文本、报告字节及输出等变体。它将命令结果以不同事件形式交给会话层处理。^[atlas-core-typed-core.md:91-95]
+`TypedCommandEvent` 是 Atlas 类型化管线中的命令事件类型，包含 `Diagnostic`、`Value { value, type_, span }`、`ReportLine`、`ReportBytes` 和 `Output` 五种变体，用于表示诊断、值、报告与输出。^[atlas-core-typed-core.md:91-95]
 
-## 事件变体
+## 值事件与会话处理
 
-该类型的变体为 `Diagnostic`、`Value { value, type_, span }`、`ReportLine`、`ReportBytes` 和 `Output`。其中，`Value` 除值本身外，还携带类型与源码跨度；会话层依据其中的类型判断 `is_void`。因此，值事件中的类型信息直接参与会话层的处理。^[atlas-core-typed-core.md:93-95]
+`Value` 同时携带值 `value`、类型 `type_` 和源码跨度 `span`。类型信息参与会话层的处理：会话层据此判断 `is_void`。因此，该事件保留的不只是求值结果，还包括会话处理所需的类型信息。^[atlas-core-typed-core.md:93-95]
 
-## 报告文本与字节保留
+## 报告的 UTF-8 分流
 
-`report()` 根据 UTF-8 有效性分流报告内容：非法 UTF-8 字节进入 `ReportBytes`，值不被改写。这一行为可结合 [[SessionEvent 与字节保留输出]] 理解其在会话输出中的关联。^[atlas-core-typed-core.md:93-95]
+`report()` 根据 UTF-8 有效性分流报告内容，非法 UTF-8 字节进入 `ReportBytes`，值不被改写。相关会话输出主题可参见 [[SessionEvent 与字节保留输出]]。^[atlas-core-typed-core.md:93-95]
 
-## 上下文与证据边界
+## 所属上下文
 
-源材料将该事件类型与 [[TypedContext 会话状态与启动初始化]] 一并介绍；`TypedContext` 持有类型表、全局绑定、求值上下文、重载状态、详细程度及类型位置等字段。^[atlas-core-typed-core.md:91-106]
+源材料将该事件类型与 [[TypedContext 会话状态与启动初始化]] 一并介绍。`TypedContext` 持有类型表、全局绑定、求值上下文、重载状态、详细程度和类型位置等字段；其中类型位置属于当前标识符绑定，重定义时必须报告新位置。^[atlas-core-typed-core.md:91-103]
 
-本页依据的是 `typed.rs` 上部数据结构的结构性阅读，不能据此宣称语言行为兼容已获验收。转换遍、内建注册表、`TypedExpr` 求值实现及执行层均不在该源包的覆盖范围内；行为兼容仍以 HPC 语料门为准，相关证据要求见 [[HPC 验收证据链]]。^[atlas-core-typed-core.md:9-15, atlas-core-typed-core.md:108-114]
+## 证据边界
+
+本页依据 `crates/atlas-core/src/typed.rs` 上部数据结构的结构性阅读，不构成语言或数学验收。源包未覆盖 `convert_expr`、内建注册表、`TypedExpr` 求值实现及执行层；上游行号对应关系属于实现方的移植陈述，行为兼容仍以 HPC 语料门为准，参见 [[HPC 验收证据链]]。^[atlas-core-typed-core.md:9-15, atlas-core-typed-core.md:108-114]
 
 ## Sources
 
-- [atlas-core-typed-core.md](atlas-core-typed-core.md) — 类型化管线核心数据结构（typed.rs 上部）。
+- [atlas-core-typed-core.md](../../sources/atlas-core-typed-core.md) — 类型化管线核心数据结构（typed.rs 上部）：TypedExpr 树、Analysis/OverloadState 与 TypedContext。

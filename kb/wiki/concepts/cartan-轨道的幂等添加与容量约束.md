@@ -1,15 +1,15 @@
 ---
 title: Cartan 轨道的幂等添加与容量约束
-summary: add_cartan 重复添加返回已有切片，新轨道大小必须等于分类预期，记录数达到 max_involutions 时拒绝继续插入。
+summary: add_cartan 重复添加返回已有切片，新轨道大小必须符合分类预期，记录数达到 max_involutions 时拒绝继续插入。
 sources:
   - involution-table.md
 kind: concept
 createdAt: "2026-10-09T14:52:23.390Z"
-updatedAt: "2026-10-09T20:55:52.991Z"
+updatedAt: "2026-10-09T22:33:03.052Z"
 tags:
   - Cartan分类
   - 资源预算
-  - 构造不变量
+  - 幂等性
 aliases:
   - cartan-轨道的幂等添加与容量约束
 confidence: 1
@@ -53,7 +53,7 @@ aliases:
 
 ## 容量约束
 
-`max_involutions` 是全表条目数的包含式上限：当 `records.len() == max_involutions` 时，继续插入会被拒绝，并报告 `InvolutionTableResourceLimit { resource: "involutions" }`。轨道大小检查核对单条轨道是否符合分类给出的规模，容量守卫则限制表中记录的总量。^[involution-table.md:44-47, involution-table.md:62-63]
+`max_involutions` 是全表条目数的包含式上限：表中允许已有这么多条记录，但当 `records.len() == max_involutions` 时，继续插入会被拒绝，并报告 `InvolutionTableResourceLimit { resource: "involutions" }`。轨道大小检查核对单条轨道是否符合分类给出的规模，容量守卫则限制表中记录的总量。^[involution-table.md:44-47, involution-table.md:62-63]
 
 ## 与 Cayley 查询的关系
 

@@ -5,10 +5,11 @@ sources:
   - ext-param.md
 kind: concept
 createdAt: "2026-10-09T14:47:11.864Z"
-updatedAt: "2026-10-09T20:51:59.331Z"
+updatedAt: "2026-10-09T22:28:55.681Z"
 tags:
-  - 表示论
-  - 参数正规化
+  - 扩展参数
+  - 算法
+  - 规范化
 aliases:
   - 扩展参数的-finalisation-驱动
   - 扩F驱
@@ -23,7 +24,7 @@ promptModifiers:
 
 ---
 title: 扩展参数的 finalisation 驱动
-summary: 三个驱动通过队列重放折叠轨道反射与 star 下降，跟踪相对默认扩展的净翻转；缩放版本改变 ν 而保持 λ 固定。
+summary: 三个驱动通过队列重放折叠轨道反射与 star 下降，跟踪相对默认扩展的净翻转；extended_finalise 检查 standard 与 delta-fixed 前提，缩放版本改变 ν 而保持 λ 固定。
 sources:
   - ext-param.md
 kind: concept
@@ -32,6 +33,7 @@ tags:
   - 参数终结化
 aliases:
   - 扩展参数的-finalisation-驱动
+provenanceState: extracted
 ---
 
 # 扩展参数的 finalisation 驱动
@@ -40,9 +42,7 @@ aliases:
 
 ## 队列处理与翻转跟踪
 
-三个驱动通过队列循环重放 folded-orbit（折叠轨道）反射与 `star` 下降，并跟踪相对默认扩展的净翻转。翻转的参照构造见 [[扩展参数的默认扩展]]。^[ext-param.md:56-62]
-
-`star(ctx, e, length, n_alpha)` 返回 `(DescValue, Vec<ExtParam>)`，给出根编号 `n_alpha` 的 delta-轨道类型及邻接扩展参数。驱动据此执行下降步骤，具体运算见 [[扩展参数的 star 运算]]。^[ext-param.md:56-59]
+三个驱动通过队列循环重放 folded-orbit（折叠轨道）反射与 `star` 下降，并跟踪相对[[扩展参数的默认扩展|默认扩展]]的净翻转。`star(ctx, e, length, n_alpha)` 返回 `(DescValue, Vec<ExtParam>)`，给出根编号 `n_alpha` 的 delta-轨道类型及邻接扩展参数；具体运算见[[扩展参数的 star 运算]]。^[ext-param.md:56-62]
 
 ## 接口与前置条件
 
@@ -50,11 +50,11 @@ aliases:
 
 `scaled_extended_finalise(ctx, sr, factor_num, factor_den)` 返回单个 `(StandardRepr, bool)`。其参数变换缩放 $\nu$，同时保持 $\lambda$ 固定。^[ext-param.md:61-62]
 
-`extended_restrict_to_k` 对应上游 `ext_block.cpp:2435-2547`，同样属于参数层 finalisation 驱动；来源未进一步列出其完整签名、返回类型或独立前置条件。^[ext-param.md:25-26]
+`extended_restrict_to_k` 对应上游 `ext_block.cpp:2435-2547`。来源将其列为参数层 finalisation 驱动，但未列出完整签名、返回类型或独立前置条件。^[ext-param.md:25-26]
 
 ## 算术与失败处理
 
-这些驱动所在模块遵循统一的 [[扩展参数层的 Rust 移植约定]]：`Weight`、`Coweight` 和 `int` 算术采用二进制补码 wrapping i32，有理权分子保持 i64。上游 `assert` 转为 `debug_assert` 或仅在调试模式执行的 `validate`，对应上游在 `NDEBUG` 下消除断言的行为；真正的数据相关失败通过 `StructureError` 暴露。^[ext-param.md:28-31]
+这些驱动所在模块遵循统一的[[扩展参数层的 Rust 移植约定]]：`Weight`、`Coweight` 和 `int` 算术采用二进制补码 wrapping i32，有理权分子保持 i64。上游 `assert` 转为 `debug_assert` 或仅在调试模式执行的 `validate`，对应上游在 `NDEBUG` 下消除断言的行为；真正的数据相关失败通过 `StructureError` 暴露。因此，调试断言与数据相关错误属于不同的检查机制。^[ext-param.md:28-31]
 
 ## 证据范围
 

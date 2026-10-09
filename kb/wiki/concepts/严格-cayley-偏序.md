@@ -5,11 +5,10 @@ sources:
   - cartan-classification.md
 kind: concept
 createdAt: "2026-10-09T14:42:02.992Z"
-updatedAt: "2026-10-09T20:48:57.023Z"
+updatedAt: "2026-10-09T22:25:34.525Z"
 tags:
   - Cartan分类
   - 偏序
-  - Cayley变换
 aliases:
   - 严格-cayley-偏序
   - 严C偏
@@ -24,13 +23,14 @@ promptModifiers:
 
 ---
 title: 严格 Cayley 偏序
-summary: 非空单根 Cayley 链定义 Cartan 类的严格偏序，fundamental 类位于其他类之下，有效类的自比较为 Some(false)。
+summary: 非空单根 Cayley 链定义 Cartan 类的严格偏序，fundamental 类位于其他类之下，有效类的自比较返回 Some(false)。
 sources:
   - cartan-classification.md
 kind: concept
 tags:
   - Cartan分类
   - 偏序
+  - Cayley变换
 aliases:
   - 严格-cayley-偏序
   - 严C偏
@@ -44,11 +44,11 @@ aliases:
 
 对于有效的 Cartan 类编号，`is_below(a, b)` 为真，当且仅当 \(a \ne b\)，且 \(b\) 的固定环面的单位连通分支可以经 Weyl 共轭嵌入 \(a\) 的相应单位连通分支。等价地，存在一条从 \(a\) 进入 \(b\) 的非空单根 Cayley 链，其中 \(a\) 位于较紧致（more-compact）的一端。^[cartan-classification.md:45-47]
 
-fundamental class 位于其他每个 Cartan 类之下。关系的不可反身性是构造不变量，因此对于有效类编号，`is_below(x, x)` 恒为 `Some(false)`；自比较不属于严格偏序关系。^[cartan-classification.md:48-49]
+fundamental class 位于其他每个 Cartan 类之下。不可反身性是构造不变量，因此对于有效类编号，`is_below(x, x)` 恒为 `Some(false)`。^[cartan-classification.md:48-49]
 
 ## 查询接口与编号
 
-`is_below(a, b)` 在 `a` 越界时返回 `None`；否则查询内部存储的 `below[b][a]`。存储下标先是目标类 `b`，再是被判定位于其下的类 `a`。^[cartan-classification.md:45-49]
+`is_below(a, b)` 在 `a` 越界时返回 `None`；否则查询内部存储的 `below[b][a]`。存储下标先是目标类 `b`，再是被判定位于其下的类 `a`。来源没有说明 `b` 越界时的行为。^[cartan-classification.md:45-49]
 
 类编号遵循 [[CartanId 的 Atlas 编号顺序]]：fundamental class 为 `CartanId(0)`，其余类按 BFS 发现顺序编号。parent 按编号升序处理，其正虚根按上游 `RootNbr` 顺序处理，即先按 height，再按单根坐标的逆字典序。Cayley successor 在比较与存储之前先经 `InnerClass::canonicalize` 规范化。^[cartan-classification.md:25-29]
 
