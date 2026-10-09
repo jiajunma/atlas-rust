@@ -1507,3 +1507,20 @@ print_layout 错误语义不一致的字节事实、无 Eq 由 GlobalKgbPrint �
 比较、render 的 setw 复现细节、4 测试（三个逐字节+B2 结构）与无错误分支
 /半单秩 0 有意未测（weyl_transducer.rs:485 panic）——全部忠实。8 页批准；
 wiki/concepts/ 现有 349 页，剩余候选 184。
+
+## 2026年10月10日 第四十九批候选审查：ext-param.md 的 7 页
+
+对照 83 行来源包逐页核验：模块范围（ExtRepContext/ExtParam/比较对齐辅助/
+fixed_conjugate_simple/complex_cross/star/三 finalisation 驱动）、两条保真
+约定（Weight/Coweight/int 全 wrapping i32 匹配上游 int、有理权分子保持
+i64；上游 assert→debug_assert 或 debug-only validate、数据失败走
+StructureError）、ExtRepContext 的 delta 根系置换+不动根集+诱导 twist 与
+to_simple_shift/is_very_complex/shift_flip 的上游行号转述、ExtParam 六
+字段与 x(ctx) 由 (tw, l mod 2) 重建 KGB、默认扩展一族（at/def_ext 族、
+default_extend_srm 要求 gamma_lambda 已 real_unique）、star 返回
+(DescValue, Vec<ExtParam>)、finalisation 队列重放与净翻转跟踪、
+extended_finalise 返回 Vec 而 scaled 返回单个并缩放 ν 保持 λ、两个
+StarOracle 实现的分工（ExtParamOracle 经 def_ext 重建默认扩展、
+PartialBlockOracle 服务 build_partial 之后的 tune_signs）、dirty 工作区
+快照与"正确性属自身 HPC 证据链"的边界声明——全部忠实。7 页批准；
+wiki/concepts/ 现有 356 页，剩余候选 177。

@@ -638,6 +638,19 @@
         "基本纤维与平方类播种"
       ],
       "compiledAt": "2026-10-09T17:21:21.538Z"
+    },
+    "ext-param.md": {
+      "hash": "c84cf87f354d0ca6652d987c768d8d395f483a19b7bfcd7d0e4fe35f30f37846",
+      "concepts": [
+        "扩展参数值类型-extparam",
+        "扩展参数层的-rust-移植约定",
+        "扩展参数的-finalisation-驱动",
+        "扩展参数的-star-运算",
+        "扩展参数的默认扩展",
+        "扩展块符号调校的-staroracle-实现",
+        "扩展表示上下文-extrepcontext"
+      ],
+      "compiledAt": "2026-10-09T17:22:48.516Z"
     }
   }
 }

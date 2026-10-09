@@ -269,8 +269,15 @@
 - **[[扩展-klv-多项式表的逐列存储|扩展 KLV 多项式表的逐列存储]]** — ExtKlTable 为每个块元素 y 保存一列多项式池索引，按 x 相对于 y 的 descent set 的 primitive 位置寻址，并提供带符号多项式及系数查询。
 - **[[扩展-klv-的-extremal-与-primitive-判定|扩展 KLV 的 extremal 与 primitive 判定]]** — Extremal 要求 descents(x) 包含 descents(y)，primitive 要求 good_ascents(x) 与 descents(y) 不交；相关集合查询及回溯接口由 DescentTable 提供。
 - **[[扩展-klv-的-rust-移植边界与有意偏离|扩展 KLV 的 Rust 移植边界与有意偏离]]** — 移植采用自有池，推迟共享池和 swallow，省略部分调试检查，并仅覆盖扩展块已构建后的矩阵流程；源码包不提供数学验收或结果等价性的独立证据。
+- **[[扩展参数值类型-extparam|扩展参数值类型 ExtParam]]** — ExtParam 保存 Weyl 元素、权与余权及翻转位，支持计算 theta、由 (tw, l mod 2) 重建 KGB 元素以及限制操作。
+- **[[扩展参数层的-rust-移植约定|扩展参数层的 Rust 移植约定]]** — ext_param 层以 wrapping i32 保持整数算术语义、有理权分子保留 i64，并将上游断言映射为调试检查，将数据相关失败暴露为 StructureError。
+- **[[扩展参数的-finalisation-驱动|扩展参数的 finalisation 驱动]]** — 三个 finalisation 驱动通过队列重放 folded-orbit 反射与 star 下降并跟踪净翻转，其中 scaled_extended_finalise 缩放 ν 而保持 λ 固定。
+- **[[扩展参数的-star-运算|扩展参数的 star 运算]]** — star(ctx, e, length, n_alpha) 返回 (DescValue, Vec<ExtParam>)，描述指定根的 delta 轨道类型及邻接扩展参数。
+- **[[扩展参数的默认扩展|扩展参数的默认扩展]]** — 默认扩展由 at、default_extend、default_extend_srm 等构造与判定接口支持，其中 default_extend_srm 要求 gamma_lambda 已在 x 处满足 real_unique。
 - **[[扩展块与-δ-不动部分|扩展块与 δ-不动部分]]** — 扩展块取普通块的 δ-不动部分，并将生成元折叠到 δ-轨道；本来源仅解释结构切片，不提供数学验收结论。
 - **[[扩展块与父块的索引映射|扩展块与父块的索引映射]]** — z(n) 给出扩展元素的父索引，element(zz) 返回首个满足 z(n) ≥ zz 的扩展索引或 size()，元素长度沿用对应父块元素的长度。
+- **[[扩展块符号调校的-staroracle-实现|扩展块符号调校的 StarOracle 实现]]** — ExtParamOracle 通过重建父块元素的默认扩展服务 tune_signs，PartialBlockOracle 则以 PartialBlock 为后端支持部分扩展块构建后的符号调校。
+- **[[扩展表示上下文-extrepcontext|扩展表示上下文 ExtRepContext]]** — ExtRepContext 以 twisting involution delta 扩展 RepContext，提供根系置换、不动根、诱导 twist 及移位翻转等判定。
 - **[[扭对合与-weyl-平移|扭对合与 Weyl 平移]]** — TwistedInvolution 表示满足 (wθ)²=1 的 Weyl 平移，按 datum 同一性、秩、矩阵复合及内部构造器验证顺序建立根论对合，不承担 Cayley/cross 分解或典范化。
 - **[[扭曲对合twistedinvolution|扭曲对合（TwistedInvolution）]]** — 按 w 左乘 distinguished 对合 θ 构造 wθ，并重新验证格对合、根置换与余根运输以保证 (wθ)²=1；轨道规范化与 Cayley/cross 分解由其他层负责。
 - **[[扭曲对合的-cayleycross-分解|扭曲对合的 Cayley/Cross 分解]]** — 以 Cayley 根、生成器下标组成的 cross word 及其 WeylAction 表示扭曲对合，并通过重放验证输入；分解在不同实现间不唯一，应比较重放不变量或标签结果。
@@ -352,4 +359,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_349 pages | Generated 2026-10-09T17:21:22.223Z_
+_356 pages | Generated 2026-10-09T17:22:49.206Z_
