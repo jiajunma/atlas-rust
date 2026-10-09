@@ -256,6 +256,18 @@
         "强实形式与-fiber-轨道"
       ],
       "compiledAt": "2026-10-09T16:15:35.449Z"
+    },
+    "rep-table.md": {
+      "hash": "567fa2ef0ba6ef5870a6e7e9c20aaae02721768201c09ca7ad54e9120d0ad867",
+      "concepts": [
+        "k-型公式的记忆化与截断复用",
+        "k-型公式缓存的锁外计算与提交复核",
+        "locatedblock-稳定块句柄与查询相对姿态",
+        "reducedparamkey-与-reduced-键控块复用",
+        "reptableowner-实形式资源所有者",
+        "共享-kl-表的惰性构造与回调并发约定"
+      ],
+      "compiledAt": "2026-10-09T16:17:58.487Z"
     }
   }
 }

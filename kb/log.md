@@ -1045,3 +1045,12 @@ StrongRealData 访问器族（含 wrf_preimage_mask 方程与 square_class_repre
 的两处选举差异）、fiber_size 的 Some(0) 求和语义、StrongRealClassPrint 三字段
 与跨类重复编号、MAX_MASK_BITS 资源边界——全部忠实。6 页批准；
 wiki/concepts/ 现有 141 页，剩余候选 392。
+
+## 2026年10月10日 第二十批候选审查：rep-table.md 的 6 页
+
+对照 85 行来源包逐页核验：ReducedParamKey 三字段的构成与私有化、块复用的
+Weyl 姿态差记录（block_modifier/make_relative_to）、LocatedBlock 各访问器与
+has_identity_generator_attitude 门控、两个 lookup 入口的语义差异、
+with_kl_table 的全回调持锁与 ActiveKlCallback 重入禁令、k_type_formula 的
+严格身份键/更高截断复用/锁外计算提交复核（并与 with_kl_table 的锁范围明确
+区分）——全部忠实。6 页批准；wiki/concepts/ 现有 147 页，剩余候选 386。

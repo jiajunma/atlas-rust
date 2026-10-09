@@ -22,6 +22,8 @@
 - **[[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]** — twisted_from_involution 在调用方已完成 square 与 involutive 检查的前提下，验证输入属于当前 inner class，并返回分解 θ = w·δ 中的 Weyl 元素 w，失败时报 InvalidBasedAutomorphism。
 - **[[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]** — InnerClass 持有已验证的 BasedRootDatum、有限根系和 distinguished involution，为分解与标签提供上下文，但尚不包含 Cartan fibers、real-form data 或构建 KGB graph 所需的 torus data。
 - **[[involution-表的测试锚点与证据边界|Involution 表的测试锚点与证据边界]]** — 源码测试锚点覆盖 A1、B2、扭转 A2、投影传送及部分守卫，但若干错误分支未覆盖，本文的结构性阅读不构成测试执行、数学验收或性能证据。
+- **[[k-型公式的记忆化与截断复用|K 型公式的记忆化与截断复用]]** — k_type_formula 以所有者内部严格 K 型身份 (x, lambda_rho) 缓存公式，可能返回更高截断的缓存结果，调用方导出前须自行截断到请求高度。
+- **[[k-型公式缓存的锁外计算与提交复核|K 型公式缓存的锁外计算与提交复核]]** — 公式生成期间不持有共享互斥锁，提交时重新检查缓存；若并发调用已提交更大截断的公式，则保留该公式，但来源未提供性能或并行效果验证。
 - **[[kgb-图与弱实形式|KGB 图与弱实形式]]** — KGB 集合描述 K 在旗簇 G/B 上的轨道；本实现从 RealFormSeed 构造每个弱实形式对应的 KgbGraph，元素为各 involution 之上的 Tits 元素。
 - **[[kgb-图的混合自包含存储|KGB 图的混合自包含存储]]** — 图复制各 involution 位置的数据及 cocharacter，使除 torus_factor 外的访问器脱离 involution 表；torus_factor 仍需表中逐 involution 的 theta 来计算精确有理数结果。
 - **[[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]** — 构造检查 inner class、形式索引及种子绑定，并要求状态槽仅写一次、Cayley 目标的 involution 长度增加一、最终元素数等于分类预言的 kgb_size；这些检查不构成数学正确性验收。
@@ -34,11 +36,14 @@
 - **[[klv-表的幂等逐列填充算法|KLV 表的幂等逐列填充算法]]** — fill 跳过已完成列，按直接递归条件选择 recursion_column 加 complete_primitives，或进入包含 nice and real 与 endgame 情形的一般递归路径。
 - **[[klv-表的逐列存储与句柄设计|KLV 表的逐列存储与句柄设计]]** — KlTableHandle 按块逐列存储 primitive 位置对应的多项式池索引和非零 μ 对，通过 holes 标记未计算列，并支持借用与 Arc 共享句柄。
 - **[[klv-递归与-μ-修正的多项式运算|KLV 递归与 μ-修正的多项式运算]]** — 多项式引擎提供加减、乘以 1+q、次数平移和带 μ 系数的修正运算，以及 q=-1 求值，支持 KLV 递归所需的计算。
+- **[[locatedblock-稳定块句柄与查询相对姿态|LocatedBlock 稳定块句柄与查询相对姿态]]** — 通过 Arc<PartialBlock>、存储行号和查询相对的 block modifier 暴露块访问；只有 w 与 simple_pi 均为恒等时才允许以平实中心位移直接读取存储行。
 - **[[mod-2-投影与纤维商上的诱导映射|mod-2 投影与纤维商上的诱导映射]]** — mod-2 投影利用根系数的奇性翻转坐标位，FiberToAdjoint::apply 依次取规范代表、执行投影并构造目标纤维元素，每次应用现算而不缓存稠密矩阵。
 - **[[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]** — ParabolicPieces 用内部层级的最小右陪集代表元分解生成 piece 索引列表，其字典序复现上游 WeylElt 排序并供 involution 排序及 KGB 重编号使用。
 - **[[realformseed-的封装与构造不变量|RealFormSeed 的封装与构造不变量]]** — RealFormSeed 在共享 append-only 表的编号下绑定 grading offset、square-class cocharacter 与种子元素，以私有字段保证 grading_offset 等于 grading_of_simples(cocharacter)。
 - **[[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]** — build 检查 inner class、fundamental class 归一化、强层计数一致性降级及 form id 边界；custom 要求显式 cocharacter 的 simple pairings 为整数且 torus part 复现该 form 的 compact pattern。
+- **[[reducedparamkey-与-reduced-键控块复用|ReducedParamKey 与 reduced 键控块复用]]** — 使用姿态传输后的 KGB 元素、规范整数据编号和 Smith codec 余数构成私有稳定键，使 Weyl 姿态下匹配的查询复用已存公共块。
 - **[[repcontext-借用上下文与一致性约束|RepContext 借用上下文与一致性约束]]** — 借用 inner class、involution 表与 KGB 图，共享根 datum 派生常量，并通过一致性检查确保上下文使用同一底层结构。
+- **[[reptableowner-实形式资源所有者|RepTableOwner 实形式资源所有者]]** — RepTableOwner 为一个实形式绑定 involution 表与 KGB 图，借出临时 RepContext，并提供查询下方最小部分块及包含查询的完整公共块两种查找入口。
 - **[[rootdatum-弱驻留与规范活对象身份|RootDatum 弱驻留与规范活对象身份]]** — original Atlas 按完整 PreRootDatum 内容及 preference 弱驻留 RootDatum，以存活对象的指针身份实现相等性；重型对象可释放，但轻量索引键仍保留。
 - **[[rust-weyl-内核与抽象群的无环所有权模型|Rust Weyl 内核与抽象群的无环所有权模型]]** — 分离 datum 坐标内核与抽象 Weyl 群身份可表达共享语义并避免 handle 与 context 的强引用环；核心身份修复已落地，后续缓存共享设计仍需独立验证。
 - **[[splitinteger-分裂整数系数|SplitInteger 分裂整数系数]]** — SplitInteger 用两个 i32 表示满足 s²=1 的 a+b·s，以 wrapping 算术实现分裂乘法及乘以 1−s 等操作，承载形变多项式系数。
@@ -79,6 +84,7 @@
 - **[[公共上下文的生成元操作commoncontext|公共上下文的生成元操作（CommonContext）]]** — 将 KGB 生成元作用转运到共轭父单根，实现状态判定、cross、奇偶判定及双向 Cayley 变换，并处理参数修正与奇异标志。
 - **[[公共块对偶变换及-kl-递归的闭合限制|公共块对偶变换及 KL 递归的闭合限制]]** — dual 反转元素顺序、交换 x/y、反射长度并映射下降状态与链接，返回 BareBlock；部分块的未定义链接保持缺失，可能使对偶不满足 KL 递归的链接闭合要求。
 - **[[公共块的构造与元素编号partialblock|公共块的构造与元素编号（PartialBlock）]]** — build_full 构造完整公共块，build 消费按 x 排序的 Bruhat 区间并最终按 (length, x, y) 排序，使编号对应 oracle 打印行号。
+- **[[共享-kl-表的惰性构造与回调并发约定|共享 KL 表的惰性构造与回调并发约定]]** — with_kl_table 惰性构造共享 KL 表并在整个回调期间持有记录局部互斥锁；禁止同线程对任何块嵌套调用，重入在获取另一记录锁前返回 RepInvariantViolation。
 - **[[关系格封装与构造预检|关系格封装与构造预检]]** — RelationMatrix、RelationBasis 和 RelationGenerator 封装关系格操作，在分配、复制、推进迭代器或收集生成元之前执行相应形状与预算检查。
 - **[[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]** — longest_action 从源码计算的 2ρ 出发，按生成元顺序选择正配对反射并左合成，目标为 −2ρ，超预算或无法推进时报不变量错误；数学与复杂度声明尚未验收。
 - **[[分窗两相-bfs-构造|分窗两相 BFS 构造]]** — KGB 枚举以 64 个元素为一窗，先用 Rayon 在只读表与 coset 上计算状态及目标，再顺序 intern 去重并分配编号；并行结构本身不代表已有多核加速证据。
@@ -144,4 +150,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_141 pages | Generated 2026-10-09T16:15:35.859Z_
+_147 pages | Generated 2026-10-09T16:17:58.894Z_
