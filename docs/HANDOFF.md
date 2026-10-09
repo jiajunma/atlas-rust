@@ -244,6 +244,42 @@ remote reconcile (step 3) still runs fresh at submission time.  Drill
 tempdirs (`/tmp/g2-payload-build`, `/tmp/g2_names.txt`) removed; nothing was
 registered as a transport.
 
+### B2/C2 fixture drafts (2026-10-09, PROVISIONAL, unwired)
+
+Next arc gate after G2 is the cross-type dual witness: dual(B2)=C2 crosses
+an actual type boundary (G2 is self-dual), so it tests what G2 cannot.
+Two drafts now exist, mirroring the G2 pair's shape:
+
+- `tests/math/generics/weyl_context_b2c2_cold_dual.atlas` (2402 bytes, sha
+  `9809d0f2bf17ab39dd61499283e17b0a51bd6327f3884e2a29ea09b700b55268`):
+  same-owner/alias/equal relations, noncommuting words, braid
+  `s0s1s0s1=s1s0s1s0` with longest length 4 (B2/C2 Weyl is the order-8
+  dihedral group), cold dual in both directions.  Because the
+  Cartan-numbering convention is still open until the G2 capture answers
+  it, the cold fixture probes BOTH numberings (`WB_DUAL_OWNER_FALSE`/`_TRUE`,
+  `WB_REVERSE_OWNER_FALSE`/`_TRUE`) so the oracle pins the convention by
+  evidence rather than by a single-numbering prediction; `WB_DUAL_INVOL`
+  probes dual involutivity across the type boundary.  Recovery marker 728.
+- `tests/math/generics/weyl_context_b2c2_prewarmed_dual.atlas` (1754 bytes,
+  sha `e542d380350b4ed46619527460d5cbabbc193b4f092266fd91cc3937cc9fb08e`):
+  the two B2 numberings as incompatible owners (3 mismatches), high/negative
+  word rejections, and the prewarmed-canonical-dual rejection triplet —
+  BOTH C2 numberings are prewarmed before `dual()` so the open convention
+  cannot accidentally fill-or-miss the identity slot; the AFTER prints
+  (`wbn_dual=wbn_target_a|b`) record which numbering is the canonical dual.
+  Expected error set mirrors G2's: 6x"Weyl group mismatch", "Illegal Weyl
+  word entry 2 (should be <2)", "Negative integer where unsigned is
+  required".  Recovery marker 734.
+
+Status: NOT truth, NOT wired — no contract cases, no stager input, no
+catalog entry.  Finalization after the G2 capture: (1) if G2 confirms the
+numbering flip, predict one true/one false on each dual-owner pair; if G2
+DIFFERs on `WG_DUAL_OWNER`/`WG_REVERSE_OWNER`, revisit the fixture design
+first (the pre-registered review maps that outcome to the numbering
+question).  (2) Only then add contract cases + predictions and migrate a
+capture pair, exactly as the G2 arc did.  Marker prefixes `WB_`/`WBN_` must
+be added to the contract's `_parse_frame` candidate filter at wiring time.
+
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 
 The classifier change is committed (`80eaf6d3`):

@@ -1,0 +1,33 @@
+{ B2/C2 Weyl prewarmed-dual rejection/history discovery: the two B2
+  numberings are incompatible owners, and an independently prewarmed
+  canonical dual rejects cross-owner relations. BOTH C2 numberings are
+  prewarmed so the open Cartan-numbering convention cannot silence the
+  rejection; the AFTER prints record which target is the canonical dual.
+  Every error recovers. Provisional until complete original behavior is
+  captured on HPC. No atlas scripts. }
+set wbn_b2t=simply_connected(Lie_type("B2"),true)
+set wbn_b2f=simply_connected(Lie_type("B2"),false)
+set wbn_b2f_w=W_elt(wbn_b2f,[0])
+set wbn_target_a=adjoint(Lie_type("C2"),false)
+set wbn_target_a_w=W_elt(wbn_target_a,[1])
+set wbn_target_b=adjoint(Lie_type("C2"),true)
+set wbn_dual=dual(wbn_b2t)
+set wbn_saved=W_elt(wbn_b2t,[0])
+set wbn_dual_w=W_elt(wbn_dual,[0])
+prints("WBN_OWNER_EQ|",wbn_saved=wbn_b2f_w)
+prints("WBN_AFTER_OWNER_EQ|",word(wbn_saved),"|",length(wbn_saved))
+prints("WBN_OWNER_NEQ|",wbn_saved!=wbn_b2f_w)
+prints("WBN_AFTER_OWNER_NEQ|",word(wbn_saved),"|",length(wbn_saved))
+wbn_saved*wbn_b2f_w
+prints("WBN_AFTER_OWNER_MUL|",word(wbn_saved),"|",length(wbn_saved))
+W_elt(wbn_b2t,[2])
+prints("WBN_AFTER_HIGH|",word(wbn_saved))
+W_elt(wbn_b2t,[-1])
+prints("WBN_AFTER_NEGATIVE|",word(wbn_saved))
+prints("WBN_DUAL_PREWARM_EQ|",wbn_saved=wbn_dual_w)
+prints("WBN_AFTER_DUAL_EQ|",word(wbn_target_a_w),"|",wbn_dual=wbn_target_a,"|",wbn_dual=wbn_target_b)
+prints("WBN_DUAL_PREWARM_NEQ|",wbn_saved!=wbn_dual_w)
+prints("WBN_AFTER_DUAL_NEQ|",word(wbn_target_a_w),"|",wbn_dual=wbn_target_a,"|",wbn_dual=wbn_target_b)
+wbn_saved*wbn_dual_w
+prints("WBN_AFTER_DUAL_MUL|",word(wbn_saved),"|",word(wbn_target_a_w),"|",wbn_dual=wbn_target_a,"|",wbn_dual=wbn_target_b)
+prints("WBN_RECOVERY|",734)

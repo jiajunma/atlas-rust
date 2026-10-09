@@ -580,7 +580,11 @@ ceiling and default one focused job; do not trade correctness for speed.
 - After the G2 capture: B2/C2, reverse operand orders, inner-class-dual
   and no-value gates, each with its own original-backed capture; only after
   all of them pass comes the cache work-count BEFORE and any production
-  cache edit.
+  cache edit.  Provisional B2/C2 fixture drafts already exist
+  (`weyl_context_b2c2_cold_dual.atlas` sha `9809d0f2…`,
+  `weyl_context_b2c2_prewarmed_dual.atlas` sha `e542d380…` — the cross-type
+  dual witness; NOT wired into any contract/stager/catalog, predictions
+  wait for the G2 numbering-convention answer; see `docs/HANDOFF.md`).
 - Everything below the frontier entries is historical evidence carrying its
   own supersession markers. A historical "next target" or "reprofile" note
   never reactivates itself; only the latest unsuperseded state of a claim

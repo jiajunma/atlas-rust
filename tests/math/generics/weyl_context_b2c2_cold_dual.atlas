@@ -1,0 +1,40 @@
+{ B2/C2 Weyl owner/dual cold witness: the canonical dual crosses the type
+  boundary (dual(B2)=C2), so BOTH dual numberings are probed and the oracle
+  pins the Cartan-numbering convention by evidence. The B2/C2 Weyl group is
+  the nonabelian dihedral group of order 8: braid relation length 4.
+  Provisional until complete original behavior is captured on HPC; the
+  predicted owner numberings are finalized only after the G2 witness
+  resolves the numbering convention. No atlas scripts. }
+set wb_b2=simply_connected(Lie_type("B2"),true)
+set wb_s0=W_elt(wb_b2,[0])
+set wb_s1=W_elt(wb_b2,[1])
+prints("WB_SAME|",word(wb_s0),"|",length(wb_s0),"|",length(wb_s1),"|",word(W_elt(wb_b2,[0,1])))
+prints("WB_NONCOMMUTE|",word(wb_s0*wb_s1),"|",word(wb_s1*wb_s0))
+prints("WB_BRAID|",wb_s0*wb_s1*wb_s0*wb_s1=wb_s1*wb_s0*wb_s1*wb_s0,"|",length(wb_s0*wb_s1*wb_s0*wb_s1))
+set wb_alias=wb_b2
+set wb_alias_w=W_elt(wb_alias,[0,1])
+prints("WB_ALIAS|",wb_alias=wb_b2,"|",wb_s0*wb_s1=wb_alias_w)
+set wb_equal=simply_connected(Lie_type("B2"),true)
+set wb_equal_w=W_elt(wb_equal,[0,1])
+prints("WB_EQUAL|",wb_equal=wb_b2,"|",wb_s0*wb_s1=wb_equal_w)
+set wb_dual=dual(wb_b2)
+set wb_dual_w=W_elt(wb_dual,[0])
+prints("WB_DUAL_OWNER_FALSE|",wb_dual=adjoint(Lie_type("C2"),false))
+prints("WB_DUAL_OWNER_TRUE|",wb_dual=adjoint(Lie_type("C2"),true))
+prints("WB_DUAL_INVOL|",dual(wb_dual)=wb_b2)
+prints("WB_DUAL_EQ|",wb_s0=wb_dual_w)
+prints("WB_DUAL_NEQ|",wb_s0!=wb_dual_w)
+prints("WB_DUAL_MUL|",word(wb_s0*wb_dual_w))
+set wb_reverse_target=adjoint(Lie_type("C2"),true)
+set wb_reverse_target_w=W_elt(wb_reverse_target,[0])
+set wb_reverse_source=dual(wb_reverse_target)
+set wb_reverse_source_w=W_elt(wb_reverse_source,[0])
+prints("WB_REVERSE_OWNER_FALSE|",wb_reverse_source=simply_connected(Lie_type("B2"),false))
+prints("WB_REVERSE_OWNER_TRUE|",wb_reverse_source=simply_connected(Lie_type("B2"),true))
+prints("WB_REVERSE_EQ|",wb_reverse_target_w=wb_reverse_source_w)
+prints("WB_REVERSE_NEQ|",wb_reverse_target_w!=wb_reverse_source_w)
+prints("WB_REVERSE_MUL|",word(wb_reverse_target_w*wb_reverse_source_w),"|",root_datum(wb_reverse_target_w*wb_reverse_source_w)=wb_reverse_target)
+set wb_b2=simply_connected(Lie_type("B2"),false)
+set wb_rebound_w=W_elt(wb_b2,[1])
+prints("WB_REBOUND|",prefers_coroots(wb_b2),"|",root_datum(wb_s0)=wb_alias,"|",root_datum(wb_s0)=wb_b2,"|",word(wb_s0),"|",word(wb_rebound_w))
+prints("WB_RECOVERY|",728)
