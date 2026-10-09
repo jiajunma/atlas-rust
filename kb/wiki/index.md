@@ -25,6 +25,13 @@
 - **[[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]** — 构造检查 inner class、形式索引及种子绑定，并要求状态槽仅写一次、Cayley 目标的 involution 长度增加一、最终元素数等于分类预言的 kgb_size；这些检查不构成数学正确性验收。
 - **[[kgb-生成元状态与下降判定|KGB 生成元状态与下降判定]]** — 生成元状态由根类型及 imaginary grading 分为四类；real 恒为 descent，imaginary 恒非 descent，complex 根据 cross 目标的 involution 长度是否更短判定。
 - **[[kgb-种子代表元的可观测影响|KGB 种子代表元的可观测影响]]** — stable_log 的 adapted-basis 代表元选举固定 g_rho_check，进而固定下游每个 torus_factor 的有理数值，是 KGB 种子 x0 构造中的可观测选择。
+- **[[klv-多项式去重池|KLV 多项式去重池]]** — KlHashTable 通过向量与哈希表将多项式内容映射为池索引，new 固定零与一的索引为 0 和 1，而派生 Default 生成的空池不满足该种子约定。
+- **[[klv-多项式的表示与不变量|KLV 多项式的表示与不变量]]** — KlPol 以低次项在前的 Vec<i32> 表示多项式，以空向量表示零并通过 trim 去除最高次零系数；非负性、首一性和溢出防护不由类型保证。
+- **[[klv-多项式除法与整性检查|KLV 多项式除法与整性检查]]** — divide_by_2 对奇系数报告表示不变量错误；quotient_by_1_plus_q 用交错部分和恢复并截断商，其实现恒返回 Ok。
+- **[[klv-表的-primitive-投影与访问语义|KLV 表的 primitive 投影与访问语义]]** — kl_pol 通过 primitive 投影访问池索引并处理恒等项、零项及 UndefBlock 哨兵；mu 返回 None 时不能区分零系数与未填充状态。
+- **[[klv-表的幂等逐列填充算法|KLV 表的幂等逐列填充算法]]** — fill 跳过已完成列，按直接递归条件选择 recursion_column 加 complete_primitives，或进入包含 nice and real 与 endgame 情形的一般递归路径。
+- **[[klv-表的逐列存储与句柄设计|KLV 表的逐列存储与句柄设计]]** — KlTableHandle 按块逐列存储 primitive 位置对应的多项式池索引和非零 μ 对，通过 holes 标记未计算列，并支持借用与 Arc 共享句柄。
+- **[[klv-递归与-μ-修正的多项式运算|KLV 递归与 μ-修正的多项式运算]]** — 多项式引擎提供加减、乘以 1+q、次数平移和带 μ 系数的修正运算，以及 q=-1 求值，支持 KLV 递归所需的计算。
 - **[[mod-2-投影与纤维商上的诱导映射|mod-2 投影与纤维商上的诱导映射]]** — mod-2 投影利用根系数的奇性翻转坐标位，FiberToAdjoint::apply 依次取规范代表、执行投影并构造目标纤维元素，每次应用现算而不缓存稠密矩阵。
 - **[[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]** — ParabolicPieces 用内部层级的最小右陪集代表元分解生成 piece 索引列表，其字典序复现上游 WeylElt 排序并供 involution 排序及 KGB 重编号使用。
 - **[[realformseed-的封装与构造不变量|RealFormSeed 的封装与构造不变量]]** — RealFormSeed 在共享 append-only 表的编号下绑定 grading offset、square-class cocharacter 与种子元素，以私有字段保证 grading_offset 等于 grading_of_simples(cocharacter)。
@@ -116,4 +123,4 @@
 - **[[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]** — inverse_cayley 先执行 sigma_inv_mult，再以首个配对非平凡的源 mod-space 基向量修复重构出的紧根 grading，随后在虚根目标归约并复核；缺少修复向量时报不变量错误，源根非实或向下 Cartan 类缺失时返回 None。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 
-_113 pages | Generated 2026-10-09T16:03:54.577Z_
+_120 pages | Generated 2026-10-09T16:06:57.620Z_

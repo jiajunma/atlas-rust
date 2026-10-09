@@ -1006,3 +1006,13 @@ weak-descent 互补语义、i1 单值/i2 双值构建与回填、dual() 的反�
 n_bruhat_comparable 的拓扑序前提、HashMap 静默覆盖观察、A1 七测试锚点
 （capture 3501519 对齐）与未覆盖清单——全部忠实。8 页批准；
 wiki/concepts/ 现有 113 页，剩余候选 420。
+
+## 2026年10月10日 第十六批候选审查：kl-polynomial-table.md 的 7 页
+
+对照 138 行来源包逐页核验：KlPol 布局（零=空向量、trim 维持首一、degree(0)=0
+需 is_zero 区分）、非负/首一属算法输出而非类型不变量、i32 无溢出通道的悬置
+判断、coefficient() 越界返回 0 的过期文档以实际实现为准、quotient_by_1_plus_q
+恒 Ok 的签名形态、去重池 0/1 种子与 Default 空池风险、primitive 投影与
+UndefBlock 哨兵及零/恒等回退、mu 的 None 二义性、fill 的幂等与两条递归路径
+的分派条件、运算集与上游逐条对应——全部忠实；4 个测试锚点与未测面清单一致。
+7 页批准；wiki/concepts/ 现有 120 页，剩余候选 413。

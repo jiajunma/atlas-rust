@@ -204,6 +204,19 @@
         "完整块的-kgb-纤维积"
       ],
       "compiledAt": "2026-10-09T16:03:54.216Z"
+    },
+    "kl-polynomial-table.md": {
+      "hash": "b5ba975d6bd925d920c92c4ffbde314dd847cd5f4baf30c07119c67c83804087",
+      "concepts": [
+        "klv-多项式去重池",
+        "klv-多项式的表示与不变量",
+        "klv-多项式除法与整性检查",
+        "klv-表的-primitive-投影与访问语义",
+        "klv-表的幂等逐列填充算法",
+        "klv-表的逐列存储与句柄设计",
+        "klv-递归与-μ-修正的多项式运算"
+      ],
+      "compiledAt": "2026-10-09T16:06:57.240Z"
     }
   }
 }
