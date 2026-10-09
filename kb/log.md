@@ -647,3 +647,12 @@ Kimi probe 路由起草（600s 期限，exit 0，590.5s），维护者对照源�
 已同步；未运行编译、测试或 compiler 生成。**至此 `atlas-real-group`
 全部 60 个模块均有来源包或明确交叉引用；剩余最大缺口是 `atlas-core`
 语言层（session/typed/domain_builtins/value/types/lex/syntax 等）。**
+
+新增 `sources/atlas-core-root.md` 与快照 `2026-10-09-atlas-core-root.json`：
+atlas-core 语言层第一包——lib.rs 的 15 个 `pub mod` + `pub(crate)`
+`matreduc` + cfg(test) `session_fixture_tests` + `COMPATIBILITY_VERSION`
+"atlas-language-v0"，逐模块行数与文件头自述角色（实现方陈述）。维护者
+直接撰写（模块地图小，无 Kimi 调用）；git base `964f0033`，25 个文件
+逐字节哈希。索引与 sources/index.md 已同步；未运行编译、测试或
+compiler 生成。语言层大文件（typed/domain_builtins/session/syntax）的
+内部实现仍待分包。

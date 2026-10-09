@@ -445,6 +445,18 @@ Cayley 移位项、parity-real 投影分裂）与 kgp_set 的位图限界 BFS。
 不变量/谓词/规范化链，本次补充 finals_for 分支结构、kgp_set、测试锚点与
 错误普查。该包是结构性阅读，不声称 K 型层的数学验收。
 
+[atlas-core crate 根与语言模块地图](atlas-core-root.md)记录 `lib.rs`
+（26 行）与全部顶层/子目录模块角色：15 个 `pub mod` + `pub(crate)`
+`matreduc` + `cfg(test)` 的 `session_fixture_tests` + 唯一常量
+`COMPATIBILITY_VERSION="atlas-language-v0"`；逐模块的行数与角色取自本快照
+字节与文件头自述（实现方陈述，非已核验行为）。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-root.json)（git base
+`964f0033`，工作区干净，25 个文件逐字节哈希）。本包由维护者直接撰写
+（无 Kimi 调用——模块地图小，不值得 probe 往返）。这是 `atlas-core`
+语言层的第一包：`typed.rs`（18519 行）、`domain_builtins.rs`（22771
+行）、`session.rs`（3889 行）、`syntax.rs`（4659 行）等大文件的内部
+实现仍待各自分包。结构性阅读，不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

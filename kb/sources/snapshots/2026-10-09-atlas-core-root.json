@@ -1,0 +1,159 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "First reading of the atlas-core crate root and module map for the new atlas-core-root source packet: lib.rs's 15 public modules + pub(crate) matreduc + cfg(test) session_fixture_tests + COMPATIBILITY_VERSION \"atlas-language-v0\", with per-module roles taken from each file's header self-description (implementation-stated design, not verified behavior) and line counts at these exact bytes.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/lib.rs",
+   "sha256": "bb63e822c15367b5e315c570871dbdbe64d7eb5e921ec03581ff33805001647d",
+   "bytes": 656,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/lex.rs",
+   "sha256": "b43f863c38f628aef7721739614d8daa18c9d702c07226e792e530793d604785",
+   "bytes": 36362,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/syntax.rs",
+   "sha256": "454efdb0989356b1eae8b560775841e28604b81c0685ddddc061a206d31ff79a",
+   "bytes": 168343,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/types.rs",
+   "sha256": "532644893746fe30ade37613f53ffc1a65b0967ed725345b5348f66c22250531",
+   "bytes": 41081,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/types/polymorphic.rs",
+   "sha256": "eab88f57845773779ad5ba92726ed2f217141dce4cdaf746ce8c5770acea1613",
+   "bytes": 55455,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/types/recursive.rs",
+   "sha256": "aefc196b490934614dd1d1b6166179f45192345b9a04e86ab2a6af09eae2c141",
+   "bytes": 12123,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/types/revision_tests.rs",
+   "sha256": "20d47c96a332accf06e9e768506cb92b0666e591db1b2133401dcc0d9d672a6b",
+   "bytes": 3567,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/typed.rs",
+   "sha256": "614975c5e2d49357b4d9ffff80145a6c69db2fd5aeef23f033faf03f594acc95",
+   "bytes": 770895,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/typed/type_groups.rs",
+   "sha256": "436085eb89bbd1bbbf5149be09dd7b5bcc872fef92c159b3a2ebce97c7bc85d2",
+   "bytes": 4530,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/typed/command_cache_tests.rs",
+   "sha256": "5ddcf1b478faf1a53bc07b430c341316416fac5e8ad3a293118ceea041623b52",
+   "bytes": 3240,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/typed/completion_tests.rs",
+   "sha256": "76321095e5305bbe6fc8e5ab43335b8d72eb305f5da99b773bed608d5eb71e1e",
+   "bytes": 2044,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/frames.rs",
+   "sha256": "8c4f4c5672b9dbb72fbd459d2c8321f07c06f4ccd529087234ab7077e5674150",
+   "bytes": 12004,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/frames/completions.rs",
+   "sha256": "5891eff8d3f1069dc3c316e21954e5389fab64b53a0a631d8428166a3e163bdc",
+   "bytes": 3814,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/coercions.rs",
+   "sha256": "b147208cfa48cf79ecc6768120202148296adf313de5998b709ecb25e5f4579c",
+   "bytes": 14880,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/linear_values.rs",
+   "sha256": "23a021083e7a1780b8081cde46089f21207c14469ff17b1ba72a1403439cbf88",
+   "bytes": 14378,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/value.rs",
+   "sha256": "d7c64362becfb252b3722d09ce47d0ffbd29068044827e8aef65f77821a14c3a",
+   "bytes": 13509,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/formula.rs",
+   "sha256": "0b6d7dc57f5a066e30bbc889811f8094741dca33fbf81e3a8c89684ac7685865",
+   "bytes": 6726,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/diagnostic.rs",
+   "sha256": "b26c029276711b6eafcdc8e164939039a20fafd6c8d171d49a4dad7bfc8730ac",
+   "bytes": 5122,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/source.rs",
+   "sha256": "51b7a2260269fa996515136c51ba082c4e4ba817a5dfef9fc9c251f75a584aa4",
+   "bytes": 3817,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/session.rs",
+   "sha256": "969cdb27ccae61ca4fe3e36219801037d475517bee3614fead553024818307e7",
+   "bytes": 191393,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/session_frame.rs",
+   "sha256": "19889fec6d92ddbc93fa44e9f9bbbae8ff0825442a63b539b7cd50b498ee3327",
+   "bytes": 38610,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/matreduc.rs",
+   "sha256": "cf6c357c6d26cce3a3782298025f3b24404b23a6099c2bd9f30b7291ecc64dea",
+   "bytes": 58293,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/domain_builtins.rs",
+   "sha256": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+   "bytes": 959480,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/domain_builtins/weyl_subgroup.rs",
+   "sha256": "86d52b4f7228b300ad7ed0a38c526fd14f14003dfa034e4edf4f0e0102c63780",
+   "bytes": 19573,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/grammar.lalrpop",
+   "sha256": "303cd012a961b6c7f504a4697d1a0cb3ab26da6c299b276a5d12ab00018c6b0a",
+   "bytes": 49405,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  }
+ ]
+}
