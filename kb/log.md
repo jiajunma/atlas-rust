@@ -1742,3 +1742,18 @@ TypedCommandEvent 的 Value 携带类型供 is_void、STARTUP_COMPLETION_NAMES
 不在其中由 new() 播种并标 prelude_log 为 const、type_locations 属于当前
 绑定而非复用槽——全部忠实。8 页批准；wiki/concepts/ 现有 451 页，剩余
 候选 82。
+
+## 2026年10月10日 第六十三批候选审查：atlas-core-typed-eval.md 的 7 页
+
+对照 72 行来源包（维护者直接撰写）逐页核验：evaluate(context, level)
+签名与六族分派表（与转换遍同形、#[inline(never)] 栈帧纪律）、Level
+NoValue/SingleValue 一路下传、迭代借用纪律（矩阵不得再造列矩阵、多项式
+保持 canonical 项序与属主形式）、apply_function 不加调用迹与被调/参数
+求值留在迹外、变参数内建解元组而 bare 变量参数即使元组也按一个值消费、
+function_origin 的 "built-in"/"defined <loc>"、apply_closure 的一个值
+传入/元组拆分/无参不压帧/全匿名不占帧/递归 0 号槽自绑而新帧不在捕获链
+保持 Rc 无环、return 在调用边界解开经 at_level 供值、运行时错误穿带名
+槽调用附加局部变量迹行而无参闭包无此行、trace_location 的
+at NAME:LINE:COL-COL（行 1 基列 0 基、单行结束 exclusive、跨行双破折号）
+与 Rust span 1 基的差异、frame_dump 按绑定序打印槽名——全部忠实。
+7 页批准；wiki/concepts/ 现有 458 页，剩余候选 75。
