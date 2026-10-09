@@ -1830,3 +1830,20 @@ unsigned 再 <半单秩、多项式系数契约（只替换精确 final 键不�
 拒绝不兼容属主的刻意偏离、dominant 化只改副本、loop_terms 借用 canonical
 序保留属主）——全部忠实。7 页批准；wiki/concepts/ 现有 488 页，剩余
 候选 45。
+
+## 2026年10月10日 第六十八批候选审查：atlas-core-domain-construction.md 的 8 页
+
+对照 75 行来源包（维护者直接撰写）逐页核验：build_datum 的两路格基
+（单连通用权格基根=Cartan 行余根=基、伴随用根格基根=基余根=Cartan 列）、
+T1 因子追加在半单之后且不保留交错输入也不改调用方 LieType、中央商覆盖
+中间商不只端点、显式 datum 保留空维矩阵维数、build_inner_class_context
+固定装配序与三道预算门（分类/FIBER/INTEGER）、对偶侧只建一次的四件
+（dual_inner_class+对偶分类+dual_form_count+dual_cartan_correspondence）、
+build_presentations 在 canonical_forms（每形式一个 Weak 槽的 Mutex 向量）
+之前、build_inner_class 的余权部转置与上游接受任何根数据对合再左合成为
+distinguished、build_dual_inner_class 的余根偏好翻转+逐字母对偶 Lie 类型
++内容弱驻留共享 Weyl 身份、build_real_form 的编号翻译与非法号错误、
+build_custom_real_form 的 fresh_table→基本（第一个）Cartan→
+RealFormSeed::custom 顺序与 RealFormContext 的 FallibleOnce kgb/rep+
+双形变缓存——全部忠实。8 页批准；wiki/concepts/ 现有 496 页，剩余
+候选 37。

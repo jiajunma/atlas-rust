@@ -192,11 +192,13 @@
 - **[[上游兼容的值打印约定|上游兼容的值打印约定]]** — 值打印遵循有理数保留分母、联合值后缀、向量定宽及矩阵边框等具体规则；源码中的移植陈述不构成兼容验收，仍需 HPC 语料验证。
 - **[[下降集good-ascent-与本原性|下降集、good ascent 与本原性]]** — 元素 x 相对 desc(y) 本原当且仅当 good(x) 与 desc(y) 不相交，极端性要求 desc(x) 包含 desc(y)；ImaginaryTypeII 既不属于下降也不属于 good ascent。
 - **[[严格-cayley-偏序|严格 Cayley 偏序]]** — is_below 描述非空 single-root Cayley links 链的 more-compact 方向，fundamental class 位于其他类之下，有效类的自比较恒为 Some(false)。
+- **[[中央商与显式矩阵根数据构造|中央商与显式矩阵根数据构造]]** — 商构造支持单连通与伴随端点之间的中央商；显式构造接受根与余根矩阵，并保留空矩阵的维数信息。
 - **[[中心分类器与根格陪集制表|中心分类器与根格陪集制表]]** — CenterClassifier 用 Cartan 矩阵的伴随矩阵与行列式表示逆矩阵，按基本权子集和的 adjoint 坐标分数部分桶，并记录陪集号及整数移位。
 - **[[中心环面的商对合分类|中心环面的商对合分类]]** — 通过根格的 Smith 适配基计算商对合，对 inv + I 分类得到 compact、complex、split 秩并依序追加环面字母；IntegerLatticeBudget 仅约束此处的 Smith 基计算。
 - **[[中心陪集表驱动的根格移位枚举|中心陪集表驱动的根格移位枚举]]** — shifts(fix, pos, neg) 利用陪集匹配、分数部借位与子集筛选，枚举 fw(fix+A)−fw(B) 的单根坐标，其中 A⊆pos、B⊆neg。
 - **[[二进制补码的置位索引|二进制补码的置位索引]]** — nth_set_bit 按零基序号查找二进制补码串的置位，非负数置位不足时返回 -1，负数则通过其补码的有限清位处理无限置位。
 - **[[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]** — 惰性 cell 只发布完整成功结果，构造失败后应允许重试，且不能缓存首次调用的 Diagnostic 或 SourceSpan，以保留当前调用的错误定位。
+- **[[从根数据对合构造内类|从根数据对合构造内类]]** — build_inner_class 以转置得到 coweight 部并构造格对合；文档引用的上游行为接受任意根数据对合，再通过左合成转为 distinguished 对合。
 - **[[代表元归因与-tits-搬运的职责边界|代表元归因与 Tits 搬运的职责边界]]** — 归因 helper 仅接受分类已存储的代表元；一般 twisted involution 的归约需借助 table-backed Tits cross actions 同步搬运 torus factor，后续 minimal_torus_part 下降仍依赖分离的 inverse-Cayley 操作。
 - **[[代表元级弱实形式归因|代表元级弱实形式归因]]** — weak_real_form_at_representative 通过 dual fixed-point projection v↦(v+vθ)/2、配对奇偶性和虚根 grading 确定局部轨道，再经 RealFormLabels 映射为全局弱实形式编号。
 - **[[会话-clean-标志与诊断分流|会话 clean 标志与诊断分流]]** — 语法、类型、求值及真正的词法错误使会话变脏，而文件打开失败、Io 诊断、词法警告和 abandon 级联本身不改变 clean 状态。
@@ -225,6 +227,7 @@
 - **[[典范纤维与-k-型等价判定|典范纤维与 K 型等价判定]]** — to_canonical_fiber 沿 canonicalize 给出的词进行复单根 cross；equivalent 先检查 Cartan 类，再比较双方典范纤维中的结果。
 - **[[内建函数元数据与实现分发|内建函数元数据与实现分发]]** — Builtin 汇集名称、参数与结果类型、饥饿求值位及重载可见性，并由 BuiltinImpl 分发标量、领域、打印、关系、补全与泛型实现。
 - **[[内建注册表的启动清单与覆盖边界|内建注册表的启动清单与覆盖边界]]** — builtin_registry() 使用 OnceLock<Vec<Builtin>> 一次初始化 321 个条目、170 个不同名字，尚未覆盖上游完整清单，且与 309 个启动补全名清单分别维护。
+- **[[内类上下文的装配顺序与预算门|内类上下文的装配顺序与预算门]]** — 内类上下文依次装配分类、强实形分类、外部编号、布局、一次性对偶侧数据、呈现与规范实形弱缓存，并在相应阶段执行分类、FIBER 和 INTEGER 预算限制。
 - **[[内类字母的字节解析与规范化|内类字母的字节解析与规范化]]** — checked_inner_class_letters 按字节读取并跳过 ASCII 标点和空白，将 e 归一为 c，依据类型与秩坍缩 s、u；C 消耗两个相同连续因子。
 - **[[内类字母解析的错误模型与诊断顺序|内类字母解析的错误模型与诊断顺序]]** — InnerClassLetterError 区分符号过多、过少、未知符号、复配对失败和无意义的不等秩类，并优先报告未知符号，再检查因子是否存在。
 - **[[内类布局innerclasslayout|内类布局（InnerClassLayout）]]** — 将 distinguished 对合转换为 Lie type、内类字母与 Bourbaki 单根置换；构建依次执行扭转置换、Dynkin 分类、内类字母判定和中心环面处理。
@@ -309,6 +312,7 @@
 - **[[实投影像基的播种与路径依赖传送|实投影像基的播种与路径依赖传送]]** — 由 1−θ 的阶梯消元在轨道种子处构造 lift_mat 与 M_real，随后沿 cross-action 用普通生成元矩阵传送；该基具有路径依赖性并影响 y_lift 的符号。
 - **[[容器迭代的借用与规范项序|容器迭代的借用与规范项序]]** — 迭代借用输入并仅构造当前所需分量或键；矩阵迭代避免另造列矩阵，多项式迭代保持 canonical 项序与属主形式。
 - **[[对偶-cartan-fiber-链的临时重建|对偶 Cartan fiber 链的临时重建]]** — 由于对偶对合 −θ 通常仅与典范代表共轭，dual_side 每次调用都在预算约束下重建 fiber、grading、实形分划与标签链，当前无缓存。
+- **[[对偶内类与-weyl-身份共享|对偶内类与 Weyl 身份共享]]** — 对偶内类构造结合余根偏好翻转、逐字母对偶的 Lie 类型及对偶 datum 句柄，使内容相等的对偶 datum 经内容弱 interning 共享 Weyl 身份。
 - **[[对偶分量群与实形式连通性|对偶分量群与实形式连通性]]** — 源文档将实形式连通性归结为最分裂 Cartan 上限制映射 dualPi0(θ) → dualPi0(i_sw) 的核是否消失；核维数由 dual_component_group_rank 返回，此结论尚未经本包数学验收。
 - **[[对偶分量群的-fiber-rank|对偶分量群的 fiber rank]]** — fiber_rank 对 q = −θᵀ 计算 dim ker((q+I) mod 2) − dim span(plusBasis(q)) mod 2，末步使用 saturating_sub；函数未检查对合前提，且本文件没有相关测试。
 - **[[对偶实形式的分层计数管线|对偶实形式的分层计数管线]]** — dual_real_form_count 依次构造对偶内类、Cartan fiber、伴随 fiber、分次数据和弱实形式划分，再返回类数；来源仅转录测试断言，未执行测试或验收数学正确性。
@@ -396,6 +400,7 @@
 - **[[权与余权的典范配对|权与余权的典范配对]]** — pair 先检查权与余权的秩一致，再通过 i128 checked 累加计算坐标配对并检查收窄至 i32；内部 pair_coordinates 的 zip 截断风险由调用方控制。
 - **[[权与余权的简单反射及算术保护|权与余权的简单反射及算术保护]]** — reflect_weight 与 reflect_coweight 按根余根配对公式实施反射，先校验维度和生成元下标，再以 i128 中间值及受检运算处理溢出。
 - **[[权格与余权格的类型隔离|权格与余权格的类型隔离]]** — Weight 与 Coweight 分别表示 character lattice X* 与 cocharacter lattice X_*，以独立 newtype 防止混用，即使坐标相同且存在完美配对也不可互换。
+- **[[构造管线的证据范围与兼容性验收|构造管线的证据范围与兼容性验收]]** — 结构性阅读及上游行号引用仅支持实现与移植陈述，构造兼容性仍须通过 HPC 差分门；快照哈希仅标识字节，不构成数学验收。
 - **[[标准模参数的约化表示standardreprmod|标准模参数的约化表示（StandardReprMod）]]** — 以 KGB 元素 x 和经 (1−θ)X* 约化、规范化的 gamma_lambda 表示标准模参数，提供 build 与 mod_reduce 两条构造路径。
 - **[[根-involution-的-innerclass-构造与-weyl-因子|根 involution 的 InnerClass 构造与 Weyl 因子]]** — 构造入口在调用方根枚举预算内验证根与余根的传输，并可通过左复合 Weyl word 将任意合格的根 involution 转为保持基的 involution；不同入口保留或丢弃所得 Weyl 因子。
 - **[[根与余根的梯子底表|根与余根的梯子底表]]** — min_roots 与 min_coroots 为每个 α 预计算满足 β−α 非根或非余根的 β 集合，分别使用有序根表二分查找和余根坐标映射判定成员。
@@ -423,6 +428,7 @@
 - **[[环境根反射字的共享约定|环境根反射字的共享约定]]** — reflection_word 通过 to_dominant(reflection(α,2ρ)) 生成并反转反射字，逐轮选择首个负配对生成元并重启扫描；消费方共享这一上游移植约定，终止性依赖数学性质。
 - **[[环面对合的-dualpi0-子商构造|环面对合的 dualPi0 子商构造]]** — dual_pi0 将 ker_F2(θ+1) 对饱和 +1 特征格的模二像取商，构成计算对偶分量群所需的源与目标空间。
 - **[[环面部分的模二表示与余权提升|环面部分的模二表示与余权提升]]** — 初始环面部分由 factor − coch 的整数坐标奇偶性编码，下降后以 coch + lift(tp) 提升为余权，供虚单根紧致性配对使用。
+- **[[由-lie-类型构造根数据|由 Lie 类型构造根数据]]** — build_datum 按单连通或伴随情形选择权格基或根格基，校验简单根数据并分类 isogeny；环面因子排在半单类型之后。
 - **[[由基本-alcove-构造-weyl-词|由基本 Alcove 构造 Weyl 词]]** — from_fundamental_alcove 在每个墙分量留出一个单位标签墙，将其余墙经 to_positive_system 移到单根系，再逆序处理步骤并通过最终单值索引构造 Weyl 词。
 - **[[由自由坐标构造-f₂-右核|由自由坐标构造 F₂ 右核]]** — right_kernel 为每个自由坐标结合对应主元系数构造核向量，再插入新子空间形成重新约化的典范核基。
 - **[[种子下方的-bruhat-区间生成|种子下方的 Bruhat 区间生成]]** — bruhat_below 经 Bruhat_generator::block_below 生成种子下方的标准模参数区间，作为部分公共块构造的输入。
@@ -446,6 +452,7 @@
 - **[[结构性源码阅读的验证与覆盖限制|结构性源码阅读的验证与覆盖限制]]** — 来源记录源码快照和已有测试锚点，但本次未执行测试或数学验收，亦未核对上游字节；例外型部分分支、错误路径及若干实形情形仍缺少测试覆盖。
 - **[[继承正系中的子系统单根提取|继承正系中的子系统单根提取]]** — 分别从虚根与实根中选取简单坐标全非负的候选，通过候选与集合内其他成员之差的正坐标判定筛选子系统单根，输出保持 RootId 升序。
 - **[[续行预处理与物理行映射|续行预处理与物理行映射]]** — preprocess 先去除行尾空白，再将反斜杠结尾的行与下一行直接拼接，并记录重写行到首个物理行的映射以支持诊断和 abandon 定位。
+- **[[自定义实形的种子与上下文构造|自定义实形的种子与上下文构造]]** — 自定义实形总是新建属主，建立受预算约束的 InvolutionTable 并加入基本 Cartan，以内部编号、余特征标和环面部构造种子，随后持有 FallibleOnce 的 kgb/rep 及普通和扭曲形变缓存。
 - **[[虚根上的基-grading-扩展|虚根上的基 grading 扩展]]** — base_grading_extension 精确求解转置的 bracket 索引子 Cartan 系统，以虚单根坐标系数和的奇偶扩展 grading，并显式检查虚根性，因为坐标整性不足以判定虚根。
 - **[[虚根的-noncompact-grading|虚根的 noncompact grading]]** — simple_grading 按 offset[s] XOR ⟨alpha_s mod 2, torus bits⟩ 判断简单虚根的非紧性，须由调用方守卫根类型；任意虚根的 grading 使用 conjugate-to-simple 循环，非虚根返回 None。
 - **[[补全标识符的首次使用顺序|补全标识符的首次使用顺序]]** — next_session_token 在实际消费 token 时记录标识符，使被包含文件和后续命令中的补全项保持原始首次使用顺序。
@@ -455,6 +462,7 @@
 - **[[表示参数的奇偶判定与朝向数|表示参数的奇偶判定与朝向数]]** — is_parity 结合 KGB 状态转运与根配对比较奇偶，orientation_number 则先作 dominant 化，再利用 real 正根相关权重计算朝向数。
 - **[[表示多项式强转的-final-展开与规范排序|表示多项式强转的 final 展开与规范排序]]** — KType→KTypePol 经 finals_for 展开并合并项后按 K_type_pol 项序排序；Param→ParamPol 经 expand_final 展开并合并项后按 SR_poly 项序排序。
 - **[[表达式转换器的十二族分派|表达式转换器的十二族分派]]** — 转换器按 Expr 种类机械划分为十二个族助手，全部使用 #[inline(never)]，保留原分支体及调整后的共享上下文；相关栈陷阱来自分析帧。
+- **[[规范实形的编号映射与弱缓存|规范实形的编号映射与弱缓存]]** — build_real_form 将外部实形号映射到内部编号，拒绝非法编号，并在规范实形弱缓存命中时共享上下文。
 - **[[词法诊断保留与命令恢复接口|词法诊断保留与命令恢复接口]]** — recover_command 丢弃当前物理行余部并重置状态；tokenize 提供全有或全无的结果，tokenize_with_diagnostics 则保留可恢复 token 和按遭遇顺序排列的诊断。
 - **[[语法前端的测试覆盖与验收边界|语法前端的测试覆盖与验收边界]]** — 51 个测试覆盖表达式、命令和诊断形状，但结构性阅读与文法移植陈述不构成语言验收，语法兼容仍以 HPC 语言语料门为准。
 - **[[跨对偶的-cartan-类对应与扭曲代表元|跨对偶的 Cartan 类对应与扭曲代表元]]** — Cartan 类对应以对偶根像置换定位共轭类，查找失败视为不变量错误；内部代表元构造则在对偶 datum 上重放原 Weyl 字以保留两种格作用及来源信息。
@@ -491,4 +499,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_488 pages | Generated 2026-10-09T17:59:22.339Z_
+_496 pages | Generated 2026-10-09T18:01:27.057Z_
