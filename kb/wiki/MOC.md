@@ -7,7 +7,10 @@
 ## Cartan分类
 
 - [[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]
+- [[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]
 - [[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]
+- [[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]
+- [[twisted-involution-表与-cartan-轨道存储|Twisted involution 表与 Cartan 轨道存储]]
 - [[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]
 - [[严格-cayley-偏序|严格 Cayley 偏序]]
 - [[弱实形式的-cartan-集与唯一-most-split-类|弱实形式的 Cartan 集与唯一 most-split 类]]
@@ -24,6 +27,7 @@
 
 ## Cayley变换
 
+- [[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]
 - [[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]
 - [[严格-cayley-偏序|严格 Cayley 偏序]]
 
@@ -42,6 +46,7 @@
 - [[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]
 - [[kgb-生成元状态与下降判定|KGB 生成元状态与下降判定]]
 - [[tau-packet-与-kgb-元素编号标准化|tau packet 与 KGB 元素编号标准化]]
+- [[twisted-involution-表与-cartan-轨道存储|Twisted involution 表与 Cartan 轨道存储]]
 
 ## KGB图
 
@@ -66,12 +71,14 @@
 
 - [[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]
 - [[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]
+- [[twisted-cross-action-的-bfs-轨道构建|Twisted cross-action 的 BFS 轨道构建]]
 - [[weyl-元素的可失败关系与跨坐标运算|Weyl 元素的可失败关系与跨坐标运算]]
 - [[weyl-元素的扭曲共轭|Weyl 元素的扭曲共轭]]
 - [[weyl-群的矩阵作用与词级元素双层结构|Weyl 群的矩阵作用与词级元素双层结构]]
 - [[weylaction-的对偶全格作用|WeylAction 的对偶全格作用]]
 - [[weylelement-的置换表示与长度下降不变量|WeylElement 的置换表示与长度下降不变量]]
 - [[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]
+- [[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]
 - [[带基数预算的-weyl-群作用枚举|带基数预算的 Weyl 群作用枚举]]
 - [[权与余权的简单反射及算术保护|权与余权的简单反射及算术保护]]
 - [[根-involution-的-innerclass-构造与-weyl-因子|根 involution 的 InnerClass 构造与 Weyl 因子]]
@@ -179,6 +186,10 @@
 
 - [[分窗两相-bfs-构造|分窗两相 BFS 构造]]
 
+## 图遍历
+
+- [[twisted-cross-action-的-bfs-轨道构建|Twisted cross-action 的 BFS 轨道构建]]
+
 ## 坐标映射
 
 - [[图像坐标计算与提升映射|图像坐标计算与提升映射]]
@@ -207,6 +218,10 @@
 ## 实形式归属
 
 - [[强对合数据的弱实形式归属|强对合数据的弱实形式归属]]
+
+## 实投影
+
+- [[实投影像基的播种与路径依赖传送|实投影像基的播种与路径依赖传送]]
 
 ## 实现边界
 
@@ -241,6 +256,10 @@
 ## 对象身份
 
 - [[rootdatum-弱驻留与规范活对象身份|RootDatum 弱驻留与规范活对象身份]]
+
+## 幂等性
+
+- [[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]
 
 ## 并行计算
 
@@ -292,9 +311,18 @@
 - [[twisted-involution-的规范约化表达式|Twisted involution 的规范约化表达式]]
 - [[跨对偶的-cartan-类对应与扭曲代表元|跨对偶的 Cartan 类对应与扭曲代表元]]
 
+## 扭转对合
+
+- [[twisted-cross-action-的-bfs-轨道构建|Twisted cross-action 的 BFS 轨道构建]]
+
 ## 抛物子群
 
 - [[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]
+
+## 接口契约
+
+- [[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]
+- [[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]
 
 ## 接口边界
 
@@ -303,6 +331,10 @@
 ## 提升映射
 
 - [[图像坐标计算与提升映射|图像坐标计算与提升映射]]
+
+## 数学不变量
+
+- [[twisted-involution-记录的数学不变量|Twisted involution 记录的数学不变量]]
 
 ## 数学对象
 
@@ -320,6 +352,10 @@
 
 - [[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]
 - [[kgb-图的混合自包含存储|KGB 图的混合自包含存储]]
+
+## 数据结构
+
+- [[twisted-involution-表与-cartan-轨道存储|Twisted involution 表与 Cartan 轨道存储]]
 
 ## 数据表示
 
@@ -393,8 +429,13 @@
 
 ## 测试覆盖
 
+- [[involution-表的测试锚点与证据边界|Involution 表的测试锚点与证据边界]]
 - [[伴随纤维映射的测试证据与覆盖边界|伴随纤维映射的测试证据与覆盖边界]]
 - [[图像基算法的测试锚点与证据范围|图像基算法的测试锚点与证据范围]]
+
+## 源码阅读
+
+- [[involution-表的测试锚点与证据边界|Involution 表的测试锚点与证据边界]]
 
 ## 溢出检查
 
@@ -483,6 +524,14 @@
 
 - [[基于左下降剥离的规范约化词|基于左下降剥离的规范约化词]]
 
+## 索引
+
+- [[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]
+
+## 线性代数
+
+- [[实投影像基的播种与路径依赖传送|实投影像基的播种与路径依赖传送]]
+
 ## 缓存
 
 - [[cartan-分类的分层预算|Cartan 分类的分层预算]]
@@ -519,6 +568,7 @@
 
 ## 证据边界
 
+- [[involution-表的测试锚点与证据边界|Involution 表的测试锚点与证据边界]]
 - [[伴随纤维映射的测试证据与覆盖边界|伴随纤维映射的测试证据与覆盖边界]]
 
 ## 诱导映射
@@ -529,11 +579,19 @@
 
 - [[weyl-元素的扭曲共轭|Weyl 元素的扭曲共轭]]
 
+## 资源限制
+
+- [[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]
+
 ## 资源预算
 
 - [[cartan-分类的分层预算|Cartan 分类的分层预算]]
 - [[伴随纤维的资源预算与可恢复错误|伴随纤维的资源预算与可恢复错误]]
 - [[带基数预算的-weyl-群作用枚举|带基数预算的 Weyl 群作用枚举]]
+
+## 路径依赖
+
+- [[实投影像基的播种与路径依赖传送|实投影像基的播种与路径依赖传送]]
 
 ## 轨道枚举
 
@@ -542,12 +600,17 @@
 ## 错误处理
 
 - [[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]
+- [[twisted-involution-记录的数学不变量|Twisted involution 记录的数学不变量]]
 - [[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]
 - [[伴随纤维的资源预算与可恢复错误|伴随纤维的资源预算与可恢复错误]]
 
 ## 错误语义
 
 - [[weyl-元素的可失败关系与跨坐标运算|Weyl 元素的可失败关系与跨坐标运算]]
+
+## 长度函数
+
+- [[twisted-involution-记录的数学不变量|Twisted involution 记录的数学不变量]]
 
 ## 阶梯归约
 

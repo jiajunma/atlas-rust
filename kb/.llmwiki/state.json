@@ -110,6 +110,20 @@
         "整数列阶梯归约与带符号-gcd-扫描"
       ],
       "compiledAt": "2026-10-09T15:45:41.205Z"
+    },
+    "involution-table.md": {
+      "hash": "9ca49e0bb668a06008f529f13028dcd9301251198c173e1159e88c654f3557b5",
+      "concepts": [
+        "cartan-轨道的幂等添加与容量约束",
+        "cayley-邻居查询与向上封闭-cartan-集合",
+        "involution-表的测试锚点与证据边界",
+        "twisted-cross-action-的-bfs-轨道构建",
+        "twisted-involution-表与-cartan-轨道存储",
+        "twisted-involution-记录的数学不变量",
+        "前向根置换索引及其调用方契约",
+        "实投影像基的播种与路径依赖传送"
+      ],
+      "compiledAt": "2026-10-09T15:48:11.996Z"
     }
   }
 }

@@ -7,12 +7,15 @@
 - **[[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]** — CartanClassification::build 构造 inner class 的全部 Cartan 类，聚合各实形式的 Cartan 集、most-split 类、twisted-involution 总数与严格偏序，并共享 twisted 共轭分区供对偶侧复用。
 - **[[cartan-分类的分层预算|Cartan 分类的分层预算]]** — CartanClassificationBudget 分别约束整数格、fiber、Weyl 枚举、对合发现与 peeling；generated-involutions 模式以含 identity 的精确计数上限控制代表元发现，各预算值参与分类缓存键。
 - **[[cartan-矩阵的精确有理有限型检查|Cartan 矩阵的精确有理有限型检查]]** — 以精确有理数沿连通分量传播对称化比例，再通过 LDLᵀ 式分解检查正主元；其与有限型的等价性在来源中仅为代码意图，未经数学验收。
+- **[[cartan-轨道的幂等添加与容量约束|Cartan 轨道的幂等添加与容量约束]]** — add_cartan 重复调用返回已有切片，新轨道须恰好达到分类给出的期望大小，且记录数量达到 max_involutions 时拒绝继续插入。
 - **[[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]** — fundamental class 编为 0，其余按父类编号与上游正虚根顺序进行 BFS 发现；Cayley successor 在比较和存储前先 canonicalize，以保持 Atlas 编号语义。
+- **[[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]** — cayley 以 s·w 的置换查表寻找邻居，目标 Cartan 未添加时返回 None；stage e 要求预先添加该 form 的向上封闭 Cartan 集合。
 - **[[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]** — 链接按元素与生成元平铺存储：Cayley 适用于非紧致 imaginary，逆 Cayley 适用于 real，后者区分单前像 II 型与双前像 I 型，并在编号标准化后按升序安装。
 - **[[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]** — canonical dual 仅在目标尚未建立 WeylGroup 时共享源群身份，已预热目标保持独立，因此 Weyl 元素兼容性取决于对象生命周期和构造历史。
 - **[[innerclass-对偶构造与生命周期保持|InnerClass 对偶构造与生命周期保持]]** — original InnerClass 构造立即取得 canonical dual 并强持有 primal 与 dual，Rust 对齐需覆盖该隐式对偶路径及其生命周期，显式 dual 修复不足以证明完整兼容。
 - **[[innerclass-成员判定与-twisted-分解|InnerClass 成员判定与 twisted 分解]]** — twisted_from_involution 在调用方已完成 square 与 involutive 检查的前提下，验证输入属于当前 inner class，并返回分解 θ = w·δ 中的 Weyl 元素 w，失败时报 InvalidBasedAutomorphism。
 - **[[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]** — InnerClass 持有已验证的 BasedRootDatum、有限根系和 distinguished involution，为分解与标签提供上下文，但尚不包含 Cartan fibers、real-form data 或构建 KGB graph 所需的 torus data。
+- **[[involution-表的测试锚点与证据边界|Involution 表的测试锚点与证据边界]]** — 源码测试锚点覆盖 A1、B2、扭转 A2、投影传送及部分守卫，但若干错误分支未覆盖，本文的结构性阅读不构成测试执行、数学验收或性能证据。
 - **[[kgb-图与弱实形式|KGB 图与弱实形式]]** — KGB 集合描述 K 在旗簇 G/B 上的轨道；本实现从 RealFormSeed 构造每个弱实形式对应的 KgbGraph，元素为各 involution 之上的 Tits 元素。
 - **[[kgb-图的混合自包含存储|KGB 图的混合自包含存储]]** — 图复制各 involution 位置的数据及 cocharacter，使除 torus_factor 外的访问器脱离 involution 表；torus_factor 仍需表中逐 involution 的 theta 来计算精确有理数结果。
 - **[[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]** — 构造检查 inner class、形式索引及种子绑定，并要求状态槽仅写一次、Cayley 目标的 involution 长度增加一、最终元素数等于分类预言的 kgb_size；这些检查不构成数学正确性验收。
@@ -22,9 +25,12 @@
 - **[[rootdatum-弱驻留与规范活对象身份|RootDatum 弱驻留与规范活对象身份]]** — original Atlas 按完整 PreRootDatum 内容及 preference 弱驻留 RootDatum，以存活对象的指针身份实现相等性；重型对象可释放，但轻量索引键仍保留。
 - **[[rust-weyl-内核与抽象群的无环所有权模型|Rust Weyl 内核与抽象群的无环所有权模型]]** — 分离 datum 坐标内核与抽象 Weyl 群身份可表达共享语义并避免 handle 与 context 的强引用环；核心身份修复已落地，后续缓存共享设计仍需独立验证。
 - **[[tau-packet-与-kgb-元素编号标准化|tau packet 与 KGB 元素编号标准化]]** — 实现按 involution 长度、Weyl 长度和 WeylElt::pieces 字典序排列 involution，再以稳定计数排序组织 tau packet 并保留包内 BFS 顺序；源码声明此编号复现上游，但本包未独立验证。
+- **[[twisted-cross-action-的-bfs-轨道构建|Twisted cross-action 的 BFS 轨道构建]]** — 通过 s_g·w·s_twist(g) 生成邻居，以前向根置换去重，并在遍历中保存 cross_links，使构建后的 cross 访问成为存储直查。
 - **[[twisted-involution-枚举与共轭轨道分区|Twisted involution 枚举与共轭轨道分区]]** — twisted_involutions 提供稳定的对合列表，twisted_conjugacy_partition 构建带成员查询的完整 Weyl twisted-conjugacy 分区，classes 接口是其薄封装；轨道代表不保证 Atlas-canonical，且结果不等同于 Cartan classes。
 - **[[twisted-involution-的三阶段规范化|Twisted involution 的三阶段规范化]]** — canonicalize 依次使正实根与正虚根之和 dominant、限制到与两者正交的简单生成元、确保残余 complex subsystem 的 positivity，并按执行顺序返回 twisted conjugation 生成元；受限版本全程结合 active 集合。
 - **[[twisted-involution-的规范约化表达式|Twisted involution 的规范约化表达式]]** — canonical_involution_expr 按外部生成元编号选择字典序最小的约化 twisted-involution expression，以 s 编码 cross、!s 编码 twisted conjugation，其终止性依赖输入确为当前 inner class 的 twisted involution 的 Weyl part。
+- **[[twisted-involution-表与-cartan-轨道存储|Twisted involution 表与 Cartan 轨道存储]]** — KGB stage b 按 Cartan 添加顺序连续存储 twisted involution 轨道，轨道内采用 external-order BFS，并为记录分配全局连续的 InvolutionId。
+- **[[twisted-involution-记录的数学不变量|Twisted involution 记录的数学不变量]]** — 记录构建检查种子长度 (W_length+#Cayley)/2 的奇偶性、BFS 长度步进、(2ρ+θ·2ρ)/2 的整性，以及传送投影与当前 θ 的相容性。
 - **[[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]** — TwistedConjugacyClass 保存确定性轨道代表元和对合计数，分类阶段将代表元重建为 Atlas-canonical 形式；CartanClass 拥有该值并承载分解、fiber、实形式标签与实 Cartan 分量数据。
 - **[[weyl-上下文共享的性能与内存证据边界|Weyl 上下文共享的性能与内存证据边界]]** — 重复上下文构造和采样热点支持优化调查，但构建次数假设与探针计时不证明加速；共享可能延长内核存活，需独立测量构建数、分配及 time/CPU/RSS。
 - **[[weyl-元素的可失败关系与跨坐标运算|Weyl 元素的可失败关系与跨坐标运算]]** — Weyl 元素的等于、不等于和乘法须先检查群身份，包括 no_value 路径；兼容但坐标不同的值通过在左侧重放右侧外部生成元词运算，乘积保留左 owner。
@@ -42,6 +48,7 @@
 - **[[余权坐标的投影出处绑定|余权坐标的投影出处绑定]]** — AmbientCoweight 与 AdjointCoweight 将坐标绑定到 Arc<AdjointProjectionModel>，以指针身份和坐标共同判等，并拒绝跨独立投影实例复用坐标。
 - **[[最长-weyl-元的下坡行走|最长 Weyl 元的下坡行走]]** — longest_action 从源码计算的 2ρ 出发，按生成元顺序选择正配对反射并左合成，目标为 −2ρ，超预算或无法推进时报不变量错误；数学与复杂度声明尚未验收。
 - **[[分窗两相-bfs-构造|分窗两相 BFS 构造]]** — KGB 枚举以 64 个元素为一窗，先用 Rayon 在只读表与 coset 上计算状态及目标，再顺序 intern 去重并分配编号；并行结构本身不代表已有多核加速证据。
+- **[[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]** — lookup 使用前向根置换作为完整相等性键；跨系统输入受调用方契约约束，种子插入不检查键碰撞，依赖不同 Cartan 轨道的键互不重叠。
 - **[[单反射下的图像基传送|单反射下的图像基传送]]** — 沿单反射 s 更新 L′=sL、M′=Ms，保持 L′M′=1−θ′；传送使用 checked i64 算术，其结果可与重新归约所得基存在列符号或列次序差异。
 - **[[图像坐标计算与提升映射|图像坐标计算与提升映射]]** — coordinates(v)=m_real·v 给出 (1−θ)v 的图像基坐标，lift(c)=lift_mat·c 将坐标映回 X*。
 - **[[图像基接口的维度与算术安全边界|图像基接口的维度与算术安全边界]]** — 源码阅读指出短 weight 被静默补零式处理、过长提升坐标会 panic、传送仅检查方阵性且不自行复核分解，以及求逆算术和内存分配检查的不对称。
@@ -49,6 +56,7 @@
 - **[[图像基算法的测试锚点与证据范围|图像基算法的测试锚点与证据范围]]** — 源码列出带符号 gcd、斜环面与斜乘积基字面量及零/满像边界的测试锚点，但传送无测试，本包的结构性阅读未执行测试或构成数学验收。
 - **[[基于左下降剥离的规范约化词|基于左下降剥离的规范约化词]]** — canonical_word 按 WeylInterface 的内部生成子序逐次剥离最小左 descent，获得该序下字典序最小的约化词，并检查每步长度恰减一。
 - **[[基于生成元闭包的-twisted-共轭分区|基于生成元闭包的 twisted 共轭分区]]** — generated_twisted_conjugacy_partition 通过生成元闭包构造完整分区，以 twisted involutions 数量计预算、每类仅实例化一个 lattice involution，并使用紧凑根置换查询成员；外部 Cartan 编号仍由 CartanClassification 选举。
+- **[[实投影像基的播种与路径依赖传送|实投影像基的播种与路径依赖传送]]** — 由 1−θ 的阶梯消元在轨道种子处构造 lift_mat 与 M_real，随后沿 cross-action 用普通生成元矩阵传送；该基具有路径依赖性并影响 y_lift 的符号。
 - **[[对偶实形式的分层计数管线|对偶实形式的分层计数管线]]** — dual_real_form_count 依次构造对偶内类、Cartan fiber、伴随 fiber、分次数据和弱实形式划分，再返回类数；来源仅转录测试断言，未执行测试或验收数学正确性。
 - **[[对偶根数据与对偶内类构造|对偶根数据与对偶内类构造]]** — 对偶根数据转置 Cartan 并交换根与余根后复用构造校验，对偶内类以 −(q·W0)ᵗ 和 −(q·W0) 分别构造权与余权作用，并分配最长元和根系闭包预算。
 - **[[对合的-1θx-图像基对|对合的 (1−θ)X* 图像基对]]** — 以 n×r 的 lift_mat 与 r×n 的 m_real 表示图像基及坐标映射，满足 lift_mat·m_real = 1−θ。
@@ -64,4 +72,4 @@
 - **[[源余权格到伴随余权格的整数投影|源余权格到伴随余权格的整数投影]]** — 整数投影 Y → P∨ 按源单根顺序计算 pair(root, y) 作为目标坐标，保持可加性且可能具有中心核，因此不应视为同构。
 - **[[跨对偶的-cartan-类对应与扭曲代表元|跨对偶的 Cartan 类对应与扭曲代表元]]** — Cartan 类对应以对偶根像置换定位共轭类，查找失败视为不变量错误；内部代表元构造则在对偶 datum 上重放原 Weyl 字以保留两种格作用及来源信息。
 
-_61 pages | Generated 2026-10-09T15:45:41.498Z_
+_69 pages | Generated 2026-10-09T15:48:12.340Z_

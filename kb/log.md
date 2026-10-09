@@ -933,3 +933,13 @@ ops 记录 + div_euclid 防定向反转 + E6 involution-187 注释）、幺模�
 与无测试声明、zip 静默截断与 lift panic 面、非受检消元与分配不对称的阅读
 观察——全部忠实；四个测试锚点（含 original3840186 的逐字矩阵字面量）一致。
 8 页批准；wiki/concepts/ 现有 61 页，剩余候选 472。
+
+## 2026年10月9日 第九批候选审查：involution-table.md 的 8 页
+
+对照 106 行来源包逐页核验：记录字段清单与图像基对的例外地位、幂等添加与
+包含式容量上限、种子公式 (W+#Cayley)/2 与奇偶拒绝、stepped_length 的
+±2/∓1 规则、投影传送用普通生成元矩阵的理由（δ 已并入 θ）、check_against
+边对账、index_by_permutation 静默覆盖的调用纪律、lookup 键契约、Cayley
+None 的 stage-e 语义、simple_root_kind 三合一——全部忠实；7 个测试锚点
+（含 B2 投影传送的 assert_ne 字面量与 arm64 oracle 标注）逐字一致，未触
+分支清单一致。8 页批准；wiki/concepts/ 现有 69 页，剩余候选 464。
