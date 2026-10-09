@@ -22,6 +22,7 @@
 - **[[based-cross-action-的闭式实现|Based cross action 的闭式实现]]** — cross 使用单一逐元素闭式映射，实现 sigma_mult(s, .) 后接 mult_sigma_inv(., twist(s)) 并加入 offset 修正的作用，结果在目标处归约。
 - **[[based-involution-验证与生成元-twist|Based involution 验证与生成元 twist]]** — based_involution_twist 要求 involution 置换根系、正确传输余根且将简单根映为简单根；generator_twist 给出 distinguished involution 诱导的简单生成元置换。
 - **[[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]** — 区分格秩与半单秩，按固定顺序验证 Cartan 矩阵、根与余根的数量、维度及配对，支持中心环面和纯环面且不设全局秩上限。
+- **[[bison-风格语法诊断兼容层|Bison 风格语法诊断兼容层]]** — syntax_error 及 bison_* 辅助函数将 LALRPOP ParseError 渲染为 Bison 风格的 unexpected／expecting 消息，并保留诊断类别的兼容边界。
 - **[[blockdescent-八值状态体系|BlockDescent 八值状态体系]]** — BlockDescent 根据两侧根类型及 cross 行为区分八种状态，以索引位 0x4 标识 weak descent，并提供对偶状态映射与 Atlas 语言码转换。
 - **[[blockgraph-存储布局与坐标定位不变量|BlockGraph 存储布局与坐标定位不变量]]** — BlockGraph 以 x 外层、y 内层编号，分别按元素优先和生成元优先平铺 descent 与 cross，并依赖 xs 弱增、区间索引及连续 y 偏移实现带校验的坐标定位。
 - **[[blockmodifier-块修正子|BlockModifier 块修正子]]** — BlockModifier 组合 BlockLocator 与有理权平移，提供恒等构造、无校验包装及保留整根系定位信息的重置操作；该功能切片尚未接入现存消费方。
@@ -226,6 +227,7 @@
 - **[[可约点与标准参数-final-化|可约点与标准参数 final 化]]** — reducibility_points 返回按分子分母对升序排列的可约分数，finals_for 以栈驱动 dominant 检查及奇偶、长度下降，生成带整数系数的 final 参数。
 - **[[合成实形的选定余特征|合成实形的选定余特征]]** — elected_square_root 按 distinguished 对合与 Weyl 余权作用运输环面因子，以半平方和 delta + I 调用 stable_log，生成构造器保存的 g_rho_check；非平凡运输尚缺可区分测试断言。
 - **[[合成实形种子算法的门控与资源限制|合成实形种子算法的门控与资源限制]]** — 入口检查内类、维数、置换和整性，并对对合覆盖及空候选给出具名错误；轨道编码限制格秩不超过 63，minimal_torus_part 没有显式预算参数。
+- **[[命令抽象语法树与全局声明语义|命令抽象语法树与全局声明语义]]** — Command 表达定义、声明、类型设置和查询等操作，其中 Set 按叶子类型选择全局表，PolymorphicSet 的逗号兄弟独立执行且不整体回滚。
 - **[[命令首指令与文件名扫描|命令首指令与文件名扫描]]** — 仅在命令首识别 <、<<、>、>> 指令，支持带引号或受限字符集的裸文件名，并将该行剩余内容留给会话帧校验。
 - **[[唯一上升像与本原元素回退|唯一上升像与本原元素回退]]** — unique_ascent 对复上升返回 cross 像、对虚 I 型上升返回首个 Cayley 像，其余返回 None；prim_back_up 原地先递减后判定，失败时仍将位置置为 0。
 - **[[图像坐标计算与提升映射|图像坐标计算与提升映射]]** — coordinates(v)=m_real·v 给出 (1−θ)v 的图像基坐标，lift(c)=lift_mat·c 将坐标映回 X*。
@@ -285,6 +287,7 @@
 - **[[局部扩展类型识别与全父块构造|局部扩展类型识别与全父块构造]]** — extended_type 在父块上进行纯组合局部类型识别，ExtBlock::build 在平凡 block modifier 下结合 complete_construction 与 induced 完成全父块构造。
 - **[[局部标签到外部编号的类型组合|局部标签到外部编号的类型组合]]** — RealFormLabels 输出与 ExternalFormOrder 输入同属 fundamental 分区的 WeakRealFormId，因而可推断局部类到内部编号再到外部编号的串联在类型上可行，但两文件互不导入且没有组合代码或测试验证。
 - **[[带基数预算的-weyl-群作用枚举|带基数预算的 Weyl 群作用枚举]]** — enumerate_actions 通过 CompactWeyl 枚举并并行物化矩阵，使用显式基数预算；来源描述了字典序输出，但未提供排序测试或独立性能验证。
+- **[[带源码跨度的表达式抽象语法树|带源码跨度的表达式抽象语法树]]** — Expr 的所有变体都携带 span，覆盖容器、赋值、函数和控制流，并以独立节点保留 BarList 等结构；语义判定由 typed.rs 承担。
 - **[[平方类编号与换基不变量|平方类编号与换基不变量]]** — SquareClassId 是商群 (adjoint fiber group)/im(toAdjoint) 在 crate echelon 基下的陪集坐标整数；来源报告其目前与上游编号一致，该一致性依赖共享的 low-pivot RREF 约定，而换基只置换标签，不改变分划结构及大小。
 - **[[幺模矩阵求逆与分解自校验|幺模矩阵求逆与分解自校验]]** — invert_integer_matrix 通过欧几里得行消元求逆、要求对角主元为 ±1 并验证乘积为单位矩阵，build 收尾另校验图像基分解不变式。
 - **[[弱实形式归因的来源与整性门控|弱实形式归因的来源与整性门控]]** — 归因依次校验秩、分类来源、datum、w·δ=θ 分解及代表元身份，并在虚根 grading 提取前要求投影与每个单根的配对为整数，防止空虚基绕过校验。
@@ -337,6 +340,7 @@
 - **[[整数线性系统求解与像判定|整数线性系统求解与像判定]]** — has_solution 对角化后检查变换右端的逐坐标可除性，find_solution 无解时返回 None，in_left_image 与 in_right_image 提供像判定，而右端长度不匹配会触发 panic。
 - **[[普通根系的确定性枚举|普通根系的确定性枚举]]** — RootSystem 从 BasedRootDatum 播种正负简单根并以 BFS 求反射闭包，最终按环境坐标字典序排列根，结果顺序独立于发现顺序。
 - **[[有状态词法分析与逐命令执行|有状态词法分析与逐命令执行]]** — Atlas 词法分类受先前命令改变的状态影响，因此会话逐命令执行且不预切分整个文件；词法器支持嵌套注释和逐 token 消费。
+- **[[有状态词法流的-lalrpop-惰性适配|有状态词法流的 LALRPOP 惰性适配]]** — TokenStream 将 Atlas 词法 token 惰性转换为携带位置的 ParserToken 流，使上下文敏感词法规则独立于文法动作，并将命令边界保留给词法器。
 - **[[有理余权的逐坐标表示与-api-边界|有理余权的逐坐标表示与 API 边界]]** — RationalCoweight 采用 Vec<Rational> 逐坐标存储，通过 dimension 与 to_rationals 提供公开坐标访问，将构造限制在 crate 内，且不提供算术或 Hash。
 - **[[有理权分子的-checked-仿射反射|有理权分子的 checked 仿射反射]]** — simple_reflect_numerator 在分母不变时以全程 checked 算术执行 v -= alpha_s * (<v, coroot_s> + offset)，支持普通简单反射及带偏移的仿射反射。
 - **[[有理权的公共分母表示与归一化|有理权的公共分母表示与归一化]]** — RationalWeight 使用 Vec<i64> 分子与正 i64 公共分母，构造、加减和缩放执行 gcd 归一化，而 halve 仅翻倍分母并将归一化时机留给调用方。
@@ -364,7 +368,9 @@
 - **[[格坐标的固定宽度检查算术|格坐标的固定宽度检查算术]]** — 格坐标刻意采用 checked 固定宽度存储，精确解释器值在领域边界转换；坐标加减检查溢出，按输入长度分配向量时通常显式处理分配失败，但部分 clone 操作例外。
 - **[[格对合latticeinvolution|格对合（LatticeInvolution）]]** — 分别存储权格与余权格作用，依次验证方阵形状、两作用平方为单位及 W^T·C=I，建立配对保持的对合不变量，但不保证保持根系。
 - **[[梯子底成员查询的坐标溢出语义|梯子底成员查询的坐标溢出语义]]** — 梯子底查询中 checked_sub 溢出视为差值非成员，因为超出 i32 范围的精确差不可能等于存储坐标；其他错误仍传播，上游十一例与本地八组的覆盖差异待核。
+- **[[模式函数参数与类型表达式|模式、函数参数与类型表达式]]** — Pattern 区分匿名丢弃、空槽、名字和元组解构，LambdaParam 表达带类型参数及解构参数，TypeExpr 表达类型变量、行、联合和函数等类型结构。
 - **[[正根集的单根提取|正根集的单根提取]]** — pos_simples 要求输入按 upstream 正根序排序，通过 bracket(β, α) 的正性及反射像的正负判断 α 或 β 是否非单根，其配对符号判据对应 simpleBasis 的论证。
+- **[[活跃类型环境与跨行增量命令解析|活跃类型环境与跨行增量命令解析]]** — 命令解析使用活跃 TypeTable；片段解析在 allow_more 且解析器持有未闭合虚拟类型分组时返回 Ok(None)，保留前缀跨行重试，完整前不求值 AST。
 - **[[源余权格到伴随余权格的整数投影|源余权格到伴随余权格的整数投影]]** — 整数投影 Y → P∨ 按源单根顺序计算 pair(root, y) 作为目标坐标，保持可加性且可能具有中心核，因此不应视为同构。
 - **[[环境根反射字的共享约定|环境根反射字的共享约定]]** — reflection_word 通过 to_dominant(reflection(α,2ρ)) 生成并反转反射字，逐轮选择首个负配对生成元并重启扫描；消费方共享这一上游移植约定，终止性依赖数学性质。
 - **[[环面对合的-dualpi0-子商构造|环面对合的 dualPi0 子商构造]]** — dual_pi0 将 ker_F2(θ+1) 对饱和 +1 特征格的模二像取商，构成计算对偶分量群所需的源与目标空间。
@@ -390,6 +396,7 @@
 - **[[表示参数构造与权重恢复|表示参数构造与权重恢复]]** — 通过 sr_gamma 和 sr 构造标准参数，恢复 lambda-rho、lambda 与 nu，并支持 K-type 转换；lambda-rho 的减半步骤要求坐标和为偶数。
 - **[[表示参数的奇偶判定与朝向数|表示参数的奇偶判定与朝向数]]** — is_parity 结合 KGB 状态转运与根配对比较奇偶，orientation_number 则先作 dominant 化，再利用 real 正根相关权重计算朝向数。
 - **[[词法诊断保留与命令恢复接口|词法诊断保留与命令恢复接口]]** — recover_command 丢弃当前物理行余部并重置状态；tokenize 提供全有或全无的结果，tokenize_with_diagnostics 则保留可恢复 token 和按遭遇顺序排列的诊断。
+- **[[语法前端的测试覆盖与验收边界|语法前端的测试覆盖与验收边界]]** — 51 个测试覆盖表达式、命令和诊断形状，但结构性阅读与文法移植陈述不构成语言验收，语法兼容仍以 HPC 语言语料门为准。
 - **[[跨对偶的-cartan-类对应与扭曲代表元|跨对偶的 Cartan 类对应与扭曲代表元]]** — Cartan 类对应以对偶根像置换定位共轭类，查找失败视为不变量错误；内部代表元构造则在对偶 datum 上重放原 Weyl 字以保留两种格作用及来源信息。
 - **[[轨道枚举的规模预算与整数边界|轨道枚举的规模预算与整数边界]]** — 枚举以 max_elements 限制 2^dimension 的规模，使用不饱和的 u128 比较，并分别检查 63 位掩码限制及保留 u32::MAX 哨兵的类编号容量。
 - **[[运算符扫描与复合赋值融合|运算符扫描与复合赋值融合]]** — 普通运算符可跨空白和注释与 := 融合为 OperatorBecomes，而关系符连续段、裸 ! 及专用运算符分支遵循各自的扫描与换行规则。
@@ -399,6 +406,7 @@
 - **[[部分公共块上的扩展块构造与-cofold|部分公共块上的扩展块构造与 cofold]]** — build_partial 使用 x + gamma_lambda 形式测试不动点，在子系统上折叠生成元，并在构造后处理 cofold；当前仅支持恒等生成元姿态，非恒等 bm.simple_pi 显式失败。
 - **[[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]** — 通过 Option 表达元素或链接缺失，区分 imaginary ascent 的前向 Cayley 像与 real descent 的逆像，并以奇异生成元的下降状态判定 survives。
 - **[[重复-gcd-实现的语义漂移|重复 gcd 实现的语义漂移]]** — lattice.rs 与 global_kgb.rs 的私有 gcd_u64 对 gcd(0,0) 分别返回 1 与 0，体现重复实现的语义漂移，但正分母约束使各自当前调用点仍安全。
+- **[[重定向表达式的打开前解析|重定向表达式的打开前解析]]** — 会话层通过共享活跃类型环境的表达式解析入口校验 >file／>>file 的重定向体，并在打开输出 sink 前完成解析。
 - **[[限制权的商格单射表示restrictedweight|限制权的商格单射表示（RestrictedWeight）]]** — 以 (1−θ)(weight) 编码 X*/ker(1−θ) 的等价类，坐标属于像格表示；split A1 中 α 类编码为 2α，并不表示它等于 2α 的类。
 - **[[限制根的可乘性ismultipliable|限制根的可乘性（is_multipliable）]]** — 通过检查二倍限制权类是否仍为限制根判定可乘性；给定 A2 对合测试覆盖可乘实例，但本包未验收其与 BC 型非约化根系的数学关系。
 - **[[限制根系的纤维聚合与有序查询|限制根系的纤维聚合与有序查询]]** — RestrictedRootSystem 校验 datum 与格秩后，跳过限制为零的根并按限制权聚合纤维，以坐标字典序存储供二分查询；其 rank 取对合的反不变秩。
@@ -408,4 +416,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_405 pages | Generated 2026-10-09T17:37:52.638Z_
+_413 pages | Generated 2026-10-09T17:39:46.058Z_

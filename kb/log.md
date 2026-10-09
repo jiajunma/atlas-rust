@@ -1633,3 +1633,22 @@ OperatorBecomes 融合规则（跨空白/注释、失败回退）、Directive �
 recover_command 语义、TokenCursor 错误与 token 同缓存、tokenize 全有
 或全无 vs tokenize_with_diagnostics 保留诊断、23 测试与职责边界——全部
 忠实。8 页批准；wiki/concepts/ 现有 405 页，剩余候选 128。
+
+## 2026年10月10日 第五十七批候选审查：atlas-core-syntax.md 的 8 页
+
+对照 110 行来源包（维护者直接撰写）逐页核验：Expr 全变体清单（BarList
+的独立节点保留 oracle 精确诊断且不受用户 ^/mat 重载影响、Subscription 的
+reversed 标志、Slice 省略界解析器填零、MultiAssignment 目标是已存在变量
+区别于 let、OperatorCast 的自由形式参数不是抽象、TypeAbstraction 离开体
+时抽象成 scheme 后在类型分析中消失、Conditional 的 elif 解析期脱糖、
+Sequence/Next 的效果与值分工、Do 的词法帧必须同时包住两表达式、Break 的
+levels+1、IntCase 的 then 收负值/else 收越界/皆缺取模、Die 通过任何类型
+分析而求值抛 I die）、Pattern 四变体（Discard 非元组成员、Omitted 消费
+分量不约束不绑名、Name 的 0x8/0x4 独立位域、whole 必为 Name）、TypeExpr
+九变体与 Named 的两种指向、Command 面（SetType 仅括号形式进 tabled 表、
+Forget 永不报错、SetOption 未知选项中止不动 verbosity、PolymorphicSet
+逗号兄弟各自独立）、解析入口纪律（词法器拥有命令边界、适配层绝不预切分、
+TypeTable 活跃可见、has_virtual_group 的 Ok(None) 续行、重定向体打开前
+解析）、TokenStream 惰性转换与 Bison 措辞渲染（措辞可精化如实声明）、
+51 测试边界——全部忠实。8 页批准；wiki/concepts/ 现有 413 页，剩余
+候选 120。
