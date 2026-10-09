@@ -7,6 +7,7 @@
 ## Bruhat序
 
 - [[块的-bruhat-hasse-图与可比对计数|块的 Bruhat Hasse 图与可比对计数]]
+- [[种子下方的-bruhat-区间生成|种子下方的 Bruhat 区间生成]]
 
 ## Cartan分类
 
@@ -41,6 +42,7 @@
 - [[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]
 - [[crosscayley-与逆-cayley-链接|Cross、Cayley 与逆 Cayley 链接]]
 - [[严格-cayley-偏序|严格 Cayley 偏序]]
+- [[公共上下文的生成元操作commoncontext|公共上下文的生成元操作（CommonContext）]]
 - [[块图的直接与逆-cayley-变换|块图的直接与逆 Cayley 变换]]
 
 ## HPC验证
@@ -85,6 +87,10 @@
 - [[klv-表的幂等逐列填充算法|KLV 表的幂等逐列填充算法]]
 - [[klv-表的逐列存储与句柄设计|KLV 表的逐列存储与句柄设计]]
 
+## KL递归
+
+- [[公共块对偶变换及-kl-递归的闭合限制|公共块对偶变换及 KL 递归的闭合限制]]
+
 ## primitive投影
 
 - [[klv-表的-primitive-投影与访问语义|KLV 表的 primitive 投影与访问语义]]
@@ -119,6 +125,7 @@
 - [[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]
 - [[余权坐标的投影出处绑定|余权坐标的投影出处绑定]]
 - [[关系格封装与构造预检|关系格封装与构造预检]]
+- [[标准模参数的约化表示standardreprmod|标准模参数的约化表示（StandardReprMod）]]
 
 ## Tits作用
 
@@ -241,6 +248,7 @@
 ## 公共块
 
 - [[twisted-与-common-block-形变项提取|twisted 与 common-block 形变项提取]]
+- [[公共块的构造与元素编号partialblock|公共块的构造与元素编号（PartialBlock）]]
 
 ## 共享设计
 
@@ -301,6 +309,10 @@
 ## 分级修复
 
 - [[逆-cayley-变换的-grading-修复|逆 Cayley 变换的 grading 修复]]
+
+## 区间生成
+
+- [[种子下方的-bruhat-区间生成|种子下方的 Bruhat 区间生成]]
 
 ## 参数建模
 
@@ -371,9 +383,17 @@
 
 - [[完整块图的对偶数据变换|完整块图的对偶数据变换]]
 
+## 块对偶
+
+- [[公共块对偶变换及-kl-递归的闭合限制|公共块对偶变换及 KL 递归的闭合限制]]
+
 ## 块形变
 
 - [[高度受限的块形变|高度受限的块形变]]
+
+## 块构造
+
+- [[公共块的构造与元素编号partialblock|公共块的构造与元素编号（PartialBlock）]]
 
 ## 基传送
 
@@ -568,6 +588,10 @@
 - [[cayley-邻居查询与向上封闭-cartan-集合|Cayley 邻居查询与向上封闭 Cartan 集合]]
 - [[前向根置换索引及其调用方契约|前向根置换索引及其调用方契约]]
 
+## 接口语义
+
+- [[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]
+
 ## 接口边界
 
 - [[图像基接口的维度与算术安全边界|图像基接口的维度与算术安全边界]]
@@ -605,6 +629,7 @@
 
 - [[blockgraph-存储布局与坐标定位不变量|BlockGraph 存储布局与坐标定位不变量]]
 - [[twisted-involution-表与-cartan-轨道存储|Twisted involution 表与 Cartan 轨道存储]]
+- [[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]
 
 ## 数据表示
 
@@ -685,6 +710,10 @@
 
 - [[带基数预算的-weyl-群作用枚举|带基数预算的 Weyl 群作用枚举]]
 
+## 标准模参数
+
+- [[标准模参数的约化表示standardreprmod|标准模参数的约化表示（StandardReprMod）]]
+
 ## 根分类
 
 - [[kgb-生成元状态与下降判定|KGB 生成元状态与下降判定]]
@@ -704,6 +733,7 @@
 
 - [[innerclass-的根理论状态与实现边界|InnerClass 的根理论状态与实现边界]]
 - [[根对合诱导的伴随余权作用|根对合诱导的伴随余权作用]]
+- [[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]
 
 ## 根系算法
 
@@ -778,6 +808,10 @@
 - [[innerclass-对偶构造与生命周期保持|InnerClass 对偶构造与生命周期保持]]
 - [[rootdatum-弱驻留与规范活对象身份|RootDatum 弱驻留与规范活对象身份]]
 
+## 生成元作用
+
+- [[公共上下文的生成元操作commoncontext|公共上下文的生成元操作（CommonContext）]]
+
 ## 生成元编码
 
 - [[twisted-involution-的规范约化表达式|Twisted involution 的规范约化表达式]]
@@ -820,6 +854,10 @@
 
 - [[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]
 
+## 积分子系统
+
+- [[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]
+
 ## 积分根系
 
 - [[积分块范围与奇异集|积分块范围与奇异集]]
@@ -861,6 +899,7 @@
 
 - [[twisted-weyl-群的对合对偶映射|Twisted Weyl 群的对合对偶映射]]
 - [[基于位掩码的-wim-轨道枚举|基于位掩码的 W_im 轨道枚举]]
+- [[种子下方的-bruhat-区间生成|种子下方的 Bruhat 区间生成]]
 
 ## 算法不变量
 
@@ -943,6 +982,10 @@
 - [[cartan-分类的分层预算|Cartan 分类的分层预算]]
 - [[weyl-上下文共享的性能与内存证据边界|Weyl 上下文共享的性能与内存证据边界]]
 
+## 编号规则
+
+- [[公共块的构造与元素编号partialblock|公共块的构造与元素编号（PartialBlock）]]
+
 ## 置换表示
 
 - [[weylelement-的置换表示与长度下降不变量|WeylElement 的置换表示与长度下降不变量]]
@@ -959,9 +1002,11 @@
 
 - [[blockdescent-八值状态体系|BlockDescent 八值状态体系]]
 - [[standardrepr-标准表示参数|StandardRepr 标准表示参数]]
+- [[公共上下文的生成元操作commoncontext|公共上下文的生成元操作（CommonContext）]]
 - [[可约点与标准参数-final-化|可约点与标准参数 final 化]]
 - [[块图的直接与逆-cayley-变换|块图的直接与逆 Cayley 变换]]
 - [[完整块的-kgb-纤维积|完整块的 KGB 纤维积]]
+- [[标准模参数的约化表示standardreprmod|标准模参数的约化表示（StandardReprMod）]]
 - [[表示参数构造与权重恢复|表示参数构造与权重恢复]]
 - [[表示参数的奇偶判定与朝向数|表示参数的奇偶判定与朝向数]]
 
@@ -1047,6 +1092,10 @@
 
 - [[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]
 
+## 边界处理
+
+- [[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]
+
 ## 边界条件
 
 - [[形变项计算的边界情形与输出顺序|形变项计算的边界情形与输出顺序]]
@@ -1054,6 +1103,10 @@
 ## 边界语义
 
 - [[klv-表的-primitive-投影与访问语义|KLV 表的 primitive 投影与访问语义]]
+
+## 适用范围
+
+- [[公共块对偶变换及-kl-递归的闭合限制|公共块对偶变换及 KL 递归的闭合限制]]
 
 ## 适配基
 
@@ -1068,6 +1121,10 @@
 - [[klv-表的幂等逐列填充算法|KLV 表的幂等逐列填充算法]]
 - [[klv-递归与-μ-修正的多项式运算|KLV 递归与 μ-修正的多项式运算]]
 - [[递归-twisted-deformation-与取消语义|递归 twisted deformation 与取消语义]]
+
+## 部分公共块
+
+- [[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]
 
 ## 错误处理
 

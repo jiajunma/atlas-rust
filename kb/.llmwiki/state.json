@@ -231,6 +231,19 @@
         "高度受限的块形变"
       ],
       "compiledAt": "2026-10-09T16:09:56.389Z"
+    },
+    "partial-common-block.md": {
+      "hash": "2276b0ce55a4ca161e29f8e627addb666512250fb7e7b65514e081fe03bb00b1",
+      "concepts": [
+        "公共上下文的生成元操作commoncontext",
+        "公共块对偶变换及-kl-递归的闭合限制",
+        "公共块的构造与元素编号partialblock",
+        "标准模参数的约化表示standardreprmod",
+        "种子下方的-bruhat-区间生成",
+        "积分子系统integralsubsystem",
+        "部分公共块的访问器与边界语义"
+      ],
+      "compiledAt": "2026-10-09T16:12:55.923Z"
     }
   }
 }

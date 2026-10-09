@@ -1026,3 +1026,13 @@ DeformParent 的借用/拥有分工与存活纪律、lambda_rho 一次提供契�
 一致性条件、递归 twisted_deformation 的 flip/收缩/取消语义、
 block_deformation_to_height 的逆向顺序与 consumed flags 及 plug_hole 填表
 差异——全部忠实。8 页批准；wiki/concepts/ 现有 128 页，剩余候选 405。
+
+## 2026年10月10日 第十八批候选审查：partial-common-block.md 的 7 页
+
+对照 113 行来源包逐页核验：五构件及其上游对应、CommonContext 五个生成元
+操作（status 的布尔旗标随根类型而异、cross 的 pos_to_neg 平移修正、
+up_cayley 的 α_s/2 奇偶修正）、StandardReprMod 两条构造路径、bruhat_below
+→ PartialBlock::build 的区间消费与 (length,x,y) 终排（与 oracle 行号一致）、
+访问器的 None=UndefBlock 语义、survives 判定、dual() 的部分块限制
+（外出链接保持未定义、KlTable 拒绝、BareBlock 无参数池对偶）、assert 省略
+约定——全部忠实。7 页批准；wiki/concepts/ 现有 135 页，剩余候选 398。
