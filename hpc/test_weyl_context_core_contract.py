@@ -13,14 +13,17 @@ import weyl_context_core_contract as contract
 MISMATCH = "weyl_group_mismatch"
 HIGH_WORD = "illegal_weyl_word_entry"
 NEGATIVE_WORD = "negative_integer_where_unsigned_required"
+HIGH_WORD_G2 = "illegal_weyl_word_entry_2"
 
 MESSAGES = {
     MISMATCH: "Weyl group mismatch",
     HIGH_WORD: "Illegal Weyl word entry 1 (should be <1)",
     NEGATIVE_WORD: "Negative integer where unsigned is required",
+    HIGH_WORD_G2: "Illegal Weyl word entry 2 (should be <2)",
 }
 
 CATALOG_SHA256 = "7fb77fecda841962cb98bdeddbdba58df46d673e076f87f2087cd234e2f1a717"
+G2_CATALOG_SHA256 = "179d47814aa7526753f2a6dcdff9b23def9a09cbcabe5f96ec9d24dd2bef3bbd"
 
 EXPECTED = {
     "weyl_context_core_cold_dual": {
@@ -171,6 +174,104 @@ for _case in EXPECTED.values():
         ]
 
 
+_G2_COLD_PAYLOAD = [
+    "Variable wg_rd: RootDatum",
+    "Variable wg_s0: WeylElt",
+    "Variable wg_s1: WeylElt",
+    "WG_SAME|[0]|1|1|[0,1]",
+    "WG_NONCOMMUTE|[0,1]|[1,0]",
+    "WG_BRAID|true|6",
+    "Variable wg_alias: RootDatum",
+    "Variable wg_alias_w: WeylElt",
+    "WG_ALIAS|true|true",
+    "Variable wg_equal: RootDatum",
+    "Variable wg_equal_w: WeylElt",
+    "WG_EQUAL|true|true",
+    "Variable wg_dual: RootDatum",
+    "Variable wg_dual_w: WeylElt",
+    "WG_DUAL_OWNER|true",
+    "WG_DUAL_EQ|true",
+    "WG_DUAL_NEQ|false",
+    "WG_DUAL_MUL|[]",
+    "Variable wg_reverse_target: RootDatum",
+    "Variable wg_reverse_target_w: WeylElt",
+    "Variable wg_reverse_source: RootDatum",
+    "Variable wg_reverse_source_w: WeylElt",
+    "WG_REVERSE_OWNER|true",
+    "WG_REVERSE_EQ|true",
+    "WG_REVERSE_NEQ|false",
+    "WG_REVERSE_MUL|[]|true",
+    (
+        "Variable wg_rd: RootDatum (overriding previous instance, which had "
+        "type RootDatum)"
+    ),
+    "Variable wg_rebound_w: WeylElt",
+    "WG_REBOUND|false|true|false|[0]|[1]",
+    "WG_RECOVERY|727",
+]
+
+_G2_PREWARM_PAYLOAD = [
+    "Variable wgn_true: RootDatum",
+    "Variable wgn_false: RootDatum",
+    "Variable wgn_false_w: WeylElt",
+    "Variable wgn_target: RootDatum",
+    "Variable wgn_target_w: WeylElt",
+    "Variable wgn_dual: RootDatum",
+    "Variable wgn_saved: WeylElt",
+    "Variable wgn_dual_w: WeylElt",
+    "WGN_AFTER_OWNER_EQ|[0]|1",
+    "WGN_AFTER_OWNER_NEQ|[0]|1",
+    "WGN_AFTER_OWNER_MUL|[0]|1",
+    "WGN_AFTER_HIGH|[0]",
+    "WGN_AFTER_NEGATIVE|[0]",
+    "WGN_AFTER_DUAL_EQ|[1]|true",
+    "WGN_AFTER_DUAL_NEQ|[1]|true",
+    "WGN_AFTER_DUAL_MUL|[0]|[1]|true",
+    "WGN_RECOVERY|733",
+]
+
+_G2_PREWARM_CAUSES = [
+    MISMATCH, MISMATCH, MISMATCH, HIGH_WORD_G2, NEGATIVE_WORD,
+    MISMATCH, MISMATCH, MISMATCH,
+]
+
+G2_EXPECTED = {
+    "weyl_context_g2_cold_dual": {
+        "oracle": {
+            "exit_status": 0,
+            "payload_lines": _G2_COLD_PAYLOAD,
+            "causes": [],
+        },
+        "rust": {
+            "exit_status": 0,
+            "payload_lines": _G2_COLD_PAYLOAD,
+            "causes": [],
+        },
+    },
+    "weyl_context_g2_prewarmed_dual": {
+        "oracle": {
+            "exit_status": 1,
+            "payload_lines": _G2_PREWARM_PAYLOAD,
+            "causes": _G2_PREWARM_CAUSES,
+        },
+        "rust": {
+            "exit_status": 1,
+            "payload_lines": _G2_PREWARM_PAYLOAD,
+            "causes": _G2_PREWARM_CAUSES,
+        },
+    },
+}
+
+for _case in G2_EXPECTED.values():
+    for _engine in _case.values():
+        _engine["marker_lines"] = [
+            line for line in _engine["payload_lines"]
+            if line.startswith(("WG_", "WGN_"))
+        ]
+
+ALL_EXPECTED = {**EXPECTED, **G2_EXPECTED}
+
+
 def expected_catalog():
     return {
         "schema": contract.CATALOG_SCHEMA,
@@ -180,8 +281,21 @@ def expected_catalog():
     }
 
 
+def g2_expected_catalog():
+    return {
+        "schema": contract.G2_CATALOG_SCHEMA,
+        "evidence_maturity": contract.CATALOG_MATURITY,
+        "scope": contract.G2_CATALOG_SCOPE,
+        "cases": [dict(case) for case in contract.G2_EXPECTED_CASES],
+    }
+
+
 def case(case_id="weyl_context_core_cold_dual"):
-    return deepcopy(next(row for row in contract.EXPECTED_CASES if row["id"] == case_id))
+    return deepcopy(next(
+        row
+        for row in (*contract.EXPECTED_CASES, *contract.G2_EXPECTED_CASES)
+        if row["id"] == case_id
+    ))
 
 
 def observation(engine, code):
@@ -221,7 +335,7 @@ def stderr(engine, causes):
 
 
 def run(case_id, engine):
-    prediction = EXPECTED[case_id][engine]
+    prediction = ALL_EXPECTED[case_id][engine]
     return {
         "engine": engine,
         "observation": observation(engine, prediction["exit_status"]),
@@ -701,6 +815,92 @@ class WeylContextCoreContractTests(unittest.TestCase):
             mutate(changed)
             with self.assertRaisesRegex(ValueError, "observation|signal|metric|RSS"):
                 contract.classify_capture(case(), changed)
+
+    def test_g2_exact_catalog_and_fixture_hashes(self):
+        root = Path(__file__).resolve().parents[1] / "tests" / "math" / "generics"
+        raw = (root / "weyl_context_g2_catalog.json").read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), G2_CATALOG_SHA256)
+        catalog = contract.decode_g2_catalog(raw)
+        self.assertEqual(catalog, g2_expected_catalog())
+        for row in catalog["cases"]:
+            self.assertEqual(
+                hashlib.sha256((root / row["file"]).read_bytes()).hexdigest(),
+                row["fixture_sha256"],
+            )
+
+    def test_g2_catalog_mutations_are_rejected(self):
+        mutations = []
+        for mutate in (
+            lambda value: value.update(schema="other"),
+            lambda value: value.update(evidence_maturity="captured"),
+            lambda value: value.update(extra=True),
+            lambda value: value["cases"].reverse(),
+            lambda value: value["cases"][0].update(fixture_sha256="0" * 64),
+            lambda value: value["cases"][0].update(timeout_seconds=True),
+            lambda value: value["cases"].pop(),
+        ):
+            changed = g2_expected_catalog()
+            mutate(changed)
+            mutations.append(changed)
+        for changed in mutations:
+            with self.subTest(changed=changed):
+                with self.assertRaisesRegex(ValueError, "G2 catalog changed"):
+                    contract.validate_g2_catalog(changed)
+
+    def test_g2_both_source_predictions_observed_unreviewed(self):
+        self.assertEqual(contract.HIGH_WORD_G2, HIGH_WORD_G2)
+        for case_id in G2_EXPECTED:
+            with self.subTest(case_id=case_id):
+                for engine in ("oracle", "rust"):
+                    expected = G2_EXPECTED[case_id][engine]
+                    prediction = contract.G2_PREDICTIONS[case_id][engine]
+                    self.assertEqual(
+                        prediction["exit_status"], expected["exit_status"]
+                    )
+                    self.assertEqual(
+                        prediction["payload_lines"], expected["payload_lines"]
+                    )
+                    self.assertEqual(
+                        prediction["marker_lines"], expected["marker_lines"]
+                    )
+                    self.assertEqual(prediction["causes"], expected["causes"])
+                result = contract.classify_capture(case(case_id), runs(case_id))
+                self.assertEqual(
+                    result["status"], "SOURCE_PREDICTIONS_OBSERVED_UNREVIEWED"
+                )
+                self.assertEqual(
+                    result["source_predictions_observed"],
+                    {"oracle": True, "rust": True},
+                )
+                self.assertTrue(result["full_stdout_equal"])
+                self.assertTrue(result["full_stderr_equal"])
+                self.assertTrue(result["exit_status_equal"])
+                self.assert_nonaccepting(result)
+
+    def test_g2_prediction_differences_are_distinct(self):
+        changed = runs("weyl_context_g2_cold_dual")
+        rust = next(item for item in changed if item["engine"] == "rust")
+        rust["stdout"] = rust["stdout"].replace(
+            b"WG_BRAID|true|6", b"WG_BRAID|false|6"
+        )
+        result = contract.classify_capture(
+            case("weyl_context_g2_cold_dual"), changed
+        )
+        self.assertEqual(result["status"], "RUST_SOURCE_PREDICTION_DIFFERED")
+        self.assertFalse(result["full_stdout_equal"])
+        self.assert_nonaccepting(result)
+
+        changed = runs("weyl_context_g2_prewarmed_dual")
+        oracle = next(item for item in changed if item["engine"] == "oracle")
+        oracle["stderr"] = oracle["stderr"].replace(
+            b"Illegal Weyl word entry 2 (should be <2)",
+            b"Illegal Weyl word entry 3 (should be <2)",
+        )
+        result = contract.classify_capture(
+            case("weyl_context_g2_prewarmed_dual"), changed
+        )
+        self.assertEqual(result["status"], "ORIGINAL_SOURCE_PREDICTION_DIFFERED")
+        self.assert_nonaccepting(result)
 
 
 if __name__ == "__main__":

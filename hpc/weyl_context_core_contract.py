@@ -221,6 +221,212 @@ PREDICTIONS = {
     },
 }
 
+G2_CATALOG_SCHEMA = "atlas-weyl-context-g2-discovery-v1"
+G2_CATALOG_SCOPE = (
+    "Fresh-process core-only G2 discovery of Weyl owner compatibility across "
+    "the two asymmetric numberings, cold-dual sharing in both directions, "
+    "prewarmed-dual separation, noncommuting words, the order-6 braid "
+    "relation, invalid-word ordering and recovery. Intent describes the "
+    "original oracle only; no Rust compatibility, mathematical acceptance "
+    "or cache acceptance is claimed."
+)
+
+G2_EXPECTED_CASES = (
+    {
+        "id": "weyl_context_g2_cold_dual",
+        "file": "weyl_context_g2_cold_dual.atlas",
+        "fixture_sha256": (
+            "70c3e09e3678d149f46d844d2a47c3024050452a1383116784e577d953fa8c50"
+        ),
+        "intent": "accept",
+        "timeout_seconds": 45,
+        "scope": (
+            "G2 same owner, noncommuting words, order-6 braid relation, "
+            "alias, independently interned equal datum, both cold dual "
+            "directions with the generator-order witness, rebound owner and "
+            "saved-value lifetime."
+        ),
+    },
+    {
+        "id": "weyl_context_g2_prewarmed_dual",
+        "file": "weyl_context_g2_prewarmed_dual.atlas",
+        "fixture_sha256": (
+            "06d3816d4636f2d25d46f96f1efa5417c598c4b6511d42f37d2fec61c8e05921"
+        ),
+        "intent": "reject",
+        "timeout_seconds": 45,
+        "scope": (
+            "G2 numbering-incompatible owners, independently prewarmed "
+            "canonical dual, incompatible equality/inequality/product, high "
+            "and negative words and recovery after every rejection."
+        ),
+    },
+)
+
+_G2_COLD_DECLARATIONS = [
+    "Variable wg_rd: RootDatum",
+    "Variable wg_s0: WeylElt",
+    "Variable wg_s1: WeylElt",
+    "Variable wg_alias: RootDatum",
+    "Variable wg_alias_w: WeylElt",
+    "Variable wg_equal: RootDatum",
+    "Variable wg_equal_w: WeylElt",
+    "Variable wg_dual: RootDatum",
+    "Variable wg_dual_w: WeylElt",
+    "Variable wg_reverse_target: RootDatum",
+    "Variable wg_reverse_target_w: WeylElt",
+    "Variable wg_reverse_source: RootDatum",
+    "Variable wg_reverse_source_w: WeylElt",
+    (
+        "Variable wg_rd: RootDatum (overriding previous instance, which had "
+        "type RootDatum)"
+    ),
+    "Variable wg_rebound_w: WeylElt",
+]
+_G2_COLD_MARKERS = [
+    "WG_SAME|[0]|1|1|[0,1]",
+    "WG_NONCOMMUTE|[0,1]|[1,0]",
+    "WG_BRAID|true|6",
+    "WG_ALIAS|true|true",
+    "WG_EQUAL|true|true",
+    "WG_DUAL_OWNER|true",
+    "WG_DUAL_EQ|true",
+    "WG_DUAL_NEQ|false",
+    "WG_DUAL_MUL|[]",
+    "WG_REVERSE_OWNER|true",
+    "WG_REVERSE_EQ|true",
+    "WG_REVERSE_NEQ|false",
+    "WG_REVERSE_MUL|[]|true",
+    "WG_REBOUND|false|true|false|[0]|[1]",
+    "WG_RECOVERY|727",
+]
+
+
+def _g2_cold_payload():
+    declarations = iter(_G2_COLD_DECLARATIONS)
+    markers = iter(_G2_COLD_MARKERS)
+    payload = [next(declarations) for _ in range(3)]
+    payload.extend([next(markers), next(markers), next(markers)])
+    payload.extend([next(declarations), next(declarations), next(markers)])
+    payload.extend([next(declarations), next(declarations), next(markers)])
+    payload.extend([next(declarations), next(declarations)])
+    payload.extend([next(markers) for _ in range(4)])
+    payload.extend([next(declarations) for _ in range(4)])
+    payload.extend([next(markers) for _ in range(4)])
+    payload.extend([next(declarations), next(declarations)])
+    payload.extend([next(markers), next(markers)])
+    return payload
+
+
+_G2_PREWARM_DECLARATIONS = [
+    "Variable wgn_true: RootDatum",
+    "Variable wgn_false: RootDatum",
+    "Variable wgn_false_w: WeylElt",
+    "Variable wgn_target: RootDatum",
+    "Variable wgn_target_w: WeylElt",
+    "Variable wgn_dual: RootDatum",
+    "Variable wgn_saved: WeylElt",
+    "Variable wgn_dual_w: WeylElt",
+]
+_G2_PREWARM_MARKERS = [
+    "WGN_AFTER_OWNER_EQ|[0]|1",
+    "WGN_AFTER_OWNER_NEQ|[0]|1",
+    "WGN_AFTER_OWNER_MUL|[0]|1",
+    "WGN_AFTER_HIGH|[0]",
+    "WGN_AFTER_NEGATIVE|[0]",
+    "WGN_AFTER_DUAL_EQ|[1]|true",
+    "WGN_AFTER_DUAL_NEQ|[1]|true",
+    "WGN_AFTER_DUAL_MUL|[0]|[1]|true",
+    "WGN_RECOVERY|733",
+]
+
+
+def _g2_prewarm_payload():
+    return [*_G2_PREWARM_DECLARATIONS, *_G2_PREWARM_MARKERS]
+
+
+HIGH_WORD_G2 = "illegal_weyl_word_entry_2"
+_G2_PREWARM_CAUSES = [
+    MISMATCH, MISMATCH, MISMATCH, HIGH_WORD_G2, NEGATIVE_WORD,
+    MISMATCH, MISMATCH, MISMATCH,
+]
+
+
+def _g2_cold_prediction():
+    return {
+        "exit_status": 0,
+        "marker_lines": _G2_COLD_MARKERS,
+        "payload_lines": _g2_cold_payload(),
+        "causes": [],
+        "diagnostic_categories": [],
+        "stderr_empty": True,
+    }
+
+
+def _g2_prewarm_prediction():
+    return {
+        "exit_status": 1,
+        "marker_lines": _G2_PREWARM_MARKERS,
+        "payload_lines": _g2_prewarm_payload(),
+        "causes": _G2_PREWARM_CAUSES,
+        "diagnostic_categories": ["runtime"] * 8,
+        "stderr_empty": False,
+    }
+
+
+G2_PREDICTIONS = {
+    "weyl_context_g2_cold_dual": {
+        "oracle": _g2_cold_prediction(),
+        "rust": _g2_cold_prediction(),
+    },
+    "weyl_context_g2_prewarmed_dual": {
+        "oracle": _g2_prewarm_prediction(),
+        "rust": _g2_prewarm_prediction(),
+    },
+}
+
+
+def _g2_expected_catalog():
+    return {
+        "schema": G2_CATALOG_SCHEMA,
+        "evidence_maturity": CATALOG_MATURITY,
+        "scope": G2_CATALOG_SCOPE,
+        "cases": [dict(case) for case in G2_EXPECTED_CASES],
+    }
+
+
+def decode_g2_catalog(raw):
+    """Decode strict JSON bytes/text and require the frozen G2 schema."""
+    if type(raw) not in (bytes, str):
+        raise ValueError("catalog JSON must be bytes or text")
+    try:
+        catalog = json.loads(
+            raw,
+            object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_nonfinite_json,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+        raise ValueError("invalid Weyl-context G2 catalog JSON") from error
+    validate_g2_catalog(catalog)
+    return catalog
+
+
+def validate_g2_catalog(catalog):
+    """Require the exact G2 source-prediction catalog; never read fixtures."""
+    if not _same_exact(_g2_expected_catalog(), catalog):
+        raise ValueError("Weyl-context G2 catalog changed")
+
+
+_CASE_PREFIXES = {
+    "weyl_context_core_cold_dual": b"WC_",
+    "weyl_context_core_prewarmed_dual": b"WCN_",
+    "weyl_context_g2_cold_dual": b"WG_",
+    "weyl_context_g2_prewarmed_dual": b"WGN_",
+}
+_MARKER_PREFIXES = tuple(_CASE_PREFIXES.values())
+
+_ALL_PREDICTIONS = {**PREDICTIONS, **G2_PREDICTIONS}
+
 _RUN_KEYS = frozenset(
     {"engine", "observation", "stdout", "stderr", "fresh_process", "invocation_id"}
 )
@@ -251,6 +457,7 @@ _CAUSE_MESSAGES = {
     MISMATCH: b"Weyl group mismatch",
     HIGH_WORD: b"Illegal Weyl word entry 1 (should be <1)",
     NEGATIVE_WORD: b"Negative integer where unsigned is required",
+    HIGH_WORD_G2: b"Illegal Weyl word entry 2 (should be <2)",
 }
 
 
@@ -312,10 +519,10 @@ def validate_catalog(catalog):
 
 
 def _validated_case(case):
-    for expected in EXPECTED_CASES:
+    for expected in (*EXPECTED_CASES, *G2_EXPECTED_CASES):
         if _same_exact(expected, case):
             return expected
-    raise ValueError("unknown or changed Weyl-context core case")
+    raise ValueError("unknown or changed Weyl-context case")
 
 
 def _sha(raw):
@@ -386,7 +593,7 @@ def _parse_frame(stdout, case_id, prefix):
     unclassified_markers = []
     marker_pattern = re.compile(rb"^" + re.escape(prefix) + rb"[A-Z0-9_]+\|[^\r\n]*$")
     for line_number, line in enumerate(payload.splitlines(), start=1):
-        if not (line.startswith(b"WC_") or line.startswith(b"WCN_")):
+        if not line.startswith(_MARKER_PREFIXES):
             continue
         if marker_pattern.fullmatch(line) is None:
             unclassified_markers.append(_line_record(line, line_number))
@@ -635,13 +842,13 @@ def _runs_by_engine(runs):
 
 
 def _arm_result(case_id, engine, run):
-    prefix = b"WC_" if case_id == "weyl_context_core_cold_dual" else b"WCN_"
+    prefix = _CASE_PREFIXES[case_id]
     frame = _parse_frame(run["stdout"], case_id, prefix)
     diagnostic_stream = _parse_diagnostics(run["stderr"], engine)
     headers = diagnostic_stream["headers"]
     causes = diagnostic_stream["causes"]
     observation = run["observation"]
-    prediction = PREDICTIONS[case_id][engine]
+    prediction = _ALL_PREDICTIONS[case_id][engine]
     marker_lines = [marker["line"] for marker in frame["markers"]]
     cause_names = [cause["cause"] for cause in causes]
     categories = [header["category"] for header in headers]
