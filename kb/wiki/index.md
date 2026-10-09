@@ -3,7 +3,9 @@
 ## Concepts
 
 - **[[a1-加中心环面边界-fixture-与历史-oracle|A1 加中心环面边界 fixture 与历史 oracle]]** — 11 个 A1+torus case 覆盖 root/coroot 交换、两种编号及 i32 边界，Rust 完整输出与历史 original-backed capture 比较；AFTER 作业未重跑原版，证据不推广至更高 rank 或一般根系。
+- **[[a1-迁移原型层与对偶格类型设计|A1 迁移原型层与对偶格类型设计]]** — crate 私有的 A1 原型层处于待替换状态，其中无校验的 LatticeVector(Vec<i32>) 计划由 Weight/Coweight 的编译期对偶格区分取代；原型 RootDatum 与 BasedRootDatum 是不同类型。
 - **[[ambient-映射的子商下降验证|Ambient 映射的子商下降验证]]** — validate_induced_map 一次性验证 ambient 映射保持分子与分母关系，失败时区分两类关系错误，使高层能够按需应用映射而不缓存稠密商坐标矩阵。
+- **[[atlas-real-group-的-crate-门面与数学值边界|atlas-real-group 的 crate 门面与数学值边界]]** — lib.rs 通过 60 个模块声明、5 个公开模块与 52 条根部再导出组织接口，专注实约化群的数学值，不承担 Atlas 语法或输出策略，并作为未来解释器 domain values 的适配边界。
 - **[[based-cross-action-的闭式实现|Based cross action 的闭式实现]]** — cross 使用单一逐元素闭式映射，实现 sigma_mult(s, .) 后接 mult_sigma_inv(., twist(s)) 并加入 offset 修正的作用，结果在目标处归约。
 - **[[based-involution-验证与生成元-twist|Based involution 验证与生成元 twist]]** — based_involution_twist 要求 involution 置换根系、正确传输余根且将简单根映为简单根；generator_twist 给出 distinguished involution 诱导的简单生成元置换。
 - **[[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]** — 区分格秩与半单秩，按固定顺序验证 Cartan 矩阵、根与余根的数量、维度及配对，支持中心环面和纯环面且不设全局秩上限。
@@ -18,6 +20,7 @@
 - **[[cartan-fiber-的有限域子商模型|Cartan fiber 的有限域子商模型]]** — CartanFiber 采用 ker_F2(I+θ_Y)/red_2 ker_Z(I+θ_Y) 的子商坐标与 low-pivot 归约基；其与 Y^θ/(I+θ_Y)Y 的同构仅作为代码注释声明记录，未获本包数学验收。
 - **[[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]** — CartanClassification::build 构造 inner class 的全部 Cartan 类，聚合各实形式的 Cartan 集、most-split 类、twisted-involution 总数与严格偏序，并共享 twisted 共轭分区供对偶侧复用。
 - **[[cartan-分类的分层预算|Cartan 分类的分层预算]]** — CartanClassificationBudget 分别约束整数格、fiber、Weyl 枚举、对合发现与 peeling；generated-involutions 模式以含 identity 的精确计数上限控制代表元发现，各预算值参与分类缓存键。
+- **[[cartan-对合与单根类型分类|Cartan 对合与单根类型分类]]** — 原型 CartanInvolution 校验 M²=I 及单根像属于根系，RealReductiveGroup 根据像为原根、负根或其它根分类；虚根紧性标志是未经校验的调用方断言且已被 Grading 取代，simple_real_rank 的含义刻意窄于 real rank。
 - **[[cartan-矩阵的精确有理有限型检查|Cartan 矩阵的精确有理有限型检查]]** — 以精确有理数沿连通分量传播对称化比例，再通过 LDLᵀ 式分解检查正主元；其与有限型的等价性在来源中仅为代码意图，未经数学验收。
 - **[[cartan-矩阵输入契约与连通分量划分|Cartan 矩阵输入契约与连通分量划分]]** — classify 检查方形、对角元 2、非对角元范围与零模式对称性，通过 first-match 合并生成按最小顶点升序排列的连通分量；这些检查不构成完整的数学合法性验收。
 - **[[cartan-类型识别的输入校验边界|Cartan 类型识别的输入校验边界]]** — 源码阅读指出识别器未完整验证 Cartan 合法性：接受任意非零单节点对角值、可能将异号边视为单键、不检查高秩双键位置，且分支遍历缺少环检测。
@@ -171,6 +174,9 @@
 - **[[单位上三角整数矩阵求逆|单位上三角整数矩阵求逆]]** — inverse_upper_triangular 通过回代及 wrapping i32 运算求单位上三角矩阵的逆，并对非方阵或存在非 1 对角元的输入报错。
 - **[[单反射下的图像基传送|单反射下的图像基传送]]** — 沿单反射 s 更新 L′=sL、M′=Ms，保持 L′M′=1−θ′；传送使用 checked i64 算术，其结果可与重新归约所得基存在列符号或列次序差异。
 - **[[单连通群基本权基上的逐字母对合表|单连通群基本权基上的逐字母对合表]]** — layout_involution 通过恒等块、A 型反对角、D 型末两顶点交换、E6 特定顶点交换、T 型负恒等及复因子交换构造对合矩阵，不涉及 root datum 或 Weyl group 管线。
+- **[[原型-rootdatum-的构造校验与配对约定|原型 RootDatum 的构造校验与配对约定]]** — RootDatum::new 依次检查空根数据、调用 BasedRootDatum::standard、检查方阵与 Cartan 符号条件；单根取 e_i，单余根取 Cartan 列，from_basis 另按秩及行主序校验根与余根配对。
+- **[[原型-weyl-群的作用像枚举|原型 Weyl 群的作用像枚举]]** — PrototypeWeylGroup 以元素对全部单根的作用像为键进行 BFS 枚举，成功阶数至多 65_536，超限返回 WeylGroupTooLarge；act_on_root 按词的逆序施加反射。
+- **[[原型层的测试锚点与证据边界|原型层的测试锚点与证据边界]]** — 源码列出 A1 反射取负、固定根按标志判非紧虚根及配对溢出返回 ArithmeticOverflow 三个测试锚点；本次仅完成门面与原型层的结构性阅读，未执行测试或基准，也不构成数学验收。
 - **[[反射闭包的防御性不变量|反射闭包的防御性不变量]]** — Closure 插入候选时先验证根与余根自配对等于 2，再检查重复根的余根及简单坐标一致性，重复候选不占用新增根数额度。
 - **[[可约点与标准参数-final-化|可约点与标准参数 final 化]]** — reducibility_points 返回按分子分母对升序排列的可约分数，finals_for 以栈驱动 dominant 检查及奇偶、长度下降，生成带整数系数的 final 参数。
 - **[[合成实形的选定余特征|合成实形的选定余特征]]** — elected_square_root 按 distinguished 对合与 Weyl 余权作用运输环面因子，以半平方和 delta + I 调用 stable_log，生成构造器保存的 g_rho_check；非平凡运输尚缺可区分测试断言。
@@ -274,6 +280,7 @@
 - **[[根对合诱导的伴随余权作用|根对合诱导的伴随余权作用]]** — 根像的单根坐标构成根作用矩阵；由于根作用已验证为对合，其对偶作用的逆转置等于转置，因而伴随余权作用由转置矩阵给出。
 - **[[根数据的-radical-与-coradical-饱和核基|根数据的 radical 与 coradical 饱和核基]]** — 实现分别对简单根和简单余根坐标矩阵求饱和整数核，并在无根时保留 ambient 格维度；radical_basis 文档首行与实现的措辞差异尚待核对。
 - **[[根系枚举的显式资源预算|根系枚举的显式资源预算]]** — RootSystemBudget 限制格秩、根数、坐标条目和反射步数，区分静态预算检查与运行时根数拒绝，且预算不存入 RootSystem。
+- **[[根系的-bfs-反射闭包枚举|根系的 BFS 反射闭包枚举]]** — RootDatum::roots 从正负单根出发以 FIFO BFS 求反射闭包，使用 i128 中间运算并检查 i32 收窄溢出，第 4097 个互异向量触发 RootSystemTooLarge，最终按坐标字典序输出。
 - **[[根编号排序兼容与生成元置换|根编号排序兼容与生成元置换]]** — upstream 正根按高度及简单坐标反字典序排列，而 crate RootId 使用环境字典序；locator 对外列表统一采用 upstream 顺序，使 simple_pi 可与 oracle 直接比较。
 - **[[根论工具的整数算术与失败语义|根论工具的整数算术与失败语义]]** — 三个工具模块分别采用 checked、checked/saturating/普通算术混用及 wrapping 策略，产生错误返回、钳零、潜在 debug 溢出 panic 或静默回绕等不同失败行为；这些差异是否为有意分层尚未确定。
 - **[[格对合latticeinvolution|格对合（LatticeInvolution）]]** — 分别存储权格与余权格作用，依次验证方阵形状、两作用平方为单位及 W^T·C=I，建立配对保持的对合不变量，但不保证保持根系。
@@ -309,4 +316,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_306 pages | Generated 2026-10-09T17:09:32.990Z_
+_313 pages | Generated 2026-10-09T17:11:14.261Z_

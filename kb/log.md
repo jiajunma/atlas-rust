@@ -1390,3 +1390,21 @@ folded_cartan 的 cofold 公式（注释声称边重数相同未验证如实保�
 选根轨道）、IndexOutOfRange{index:a.max(b)}、不校验轨道完整性/输出合法性、
 6 个全成功路径测试与 E7/E8/高秩 D/错误路径无锚点——全部忠实。6 页批准；
 wiki/concepts/ 现有 306 页，剩余候选 227。
+
+## 2026年10月10日 第四十三批候选审查：lib-root.md 的 7 页
+
+对照 66 行来源包逐页核验：crate 定位（只含数学值、作为解释器 domain
+values 的适配边界）、60 mod 声明与 5 pub mod/2 个 allow(dead_code) 注释
+（global_tits 的消费者在 synthetic builder、weyl_size 停放 task #9）、
+52 条 pub use（topology 再出口的位置怪点、integer_lattice 两条、deform
+双重暴露）、5 个零再导出模块、三个根部错误类型、pair_coordinates 内部
+使用不导出、A1 原型层全 pub(crate) 且自述 pending replacement、
+LatticeVector 无校验将被 Weight/Coweight 编译期区分取代、原型 RootDatum≠
+BasedRootDatum 的同名界限、构造校验顺序（EmptyRootDatum→外部校验器先
+传播→NonSquareCartan→InvalidCartanMatrix）、单余根=Cartan 第 j 列、
+from_basis 行主序配对核对、roots() 的 FIFO BFS/i128 收窄/4096 上限/字典
+序确定性、PrototypeWeylGroup 的作用像键 BFS 与 65536 上限、act_on_root
+逆序、compact_imaginary 未校验标志已被 Grading 取代、simple_real_rank
+刻意窄于 real rank、3 测试锚点（i32::MAX 恰报 ArithmeticOverflow 间接
+要求 StructureError: PartialEq）——全部忠实。7 页批准；wiki/concepts/
+现有 313 页，剩余候选 220。
