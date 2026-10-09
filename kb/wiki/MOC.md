@@ -57,6 +57,11 @@
 
 - [[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]
 
+## KGB种子
+
+- [[kgb-种子代表元的可观测影响|KGB 种子代表元的可观测影响]]
+- [[realformseed-的封装与构造不变量|RealFormSeed 的封装与构造不变量]]
+
 ## Rust
 
 - [[repcontext-借用上下文与一致性约束|RepContext 借用上下文与一致性约束]]
@@ -70,6 +75,7 @@
 - [[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]
 - [[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]
 - [[kgb-图的混合自包含存储|KGB 图的混合自包含存储]]
+- [[realformseed-的封装与构造不变量|RealFormSeed 的封装与构造不变量]]
 - [[titselement-的元素表示与正规形契约|TitsElement 的元素表示与正规形契约]]
 - [[twistedconjugacyclass-与-cartanclass-的职责划分|TwistedConjugacyClass 与 CartanClass 的职责划分]]
 - [[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]
@@ -139,6 +145,10 @@
 ## 代表元归一化
 
 - [[表示参数代表元归一化|表示参数代表元归一化]]
+
+## 代表元选举
+
+- [[kgb-种子代表元的可观测影响|KGB 种子代表元的可观测影响]]
 
 ## 伴随半单商
 
@@ -271,6 +281,10 @@
 
 - [[单反射下的图像基传送|单反射下的图像基传送]]
 
+## 基本余权
+
+- [[基本余权的精确构造|基本余权的精确构造]]
+
 ## 基线对齐
 
 - [[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]
@@ -287,6 +301,8 @@
 
 ## 实形式
 
+- [[realformseed-的封装与构造不变量|RealFormSeed 的封装与构造不变量]]
+- [[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]
 - [[对偶实形式的分层计数管线|对偶实形式的分层计数管线]]
 
 ## 实形式归属
@@ -480,6 +496,10 @@
 
 - [[cartan-矩阵的精确有理有限型检查|Cartan 矩阵的精确有理有限型检查]]
 
+## 有限域
+
+- [[有限域线性求解的规范截面|有限域线性求解的规范截面]]
+
 ## 朝向数
 
 - [[表示参数的奇偶判定与朝向数|表示参数的奇偶判定与朝向数]]
@@ -521,6 +541,7 @@
 - [[based-involution-验证与生成元-twist|Based involution 验证与生成元 twist]]
 - [[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]
 - [[weylaction-的等值与-datum-身份语义|WeylAction 的等值与 datum 身份语义]]
+- [[基本余权的精确构造|基本余权的精确构造]]
 
 ## 根系
 
@@ -534,6 +555,10 @@
 ## 格对合
 
 - [[对偶根数据与对偶内类构造|对偶根数据与对偶内类构造]]
+
+## 格理论
+
+- [[stablelog选举的稳定对数|stable_log：选举的稳定对数]]
 
 ## 格计算
 
@@ -607,6 +632,10 @@
 
 - [[对合的-1θx-图像基对|对合的 (1−θ)X* 图像基对]]
 
+## 矩阵求逆
+
+- [[精确有理矩阵求逆|精确有理矩阵求逆]]
+
 ## 矩阵约化
 
 - [[承载可观测量的适配基adaptedbasis|承载可观测量的适配基（adapted_basis）]]
@@ -615,6 +644,14 @@
 ## 确定性编号
 
 - [[cartanid-的-atlas-编号顺序|CartanId 的 Atlas 编号顺序]]
+
+## 种子构造
+
+- [[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]
+
+## 稳定对数
+
+- [[stablelog选举的稳定对数|stable_log：选举的稳定对数]]
 
 ## 符号纪律
 
@@ -655,10 +692,19 @@
 
 - [[形变项计算的边界情形与输出顺序|形变项计算的边界情形与输出顺序]]
 
+## 精确有理数
+
+- [[stablelog选举的稳定对数|stable_log：选举的稳定对数]]
+- [[精确有理矩阵求逆|精确有理矩阵求逆]]
+
 ## 精确算术
 
 - [[整数格计算预算integerlatticebudget|整数格计算预算（IntegerLatticeBudget）]]
 - [[精确整数矩阵与-bézout-幺模变换|精确整数矩阵与 Bézout 幺模变换]]
+
+## 精确线性代数
+
+- [[基本余权的精确构造|基本余权的精确构造]]
 
 ## 精确计算
 
@@ -684,6 +730,10 @@
 ## 线性代数
 
 - [[实投影像基的播种与路径依赖传送|实投影像基的播种与路径依赖传送]]
+
+## 线性方程
+
+- [[有限域线性求解的规范截面|有限域线性求解的规范截面]]
 
 ## 缓存
 
@@ -712,6 +762,10 @@
 ## 规范化
 
 - [[twisted-involution-的三阶段规范化|Twisted involution 的三阶段规范化]]
+
+## 规范截面
+
+- [[有限域线性求解的规范截面|有限域线性求解的规范截面]]
 
 ## 规范排序
 
@@ -762,6 +816,10 @@
 ## 轨道枚举
 
 - [[twisted-involution-枚举与共轭轨道分区|Twisted involution 枚举与共轭轨道分区]]
+
+## 输入验证
+
+- [[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]
 
 ## 边界条件
 

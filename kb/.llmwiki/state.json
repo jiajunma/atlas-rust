@@ -164,6 +164,19 @@
         "饱和整数核saturatedkernel"
       ],
       "compiledAt": "2026-10-09T15:55:43.479Z"
+    },
+    "real-form-seed.md": {
+      "hash": "41538c389dcf3ce0ec65180cc77d9b726a458a3768ea8518454baeb5400b34db",
+      "concepts": [
+        "kgb-种子代表元的可观测影响",
+        "realformseed-的封装与构造不变量",
+        "realformseed-的构建门控与自定义种子",
+        "stablelog选举的稳定对数",
+        "基本余权的精确构造",
+        "有限域线性求解的规范截面",
+        "精确有理矩阵求逆"
+      ],
+      "compiledAt": "2026-10-09T15:58:31.693Z"
     }
   }
 }

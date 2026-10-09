@@ -974,3 +974,12 @@ IntegerMatrix 构造顺序、BezoutTransform 的系数来源、关系格族的�
 张成、negative_coweight_eigenspace 不再转置的理由、adapted_basis 的
 observable-bearing 动机与逐字主元策略及条目总量预检——全部忠实。
 7 页批准；wiki/concepts/ 现有 91 页，剩余候选 442。
+
+## 2026年10月9日 第十三批候选审查：real-form-seed.md 的 7 页
+
+对照 84 行来源包逐页核验：observable-bearing 选举链（stable_log 代表元 →
+g_rho_check → 每个下游 torus_factor）、stable_log 四步与已检查前置条件、
+基本余权公式与"按实际简单余根展开"的坐标约定、invert_rational/solve_mod_two/
+fractional_part 三辅助、RealFormSeed 私有字段与 grading_offset 不变量、
+build 四门控链、custom 分支的两项一致性——全部忠实。7 页批准；
+wiki/concepts/ 现有 98 页，剩余候选 435。
