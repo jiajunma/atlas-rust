@@ -1,0 +1,64 @@
+---
+title: 内类布局（InnerClassLayout）
+summary: 将 distinguished 对合转换为 Lie type、内类字母与 Bourbaki 单根置换；构建依次执行扭转置换、Dynkin 分类、内类字母判定和中心环面处理。
+sources:
+  - layout-restricted-roots.md
+kind: concept
+createdAt: "2026-10-09T14:57:56.905Z"
+updatedAt: "2026-10-09T14:57:56.905Z"
+tags:
+  - 内类
+  - Rust设计
+  - Lie理论
+aliases:
+  - 内类布局innerclasslayout
+confidence: 1
+provenanceState: extracted
+modelId: codex-cli-default
+promptVersion: v6
+promptModifiers:
+  - lang=zh-CN
+  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb
+---
+
+# 内类布局（InnerClassLayout）
+
+`InnerClassLayout` 表示一个内类的布局，包含 Lie type、内类字母与单根的 Bourbaki 置换。它对应上游 `lietype::Layout`，源材料将其描述为 `check_involution` 的计算结果；Rust 实现位于 `crates/atlas-real-group/src/layout.rs`。^[layout-restricted-roots.md:10-22]
+
+## 数据与排列约定
+
+Lie type 中的半单因子按打印顺序排列，Complex 配对的两个因子相邻，随后为每个中心环面维度追加一个 `T1`。每个内类条目对应一个字母，其中 `'C'` 消耗两个 type 因子。Bourbaki 置换满足 `perm[k]` 等于规范化顺序下第 `k` 个单根在 datum 中的下标，相关顺序语义见 [[Bourbaki 顶点排序与置换语义]]。^[layout-restricted-roots.md:17-22]
+
+构造参数 `budget` 仅约束中心环面字母计算所需的 Smith 基计算，不用于半单数据。^[layout-restricted-roots.md:21-22]
+
+## 构造流程
+
+`build` 依次执行 `twist_permutation`、`dynkin::classify`、`inner_class_letters`，最后处理中心环面。`twist_permutation` 根据 distinguished 对合确定每个单根的像，逐根进行 `id_of`、`image`、回查与去重；任一步骤失败都返回 `LayoutInvariantViolation`。源材料将该置换对应到上游的 `weyl::Twist`。^[layout-restricted-roots.md:24-27]
+
+### 半单因子的内类字母
+
+`inner_class_letters` 逐个 Dynkin 分支判断扭转作用：逐点固定时标记为 `'c'`；分支整体保持但非逐点固定时，偶秩 D 型标记为 `'u'`，其他情况标记为 `'s'`；扭转把分支映到其他分支时标记为 `'C'`。相关算法见 [[Dynkin 分支的内类字母判定与 Complex 因子重排]]。^[layout-restricted-roots.md:29-35]
+
+对于 `'C'`，算法在后续分支中寻找包含 `twist[perm[offset]]` 的配对分支；找不到时报告 `"non-matching Complex factor"`。找到后通过旋转使两个因子相邻，并把第二个因子的 Bourbaki 槽位改写为第一个因子的扭转像。^[layout-restricted-roots.md:31-33]
+
+实现逐字保留上游的移位顺序：先上移 `type` 切片，再在已移位的切片上计算移位宽度。代码注释指出，这一顺序仅在 Complex 对跨越多个秩不同的中间因子时可观测；当前没有构造夹具覆盖该情形。^[layout-restricted-roots.md:33-35]
+
+### 中心环面
+
+`torus_ranks` 通过 `adapted_basis` 得到根格的 Smith 基，并以 `inverse.block × delta × basis.block` 读取商上的对合作用，计算时跳过零项。随后将 `tau1 = inv + I` 交给 `classify_plus_identity`，得到 `(compact, complex, split)`，按 `'c'`、`'C'`、`'s'` 顺序追加环面字母。相关概念见 [[中心环面的商对合分类]] 与 [[承载可观测量的适配基（adapted_basis）]]。^[layout-restricted-roots.md:37-41]
+
+## 与限制根系的接口边界
+
+`layout.rs` 与 `restricted_roots.rs` 互不调用。布局构造使用 `InnerClass::distinguished_involution()`，并接收仅用于环面分支的 `IntegerLatticeBudget`；限制根系构造使用 `RootInvolutionData::involution()`，在 `build` 中校验 datum 与秩的一致性，不接收预算。^[layout-restricted-roots.md:68-72]
+
+## 测试与证据边界
+
+源材料列出六个布局测试锚点：紧 A1 得到 `'c'`；twisted A2 得到 `'s'`；交换两个 A1 得到 `'C'`、两个因子与 `perm = [0,1]`；D4 叉尖交换得到 `'u'`；GL(2) 样式中心环面的商上 −1 作用得到 `"A1.T1"` 与 `"cs"`；A1.B2.A1 的 Complex 配对旋转得到 `perm = [0,3,1,2]`。^[layout-restricted-roots.md:43-46]
+
+这些锚点未覆盖错误分支，中心环面字母也仅覆盖 `'s'`，没有 `'c'` 或 `'C'` 的环面测试锚点。Complex 因子移位顺序的特殊情形同样未获夹具覆盖。^[layout-restricted-roots.md:79-82]
+
+该源包属于结构性阅读，不构成数学或正确性验收；上游位置仅转录自代码注释，未核对上游字节。本次知识维护也未执行 Atlas、Cargo、测试或 benchmark。^[layout-restricted-roots.md:9-13, layout-restricted-roots.md:89-93]
+
+## Sources
+
+- [内类布局与限制根系（layout.rs / restricted_roots.rs）](layout-restricted-roots.md)

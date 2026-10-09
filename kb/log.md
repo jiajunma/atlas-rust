@@ -1448,4 +1448,24 @@ None/Ok(None) 语义与 d>0 未断言、潜在 panic 路径清单与测试稀薄
 全部忠实。注意：候选 ada058cd 把 wall_set 链向了解释器层的
 [[Alcove 墙集与整值墙筛选]]（另一包页面），内容无误但链接指向邻层，
 记录为观察留待该包批次复核。8 页批准；wiki/concepts/ 现有 328 页，
-剩余候选 219（另 7 页属 atlas-core-root-numbering-alcove.md，随其批次审）。
+剩余候选 205（另 7 页属 atlas-core-root-numbering-alcove.md，随其批次审）。
+（本行原误写 219，已按 candidates 目录实际计数更正。）
+
+## 2026年10月10日 第四十六批候选审查：layout-restricted-roots.md 的 6 页
+
+对照 93 行来源包逐页核验：InnerClassLayout 三要素（Lie type 打印序+
+Complex 对相邻+每中心环面维一个 T1、每条目一字母 'C' 耗两因子、perm[k]
+方向=规范化序第 k 个单根的 datum 下标）、budget 只约束环面 Smith 基、
+build 流程（twist_permutation 的逐根 id_of/image/回查/去重全归
+LayoutInvariantViolation）、inner_class_letters 三路判定（逐点固定→'c'、
+留分支内→偶秩 D 'u' 否则 's'、映到别支→'C' 配对旋转+"non-matching
+Complex factor"）、上游移位顺序怪癖逐字复制且无可观测夹具如实记录、
+torus_ranks 的 adapted_basis 商对合读出与 'c'/'C'/'s' 追加顺序、
+RestrictedWeight 的 (1−θ) 编码是商到像格的单射而非环境坐标（split A1
+alpha 类编码为 2alpha 但不等于 2alpha 类的文档原例）、restrict/doubled
+的 checked 算术、纤维聚合 BTreeMap 与 roots 键序、rank 取自
+anti_invariant_rank 而非纤维计数、is_multipliable 判二倍类、三测试锚点
+（含 A2 [[0,-1],[-1,0]] 下 lambda 纤维 multiplicity 2 可乘）、两文件
+互不调用与并行消费者关系如实标注为推断——全部忠实。6 页批准；
+wiki/concepts/ 现有 334 页，剩余候选 199。另：随本批提交第四十五批
+log 行的计数更正（219→205）。

@@ -599,6 +599,18 @@
         "根编号与负根镜像排序"
       ],
       "compiledAt": "2026-10-09T17:15:23.714Z"
+    },
+    "layout-restricted-roots.md": {
+      "hash": "b952ec75bec9047bf4c68267126a429161bd6c6bd16d57b6a1d79e340950d78b",
+      "concepts": [
+        "dynkin-分支的内类字母判定与-complex-因子重排",
+        "中心环面的商对合分类",
+        "内类布局innerclasslayout",
+        "限制权的商格单射表示restrictedweight",
+        "限制根的可乘性ismultipliable",
+        "限制根系的纤维聚合与有序查询"
+      ],
+      "compiledAt": "2026-10-09T17:17:27.813Z"
     }
   }
 }

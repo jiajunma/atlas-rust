@@ -46,6 +46,7 @@
 - **[[descenttable-的下降集与-good-ascent-预计算|DescentTable 的下降集与 good ascent 预计算]]** — DescentTable 按元素和生成元预计算 descents 与至多具有一个向上邻居的 good ascents，并在秩超过 MAX_FOLDED_RANK 时返回资源限制错误。
 - **[[descvalue-扩展下降分类|DescValue 扩展下降分类]]** — DescValue 以 One、Two、Three 三族组织 32 种下降类型，通过奇偶枚举值、类型谓词、生成元长度与链接数描述局部结构。
 - **[[dual-预热历史与-weyl-群兼容性|dual 预热历史与 Weyl 群兼容性]]** — canonical dual 仅在目标尚未建立 WeylGroup 时共享源群身份，已预热目标保持独立，因此 Weyl 元素兼容性取决于对象生命周期和构造历史。
+- **[[dynkin-分支的内类字母判定与-complex-因子重排|Dynkin 分支的内类字母判定与 Complex 因子重排]]** — 依据扭转对分支的作用生成 c、u、s 或 C，并使 Complex 配对因子相邻、对齐 Bourbaki 槽位；跨越多个异秩因子的上游移位顺序尚无夹具覆盖。
 - **[[dynkin-分类器的测试覆盖与证据边界|Dynkin 分类器的测试覆盖与证据边界]]** — 源包列出六个成功路径测试锚点，错误路径、E7/E8 和高秩 D 缺少覆盖；结构性阅读未执行测试，也未核对上游字节，因此 upstream 精确兼容与数学正确性仍非已验收结论。
 - **[[dynkin-图分支形状与-weyl-群阶识别|Dynkin 图分支形状与 Weyl 群阶识别]]** — component_order 按边重数、节点度数和分支长度识别 A、B/C、D、E、F、G 型的群阶，其中 B/C 同阶而无需区分取向。
 - **[[f₂-上的位打包向量modtwovector|F₂ 上的位打包向量（ModTwoVector）]]** — 以动态 u64 数组表示有限维 F₂ 向量，支持异或与奇偶内积；重复下标偶次抵消，填充位保持为零，与无界整数表示分离。
@@ -146,6 +147,7 @@
 - **[[weylelt-的固定数组与容量边界|WeylElt 的固定数组与容量边界]]** — WeylElt 使用 [u8; WEYL_MAX_RANK] 固定栈数组，支持枚举与 twisted scan 中的零堆分配；WEYL_MAX_RANK=32 是表示上界，不能解释为元素枚举预算。
 - **[[下降集good-ascent-与本原性|下降集、good ascent 与本原性]]** — 元素 x 相对 desc(y) 本原当且仅当 good(x) 与 desc(y) 不相交，极端性要求 desc(x) 包含 desc(y)；ImaginaryTypeII 既不属于下降也不属于 good ascent。
 - **[[严格-cayley-偏序|严格 Cayley 偏序]]** — is_below 描述非空 single-root Cayley links 链的 more-compact 方向，fundamental class 位于其他类之下，有效类的自比较恒为 Some(false)。
+- **[[中心环面的商对合分类|中心环面的商对合分类]]** — 通过根格的 Smith 适配基计算商对合，对 inv + I 分类得到 compact、complex、split 秩并依序追加环面字母；IntegerLatticeBudget 仅约束此处的 Smith 基计算。
 - **[[仅成功发布的惰性初始化|仅成功发布的惰性初始化]]** — 惰性 cell 只发布完整成功结果，构造失败后应允许重试，且不能缓存首次调用的 Diagnostic 或 SourceSpan，以保留当前调用的错误定位。
 - **[[代表元归因与-tits-搬运的职责边界|代表元归因与 Tits 搬运的职责边界]]** — 归因 helper 仅接受分类已存储的代表元；一般 twisted involution 的归约需借助 table-backed Tits cross actions 同步搬运 torus factor，后续 minimal_torus_part 下降仍依赖分离的 inverse-Cayley 操作。
 - **[[代表元级弱实形式归因|代表元级弱实形式归因]]** — weak_real_form_at_representative 通过 dual fixed-point projection v↦(v+vθ)/2、配对奇偶性和虚根 grading 确定局部轨道，再经 RealFormLabels 映射为全局弱实形式编号。
@@ -168,6 +170,7 @@
 - **[[典范纤维与-k-型等价判定|典范纤维与 K 型等价判定]]** — to_canonical_fiber 沿 canonicalize 给出的词进行复单根 cross；equivalent 先检查 Cartan 类，再比较双方典范纤维中的结果。
 - **[[内类字母的字节解析与规范化|内类字母的字节解析与规范化]]** — checked_inner_class_letters 按字节读取并跳过 ASCII 标点和空白，将 e 归一为 c，依据类型与秩坍缩 s、u；C 消耗两个相同连续因子。
 - **[[内类字母解析的错误模型与诊断顺序|内类字母解析的错误模型与诊断顺序]]** — InnerClassLetterError 区分符号过多、过少、未知符号、复配对失败和无意义的不等秩类，并优先报告未知符号，再检查因子是否存在。
+- **[[内类布局innerclasslayout|内类布局（InnerClassLayout）]]** — 将 distinguished 对合转换为 Lie type、内类字母与 Bourbaki 单根置换；构建依次执行扭转置换、Dynkin 分类、内类字母判定和中心环面处理。
 - **[[最低主元索引的典范-rref-子空间|最低主元索引的典范 RREF 子空间]]** — ModTwoSubspace 通过升序消元及插入后的旧行消元保持与插入顺序无关的典范既约行阶梯基，支持秩与成员判定。
 - **[[最小环面算法的测试覆盖边界|最小环面算法的测试覆盖边界]]** — 现有四个测试锚点均为 rank 2 紧致内类，正例均满足 coch == factor，未以可区分断言刻画非平凡运输，也未覆盖非紧致 distinguished、多数错误分支和秩上限门控。
 - **[[最小环面部分的-grading-轨道搜索|最小环面部分的 grading 轨道搜索]]** — 算法用 LIFO 栈与 BTreeSet<u64> 遍历 grading 轨道，在置位方向施加余根奇偶平移和 grading 翻转，筛选满足目标约束的候选并按位向量整数序取最小值。
@@ -327,8 +330,11 @@
 - **[[部分公共块上的扩展块构造与-cofold|部分公共块上的扩展块构造与 cofold]]** — build_partial 使用 x + gamma_lambda 形式测试不动点，在子系统上折叠生成元，并在构造后处理 cofold；当前仅支持恒等生成元姿态，非恒等 bm.simple_pi 显式失败。
 - **[[部分公共块的访问器与边界语义|部分公共块的访问器与边界语义]]** — 通过 Option 表达元素或链接缺失，区分 imaginary ascent 的前向 Cayley 像与 real descent 的逆像，并以奇异生成元的下降状态判定 survives。
 - **[[重复-gcd-实现的语义漂移|重复 gcd 实现的语义漂移]]** — lattice.rs 与 global_kgb.rs 的私有 gcd_u64 对 gcd(0,0) 分别返回 1 与 0，体现重复实现的语义漂移，但正分母约束使各自当前调用点仍安全。
+- **[[限制权的商格单射表示restrictedweight|限制权的商格单射表示（RestrictedWeight）]]** — 以 (1−θ)(weight) 编码 X*/ker(1−θ) 的等价类，坐标属于像格表示；split A1 中 α 类编码为 2α，并不表示它等于 2α 的类。
+- **[[限制根的可乘性ismultipliable|限制根的可乘性（is_multipliable）]]** — 通过检查二倍限制权类是否仍为限制根判定可乘性；给定 A2 对合测试覆盖可乘实例，但本包未验收其与 BC 型非约化根系的数学关系。
+- **[[限制根系的纤维聚合与有序查询|限制根系的纤维聚合与有序查询]]** — RestrictedRootSystem 校验 datum 与格秩后，跳过限制为零的根并按限制权聚合纤维，以坐标字典序存储供二分查询；其 rank 取对合的反不变秩。
 - **[[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]** — DepthTables 预计算正虚根及基非紧奇偶，depth 按既定根顺序贪心选取极大正交非紧根集，移除非正交候选并翻转与所选根正交但和仍为根的候选的紧性。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_328 pages | Generated 2026-10-09T17:15:24.386Z_
+_334 pages | Generated 2026-10-09T17:17:28.470Z_
