@@ -1,0 +1,27 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of session.rs for the atlas-core-session source packet: the SessionEvent surface (incl. the byte-preserving OutputBytes/ReportBytes fallback), the command-at-a-time outer loop, next_session_token's consumption-time completion recording, execute_tokens' prefix retention and set_type span rebuild, drain-before-diagnose ordering (ext_kl.cpp:947), and the 201-test regression module's family map with the original-backed include_str! pattern (weyl_context_core_cold_dual_original). The covered test inventory's executability is HPC-gated; upstream line references are implementation-stated.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/session.rs",
+   "sha256": "969cdb27ccae61ca4fe3e36219801037d475517bee3614fead553024818307e7",
+   "bytes": 191393,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  },
+  {
+   "path": "tests/math/generics/weyl_context_core_cold_dual.atlas",
+   "sha256": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+   "note": "fixture referenced by the regression pattern; frozen v8 evidence",
+   "bytes": 1815
+  },
+  {
+   "path": "tests/math/generics/weyl_context_core_prewarmed_dual.atlas",
+   "sha256": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+   "note": "fixture referenced by the regression pattern; frozen v8 evidence",
+   "bytes": 1275
+  }
+ ]
+}

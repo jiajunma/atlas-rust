@@ -656,3 +656,11 @@ atlas-core 语言层第一包——lib.rs 的 15 个 `pub mod` + `pub(crate)`
 逐字节哈希。索引与 sources/index.md 已同步；未运行编译、测试或
 compiler 生成。语言层大文件（typed/domain_builtins/session/syntax）的
 内部实现仍待分包。
+
+新增 `sources/atlas-core-session.md` 与快照 `2026-10-09-atlas-core-session.json`：
+session.rs 的 SessionEvent 六变体（字节保留面）、逐命令外层循环、消费时刻
+补全记录、execute_tokens 前缀保留与 SetType span 重建、drain-before-diagnose
+顺序，以及 201 测试回归库的家族地图。维护者直接撰写（无 Kimi）。教训：快照
+字节数第一次凭记忆写错（129981→实测 191393），已用 stat 修正——与"sha 尾巴
+不凭记忆"同一纪律，字节数也一律实测。索引与 log 已同步；未运行编译/测试/
+compiler。

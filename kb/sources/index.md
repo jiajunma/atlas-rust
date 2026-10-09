@@ -457,6 +457,19 @@ Cayley 移位项、parity-real 投影分裂）与 kgp_set 的位图限界 BFS。
 行）、`session.rs`（3889 行）、`syntax.rs`（4659 行）等大文件的内部
 实现仍待各自分包。结构性阅读，不声称语言或数学验收。
 
+[会话外层循环与 SessionEvent 面](atlas-core-session.md)记录
+`session.rs`（3889 行，生产面 1–178 行 + 201 个测试的回归库）：
+`SessionEvent` 六变体（含 `OutputBytes`/`ReportBytes` 字节保留面与
+`output()` 的 UTF-8 分流）、逐命令外层循环（Newline 为命令边界、
+Directive 由会话层拒绝而归属 `session_frame`）、`next_session_token` 的
+**消费时刻**补全记录、`execute_tokens` 的前缀保留与 `SetType` span 用
+真实词法终止符重建、以及求值出错先 `drain_failed_printed` 再诊断的顺序
+（ext_kl.cpp:947）。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-session.json)；维护者直接
+撰写（生产面小，无 Kimi 调用）。回归库以 `include_str!` fixture +
+`.oracle.*` 逐字节比对为范式（Weyl A1 goldens 为例）。结构性阅读，
+不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |
