@@ -255,6 +255,14 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
   B2/C2 non-vacuous, guards throw before the no-value gate); the
   transposed-prewarm fixture's sha is byte-exact `5c207025…` and its
   `WGT_RECOVERY|737` marker matches the slice record.
+  Same-day B2/C2 fixture review: `weyl_context_b2c2_cold_dual.atlas` and
+  `weyl_context_b2c2_prewarmed_dual.atlas` re-read against the slice
+  predictions: cold owner pins (`WB_DUAL_OWNER_FALSE`=true/`_TRUE`=false,
+  `WB_REVERSE_OWNER_FALSE`=true/`_TRUE`=false), cold-share relations
+  (EQ true / NEQ false / MUL succeeds, left-operand owner), rebound alias
+  semantics, and the prewarmed fixture's NON-vacuous rejection chain
+  (both C2 numberings prewarmed; `wbn_dual=wbn_target_a` true,
+  `=wbn_target_b` false; relation/product guards throw) all match.
 
 ### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
 
