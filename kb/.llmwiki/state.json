@@ -42,6 +42,20 @@
         "带基数预算的-weyl-群作用枚举"
       ],
       "compiledAt": "2026-10-09T15:34:08.858Z"
+    },
+    "root-datum-dual.md": {
+      "hash": "2bc8c4ab0e92ecaec6000570f61e223eccf912f489165b8afef35b93a0bd4f0a",
+      "concepts": [
+        "basedrootdatum带基根数据与构造不变量",
+        "cartan-矩阵的精确有理有限型检查",
+        "对偶实形式的分层计数管线",
+        "对偶根数据与对偶内类构造",
+        "最长-weyl-元的下坡行走",
+        "权与余权的简单反射及算术保护",
+        "根数据的-radical-与-coradical-饱和核基",
+        "跨对偶的-cartan-类对应与扭曲代表元"
+      ],
+      "compiledAt": "2026-10-09T15:36:39.249Z"
     }
   }
 }

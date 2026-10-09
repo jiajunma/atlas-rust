@@ -880,3 +880,16 @@ CompactWeyl+rayon 枚举与无断言排序、dead-code insert_action 观察、�
 的逆/正向读取、canonical_word 的内部生成子序与不变量检查、ParabolicPieces
 排序键与上游行号转述限制——全部忠实，候选一致保留"未执行构建/测试/原版
 运行"的边界声明。8 页批准；wiki/concepts/ 现有 23 页，剩余候选 510。
+
+## 2026年10月9日 第四批候选审查：root-datum-dual.md 的 8 页
+
+对照 216 行来源包逐页核验：构造门控顺序与 RootPairingMismatch 详情、
+standard 的列约定、validate_cartan 拒绝序列、is_finite_type 两遍精确有理
+计算（意图而非验收）、饱和核基的固定预算与空行维数保留、radical 文档疑似
+笔误的悬置处理、dual_datum 复用门控、longest_action 下坡行走的预算语义与
+未检查 i64 内层配对的悬置观察、dual_involution 的 M=q·W0 与 -M^t/-M 分工、
+dual_cartan_correspondence 的反序配对/代表元共轭不可比/不变量即错误、
+dual_twisted_representative 的原词重放、计数管线逐级预算——全部忠实，
+测试锚点数字（sc/adjoint A1=2/2、紧 A2=1、扭 A2=2、紧 B2=3、对应表与
+oracle 锚点 3501500）逐字一致。8 页批准；wiki/concepts/ 现有 31 页，
+剩余候选 502。
