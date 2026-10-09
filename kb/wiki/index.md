@@ -11,6 +11,7 @@
 - **[[alcove-根格顶点与基本-alcove-约化|Alcove 根格顶点与基本 Alcove 约化]]** — root_vertex_of_alcove 使用朴素有理下取整逐分量求根格顶点，借助转置 Cartan 矩阵求逆及系数为 1 的墙重试整性，使 gamma 减去顶点落入基本 alcove 的 Weyl 轨道。
 - **[[alcove-算法中的精确有理线性代数|Alcove 算法中的精确有理线性代数]]** — 有理方程求解与矩阵求逆通过精确消元处理唯一性和奇异性，并结合 checked 运算、最小公倍数通分及整个有理数的精确整数转换控制溢出与符号错误。
 - **[[alcove-重心计算与标准参数重建|Alcove 重心计算与标准参数重建]]** — alcove_center 通过墙方程与 radical_basis 约束求唯一有理解，保留 KGB 坐标和 lambda_rho，并在修正子空间校验后通过 sr_gamma 重建参数；来源仅支持结构性说明，未作数学验收。
+- **[[ambient-weyl-见证词与作用方向|ambient Weyl 见证词与作用方向]]** — Weyl_orbit_ws 按权的从右到左作用和余权的从左到右作用组织反射事件，经 ambient Weyl 上下文逐次右乘重建元素并冻结 canonical word。
 - **[[ambient-映射的子商下降验证|Ambient 映射的子商下降验证]]** — validate_induced_map 一次性验证 ambient 映射保持分子与分母关系，失败时区分两类关系错误，使高层能够按需应用映射而不缓存稠密商坐标矩阵。
 - **[[atlas-real-group-的-crate-门面与数学值边界|atlas-real-group 的 crate 门面与数学值边界]]** — lib.rs 通过 60 个模块声明、5 个公开模块与 52 条根部再导出组织接口，专注实约化群的数学值，不承担 Atlas 语法或输出策略，并作为未来解释器 domain values 的适配边界。
 - **[[based-cross-action-的闭式实现|Based cross action 的闭式实现]]** — cross 使用单一逐元素闭式映射，实现 sigma_mult(s, .) 后接 mult_sigma_inv(., twist(s)) 并加入 offset 修正的作用，结果在目标处归约。
@@ -23,6 +24,7 @@
 - **[[bourbaki-重编号与对合矩阵下标映射|Bourbaki 重编号与对合矩阵下标映射]]** — perm[k] 将第 k 个扁平化单根映射到输出矩阵下标；排列合法性由包装器 checked_permutation 验证，layout_involution 依赖调用方满足前置条件。
 - **[[bourbaki-顶点排序与置换语义|Bourbaki 顶点排序与置换语义]]** — 各型通过端点选择、E 型长臂交换及 D 型剩余短臂追加生成 position，bourbaki_permutation 按分量顺序拼接，result[i] 表示 Bourbaki 位置 i 对应的 datum 顶点。
 - **[[bruhat-偏序的-hasse-图构造|Bruhat 偏序的 Hasse 图构造]]** — bruhat_hasse 通过首个严格良下降的 cross 或逆 Cayley 像及上升扩展生成直接下邻，无此下降时收集 RealTypeII 的第一逆 Cayley 分量；索引和 expect 依赖构造不变量。
+- **[[buildanddrop-领域内建验证策略|BuildAndDrop 领域内建验证策略]]** — validate 仅构造并丢弃 Subgroup，不计算轨道，同时确保非法根号、非 Cartan 矩阵及整数窄化问题在丢弃前得到诊断。
 - **[[cartan-fiber-的先分母后分子构造|Cartan fiber 的先分母后分子构造]]** — 构造先计算整数负特征格并模二约化作为分母，再按余特征作用矩阵的行计算 I+θ_Y 的有限域右核作为分子，最后建立子商；整数预算与有限域分配防护分别生效。
 - **[[cartan-fiber-的有限域子商模型|Cartan fiber 的有限域子商模型]]** — CartanFiber 采用 ker_F2(I+θ_Y)/red_2 ker_Z(I+θ_Y) 的子商坐标与 low-pivot 归约基；其与 Y^θ/(I+θ_Y)Y 的同构仅作为代码注释声明记录，未获本包数学验收。
 - **[[cartan-分类构造与共享分区|Cartan 分类构造与共享分区]]** — CartanClassification::build 构造 inner class 的全部 Cartan 类，聚合各实形式的 Cartan 集、most-split 类、twisted-involution 总数与严格偏序，并共享 twisted 共轭分区供对偶侧复用。
@@ -202,6 +204,10 @@
 - **[[原型-rootdatum-的构造校验与配对约定|原型 RootDatum 的构造校验与配对约定]]** — RootDatum::new 依次检查空根数据、调用 BasedRootDatum::standard、检查方阵与 Cartan 符号条件；单根取 e_i，单余根取 Cartan 列，from_basis 另按秩及行主序校验根与余根配对。
 - **[[原型-weyl-群的作用像枚举|原型 Weyl 群的作用像枚举]]** — PrototypeWeylGroup 以元素对全部单根的作用像为键进行 BFS 枚举，成功阶数至多 65_536，超限返回 WeylGroupTooLarge；act_on_root 按词的逆序施加反射。
 - **[[原型层的测试锚点与证据边界|原型层的测试锚点与证据边界]]** — 源码列出 A1 反射取负、固定根按标志判非紧虚根及配对溢出返回 ArithmeticOverflow 三个测试锚点；本次仅完成门面与原型层的结构性阅读，未执行测试或基准，也不构成数学验收。
+- **[[反射子群构造校验与安全整数运算|反射子群构造校验与安全整数运算]]** — Subgroup::new 校验有符号根号和 Cartan 配对矩阵，配对与反射使用 i128 中间精度及受检窄化，并将坐标溢出和向量错秩报告为安全错误。
+- **[[反射子群轨道与生成元约束下的优势化|反射子群轨道与生成元约束下的优势化]]** — Weyl_orbit 使用给定的有符号根生成元执行优势化和轨道扩展；空生成元必须保持输入不变，修正原版初始优势化忽略生成元的 R3 反例。
+- **[[反射子群轨道与见证的独立验证|反射子群轨道与见证的独立验证]]** — 测试以空子群不变量、独立穷举闭包、逐见证重建和全单子群轨道顺序对齐检验实现；该源包仅报告结构性阅读和测试锚点，不构成数学验收。
+- **[[反射子群轨道的稳定排序规则|反射子群轨道的稳定排序规则]]** — 轨道沿用 rootdata.cpp 的 BitMap 排序：BFS 仅对新层去重并保留首次插入，内部稳定器按 RootNbr 排序，用户生成元顺序控制优势化与扩展。
 - **[[反射闭包的防御性不变量|反射闭包的防御性不变量]]** — Closure 插入候选时先验证根与余根自配对等于 2，再检查重复根的余根及简单坐标一致性，重复候选不占用新增根数额度。
 - **[[可约点与标准参数-final-化|可约点与标准参数 final 化]]** — reducibility_points 返回按分子分母对升序排列的可约分数，finals_for 以栈驱动 dominant 检查及奇偶、长度下降，生成带整数系数的 final 参数。
 - **[[合成实形的选定余特征|合成实形的选定余特征]]** — elected_square_root 按 distinguished 对合与 Weyl 余权作用运输环面因子，以半平方和 delta + I 调用 stable_log，生成构造器保存的 g_rho_check；非平凡运输尚缺可区分测试断言。
@@ -349,6 +355,7 @@
 - **[[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]** — 由 integrality_simples 构造积分子系统的单根数据，提供按生成元编号的访问器，满足公共上下文需求而无需完整根闭包。
 - **[[精确整数矩阵与-bézout-幺模变换|精确整数矩阵与 Bézout 幺模变换]]** — IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。
 - **[[精确有理矩阵求逆|精确有理矩阵求逆]]** — invert_rational 使用 first-nonzero pivot 的精确有理高斯消元，按列返回逆矩阵；此处秩有界的消元不设置 budget knob。
+- **[[精确根配对坐标的陪集树算法|精确根配对坐标的陪集树算法]]** — 用精确单根或余根配对坐标构建陪集树，借助正比例缩放与有限 Cartan 矩阵可逆性保持轨道判等和 BFS 边，避免任意格核向量选择及其定宽溢出。
 - **[[线性映射下降到子商的条件验证|线性映射下降到子商的条件验证]]** — 诱导映射必须同时将源分子映入目标分子、源分母映入目标分母；仅检查商基代表不足以保证映射良定义。
 - **[[结构性源码阅读的验证与覆盖限制|结构性源码阅读的验证与覆盖限制]]** — 来源记录源码快照和已有测试锚点，但本次未执行测试或数学验收，亦未核对上游字节；例外型部分分支、错误路径及若干实形情形仍缺少测试覆盖。
 - **[[继承正系中的子系统单根提取|继承正系中的子系统单根提取]]** — 分别从虚根与实根中选取简单坐标全非负的候选，通过候选与集合内其他成员之差的正坐标判定筛选子系统单根，输出保持 RootId 升序。
@@ -373,4 +380,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_370 pages | Generated 2026-10-09T17:26:26.083Z_
+_377 pages | Generated 2026-10-09T17:27:58.296Z_

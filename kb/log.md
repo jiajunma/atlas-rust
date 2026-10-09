@@ -1558,3 +1558,21 @@ from_fundamental_alcove 留单位标签墙+to_positive_system+逆序得词；
 基本 alcove 墙数=秩+分量数且只有大小可观察（"Too few walls"）；精确
 Cartan 逆的 (分子,分母) 分数自由消元（候选如实不展开未覆盖细节）——
 全部忠实。7 页批准；wiki/concepts/ 现有 370 页，剩余候选 163。
+
+## 2026年10月10日 第五十二批候选审查：atlas-core-weyl-subgroup.md 的 7 页
+
+对照 74 行来源包（维护者直接撰写、git base 964f0033、涉事文件
+86d52b4f…）逐页核验：排序遵循 BitMap basic_orbit/extend_orbit 而非
+alcove 分层序、初始 dominance 真用给定生成元（原版 rootdata.h669/678
+转发忽略 g 的 R3 反例如实保留：A2 空生成元 [-1,-2] 矩阵轨道 [2,1] 但
+见证恒等）、Subgroup::new 的三参数与 dual 形式识别、i128 配对矩阵与
+收窄错误文案、infer_lie_type 失败的原版逐字文本与单生成元 [[c]] 特例、
+cosets 的精确配对坐标替代格核选举（正 c 取 1 的缩放论证+有限 Cartan
+可逆性单射）、BFS 只对新层去重保留首插、活动生成元按根号序与用户序
+分管 dominance/扩展的分离、Weyl_orbit 列矩阵 vs Weyl_orbit_ws 见证词
+（权右到左/余权左到右、dual 正序否则逆序拼接、build_weyl_context+
+right_multiply_simple 重建+weyl_elt_value 冻结）、BuildAndDrop 只构造
+不算轨道、向量大小不匹配报安全错误而不模拟原版越界读、4 测试锚点
+（9 类型×2 编号×2 isogeny×2 作用的空子群不变量、独立穷举闭包交叉核验、
+全单子群逐等、丢弃前诊断匹配）——全部忠实。7 页批准；wiki/concepts/
+现有 377 页，剩余候选 156。
