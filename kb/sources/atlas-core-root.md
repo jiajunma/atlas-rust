@@ -14,7 +14,7 @@ ingestedAt: 2026-10-09T09:48:46Z
 
 ## 模块组织
 
-- 15 个 `pub mod`：`coercions`、`diagnostic`、`domain_builtins`、
+- 14 个 `pub mod`：`coercions`、`diagnostic`、`domain_builtins`、
   `formula`、`frames`、`lex`、`linear_values`、`session`、
   `session_frame`、`source`、`syntax`、`typed`、`types`、`value`（按
   声明顺序）。

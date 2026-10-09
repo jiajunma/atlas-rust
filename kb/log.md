@@ -1601,3 +1601,18 @@ root_compare 一致、integer_matrix_product 的 i128 宽累积只喂扭曲兼�
 prefer_coroots 转置-生成-换回、components/express/length_flags 分工——
 全部忠实（本包为头部精读，候选均如实声明未展开细节）。6 页批准；
 wiki/concepts/ 现有 390 页，剩余候选 143。
+
+## 2026年10月10日 第五十五批候选审查：atlas-core-root.md 的 7 页
+
+对照 64 行来源包（维护者直接撰写、git base 964f0033）逐页核验。审查中
+发现包行 17 误记"15 个 pub mod"而清单只有 14 个名字；对照 git base
+964f0033 与当前工作区的 lib.rs 实际声明均为 14 个 pub mod + 1 个
+pub(crate) matreduc + 1 个私有测试模块，确认为包的计数笔误。已更正包
+（15→14），并将候选 atlas-core-语言门面与兼容契约 的 summary 两处与正文
+一段从"存在不一致，不能确定遗漏模块"改写为更正后的陈述加更正注记（该
+候选此前如实保留歧义而非擅自消解，行为正确）。其余核验：15→14 模块清单
+与角色地图、COMPATIBILITY_VERSION="atlas-language-v0"、typed 整数收窄
+保留上游逐字错误文本含笔误、session 逐命令执行不预切分的原因、
+domain_builtins 句柄的 Arc 束+急切种子+惰性 KGB/表示属主与结构比较对应
+上游 memoized 句柄可观察相等、matreduc 私有但需独立包的声明——全部忠实。
+7 页批准；wiki/concepts/ 现有 397 页，剩余候选 136。

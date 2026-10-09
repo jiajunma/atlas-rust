@@ -14,6 +14,9 @@
 - **[[alcove-重心计算与标准参数重建|Alcove 重心计算与标准参数重建]]** — alcove_center 通过墙方程与 radical_basis 约束求唯一有理解，保留 KGB 坐标和 lambda_rho，并在修正子空间校验后通过 sr_gamma 重建参数；来源仅支持结构性说明，未作数学验收。
 - **[[ambient-weyl-见证词与作用方向|ambient Weyl 见证词与作用方向]]** — Weyl_orbit_ws 按权的从右到左作用和余权的从左到右作用组织反射事件，经 ambient Weyl 上下文逐次右乘重建元素并冻结 canonical word。
 - **[[ambient-映射的子商下降验证|Ambient 映射的子商下降验证]]** — validate_induced_map 一次性验证 ambient 映射保持分子与分母关系，失败时区分两类关系错误，使高层能够按需应用映射而不缓存稠密商坐标矩阵。
+- **[[atlas-类型模型与递归类型图|Atlas 类型模型与递归类型图]]** — 类型子系统包含 axis 类型模型、二阶类型机器及递归 typedef 图安装，后者优先使用命名 RHS 槽位并保留环上匿名后代的身份。
+- **[[atlas-语法前端与运算符优先级归约|Atlas 语法前端与运算符优先级归约]]** — 语法前端结合 LALRPOP 文法与独立的带位置 token 流适配层，formula 模块负责对结构解析器产生的交错序列进行运算符优先级归约。
+- **[[atlas-core-语言门面与兼容契约|atlas-core 语言门面与兼容契约]]** — atlas-core 以可观察的语言边界组织模块，并导出兼容版本 atlas-language-v0；公开模块共 14 个。
 - **[[atlas-real-group-的-crate-门面与数学值边界|atlas-real-group 的 crate 门面与数学值边界]]** — lib.rs 通过 60 个模块声明、5 个公开模块与 52 条根部再导出组织接口，专注实约化群的数学值，不承担 Atlas 语法或输出策略，并作为未来解释器 domain values 的适配边界。
 - **[[based-cross-action-的闭式实现|Based cross action 的闭式实现]]** — cross 使用单一逐元素闭式映射，实现 sigma_mult(s, .) 后接 mult_sigma_inv(., twist(s)) 并加入 offset 修正的作用，结果在目标处归约。
 - **[[based-involution-验证与生成元-twist|Based involution 验证与生成元 twist]]** — based_involution_twist 要求 involution 置换根系、正确传输余根且将简单根映为简单根；generator_twist 给出 distinguished involution 诱导的简单生成元置换。
@@ -327,6 +330,7 @@
 - **[[整数矩阵算法的逐操作保真移植|整数矩阵算法的逐操作保真移植]]** — 欠定整数系统的被选解及其坐标奇偶性会影响下游 same_sign，因此 matreduc 复现上游幺模操作序列、符号簿记和 wrapping i32 算术，而不只返回任意正确解。
 - **[[整数线性系统求解与像判定|整数线性系统求解与像判定]]** — has_solution 对角化后检查变换右端的逐坐标可除性，find_solution 无解时返回 None，in_left_image 与 in_right_image 提供像判定，而右端长度不匹配会触发 panic。
 - **[[普通根系的确定性枚举|普通根系的确定性枚举]]** — RootSystem 从 BasedRootDatum 播种正负简单根并以 BFS 求反射闭包，最终按环境坐标字典序排列根，结果顺序独立于发现顺序。
+- **[[有状态词法分析与逐命令执行|有状态词法分析与逐命令执行]]** — Atlas 词法分类受先前命令改变的状态影响，因此会话逐命令执行且不预切分整个文件；词法器支持嵌套注释和逐 token 消费。
 - **[[有理余权的逐坐标表示与-api-边界|有理余权的逐坐标表示与 API 边界]]** — RationalCoweight 采用 Vec<Rational> 逐坐标存储，通过 dimension 与 to_rationals 提供公开坐标访问，将构造限制在 crate 内，且不提供算术或 Hash。
 - **[[有理权分子的-checked-仿射反射|有理权分子的 checked 仿射反射]]** — simple_reflect_numerator 在分母不变时以全程 checked 算术执行 v -= alpha_s * (<v, coroot_s> + offset)，支持普通简单反射及带偏移的仿射反射。
 - **[[有理权的公共分母表示与归一化|有理权的公共分母表示与归一化]]** — RationalWeight 使用 Vec<i64> 分子与正 i64 公共分母，构造、加减和缩放执行 gcd 归一化，而 halve 仅翻倍分母并将归一化时机留给调用方。
@@ -365,7 +369,9 @@
 - **[[秩二-dynkin-分类的顺序约定|秩二 Dynkin 分类的顺序约定]]** — 秩二分类按两个非对角 Cartan 条目的乘积分型，其中 B2/C2 标签由给定顶点顺序决定且保持顺序，G2 则按条目方向决定是否交换位置以使短根在前。
 - **[[积分块范围与奇异集|积分块范围与奇异集]]** — IntegralBlockScope 根据 coroot 与 gamma 的整配对区分 Singleton、Full 和 ProperSubsystem，并结合奇异集确定计算范围；源文对真积分子系统的显式失败要求与后续 partial 支持描述存在适用边界不清。
 - **[[积分子系统integralsubsystem|积分子系统（IntegralSubsystem）]]** — 由 integrality_simples 构造积分子系统的单根数据，提供按生成元编号的访问器，满足公共上下文需求而无需完整根闭包。
+- **[[类型化转换与求值管线|类型化转换与求值管线]]** — typed 模块承担 parsed→typed 可执行转换与求值，来源称 convert_expr 在单遍中完成检查与合成，并保留上游整数收窄错误文本中的笔误。
 - **[[精确整数矩阵与-bézout-幺模变换|精确整数矩阵与 Bézout 幺模变换]]** — IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。
+- **[[精确整数矩阵约化|精确整数矩阵约化]]** — crate 私有的 matreduc 为 global.w 批内建提供 gcd、recorder 和 column_echelon 等精确约化机制，来源称其逐操作对应固定上游版本 4d3e9449，但本包不构成正确性验收。
 - **[[精确有理矩阵求逆|精确有理矩阵求逆]]** — invert_rational 使用 first-nonzero pivot 的精确有理高斯消元，按列返回逆矩阵；此处秩有界的消元不设置 budget knob。
 - **[[精确根配对坐标的陪集树算法|精确根配对坐标的陪集树算法]]** — 用精确单根或余根配对坐标构建陪集树，借助正比例缩放与有限 Cartan 矩阵可逆性保持轨道判等和 BFS 边，避免任意格核向量选择及其定宽溢出。
 - **[[线性映射下降到子商的条件验证|线性映射下降到子商的条件验证]]** — 诱导映射必须同时将源分子映入目标分子、源分母映入目标分母；仅检查商基代表不足以保证映射良定义。
@@ -390,7 +396,8 @@
 - **[[限制根系的纤维聚合与有序查询|限制根系的纤维聚合与有序查询]]** — RestrictedRootSystem 校验 datum 与格秩后，跳过限制为零的根并按限制权聚合纤维，以坐标字典序存储供二分查询；其 rank 取对合的反不变秩。
 - **[[陪集树到-weyl-词的转换|陪集树到 Weyl 词的转换]]** — convert_to_words 沿陪集树展开，每一步将反射词左乘到父段条目上，并与子群见证序及词对权的作用约定配对。
 - **[[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]** — DepthTables 预计算正虚根及基非紧奇偶，depth 按既定根顺序贪心选取极大正交非紧根集，移除非正交候选并翻转与所选根正交但和仍为根的候选的紧性。
+- **[[领域内建桥接与上下文句柄|领域内建桥接与上下文句柄]]** — domain_builtins 连接语言层与 atlas-real-group，派发命名函数应用，并通过 Arc 上下文束、急切种子校验、可失败惰性属主和结构比较表达句柄行为；兼容性描述属于实现方陈述。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_390 pages | Generated 2026-10-09T17:30:50.052Z_
+_397 pages | Generated 2026-10-09T17:34:18.789Z_
