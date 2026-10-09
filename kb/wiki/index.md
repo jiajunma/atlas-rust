@@ -124,6 +124,7 @@
 - **[[quasisplit-规范化与-grading-的仿射线性求值|Quasisplit 规范化与 grading 的仿射线性求值]]** — Quasisplit 规范化令零 adjoint fiber 元素的 grading 为全一，其余元素通过 canonical ambient representative 与单根奇性向量配对后取反求值。
 - **[[rankflags简单生成元位集|RankFlags：简单生成元位集]]** — RankFlags 使用非 Copy 的 u32 位集表示至多 32 个简单生成元，提供超集判定、交集、差集和最低置位查询，set/is_set 自身不检查边界。
 - **[[rayon-工作线程栈配置|Rayon 工作线程栈配置]]** — CLI 将 Rayon 工作线程栈设为 2 MiB，源码说明其依据是相关并行算法采用迭代实现并意在降低 RSS；该说明不构成实测性能结论。
+- **[[readlinecompletions-的补全快照前缀过滤|readline_completions 的补全快照前缀过滤]]** — readline_completions 按输入前缀过滤命令层保存在求值上下文中的补全候选快照。
 - **[[realformseed-的封装与构造不变量|RealFormSeed 的封装与构造不变量]]** — RealFormSeed 在共享 append-only 表的编号下绑定 grading offset、square-class cocharacter 与种子元素，以私有字段保证 grading_offset 等于 grading_of_simples(cocharacter)。
 - **[[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]** — build 检查 inner class、fundamental class 归一化、强层计数一致性降级及 form id 边界；custom 要求显式 cocharacter 的 simple pairings 为整数且 torus part 复现该 form 的 compact pattern。
 - **[[reducedparamkey-与-reduced-键控块复用|ReducedParamKey 与 reduced 键控块复用]]** — 使用姿态传输后的 KGB 元素、规范整数据编号和 Smith codec 余数构成私有稳定键，使 Weyl 姿态下匹配的查询复用已存公共块。
@@ -240,8 +241,8 @@
 - **[[关系格封装与构造预检|关系格封装与构造预检]]** — RelationMatrix、RelationBasis 和 RelationGenerator 封装关系格操作，在分配、复制、推进迭代器或收集生成元之前执行相应形状与预算检查。
 - **[[典范整数据驻留|典范整数据驻留]]** — IntegralDatumTable 以按 upstream 正根序排列的典范正根表为键，追加分配 id 并复用已有 IntegralDatumItem；典范数据依赖 gamma 所在 alcove，而不只依赖整根系，且跨调用必须保持同一 RootSystem。
 - **[[典范纤维与-k-型等价判定|典范纤维与 K 型等价判定]]** — to_canonical_fiber 沿 canonicalize 给出的词进行复单根 cross；equivalent 先检查 Cartan 类，再比较双方典范纤维中的结果。
-- **[[内建函数元数据与实现分发|内建函数元数据与实现分发]]** — Builtin 汇集名称、参数与结果类型、饥饿求值位及重载可见性，并由 BuiltinImpl 分发标量、领域、打印、关系、补全与泛型实现。
-- **[[内建注册表的启动清单与覆盖边界|内建注册表的启动清单与覆盖边界]]** — builtin_registry() 使用 OnceLock<Vec<Builtin>> 一次初始化 321 个条目、170 个不同名字，尚未覆盖上游完整清单，且与 309 个启动补全名清单分别维护。
+- **[[内建函数元数据与实现分发|内建函数元数据与实现分发]]** — Builtin 保存签名、饥饿求值位和重载可见性，由 BuiltinImpl 分派标量、领域、打印、关系、补全及变参数泛型实现。
+- **[[内建注册表的启动清单与覆盖边界|内建注册表的启动清单与覆盖边界]]** — 本来源记录 OnceLock 注册表含 479 个条目、240 个不同名字，仍未覆盖上游完整清单；与现有索引的 321/170 计数存在待核实差异。
 - **[[内类上下文的装配顺序与预算门|内类上下文的装配顺序与预算门]]** — 内类上下文依次装配分类、强实形分类、外部编号、布局、一次性对偶侧数据、呈现与规范实形弱缓存，并在相应阶段执行分类、FIBER 和 INTEGER 预算限制。
 - **[[内类字母的字节解析与规范化|内类字母的字节解析与规范化]]** — checked_inner_class_letters 按字节读取并跳过 ASCII 标点和空白，将 e 归一为 c，依据类型与秩坍缩 s、u；C 消耗两个相同连续因子。
 - **[[内类字母解析的错误模型与诊断顺序|内类字母解析的错误模型与诊断顺序]]** — InnerClassLetterError 区分符号过多、过少、未知符号、复配对失败和无意义的不等秩类，并优先报告未知符号，再检查因子是否存在。
@@ -533,9 +534,9 @@
 - **[[领域包装器的校验顺序契约|领域包装器的校验顺序契约]]** — 包装器规定构造检查、标准性检查及对合检查等操作的先后次序，并要求整数先收窄为 signed32 再映射到 unsigned32；这些契约属于实现方陈述，行为仍需 HPC 语料门验证。
 - **[[领域强转标签与转换路径|领域强转标签与转换路径]]** — coerce 根据标签选择内建函数调用、句柄导航、机器整数收窄或多项式展开，与 coercions.rs 的语言侧注册配对；未知标签产生运行时错误。
 - **[[领域调用的打印侧通道|领域调用的打印侧通道]]** — call_with_printed 通过可变字符串向量承载 partial_extended_KL_block 的中途打印信息，而 call 丢弃该侧通道。
-- **[[领域调用的无值门策略|领域调用的无值门策略]]** — DomainNoValue 以 Skip、Validate、BuildAndDrop 决定 NoValue 级别的执行深度；补全名不能推导该策略，orientation_nr 注册为 BuildAndDrop。
+- **[[领域调用的无值门策略|领域调用的无值门策略]]** — DomainNoValue 以 Skip、Validate、BuildAndDrop 控制无值级别的执行深度；补全名不能推导该策略，orientation_nr 使用 BuildAndDrop。
 - **[[饥饿乘积的所有权消费路径|饥饿乘积的所有权消费路径]]** — call_owned_with_printed 对 LieType×LieType、WeylElement×Vector 与 Vector×WeylElement 先校验秩或维度再消费操作数，与 typed.rs 的 HungryBuiltinCall 配对，其余调用走借用适配路径。
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 通过行列混合约化跟踪幺模右因子 V，取其对应零对角元的列生成完整整数核，避免采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。
 
-_535 pages | Generated 2026-10-09T18:16:51.320Z_
+_536 pages | Generated 2026-10-09T18:29:02.593Z_

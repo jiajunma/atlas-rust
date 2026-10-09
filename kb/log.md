@@ -1935,3 +1935,18 @@ maintenance 路径：先 `refresh --stale --dry-run` 检查计划，再正式
 2 个为编译器从新包提取的新概念（递归类型组的名字解析与校验分离、会话
 补全顺序与名字可见性分离，均核验忠实）。8 页全部批准后 `llmwiki status`：
 535 页、Fresh、无 stale/孤儿、无待审候选。wiki 与 73 个来源包完全同步。
+## [2026-10-09T18:27:55Z] compile | 1 source(s) → 0 page(s)
+- Sources: atlas-core-builtin-registry.md
+
+
+## 2026年10月10日 注册表计数更正（AGENTS.md 审计的延伸）
+
+审计延伸核对 docs/REMAINING_BUILTINS.md 时发现包 atlas-core-builtin-registry.md
+的"321 个条目、170 个不同名字"只数了 scalar_builtin+domain_builtin 两个
+构造器家族（167+154=321/170 精确吻合）。对 typed.rs 注册体 vec![…] 按
+构造器调用精确计数（git base 964f0033 与 HEAD 字节相同）：479 条目/240
+不同名字（scalar 167/59、domain 154/119、domain_validate 86/58、
+domain_skip 29/19、domain_printer 21/19、domain_relation 22/2）。包三处
+更正后 refresh --stale：4 页原地刷新、4 个再生候选（含新提取的
+readline_completions 页）重审批准；docs/REMAINING_BUILTINS.md 顶部加注
+LATEST 2026-10-10 更正说明。wiki 现 536 页、Fresh。

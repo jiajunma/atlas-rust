@@ -9,7 +9,10 @@ ingestedAt: 2026-10-09T14:30:00Z
 编辑状态：**结构性阅读完成；维护者直接撰写（无 Kimi 调用）**。本包覆盖
 `crates/atlas-core/src/typed.rs` 的 5973–11565 行：`Builtin` 面、
 `BuiltinImpl`/`DomainNoValue`/`ScalarOp`、求值期辅助的上游契约、以及
-`builtin_registry()` 的启动清单组织（321 个条目、170 个不同名字）。
+`builtin_registry()` 的启动清单组织（479 个条目、240 个不同名字——
+逐家族：scalar 167/59、domain 154/119、domain_validate 86/58、
+domain_skip 29/19、domain_printer 21/19、domain_relation 22/2；对
+`typed.rs` 的 `vec![…]` 注册体按构造器调用精确计数）。
 结构性阅读，不声称语言或数学验收。
 
 ## `Builtin` 面
@@ -65,7 +68,7 @@ Skip）。
 
 ## `builtin_registry()`：启动清单
 
-`OnceLock<Vec<Builtin>>` 一次建成；321 个条目、170 个不同名字，按主题
+`OnceLock<Vec<Builtin>>` 一次建成；479 个条目、240 个不同名字，按主题
 分节（整数位工具、…），每节注释给出上游出处。自述："growing toward the
 traced inventory"——注册表相对上游完整启动清单**不全**（缺口由
 docs/REMAINING_BUILTINS.md 跟踪；补全名纪律见
@@ -74,7 +77,7 @@ docs/REMAINING_BUILTINS.md 跟踪；补全名纪律见
 
 ## 边界与限制
 
-- 逐条目语义（321 臂）不在本包；`TypedExpr` 的求值 impl 与 133 个测试
+- 逐条目语义（479 臂）不在本包；`TypedExpr` 的求值 impl 与 133 个测试
   各待分包。上游行号引用是**实现方移植陈述**；行为兼容以 HPC 语料门
   为准。字节数/哈希只标识本快照字节（git base `964f0033`，typed.rs
   sha256 `614975c5…`）。

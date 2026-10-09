@@ -846,18 +846,14 @@
       "compiledAt": "2026-10-09T17:53:19.117Z"
     },
     "atlas-core-builtin-registry.md": {
-      "hash": "6137d56971c4cef9fbefa6ee17e77c8af66607b9cbb1ad9375711aedcca138c0",
+      "hash": "5375ddc233fafd36c66232a509a41595685da6e075ac148baeb2d62938ff1160",
       "concepts": [
-        "二进制补码的置位索引",
-        "内建函数元数据与实现分发",
+        "readlinecompletions-的补全快照前缀过滤",
+        "领域调用的无值门策略",
         "内建注册表的启动清单与覆盖边界",
-        "向量逐项除法与非负余数约定",
-        "尺寸自适应多项式运算与尾零规则",
-        "打印字符串转换与运行时错误的输出契约",
-        "有理向量加减与规范化",
-        "领域调用的无值门策略"
+        "内建函数元数据与实现分发"
       ],
-      "compiledAt": "2026-10-09T17:55:11.758Z"
+      "compiledAt": "2026-10-09T18:29:01.784Z"
     },
     "atlas-core-domain-dispatch.md": {
       "hash": "1f905fd7913027864ad4525f547a173f749c10e15cbfb202245a23b31a0b20ff",
