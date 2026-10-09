@@ -398,6 +398,26 @@ re-reading the file.  Lesson: for single-shot probe prompts of this size
 back to a local review.  Evidence dirs `/tmp/kimi-fixture-review-*` and the
 prompt file were removed after hashing (not registered transports).
 
+### Coxeter cross-check of fixture group predictions (2026-10-09, local math)
+
+The fixtures' word/length predictions rest on rank-2 Coxeter facts; checked
+them independently of both engines with an exact-integer Python computation
+(simple reflections on simple-root coordinates via
+`s_i(v) = v - <v, alpha_i^v> alpha_i`, root-set closure, group enumeration
+by true permutation signatures, length = #positive roots sent negative;
+no Atlas/Cargo execution — a pure math check, local-legal under hard rule 1).
+Results: G2 — 12 roots, |W|=12, `s0s1 != s1s0`, braid `s0s1s0s1s0s1 =
+s1s0s1s0s1s0` with length 6, longest element 6, `(s0s1)^6 = id`.
+B2 and C2 (transposed Cartans) — 8 roots, |W|=8, braid length 4, longest
+element 4, identical group structure (the W(B2)~W(C2) premise behind the
+symmetric word witnesses).  All match the contract predictions
+(`WG_BRAID|true|6`, `WB_BRAID|true|4`) and the fixtures' braid/length
+lines.  Methodology note: the first attempt sorted each permutation's
+image, which collapses every bijection to the identity (`|W|=1`); the
+published numbers use a fixed root order per signature.  This validates
+only the abstract group arithmetic behind the predictions — the oracle's
+numbering convention remains for the HPC capture to answer.
+
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 
 The classifier change is committed (`80eaf6d3`):
