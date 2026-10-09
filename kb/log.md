@@ -983,3 +983,14 @@ g_rho_check → 每个下游 torus_factor）、stable_log 四步与已检查前�
 fractional_part 三辅助、RealFormSeed 私有字段与 grading_offset 不变量、
 build 四门控链、custom 分支的两项一致性——全部忠实。7 页批准；
 wiki/concepts/ 现有 98 页，剩余候选 435。
+
+## 2026年10月10日 第十四批候选审查：weak-real-form.md 的 7 页
+
+对照 109 行来源包逐页核验：编号约定（canonical 坐标序最小元、class 0 为
+quasisplit）、stage-(d) 排序审计与上游 RealFormNbr 的对齐及 adapter 边界、
+walk_mask_orbits 的 FiberAction 转移规则与 u128 故意不饱和的规模比较、
+MAX_MASK_BITS/CLASS_SENTINEL/seeded_class 三边界、代表元级归因内核的
+投影-整性-grading-标签链与闸门顺序（整性门先于虚 grading 提取、覆盖每个
+单根）、provenance/分解两门、Tits 搬运职责边界——全部忠实；11 个测试锚点
+（含合成 A1 归因与 rank-33/rank-64 两种不同拒绝）一致。7 页批准；
+wiki/concepts/ 现有 105 页，剩余候选 428。
