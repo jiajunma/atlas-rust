@@ -706,3 +706,12 @@ Closure 载荷、不透明 BuiltinFunction、字节保留 AtlasString、Rational
 系统变量）+ SourceText（预存行首、Unicode 标量列）+ 强转表（29 条上游
 顺序、首中即返、row_coercion、is_close 三比特、broader_eq 平衡序）。
 维护者直接撰写（无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。
+
+新增 `sources/atlas-core-typed-core.md` 与快照
+`2026-10-09-atlas-core-typed-core.json`：typed.rs 上部（59–2757）——
+控制/级别枚举、TypedExpr 可执行树（多项式订阅先接收方后键、饥饿内建）、
+Analysis（身份守护的未移位签名缓存、活 return_type、loop_depth、
+type_floor）、IdTable/TypeCell 定义处下限纪律、OverloadState 的修订守护
+合并视图与 add_user 上游重放、TypedCommandEvent、TypedContext 字段面与
+启动播种。convert_expr/内建注册表/TypedExpr impl/测试**不在本包**。
+维护者直接撰写（无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。

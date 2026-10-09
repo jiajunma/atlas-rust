@@ -536,6 +536,19 @@ constructors+`revision: Arc<()>` 非语义快照身份；`matching_bindings` 查
 [阅读快照](snapshots/2026-10-09-atlas-core-support-layer.json)；维护者
 直接撰写（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
 
+[类型化管线核心数据结构](atlas-core-typed-core.md)记录 `typed.rs` 上部
+（59–2757 行）：控制/级别枚举、`TypedExpr` 可执行树（多项式订阅**先接收
+方后键**、`HungryBuiltinCall` 的顶层饥饿操作数即目的地时立即移出旧值、
+`ComponentTransform` 的范围检查在合成读时触发）、`Analysis`（`std::ptr::eq`
+守护的未移位签名视图缓存、活 `return_type`、`loop_depth`、`type_floor`）、
+`IdTable`/`TypeCell` 的定义处下限纪律、`OverloadState`（revision Arc 守护
+的合并视图、事务克隆不带缓存、`add_user` 重放上游单表 add 并保留歧义错误
+措辞）、`TypedCommandEvent`（Value 携带类型供会话层取 void 标志）、
+`TypedContext` 字段面与启动播种。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-typed-core.json)；维护者直接撰写
+（无 Kimi 调用）。`convert_expr`、内建注册表、`TypedExpr` impl 与测试各待
+分包。结构性阅读，不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

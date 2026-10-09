@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of typed.rs lines 59-2757 for the atlas-core-typed-core packet: the Control/Level/WhileMode enums, the assignment-destination family, the TypedExpr executable tree (including polynomial subscription's receiver-before-key order and HungryBuiltinCall), Analysis (overload_views' identity-guarded unshifted-signature cache, return_type, loop_depth, type_floor), IdTable/TypeCell's defining-floor discipline, OverloadState's revision-guarded merged views and add_user's upstream single-table replay, TypedCommandEvent, and TypedContext's field surface with its startup seeding. convert_expr, the builtin registry, TypedExpr's impl and the test module are NOT covered here.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/typed.rs",
+   "sha256": "614975c5e2d49357b4d9ffff80145a6c69db2fd5aeef23f033faf03f594acc95",
+   "bytes": 770895,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  }
+ ]
+}
