@@ -92,9 +92,16 @@ any DIFFERED is a genuine Rust defect signal:
 - The genuine "independently prewarmed canonical dual rejects" witness for
   G2 requires prewarming the **transposed** content explicitly, e.g.
   `root_datum(id_mat(2), mat:[[2,-3],[-1,2]], false)` before
-  `dual(SC(G2,true))`.  This is a NEW fixture for a later arc stage; the
-  frozen g2-v1 payload stays unchanged (its dual-side lines remain valid
-  cold-share evidence).
+  `dual(SC(G2,true))`.  DRAFTED 2026-10-09 as
+  `tests/math/generics/weyl_context_g2_prewarmed_transposed_dual.atlas`
+  (sha `7ed86be0a46080a9d7954e1bd203a1f2c5dc1adfe28f1f93f805c7dae79a2730`;
+  prefix `WGT_`, recovery 737): the explicit construction hits the canonical
+  dual's exact content (roots I2, coroot columns = primal Cartan rows
+  [2,-1] and [-3,2]), `WGT_SLOT` proves the hit (interned-pointer equality
+  true), then the relation triplet must reject.  Provisional and unwired;
+  it belongs to a later arc stage after the frozen g2-v1 capture confirms
+  the vacuity prediction — the frozen payload stays unchanged, and its
+  dual-side lines remain valid cold-share evidence either way.
 - The B2/C2 drafts (`weyl_context_b2c2_*`) need no change: their
   both-numberings owner probes now carry the definite prediction
   `WB_DUAL_OWNER_FALSE`=true / `WB_DUAL_OWNER_TRUE`=false, and their

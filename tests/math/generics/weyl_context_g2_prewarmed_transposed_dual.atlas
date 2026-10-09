@@ -1,0 +1,27 @@
+{ G2 Weyl prewarmed TRANSPOSED-dual rejection witness.  The canonical dual
+  of SC(G2,true) has the transposed content: simple roots I2, simple coroots
+  [[2,-3],[-1,2]] (columns [2,-1] and [-3,2], the primal Cartan rows),
+  preference false — no simply_connected/adjoint constructor produces it
+  (docs/slices/weyl_g2_preregistration_2026_10_09.md).  Prewarming THAT exact
+  content with an explicit root_datum fills the canonical dual's identity
+  slot with an independent owner, so the later dual() cannot cold-share and
+  every cross-owner relation must reject.  WGT_SLOT proves the prewarm hit
+  the right object (root-datum equality is interned-pointer equality); the
+  vacuous-prewarm analysis predicts the frozen weyl_context_g2_prewarmed_dual
+  dual-side triplet does NOT reject, while this fixture's triplet does.
+  Provisional until complete original behavior is captured on HPC.
+  No atlas scripts. }
+set wgt_true=simply_connected(Lie_type("G2"),true)
+set wgt_target=root_datum(mat:[[1,0],[0,1]],mat:[[2,-3],[-1,2]],false)
+set wgt_target_w=W_elt(wgt_target,[0])
+set wgt_dual=dual(wgt_true)
+set wgt_saved=W_elt(wgt_true,[0])
+set wgt_dual_w=W_elt(wgt_dual,[0])
+prints("WGT_SLOT|",wgt_dual=wgt_target)
+prints("WGT_EQ|",wgt_saved=wgt_dual_w)
+prints("WGT_AFTER_EQ|",word(wgt_saved),"|",word(wgt_target_w))
+prints("WGT_NEQ|",wgt_saved!=wgt_dual_w)
+prints("WGT_AFTER_NEQ|",word(wgt_saved))
+wgt_saved*wgt_dual_w
+prints("WGT_AFTER_MUL|",word(wgt_saved))
+prints("WGT_RECOVERY|",737)
