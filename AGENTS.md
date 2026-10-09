@@ -186,8 +186,10 @@ Codex terminal tools and the existing local Kimi account.
    AFTER v3 job3875239 is FINAL and accepted. Published commit `23245b54`
    retains only the idempotent acceptance-index receipt-recovery pair, bound to
    FINAL job3879103 and its exact existing stage; it is not a Weyl-capture
-   transport. In the current uncommitted transition snapshot that index pair is
-   disabled. Tests-first `weyl-context-core-before-v1` job3884862 is FINAL
+   transport. That pair stayed disabled through the 2026-10-01 transition
+   snapshot and is absent from the current launcher tree; re-enabling it
+   requires a new reviewed binding, not a reference to commit `23245b54`.
+   Tests-first `weyl-context-core-before-v1` job3884862 is FINAL
    `FAILED 1:0` in checker self-tests: four suites passed, then the driver
    suite found two stale test assumptions; Cargo and Atlas never ran. Its
    immutable failure is not mathematical BEFORE evidence. BEFORE-v4
@@ -357,11 +359,22 @@ Codex terminal tools and the existing local Kimi account.
     files touched, result, independent checks, rejected suggestions and a
     reusable lesson. Freeze the exact prompt, owned-file list and their hashes
     before launching, and capture raw output/exit status even for launch
-    failures; unknown historical fields stay explicitly unknown. Kimi Code
-    0.42.0 rejects `--plan` combined with `-p`. An external-provider retry may
+    failures; unknown historical fields stay explicitly unknown. (The
+    historical Python kimi-cli 0.42.0 rejected `--plan` combined with `-p`;
+    the verified current install is Kimi Code CLI 2.1.1 per the sections
+    above — recheck version and `--help` after any upgrade instead of
+    trusting either note.) An external-provider retry may
     transmit repository bytes, so it needs authorization for the exact
     payload/destination and must not be rerouted after rejection. No invocation
     means no fabricated Kimi lesson.
+    KB-packet probe lessons (2026-10-06 arc): the working route is a
+    full-bytes prompt — paste the complete source file into the prompt because
+    the probe profile has no tools — followed by maintainer claim-by-claim
+    verification of the returned packet against the actual `.rs` before
+    committing. Scale the timeout to prompt size (roughly 24s per KiB of
+    prompt; one 360s deadline on a 25.5KiB prompt was too tight), and grep
+    `kb/sources/index.md` before drafting: six duplicate packets for
+    already-covered files had to be merged away.
 13. **The Atlas wiki evolves through the pinned compiler and reviewed sources.**
     Use repository launcher `./kb/llmwiki`, never an unpinned global substitute.
     For each mathematical/algorithmic implementation change, update the exact
@@ -404,7 +417,10 @@ gate. Source discovery, builds and verification obey the hard rules above.
 
 Maintain bounded Markdown source packets under `kb/sources/` with the actual
 Rust source version, symbols, assumptions and evidence references. The compiler
-does not detect changes in the `.rs` files behind those packets. Rust evolution
+does not detect changes in the `.rs` files behind those packets. Grep
+`kb/sources/index.md` before drafting any packet: it is the coverage
+authority, and re-drafting an already-covered file wastes the review cycle
+(six duplicates had to be merged on 2026-10-06). Rust evolution
 is the main narrative; add C++/CWEB/script comparisons when aligning with the
 baseline. Follow `kb/AGENTS.md` for the native schema and existing-note boundary.
 
@@ -525,6 +541,25 @@ ceiling and default one focused job; do not trade correctness for speed.
    166-line usage page; never count usage text as jobs).
 
 ## Verified repair guard
+
+### Current frontier (read this first)
+
+- Latest accepted mathematical gate: Weyl context-core AFTER-v5,
+  job3900050, FINAL `COMPLETED 0:0` — bounded A1 Weyl owner/dual semantics
+  only; every release flag stays FALSE. The validated tree is landed as
+  production commit `690c2b92`. See the 2026-10-06 UPDATE entries below.
+- Next gate: the G2 asymmetric-interface witness. Provisional fixture
+  `tests/math/generics/weyl_context_g2_dual_draft.atlas` (commit `a81db81c`)
+  is NOT truth until the original's complete behavior is captured on HPC;
+  the capture runs as a new `weyl-context-g2-v1` stage whose predecessor is
+  before-v4 job3886748. Then B2/C2, reverse operand orders, inner-class-dual
+  and no-value gates, each with its own original-backed capture; only after
+  all of them pass comes the cache work-count BEFORE and any production
+  cache edit.
+- Everything below the frontier entries is historical evidence carrying its
+  own supersession markers. A historical "next target" or "reprofile" note
+  never reactivates itself; only the latest unsuperseded state of a claim
+  releases the next gate (hard rule 10).
 
 ### Predecessor transitions: rebind every historical validator before launch
 

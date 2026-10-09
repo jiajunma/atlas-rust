@@ -23,6 +23,9 @@ Native layout:
 
 - sources/: bounded Markdown source packets; recursive discovery is enabled.
   sources/index.md and sources/snapshots/ are excluded from compilation.
+  Grep sources/index.md before drafting a new packet — it is the coverage
+  authority; six duplicate packets for already-covered files had to be
+  merged away on 2026-10-06.
 - wiki/concepts/: compiler-managed topic pages; use tags and the page body to
   distinguish mathematics, algorithms, Rust design and baseline alignment.
 - wiki/queries/: saved answers, subject to the same evidence review.

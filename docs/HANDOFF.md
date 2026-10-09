@@ -52,7 +52,7 @@ for the original-backed G2 capture, then regressions, then its own
 BEFORE/AFTER chain.  B2/C2, reverse operand orders, inner-class-dual and
 no-value follow the same shape after G2's gate is accepted.
 
-## V5 PREPARATION (in progress) — 2026-10-06
+## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 
 The classifier change is committed (`80eaf6d3`):
 `hpc/weyl_context_core_contract.py` gains `_error_summaries` (envelope-free
