@@ -504,6 +504,18 @@ Bison 措辞诊断（"syntax error, unexpected …"）、`type_scope.rs` 的
 [阅读快照](snapshots/2026-10-09-atlas-core-syntax.json)；维护者直接撰写
 （无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
 
+[类型模型](atlas-core-types.md)记录 `types.rs` + `types/`（961+1106+262+78
+行）：`Type` 面（`Undetermined` 只被 `specialise` 收窄、`Variable` 的刚性
+由外围 scheme 的 fixed 阈值决定、长度 1 元组/联合由构造器折叠、
+`Tabled`/`Applied` 的名义递归比较）、`TypeTable`（bindings+active+
+constructors+`revision: Arc<()>` 非语义快照身份；`matching_bindings` 查
+**全部保留定义**；`validate_applications` 不展开地校验）、
+`polymorphic.rs` 二阶机器（`TypeScheme` 首次出现序打包、`TypeAssignment`
+的 `append` 连待决替换一起导入、`InferredType` 体+赋值对）、
+`recursive.rs` 图级递归 typedef 安装。59 个测试。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-types.json)；维护者直接撰写
+（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

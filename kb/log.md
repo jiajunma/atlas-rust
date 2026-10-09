@@ -685,3 +685,10 @@ Expr/Command/Pattern/TypeExpr 的 AST 面、四条解析入口（fragment 的
 Ok(None) 多行续行纪律）、TokenStream 适配与 Bison 措辞诊断、type_scope。
 51 个测试。维护者直接撰写（无 Kimi）；字节数一律实测（快照脚本现场测量，
 覆盖初稿占位值）。索引与 log 已同步；未运行编译/测试/compiler。
+
+新增 `sources/atlas-core-types.md` 与快照 `2026-10-09-atlas-core-types.json`：
+Type/Prim/TypeBinding/TypeTable（revision Arc 身份、matching_bindings 查全部
+保留定义、先校验再等值、specialise 为唯一变异）+ polymorphic 二阶机器
+（TypeScheme/TypeAssignment/InferredType，含上游 append 语义）+ recursive
+图级安装 + revision_tests。59 个测试。维护者直接撰写（无 Kimi）；索引与
+log 已同步；未运行编译/测试/compiler。

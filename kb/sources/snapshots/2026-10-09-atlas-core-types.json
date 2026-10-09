@@ -1,0 +1,33 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of the type-model layer for the atlas-core-types packet: types.rs's Type/Prim/TypeBinding/TypeTable (revision Arc identity, matching_bindings over all retained definitions, validate-first equivalence, specialise as the only mutation), polymorphic.rs's second-order machinery (TypeScheme/TypeAssignment/InferredType with upstream append semantics), recursive.rs's graph-wide typedef installation, and revision_tests.rs. 59 tests across four files.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/types.rs",
+   "sha256": "532644893746fe30ade37613f53ffc1a65b0967ed725345b5348f66c22250531",
+   "bytes": 41081,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/types/polymorphic.rs",
+   "sha256": "eab88f57845773779ad5ba92726ed2f217141dce4cdaf746ce8c5770acea1613",
+   "bytes": 55455,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/types/recursive.rs",
+   "sha256": "aefc196b490934614dd1d1b6166179f45192345b9a04e86ab2a6af09eae2c141",
+   "bytes": 12123,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/types/revision_tests.rs",
+   "sha256": "20d47c96a332accf06e9e768506cb92b0666e591db1b2133401dcc0d9d672a6b",
+   "bytes": 3567,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  }
+ ]
+}
