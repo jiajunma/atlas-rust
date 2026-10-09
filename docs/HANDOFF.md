@@ -279,7 +279,9 @@ Same drill after the day's fixture/KB commits: the 65 inputs are byte-stable
 (the new transposed-prewarm fixture is unwired and NOT among the inputs),
 manifest reproduces `bcc09dbc…`, sentinel rehearsal reached
 `PRE_FLIGHT_PARENT_OBJECTS_BOUNDARY`.  Resumption remains pre-verified at
-current HEAD.  Tempdirs removed again.
+current HEAD.  Tempdirs removed again.  (Later same day: `git diff
+72491eb6..327057e0` over the 65 names is empty — the ASCII fixes touched
+only unwired drafts; resumption remains pre-verified at `327057e0`.)
 
 ### Upstream HEAD moved (2026-10-09, read-only finding)
 
