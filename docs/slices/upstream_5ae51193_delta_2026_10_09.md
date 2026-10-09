@@ -65,3 +65,13 @@ Historical pins and goldens stay bound to their capture pin; the refresh to
 `5ae51193` (or later) is a separate reviewed transition requiring a complete
 HPC replay against current master, expected to show deltas at least at the
 three items above.  Never relabel existing evidence.
+
+## Verified against the live GitHub compare API (2026-10-10)
+
+A fresh `compare/7e1b958c…5ae51193` call confirms `ahead_by: 10` and the exact
+commit list recorded above (509f584c's message is "Fix tests for integer 0 in
+wrapper functions that forgot to call |is_zero|", matching the rat/int guard
+claim).  The RZ_ fixture's sha256 is byte-exact `7380908e0f…` as recorded.
+Upstream HEAD is unchanged since 2026-10-09 (`5ae51193` still resolves both
+HEAD and master).  No re-fetch of upstream sources was needed for this check;
+the HPC tunnel was still down at verification time.
