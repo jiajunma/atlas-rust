@@ -526,6 +526,16 @@ constructors+`revision: Arc<()>` 非语义快照身份；`matching_bindings` 查
 [阅读快照](snapshots/2026-10-09-atlas-core-value-layer.json)；维护者直接
 撰写（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
 
+[支撑层](atlas-core-support-layer.md)记录 `diagnostic.rs`+`source.rs`+
+`coercions.rs`（179+115+426 行）：`ErrorKind` 分类与措辞分离、
+`Diagnostic` 的 `raw_message` 字节权威（非 UTF-8 时）、`warning` 报告
+不弄脏会话、`back_trace` 最外层在前且拷入系统变量；`SourceText` 预存
+行首、Unicode 标量列；29 条上游顺序强转表（首中即返，`mat` 上下文先遇
+`[vec]->mat`）、`row_coercion` 分量类型、`is_close` 三比特（等值先于边界
+检查）、`broader_eq` 平衡序（函数要求参数相等）。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-support-layer.json)；维护者
+直接撰写（无 Kimi 调用）。结构性阅读，不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

@@ -699,3 +699,10 @@ Closure 载荷、不透明 BuiltinFunction、字节保留 AtlasString、Rational
 单走且分母恒打印）+ vec/mat/ratvec 载荷与逐字节上游打印格式（列主序、
 构造时规范化）+ 算符优先级栈的奇偶结合律。11 个测试。维护者直接撰写
 （无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。
+
+新增 `sources/atlas-core-support-layer.md` 与快照
+`2026-10-09-atlas-core-support-layer.json`：诊断（SourceId/Span、ErrorKind
+分类、raw_message 字节权威、warning 不弄脏、back_trace 最外层在前且拷入
+系统变量）+ SourceText（预存行首、Unicode 标量列）+ 强转表（29 条上游
+顺序、首中即返、row_coercion、is_close 三比特、broader_eq 平衡序）。
+维护者直接撰写（无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。

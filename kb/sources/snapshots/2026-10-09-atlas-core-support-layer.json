@@ -1,0 +1,27 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of the support layer for the atlas-core-support-layer packet: diagnostic.rs's SourceId/Position/Span, ErrorKind taxonomy, the Diagnostic with raw_message byte authority, warning-without-dirtying, and the outermost-first back_trace discipline (push_front, copied to the back_trace system variable); source.rs's SourceText with precomputed line starts and Unicode-scalar columns; coercions.rs's 29-entry upstream-ordered coercion table with first-match scans, row_coercion, is_close's three-bit contract (equality before boundary checks) and broader_eq's balancing order.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/diagnostic.rs",
+   "sha256": "b26c029276711b6eafcdc8e164939039a20fafd6c8d171d49a4dad7bfc8730ac",
+   "bytes": 5122,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/source.rs",
+   "sha256": "51b7a2260269fa996515136c51ba082c4e4ba817a5dfef9fc9c251f75a584aa4",
+   "bytes": 3817,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  },
+  {
+   "path": "crates/atlas-core/src/coercions.rs",
+   "sha256": "b147208cfa48cf79ecc6768120202148296adf313de5998b709ecb25e5f4579c",
+   "bytes": 14880,
+   "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+  }
+ ]
+}
