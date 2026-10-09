@@ -152,3 +152,22 @@ reverse operands (fact 5: left-owner products), inner-class-dual (fact 8),
 no-value (fact 5: guards throw before the no-value gate, so all five WV
 discarded/void contexts throw in the original while `WV_NOVALUE_OK` prints
 41), and sole-WeylElt lifetime (fact 7).
+
+## Part 3: error-text verification (same day, later)
+
+The prewarmed fixtures' expected error texts were checked against both the
+pin and the frozen A1 goldens:
+
+- `check_Weyl_word` (atlas-types.w:2493-2510) throws `Illegal Weyl word
+  entry <v> (should be <rank>)`; the frozen A1 golden carries `Illegal Weyl
+  word entry 1 (should be <1)`, so the rank-2 prediction `Illegal Weyl word
+  entry 2 (should be <2)` matches the pattern.
+- The same function reads each entry via `int_value::ulong_val()` BEFORE
+  the rank check, and the A1 golden shows the negative-entry error is
+  `Negative integer where unsigned is required` (thrown by the conversion,
+  not by the word check).  Source inference alone would have predicted a
+  huge unsigned value in the message (`ulong_val` wraps); the golden
+  settles it — a reminder to trust captured goldens over plausible
+  source readings when they differ.
+- `Weyl group mismatch` verbatim at atlas-types.w:2581/2591/2605 (the
+  eq/neq/prod wrappers), matching Part 1 fact 5.
