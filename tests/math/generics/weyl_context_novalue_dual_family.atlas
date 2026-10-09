@@ -1,0 +1,24 @@
+{ No-value dual-family policy witness.  The original skips the dual BUILD at
+  no-value for dual(InnerClass)/dual_quasisplit_form/central_fiber and runs
+  only the index validation for dual_real_form (atlas-types.w:3424-3428,
+  3962-3975, 3977-3983, 4083-4088): discarded calls must neither error nor
+  observably change later state, while the invalid-index control must still
+  error (validation precedes the gate).  Candidate Rust divergence under
+  capture: typed.rs registers all four as BuildAndDrop (the dual(InnerClass)
+  comment itself says "so skip"), so a discarded call runs the build —
+  observable where the build errors (e.g. budget stress), wasted work
+  otherwise.  Provisional until complete original behavior is captured on
+  HPC.  No atlas scripts. }
+set xn_ic=inner_class(simply_connected(Lie_type("G2"),true),[[1,0],[0,1]])
+set xn_G=quasisplit_form(xn_ic)
+begin dual(xn_ic); 41 end
+prints("XN_IC_DUAL|",41)
+begin dual_quasisplit_form(xn_ic); 41 end
+prints("XN_QS|",41)
+begin central_fiber(xn_G); 41 end
+prints("XN_CF|",41)
+begin dual_real_form(xn_ic,99); 41 end
+prints("XN_DR_AFTER_BAD|",41)
+begin dual_real_form(xn_ic,0); 41 end
+prints("XN_DR_OK|",41)
+prints("XN_RECOVERY|",738)

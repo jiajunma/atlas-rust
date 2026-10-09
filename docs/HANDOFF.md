@@ -406,6 +406,25 @@ at wiring time.  With these two, all seven witnesses from the 2026-10-03
 slice are now drafted: G2 (frozen in the g2-v1 payload), B2/C2, reverse
 operands, inner-class-dual, no-value, sole-WeylElt lifetime.
 
+### No-value dual-family registration audit (2026-10-09, PROVISIONAL finding)
+
+A comment-vs-registration audit of `typed.rs` against the pinned upstream
+found four dual-family builtins registered BuildAndDrop where the original
+skips (or validates-only) at no-value: `dual(InnerClass)` (typed.rs ~9861 —
+its own comment says "so skip"), `dual_real_form` (~9897; upstream validates
+the index first), `dual_quasisplit_form` (~9907), `central_fiber` (~9918).
+`dual(RootDatum)`/`dual(Block)` are correctly Skip, and the five Validate
+registrations audited are consistent.  Semantically observable only where a
+no-value build would ERROR (budget stress); otherwise wasted work.
+Source-level CANDIDATE per hard rules 3/7 — no production edit before an
+original-backed capture; if confirmed, the fix is the one-word registration
+change plus the regression.  Full table and analysis:
+`docs/slices/weyl_g2_preregistration_2026_10_09.md` Part 4.  Probe fixture
+`tests/math/generics/weyl_context_novalue_dual_family.atlas` (sha
+`ba5bf6662a89f70a5af7cd4a73771e9a89d611c1afa2a0fd82d12d37ebef2f3e`, prefix
+`XN_`, recovery 738) drafted, provisional, unwired; belongs to the no-value
+arc stage.
+
 ### Kimi structural review of the fixture drafts (2026-10-09)
 
 Routine-task delegation per hard rule 12.  Task: a STRUCTURAL-only review

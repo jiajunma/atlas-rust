@@ -178,3 +178,41 @@ pin and the frozen A1 goldens:
   source readings when they differ.
 - `Weyl group mismatch` verbatim at atlas-types.w:2581/2591/2605 (the
   eq/neq/prod wrappers), matching Part 1 fact 5.
+
+## Part 4: no-value registration policy audit (same day, later)
+
+The no-value side-effect question cuts both ways: not only must validations
+fire at no-value (the WV fixture), builds that the original SKIPS must not
+run either.  Auditing `typed.rs` registrations against the pin found a
+candidate divergence family — comments claiming "so skip" on registrations
+that actually BuildAndDrop (run the full build at no-value, dropping the
+result and propagating its errors):
+
+| builtin | typed.rs | Rust policy | upstream wrapper (pin) | correct policy |
+|---|---|---|---|---|
+| `dual(InnerClass->InnerClass)` | ~9861 | BuildAndDrop | pure skip (3424-3428) | Skip |
+| `dual_real_form` | ~9897 | BuildAndDrop | index validation, then skip (3962-3975) | Validate |
+| `dual_quasisplit_form` | ~9907 | BuildAndDrop | pure skip (3977-3983) | Skip |
+| `central_fiber` | ~9918 | BuildAndDrop | pure skip (4083-4088) | Skip |
+
+(`dual(RootDatum)` and `dual(Block)` are correctly `domain_builtin_skip`;
+the upstream `dual` overload set is exactly RootDatum/InnerClass/Block —
+there is no `dual(RealForm)` upstream, so the Rust dispatch's arm set is
+right.)  The audit method (comment-scan for "so skip"/"precedes" followed
+by a non-skip registration) also confirmed five Validate registrations are
+consistent (`Weyl_orbit`, `scale_extended`, `involution`, `KGP_sum`,
+`twisted_deform`).
+
+Semantic observability of BuildAndDrop-vs-Skip requires the no-value build
+to ERROR (e.g. a budget-exceeding `dual_inner_class`); otherwise the
+difference is wasted work only (still relevant to the performance lane).
+Per hard rules 3/7 this is a source-level CANDIDATE: no production edit
+until an original-backed capture.  Probe fixture drafted:
+`tests/math/generics/weyl_context_novalue_dual_family.atlas` (sha
+`ba5bf6662a89f70a5af7cd4a73771e9a89d611c1afa2a0fd82d12d37ebef2f3e`, prefix
+`XN_`, recovery 738) — discarded `dual(ic)` / `dual_quasisplit_form(ic)` /
+`central_fiber` must print 41, the invalid-index `dual_real_form(ic,99)`
+must still error (validation precedes the gate), and
+`dual_real_form(ic,0)` must not.  Provisional and unwired; belongs to the
+no-value arc stage, and if the capture confirms divergence the fix is the
+one-word registration change (plus the regression).

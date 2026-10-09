@@ -609,7 +609,11 @@ ceiling and default one focused job; do not trade correctness for speed.
   (`weyl_context_g2_prewarmed_transposed_dual.atlas` sha `7ed86be0…`)
   implements the genuine prewarmed-rejection vehicle identified by the
   upstream reading (the frozen G2 prewarmed dual-side triplet is vacuous
-  by construction); it belongs to a later arc stage.
+  by construction); it belongs to a later arc stage.  A ninth draft
+  (`weyl_context_novalue_dual_family.atlas` sha `ba5bf666…`) probes the
+  no-value dual-family BuildAndDrop-vs-Skip candidate divergence found by
+  the typed.rs registration audit (docs/slices Part 4); capture before any
+  registration fix.
 - Everything below the frontier entries is historical evidence carrying its
   own supersession markers. A historical "next target" or "reprofile" note
   never reactivates itself; only the latest unsuperseded state of a claim
