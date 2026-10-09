@@ -816,3 +816,8 @@ CLI 前端全读（FsProvider 有损 UTF-8、字节保留 print_events、rayon 2
 维护者直接撰写（无 Kimi）。**至此 atlas-core + atlas-cli 全模块来源包
 齐备**（crate 根、语言层各模块、typed.rs 四区、domain_builtins.rs 六区 +
 weyl_subgroup、CLI、测试库地图）。
+
+KB 自洽审计（只读）：发现 `atlas-core-center-classifier.md` 缺索引条目（包与
+快照已在，索引漏记），已补上；另有一个 2026-10-01 的候选快照无索引链接——
+那是被 -v2 取代的**保留历史**快照（按纪律保留，不需索引链接）。审计结果：
+73 包全部链接、85 快照全部存在、frontmatter 全部合规。

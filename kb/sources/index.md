@@ -666,6 +666,15 @@ print_real_Weyl 臂内先查防静默翻译、`involution_expression` 的
 [阅读快照](snapshots/2026-10-09-atlas-core-root-numbering-alcove.json)；
 维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
 
+[中心分类器与轨道词](atlas-core-center-classifier.md)记录
+`domain_builtins.rs` 6102–7992：`CenterClassifier` 按根格陪集 tabulate 基本权
+子集和（adjugate/行列式表示，与上游 `C_denom` 一致；`shifts` 的借位算术）、
+adjoint 轨道 BFS（尾部递减、完成层反转递增）、`basic_orbit_adjoint` 与
+`vertex_orbit`（label>1 的模变体）、`convert_to_words` 经陪集树**左乘**展开、
+反射词约定（沿首个下降降到单根再逆序回溯；词作用**末字母先**）。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-center-classifier.json)；维护者直接
+撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
+
 [块图 SCC 与根表](atlas-core-domain-scc-root-table.md)记录
 `domain_builtins.rs` 3022–5005 + 7992–9606：`strong_components` 的迭代
 Tarjan 形 SCC（块图消费者）、`ByLastCoordinate` 的**坐标逆序**字典序
