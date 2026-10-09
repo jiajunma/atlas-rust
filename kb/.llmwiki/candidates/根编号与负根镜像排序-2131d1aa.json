@@ -1,0 +1,39 @@
+{
+  "id": "根编号与负根镜像排序-2131d1aa",
+  "title": "根编号与负根镜像排序",
+  "slug": "根编号与负根镜像排序",
+  "summary": "RootNumbering 按 level 和反向字典序排列正根，以反序镜像编号负根；实现依赖正负根配对，缺键或编号越界存在 panic 路径。",
+  "sources": [
+    "alcove.md"
+  ],
+  "body": "---\ntitle: 根编号与负根镜像排序\nsummary: RootNumbering 按 level 和反向字典序排列正根，以反序镜像编号负根；实现依赖正负根配对，缺键或编号越界存在 panic 路径。\nsources:\n  - alcove.md\nkind: concept\ncreatedAt: \"2026-10-09T14:24:16.520Z\"\nupdatedAt: \"2026-10-09T14:24:16.520Z\"\ntags:\n  - 根系\n  - 排序\n  - Rust实现\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 根编号与负根镜像排序\n\n`RootNumbering` 为 alcove 几何计算建立根编号：正根按层级及逆坐标字典序排列，负根则按对应正根的相反顺序编号。这一方案镜像上游编号约定，将负根与正根分别放入连续的编号区间。^[alcove.md:99-107]\n\n## 数据结构与接口\n\n`RootNumbering` 是 crate 内可见的结构体，包含私有字段 `npos: usize` 和 `by_nbr: Vec<RootId>`，分别记录正根数量及编号到根标识的映射。`new(&RootSystem)` 构造编号，`id(nbr)` 返回对应的 `RootId`；另有文件内私有方法 `is_negative(nbr)`。相关概念见 [[RootId 与根系索引对齐]] 与 [[RootNumbering 根编号与 RootNbr 顺序]]。^[alcove.md:33-38, alcove.md:101-107]\n\n## 正根排序\n\n构造器收集 `is_positive(id).unwrap_or(false)` 为真的根，然后按以下规则排序：首先按 level，即简单坐标各分量之和升序排列；level 相同时，从最后一个坐标向前逐项比较，采用逆坐标字典序。排序时缺失的简单坐标以空切片兜底。该次序可结合 [[ByLastCoordinate 逆坐标字典序]] 理解。^[alcove.md:101-103]\n\n排序后的正根依次占据编号区间 `[npos, total)`。若一个正根在排序中的位置为 `position`，其编号即为 `npos + position`。^[alcove.md:104-107]\n\n## 负根的镜像编号\n\n负根占据 `[0, npos)`。构造器将负根的简单坐标逐项取负，在 `positive_index: BTreeMap<Vec<i32>, usize>` 中查出对应正根的位置，再写入 `by_nbr[npos - 1 - position]`。因此，正根位置越靠前，对应负根的编号越靠后；两段编号形成镜像排列。^[alcove.md:104-107]\n\n这一布局隐含 `total == 2 * npos`，并依赖每个负根的取负坐标都能在正根索引中找到。构造器直接对映射取下标，缺键会触发 panic；它返回 `Self`，没有通过 `Result` 报告构造失败。^[alcove.md:104-110]\n\n## 在 alcove 算法中的作用\n\n`alcove_center` 首先构造 `RootNumbering`，再将其传给 `wall_set`，获取墙集与整值墙集，随后计算逐墙重心分数。编号也用于 `root_components`：墙分量按根首次出现的顺序追加，分量内部按编号升序排列。相关流程见 [[Alcove 墙集与整值墙筛选]] 与 [[墙连通分量与重心分数约束]]。^[alcove.md:68-71, alcove.md:128-134]\n\n## 错误行为与证据边界\n\n`id(nbr)` 直接使用下标访问，编号越界会触发 panic。构造过程中，`is_positive` 与 `simple_coordinates` 的失败采用 `unwrap_or` 静默兜底，与该文件其他位置的显式错误传播方式不同；来源仅记录这一观察，尚未确认这种差异是否出于刻意设计。^[alcove.md:108-110]\n\n本说明依据对 `alcove.rs` 的结构性阅读，不构成数学正确性验收。“镜像上游编号”是来源记载的实现意图；来源未独立核对上游字节，也未在此次知识维护中执行 Atlas、Cargo、测试或 benchmark。^[alcove.md:9-13, alcove.md:101-103, alcove.md:185-190]\n\n## Sources\n\n- [alcove.md](alcove.md) — Alcove 几何：alcove_center 与 root_vertex_of_alcove\n",
+  "generatedAt": "2026-10-09T14:24:16.537Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "alcove.md": {
+      "hash": "8fe7c97ed1f57157aa0c0a8cf956736228a0edd0093318d6d523acad24e3f630",
+      "concepts": [
+        "alcove-重心计算与标准参数重建",
+        "alcove-分母界守卫",
+        "根编号与负根镜像排序",
+        "alcove-墙集与整值墙选择",
+        "墙连通分量与重心分数约束",
+        "墙分量的本原-coroot-关系",
+        "alcove-根格顶点与基本-alcove-约化",
+        "alcove-算法中的精确有理线性代数"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

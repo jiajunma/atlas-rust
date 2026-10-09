@@ -1,0 +1,39 @@
+{
+  "id": "会话循环与文件会话帧的职责边界-127be4d3",
+  "title": "会话循环与文件会话帧的职责边界",
+  "slug": "会话循环与文件会话帧的职责边界",
+  "summary": "session.rs 负责命令循环并对文件包含指令产生 Io 诊断，文件包含与输出重定向由 session_frame.rs 管理，转换与求值则交给 typed.rs。",
+  "sources": [
+    "atlas-core-session.md"
+  ],
+  "body": "---\ntitle: 会话循环与文件会话帧的职责边界\nsummary: session.rs 负责命令循环并对文件包含指令产生 Io 诊断，文件包含与输出重定向由 session_frame.rs 管理，转换与求值则交给 typed.rs。\nsources:\n  - atlas-core-session.md\nkind: concept\ncreatedAt: \"2026-10-09T14:35:06.868Z\"\nupdatedAt: \"2026-10-09T14:35:06.868Z\"\ntags:\n  - 模块设计\n  - 文件包含\n  - 职责划分\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 会话循环与文件会话帧的职责边界\n\n会话循环负责有状态的逐命令执行；文件会话帧负责文件包含与输出重定向。Atlas 的词法分类依赖先前命令留下的状态，因此 `session.rs` 拥有外层循环，不预先切分整个源文件。^[atlas-core-session.md:9-14, atlas-core-session.md:70-74]\n\n## 会话循环的职责\n\n`run_source` 为每个源创建全新的 `TypedContext`，`run_source_with_context` 则使用调用方持有的上下文。循环在遇到 `Newline` 时尝试执行命令缓冲，在 `Eof` 时执行剩余缓冲并退出；普通 token 加入缓冲，词法诊断直接进入事件流。遇到 `Unsupported(_)` 时，循环产生 Syntax 诊断 `\"unexpected token\"`，并调用 `lexer.recover_command()` 恢复。^[atlas-core-session.md:29-40]\n\n换行不一定意味着命令已经完整。`execute_tokens` 仅在终止符为 `Newline` 时允许继续输入；若 `parse_command_fragment_in(.., context.types(), allow_more)` 返回 `Ok(None)`，便保留已有前缀，不求值，也不发出诊断。原始源输入与文件会话共用这条[[多行命令的增量解析]]路径。^[atlas-core-session.md:47-50]\n\n标识符通过 `next_session_token` 在消费时刻调用 `context.note_completion_token` 记录。这个时序保留被包含文件与后续命令之间的首次使用顺序，使补全顺序符合语言层要求。^[atlas-core-session.md:44-46]\n\n## 文件会话帧的职责\n\n文件包含由 `session_frame.rs` 拥有。会话循环遇到 `Directive(_)` 时不会自行处理包含，而是发出 Io 诊断 `\"file inclusion is only available through a session frame\"`。因此，文件包含必须经过[[SessionFrame 会话帧与文件包含语义|文件会话帧]]入口。^[atlas-core-session.md:34-39]\n\n输出重定向同样属于 `session_frame.rs`。其他相邻职责也有明确归属：转换与求值位于 `typed.rs`，词法位于 `lex.rs`，文法适配位于 `syntax.rs`，领域内建位于 `domain_builtins.rs`。^[atlas-core-session.md:70-74]\n\n## 输出事件与错误顺序\n\n会话层通过 [[SessionEvent 与字节保留输出|SessionEvent]] 承载值、文本、原始字节和诊断。`SessionEvent::output()` 先尝试 UTF-8 解码：合法字节进入 `Output`，非法字节以 `AtlasString` 保留在 `OutputBytes` 中，不用替换字符改写；诊断则直接透传。^[atlas-core-session.md:16-27]\n\n若 `context.execute` 失败，`execute_tokens` 先调用 `drain_failed_printed(span)`，再发出诊断。这一顺序保留求值中途已经产生的 stdout 输出，是[[打印、字符串转换与运行时错误的输出契约]]在会话循环中的体现。^[atlas-core-session.md:54-56]\n\n## 证据边界\n\n本来源是对 `session.rs` 的结构性阅读，不能据此宣称语言或数学验收，也不构成对文件会话帧内部实现的完整说明。实现注释中的上游对应关系属于移植陈述，语义等值仍以 HPC 差分门为准；来源引用的 Weyl owner/dual 验收限定于 A1 范围。^[atlas-core-session.md:9-14, atlas-core-session.md:70-80]\n\n## Sources\n\n- [atlas-core-session.md](atlas-core-session.md)\n",
+  "generatedAt": "2026-10-09T14:35:07.028Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-session.md": {
+      "hash": "f13951d956d620b00fb4f76b2cd13322232f99fa13890ca5d3f5e895a36b5fd0",
+      "concepts": [
+        "有状态的逐命令会话执行",
+        "sessionevent-与字节保留输出",
+        "多行命令的增量解析",
+        "补全标识符的首次使用顺序",
+        "settype-命令的词法终止符跨度重建",
+        "运行时失败后的已打印输出保留",
+        "会话循环与文件会话帧的职责边界",
+        "原版背书的语言层回归测试"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

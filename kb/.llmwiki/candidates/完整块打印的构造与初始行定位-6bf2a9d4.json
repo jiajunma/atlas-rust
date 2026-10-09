@@ -1,0 +1,39 @@
+{
+  "id": "完整块打印的构造与初始行定位-6bf2a9d4",
+  "title": "完整块打印的构造与初始行定位",
+  "slug": "完整块打印的构造与初始行定位",
+  "summary": "common_block_rows 每次新建块并按 (x, gamma-lambda) 定位初始行以避免仅按 x 匹配的歧义；完整块路径执行 mod_reduce，但不执行 make_dominant，也不使用池或修饰符。",
+  "sources": [
+    "atlas-core-domain-validate-print.md"
+  ],
+  "body": "---\ntitle: 完整块打印的构造与初始行定位\nsummary: common_block_rows 每次新建块并按 (x, gamma-lambda) 定位初始行以避免仅按 x 匹配的歧义；完整块路径执行 mod_reduce，但不执行 make_dominant，也不使用池或修饰符。\nsources:\n  - atlas-core-domain-validate-print.md\nkind: concept\ncreatedAt: \"2026-10-09T14:29:51.997Z\"\nupdatedAt: \"2026-10-09T14:29:51.997Z\"\ntags:\n  - 块打印\n  - 块构造\n  - 参数定位\naliases: []\nconfidence: 1\nprovenanceState: merged\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 完整块打印的构造与初始行定位\n\n完整块打印通过 `common_block_rows` 生成按块序排列的行，并返回初始行索引 `init`。该函数是 `print_param_block_wrapper` 与 `print_c_block_wrapper` 的共享引擎；初始行按 `(x, gamma-lambda)` 匹配，因为仅凭 `x` 在 R 包内不能唯一定位。^[atlas-core-domain-validate-print.md:36-41]\n\n## 构造路径\n\n完整块路径 `print_param_block_wrapper` 执行 `mod_reduce`，但不执行 `make_dominant`，也不使用池或块修饰符。`common_block_rows` 每次调用都重新构造块。源码包给出的兼容性依据是：上游 `Rep_table` 池仅用于记忆化，而 dominant gamma 的块修饰符为平凡修饰符，即恒等变换词与零移位，因此新建构造仍保持打印一致。这里关于 dominant gamma 的说明不意味着该打印路径会执行优势化。^[atlas-core-domain-validate-print.md:36-41, atlas-core-domain-validate-print.md:51-52]\n\n这一构造路径与 `located_common_block_rows` 有意区分：后者参与 `KL_column` 与 `KL_block` 使用的[[KL 块与列的共享查找路径]]。理解打印行为时，需要保留两条路径各自的构造与查找约定。^[atlas-core-domain-validate-print.md:36-43]\n\n## 初始行定位\n\n`common_block_rows` 返回的 `init` 是块序行中的索引，其匹配键同时包含 `x` 与 `gamma-lambda`。这个二元匹配条件是定位契约的一部分：由于 R 包内存在相同 `x` 对应多个候选行的歧义，不能简化为仅按 `x` 查找。^[atlas-core-domain-validate-print.md:39-41]\n\n部分块打印使用另一条种子到行路径：`partial_block_rows` 依次执行 `StandardReprMod::mod_reduce`、`common_context` 对 `gamma_lambda` 的作用、`Bruhat_below` 与区间上的部分 `common_block` 构造，再按最终 `(length, x, y)` 排序重编号并返回种子行号，对应上游 `init_index`。相关背景可参见[[公共块的构造与元素编号（PartialBlock）]]；这套部分块排序与定位步骤不应直接视为完整块路径的契约。^[atlas-core-domain-validate-print.md:44-52]\n\n## 证据边界\n\n本页依据的是 `domain_builtins.rs` 块打印机的结构性阅读材料，不构成数学验收。材料中的上游位置与兼容性解释属于实现方移植陈述；打印兼容性仍以 HPC 语料门为准，相关证据要求见[[HPC 验收证据链]]。^[atlas-core-domain-validate-print.md:9-12, atlas-core-domain-validate-print.md:80-81]\n\n## Sources\n\n- [atlas-core-domain-validate-print.md](atlas-core-domain-validate-print.md)\n",
+  "generatedAt": "2026-10-09T14:29:52.193Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-validate-print.md": {
+      "hash": "546db6d40cf4d2e423135d2a9854dad54750006091540b76269c934b2ba26e94",
+      "concepts": [
+        "领域内建函数的校验顺序契约",
+        "完整块打印的构造与初始行定位",
+        "kl-块与列的共享查找路径",
+        "部分块打印的种子归约与生存标志",
+        "对合表达式的打印约定",
+        "kgb-打印与实形一致性",
+        "分级打印中的置换回拉",
+        "实-weyl-群打印的前置检查"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,38 @@
+{
+  "id": "全局-tits-元素的精确有理环面表示-b03c1c5d",
+  "title": "全局 Tits 元素的精确有理环面表示",
+  "slug": "全局-tits-元素的精确有理环面表示",
+  "summary": "GlobalTitsElement 保存完整有理余特征和扭曲对合，将含中心坐标的环面分量规范化到 [0, 2)，向纤维 mod-two 商的规约留待后续处理。",
+  "sources": [
+    "error-global-tits.md"
+  ],
+  "body": "---\ntitle: 全局 Tits 元素的精确有理环面表示\nsummary: GlobalTitsElement 保存完整有理余特征和扭曲对合，将含中心坐标的环面分量规范化到 [0, 2)，向纤维 mod-two 商的规约留待后续处理。\nsources:\n  - error-global-tits.md\nkind: concept\ncreatedAt: \"2026-10-09T14:46:16.460Z\"\nupdatedAt: \"2026-10-09T14:46:16.460Z\"\ntags:\n  - Tits交叉作用\n  - 有理环面\n  - 数据表示\naliases:\n  - 全局-tits-元素的精确有理环面表示\n  - 全T元\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 全局 Tits 元素的精确有理环面表示\n\n`GlobalTitsElement` 是全局 Tits 交叉作用的精确有理环面传输载体。与 `TitsCoset` 不同，它保留完整有理余特征，包括中心坐标；向纤维 mod-two 商的规约在后续阶段进行。其环面坐标统一取模 2，并保存为区间 \\([0,2)\\) 中的典范代表元。^[error-global-tits.md:58-65]\n\n## 表示与构造\n\n该类型的可见性为 `pub(crate)`，包含两个私有字段：`torus_factor: RationalCoweight` 表示有理环面因子，`twisted_involution: TwistedInvolution` 表示[[扭曲对合（TwistedInvolution）]]。^[error-global-tits.md:63-65]\n\n构造器 `new` 首先检查环面因子的维数是否等于根数据的格秩，不等则返回 `RankMismatch`；随后验证上下文中的根数据与 distinguished involution 是否一致；最后复制环面坐标，逐坐标模 2 规范化，再构造 `RationalCoweight`。传入的 twisted involution 原样存储。^[error-global-tits.md:67-73]\n\n对每个有理坐标 \\(x\\)，规范化使用\n\\[\nx\\longmapsto x-2\\left\\lfloor x/2\\right\\rfloor.\n\\]\n测试示例为 \\((-1/2,9/2)\\mapsto(3/2,1/2)\\)。这种坐标规范化与后续向纤维 mod-two 商的规约属于不同阶段。^[error-global-tits.md:60-65, error-global-tits.md:87-90, error-global-tits.md:122-122]\n\n## 单生成元交叉作用\n\n`crossed_generator` 实现 \\(s*(t,w)*\\delta(s)\\)。每次调用都会重新验证上下文，并检查生成元编号与单根类型的有效性；方法返回新的 `Result<Self>`，不修改原值。^[error-global-tits.md:75-90]\n\n设当前单根为 \\(\\alpha\\)，对应余根为 \\(\\alpha^\\vee\\)。环面因子的更新按[[对合下的虚根、实根与复根分类]]分为三种情况：\n\\[\nt'=\n\\begin{cases}\nt-\\langle\\alpha,t\\rangle\\alpha^\\vee,\n& \\alpha\\text{ 为复根},\\\\[2pt]\nt+(1-\\langle\\alpha,t\\rangle)\\alpha^\\vee,\n& \\alpha\\text{ 为虚根且 }\\langle\\alpha,t\\rangle\\in\\mathbb Z,\\\\[2pt]\nt,\n& \\alpha\\text{ 为实根}.\n\\end{cases}\n\\]\n配对与余根累加采用精确有理运算；虚根分支若配对不为整数，则返回 `InvalidStrongTorusFactor`。^[error-global-tits.md:79-85, error-global-tits.md:107-108]\n\n更新后，所有环面坐标再次模 2 规范化。Weyl 分量更新为\n\\[\nw'=s_{\\mathrm{generator}}\\circ w\\circ\ns_{\\delta(\\mathrm{generator})},\n\\]\n并通过 `TwistedInvolution::new` 重建。^[error-global-tits.md:87-90]\n\n## 上下文与词作用\n\n[[全局 Tits 传输的上下文一致性校验]]要求 Weyl 作用和根对合均属于当前内类的根数据，否则返回 `DatumMismatch`。此外，\\(w\\delta\\) 的权与余权矩阵必须分别等于存储的对合矩阵，否则返回 `DistinguishedInvolutionMismatch`。^[error-global-tits.md:101-104]\n\n`crossed_word` 先验证一次上下文，再按输入切片顺序逐个调用 `crossed_generator`，与上游 `cross_act(GlobalTitsElement&, const WeylWord&)` 的顺序一致。非法生成元在执行到该位置时才报错，入口不对整个词预检；前向与逆向执行可能得到不同结果，参见[[Weyl 字的前向交叉作用顺序]]。^[error-global-tits.md:92-97]\n\n## 测试证据与边界\n\n测试锚定了虚根配对的整性门槛、实根交叉的不变性、复根分支的有理反射，以及 B2 中使用余根方向的约定。中心环面示例 \\((0,7/3)\\mapsto(1,1/3)\\) 表明，中心坐标以模 2 代表元保留。^[error-global-tits.md:124-135]\n\n这些测试与结构性阅读不构成 Tits 传输的数学验收。尚未覆盖的路径包括 `InvalidRootAutomorphism`、`InvalidBasedAutomorphism`、内部配对与余根累加的秩错误、容量申请失败，以及非空词中的错误传播；详见[[全局 Tits 传输的测试锚点与证据边界]]。^[error-global-tits.md:9-14, error-global-tits.md:140-142]\n\n`GlobalTitsElement` 的 `Eq` 来自 `RationalCoweight` 与 `TwistedInvolution`，但该来源未展开其相等语义。本次知识维护也未执行 Atlas、Cargo、测试或 benchmark。^[error-global-tits.md:150-151, error-global-tits.md:158-162]\n\n## Sources\n\n- [error-global-tits.md](error-global-tits.md)：StructureError 错误分类学与全局 Tits 交叉作用传输层（error.rs / global_tits.rs）。\n",
+  "generatedAt": "2026-10-09T14:46:16.811Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "error-global-tits.md": {
+      "hash": "e1fca212437016e9ff68ebe99314ce73afb2de16d40c9dd0670ec76750df3cdc",
+      "concepts": [
+        "structureerror-统一错误分类学",
+        "未移植代码路径的显式失败语义",
+        "全局-tits-元素的精确有理环面表示",
+        "按根类型划分的单生成元交叉作用",
+        "weyl-字的前向交叉作用顺序",
+        "全局-tits-传输的上下文一致性校验",
+        "全局-tits-传输的测试锚点与证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

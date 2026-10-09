@@ -1,0 +1,38 @@
+{
+  "id": "根子集的非正交连通分量及顺序-a3ba91f1",
+  "title": "根子集的非正交连通分量及顺序",
+  "slug": "根子集的非正交连通分量及顺序",
+  "summary": "root_components 按非正交关系划分根子集，分量内部按 RootNbr 升序，最终分量按最大 RootNbr 排列，该顺序影响 FPP 乘积向量及 Weyl 见证。",
+  "sources": [
+    "atlas-core-root-numbering-alcove.md"
+  ],
+  "body": "---\ntitle: 根子集的非正交连通分量及顺序\nsummary: root_components 按非正交关系划分根子集，分量内部按 RootNbr 升序，最终分量按最大 RootNbr 排列，该顺序影响 FPP 乘积向量及 Weyl 见证。\nsources:\n  - atlas-core-root-numbering-alcove.md\nkind: concept\ncreatedAt: \"2026-10-09T14:32:34.997Z\"\nupdatedAt: \"2026-10-09T14:32:34.997Z\"\ntags:\n  - 根系\n  - 连通分量\n  - 兼容性\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 根子集的非正交连通分量及顺序\n\n`root_components` 将根子集按非正交关系划分为连通分量：非正交的根相连，并通过连通性归入同一分量。该操作对应上游 `rootdata::components`（`rootdata.cpp:1514–1537`），属于 alcove 机器的一部分。^[atlas-core-root-numbering-alcove.md:27-36]\n\n## 分量内部与分量之间的顺序\n\n每个分量内部的根按 RootNbr 升序排列；最终各分量则按其**最大 RootNbr** 排序，而不是按最小 RootNbr 排序。源材料将后一规则归因于原版的追加行为：新根触及分量时，该分量就被追加。复现时需要同时保留这两层顺序。^[atlas-core-root-numbering-alcove.md:33-36]\n\nRootNbr 的具体顺序由 [[RootNumbering 根编号与 RootNbr 顺序]] 决定：正根先按坐标和 `level` 排序，再按从最后一个坐标向前比较的 `root_compare` 排序；`prefer_coroots` 决定使用单余根坐标还是单根坐标。正根占编号区间 `[npos, total)`，负根编号小于 `npos`，其中 `npos` 为正根数。^[atlas-core-root-numbering-alcove.md:18-25]\n\n## 在 alcove 计算中的作用\n\n分量顺序是可观察行为，会影响 FPP 乘积向量及其 Weyl 见证。因此，仅得到相同的分量集合不足以保持这里的顺序契约；把分量改按最小 RootNbr 排列会偏离源材料描述的原版顺序。^[atlas-core-root-numbering-alcove.md:33-36]\n\n在墙集处理中，`labels_for_component` 为每个墙分量计算余根之间唯一的正本原整数关系，参见 [[墙分量的本原 Coroot 关系]]。随后 `sorted_by_label` 将全部墙按分量标签降序排列，标签相同时按 RootNbr 排序，参见 [[Alcove 墙标签与标签排序]]。这一标签排序与分量本身的排序是不同的规则。^[atlas-core-root-numbering-alcove.md:37-41]\n\n## 证据范围\n\n源材料属于结构性阅读，不声称数学验收；其中上游位置引用属于实现方的移植陈述。根编号与 alcove 行为的兼容性仍以 HPC 差分门为准，相关证据要求可参见 [[HPC 验收证据链]]。^[atlas-core-root-numbering-alcove.md:9-14, atlas-core-root-numbering-alcove.md:55-56]\n\n## Sources\n\n- [根编号与 alcove 机器（domain_builtins.rs 5005–5924）](atlas-core-root-numbering-alcove.md)\n",
+  "generatedAt": "2026-10-09T14:32:35.136Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-root-numbering-alcove.md": {
+      "hash": "0e5331987eef55ba0301cba75985dc72c4d88db710cfceea58a5b0e212c5d664",
+      "concepts": [
+        "rootnumbering-根编号与-rootnbr-顺序",
+        "alcove-墙集与整值墙筛选",
+        "根子集的非正交连通分量及顺序",
+        "alcove-墙标签与标签排序",
+        "由基本-alcove-构造-weyl-词",
+        "基本-alcove-的墙数",
+        "cartan-矩阵的精确求逆"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

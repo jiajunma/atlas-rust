@@ -1,0 +1,38 @@
+{
+  "id": "基本-alcove-的墙数-df041d4f",
+  "title": "基本 Alcove 的墙数",
+  "slug": "基本-alcove-的墙数",
+  "summary": "基本 alcove 的墙由单余根及每个不可约分量的一条最低余根组成，墙数为秩加分量数，本实现中仅该大小用于“Too few walls”检查。",
+  "sources": [
+    "atlas-core-root-numbering-alcove.md"
+  ],
+  "body": "---\ntitle: 基本 Alcove 的墙数\nsummary: 基本 alcove 的墙由单余根及每个不可约分量的一条最低余根组成，墙数为秩加分量数，本实现中仅该大小用于“Too few walls”检查。\nsources:\n  - atlas-core-root-numbering-alcove.md\nkind: concept\ncreatedAt: \"2026-10-09T14:32:45.918Z\"\nupdatedAt: \"2026-10-09T14:32:45.918Z\"\ntags:\n  - alcove\n  - 根系\n  - 边界检查\naliases:\n  - 基本-alcove-的墙数\n  - 基A的\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 基本 Alcove 的墙数\n\n基本 Alcove 的墙由所有单余根，以及每个不可约分量的一条最低余根组成。因此，若根系的秩为 \\(r\\)，不可约分量数为 \\(c\\)，则基本 Alcove 的墙数为\n\\[\nN_{\\mathrm{walls}}=r+c.\n\\]\n这一构造对应 `RootSystem::fundamental_alcove_walls`；源材料将其上游实现定位于 `rootdata.cpp:474–481`。^[atlas-core-root-numbering-alcove.md:45-48]\n\n## 实现与可观察行为\n\n`fundamental_alcove_wall_count` 提供基本 Alcove 的墙数，用于 `\"Too few walls\"` 检查。在这一检查中，可观察的是墙集的大小，而不是具体墙的选择或排列。墙集的其他处理可参见 [[Alcove 墙集与整值墙筛选]] 与 [[Alcove 墙标签与标签排序]]。^[atlas-core-root-numbering-alcove.md:29-48]\n\n## 证据边界\n\n本说明依据对 `domain_builtins.rs` 中根编号与 alcove 机器的结构性阅读，不代表数学验收。上游位置属于实现方的移植陈述；编号与 alcove 行为的兼容性仍以 HPC 差分门为准，参见 [[HPC 验收证据链]]。^[atlas-core-root-numbering-alcove.md:9-14, atlas-core-root-numbering-alcove.md:55-56]\n\n## Sources\n\n- [根编号与 alcove 机器（domain_builtins.rs 5005–5924）](atlas-core-root-numbering-alcove.md)\n",
+  "generatedAt": "2026-10-09T14:32:46.058Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-root-numbering-alcove.md": {
+      "hash": "0e5331987eef55ba0301cba75985dc72c4d88db710cfceea58a5b0e212c5d664",
+      "concepts": [
+        "rootnumbering-根编号与-rootnbr-顺序",
+        "alcove-墙集与整值墙筛选",
+        "根子集的非正交连通分量及顺序",
+        "alcove-墙标签与标签排序",
+        "由基本-alcove-构造-weyl-词",
+        "基本-alcove-的墙数",
+        "cartan-矩阵的精确求逆"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

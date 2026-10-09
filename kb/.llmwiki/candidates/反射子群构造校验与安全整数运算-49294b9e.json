@@ -1,0 +1,38 @@
+{
+  "id": "反射子群构造校验与安全整数运算-49294b9e",
+  "title": "反射子群构造校验与安全整数运算",
+  "slug": "反射子群构造校验与安全整数运算",
+  "summary": "Subgroup::new 校验有符号根号和 Cartan 配对矩阵，配对与反射使用 i128 中间精度及受检窄化，并将坐标溢出和向量错秩报告为安全错误。",
+  "sources": [
+    "atlas-core-weyl-subgroup.md"
+  ],
+  "body": "---\ntitle: 反射子群构造校验与安全整数运算\nsummary: Subgroup::new 校验有符号根号和 Cartan 配对矩阵，配对与反射使用 i128 中间精度及受检窄化，并将坐标溢出和向量错秩报告为安全错误。\nsources:\n  - atlas-core-weyl-subgroup.md\nkind: concept\ncreatedAt: \"2026-10-09T14:39:45.599Z\"\nupdatedAt: \"2026-10-09T14:39:45.599Z\"\ntags:\n  - 输入校验\n  - Cartan矩阵\n  - 整数安全\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 反射子群构造校验与安全整数运算\n\n`Subgroup::new` 是 `Weyl_orbit` 与 `Weyl_orbit_ws` 的反射子群构造与校验入口。它检查生成元及其 Cartan 配对，并在配对和反射运算中使用较宽的整数中间表示与受检窄化，将整数越界报告为错误。^[atlas-core-weyl-subgroup.md:25-35]\n\n## 参数与生成元校验\n\n调用参数共三个；dual 形式按 `vec, rd, gens` 排列，通过首参不是 `RootDatum` 来识别。生成元可以是任意有符号根号，不要求是单根，但必须通过根号与配对合法性检查。^[atlas-core-weyl-subgroup.md:27-33, atlas-core-weyl-subgroup.md:68-69]\n\n生成元行经 `check_W_subsystem` 先做窄化检查，再逐个通过 `internal_root_nbr` 检查有符号根号。随后构造配对矩阵，并用 `infer_lie_type` 校验；失败时保留原版诊断文本 `\"Matrix for root indices is not a Cartan matrix: \\n  …\"`，单生成元情形将矩阵打印为 `[[c]]`。^[atlas-core-weyl-subgroup.md:29-33]\n\n向量大小不匹配时返回 `\"Wrong vector size for Weyl subgroup orbit\"`。原版对过短向量可能发生越界读取，本实现以明确错误处理该输入，不模拟未定义行为。^[atlas-core-weyl-subgroup.md:53-54]\n\n## 安全整数运算\n\nCartan 配对矩阵使用 `i128` 中间精度；结果窄化失败时报告 `\"Integer value too big for Cartan pairing\"`。`level` 与 `reflect` 涉及的配对、反射运算同样检查 `i128` 到 `i32` 的窄化，并使用包含 `\"…subgroup orbit coordinate\"` 的错误信息标识轨道坐标问题。^[atlas-core-weyl-subgroup.md:29-35]\n\n陪集树采用精确的单根或单余根配对坐标，避免任意格核向量的选取及相关定宽溢出。原版核向量在旧稳定器上配对为零、在新增生成元上配对为正数 \\(c\\)，本实现将该值取为 \\(1\\)；配对向量的正比例缩放保持符号、相等关系及 BFS 边不变。有限 Cartan 矩阵的可逆性保证该限制在轨道差上单射，而活动子群外的坐标不影响相等判定。^[atlas-core-weyl-subgroup.md:38-42]\n\n## 校验与轨道计算的边界\n\n`validate` 采用 [[BuildAndDrop 领域内建验证策略]]：仅执行 `Subgroup::new`，不计算轨道。即使结果随后被丢弃，非法生成元仍须先触发校验诊断；测试覆盖非法根号、非 Cartan 矩阵文本与 `i32` 窄化，并将溢出、错秩作为安全错误处理，而不是产生回绕轨道。^[atlas-core-weyl-subgroup.md:52-54, atlas-core-weyl-subgroup.md:63-69]\n\n构造后的优势化使用给定生成元：每步选取首个负 `level` 的生成元反射，并按应用顺序记录事件。用户提供的生成元顺序控制优势化和扩展，内部稳定器 BFS 则使用 `RootNbr` 顺序；相关行为见 [[反射子群轨道与生成元约束下的优势化]] 与 [[反射子群轨道的稳定排序规则]]。^[atlas-core-weyl-subgroup.md:36-42, atlas-core-weyl-subgroup.md:68-69]\n\n## 测试与证据范围\n\n文件内测试还检查空子群保持负权不动并返回 ambient 恒等、陪集轨道与独立穷举闭包一致、见证可重建，以及全单子群保持全群轨道顺序。这些内容可与 [[反射子群轨道与见证的独立验证]] 对照阅读；本来源属于结构性阅读记录，其本身不声称数学验收。^[atlas-core-weyl-subgroup.md:9-14, atlas-core-weyl-subgroup.md:56-64]\n\n## Sources\n\n- [atlas-core-weyl-subgroup.md](../../sources/atlas-core-weyl-subgroup.md)\n",
+  "generatedAt": "2026-10-09T14:39:45.845Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-weyl-subgroup.md": {
+      "hash": "8d98987d0623fc897f520a078b04d4320e73d074693b1967e99c01d9ade27741",
+      "concepts": [
+        "反射子群轨道与生成元约束下的优势化",
+        "精确根配对坐标的陪集树算法",
+        "反射子群轨道的稳定排序规则",
+        "ambient-weyl-见证词与作用方向",
+        "反射子群构造校验与安全整数运算",
+        "buildanddrop-领域内建验证策略",
+        "反射子群轨道与见证的独立验证"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

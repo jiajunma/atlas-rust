@@ -1,0 +1,38 @@
+{
+  "id": "轨道枚举的规模预算与整数边界-dbf278b3",
+  "title": "轨道枚举的规模预算与整数边界",
+  "slug": "轨道枚举的规模预算与整数边界",
+  "summary": "枚举以 max_elements 限制 2^dimension 的规模，使用不饱和的 u128 比较，并分别检查 63 位掩码限制及保留 u32::MAX 哨兵的类编号容量。",
+  "sources": [
+    "weak-real-form.md"
+  ],
+  "body": "---\ntitle: 轨道枚举的规模预算与整数边界\nsummary: 枚举以 max_elements 限制 2^dimension 的规模，使用不饱和的 u128 比较，并分别检查 63 位掩码限制及保留 u32::MAX 哨兵的类编号容量。\nsources:\n  - weak-real-form.md\nkind: concept\ncreatedAt: \"2026-10-09T15:15:23.776Z\"\nupdatedAt: \"2026-10-09T15:15:23.776Z\"\ntags:\n  - 资源限制\n  - 整数边界\n  - 错误处理\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 轨道枚举的规模预算与整数边界\n\n`WeakRealFormPartition` 将 adjoint Cartan fiber 划分为 $W_{im}$ 轨道，每个轨道对应给定 Cartan involution 处的一个弱实形式。枚举同时受元素规模预算、坐标掩码位宽和类编号容量约束；三者分别控制枚举规模、移位表示的有效范围和类表编码的有效范围。^[weak-real-form.md:20-23, weak-real-form.md:34-45, weak-real-form.md:49-54]\n\n## 元素规模预算\n\n`WeakRealFormPartition::build(grading, max_elements)` 在已校验 grading 表背后的 adjoint fiber 上构建划分。若纤维维数为 $d$，需要枚举的元素数为 $2^d$；`max_elements` 是调用方为这一规模设置的上界。^[weak-real-form.md:49-54]\n\n`walk_mask_orbits` 使用 `u128` 计算 `1 << dimension`，再与拓宽后的 `max_elements` 比较。该计算故意不采用饱和处理，以防 `dimension == 64` 时借助 `usize::MAX` 上限错误通过规模检查。^[weak-real-form.md:37-39]\n\n## 掩码与类编号边界\n\n坐标掩码使用 `u64`，并设置 `MAX_MASK_BITS = 63`，要求相关 `1 << dimension` 移位保持在范围内。这个表示边界与调用方设置的规模预算是不同的检查条件。^[weak-real-form.md:34-39, weak-real-form.md:49-51]\n\n类表使用 `Vec<u32>`，其中 `u32::MAX` 保留为 `CLASS_SENTINEL`，不能作为有效类号。`seeded_class` 在类序号无法装入 `u32` 或等于哨兵时返回 `limit_error(\"classes\", …)`。来源指出，在没有伴随 `m_alpha`、每个掩码各自成类的单连通积情形下，这一守卫原则上可达。^[weak-real-form.md:41-45]\n\n## 枚举顺序与确定性编号\n\n枚举按掩码升序选择种子，再用 LIFO 栈遍历轨道。类号按各轨道的最小掩码升序分配，首次遇到的元素就是该类代表元。这使预算与整数边界检查围绕一个确定性的编号过程展开，相关编号语义见 [[WeakRealFormId 的确定性编号与上游对齐]]。^[weak-real-form.md:27-32, weak-real-form.md:37-43]\n\n轨道转移使用 `FiberAction`：通过 `base[i] XOR parity(mask ∧ alpha_columns[i])` 判断非紧性，满足条件时以 `m_alpha_masks[i]` 平移。生成元对合性依据 $\\langle\\alpha,\\alpha^\\vee\\rangle=2 \\pmod 2$，实现中仅以 `debug_assert` 检查；它与预算拒绝、类编号容量错误属于不同的检查机制。相关算法见 [[基于位掩码的 W_im 轨道枚举]]。^[weak-real-form.md:40-45]\n\n## 测试锚点与证据边界\n\n来源记录的测试覆盖欠预算拒绝、rank-33 由预算拒绝、rank-64 由 mask-bits 拒绝，以及对 `seeded_class` 哨兵守卫的直接测试。这些锚点区分了枚举规模限制与掩码表示限制，不能将预算拒绝解释为统一的秩上限。^[weak-real-form.md:84-91]\n\n尚未覆盖的分支包括 `class_of_mask` 越界、各处 `ArithmeticOverflow` 转换，以及对边界 `max_elements == 2^dimension` 的显式断言。来源包属于结构性阅读，未执行构建、测试或原版运行，也未提供数学验收、性能或并行结论；验收应另行追溯 [[HPC 验收证据链]]。^[weak-real-form.md:9-16, weak-real-form.md:89-91, weak-real-form.md:106-109]\n\n## Sources\n\n- [weak-real-form.md](weak-real-form.md)：弱实形式划分：adjoint fiber 的 W_im 轨道。\n",
+  "generatedAt": "2026-10-09T15:15:24.468Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "weak-real-form.md": {
+      "hash": "fde39fa241361dc8f68b054e4332ca65e32bbe34eed72fada95796ebefed35aa",
+      "concepts": [
+        "弱实形式的伴随-cartan-纤维轨道划分",
+        "weakrealformid-的确定性编号与上游对齐",
+        "基于位掩码的-wim-轨道枚举",
+        "轨道枚举的规模预算与整数边界",
+        "代表元级弱实形式归因",
+        "弱实形式归因的来源与整性门控",
+        "代表元归因与-tits-搬运的职责边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

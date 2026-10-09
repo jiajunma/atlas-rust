@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       llm-wiki-compiler:
-        specifier: 1.4.0-rc.2
-        version: 1.4.0-rc.2(ws@8.22.0)
+        specifier: 1.4.2
+        version: 1.4.2(ws@8.22.0)
 
 packages:
 
@@ -78,15 +78,15 @@ packages:
   '@asamuzakjp/css-color@3.2.0':
     resolution: {integrity: sha512-K1A6z8tS3XsmCMM86xoWdn7Fkdn9m6RSVtocUrJYIwZnFVkng/PvkEoWtOWmP+Scc6saYWHWZYbndEEXxl24jw==}
 
-  '@atomicstrata/llmwiki-core@1.4.0-rc.2':
-    resolution: {integrity: sha512-39UgaO8VhWXoEdJLIZeZwpLULB/iMJpz5LhnKg6d0K+3YKpmeTj2eEgz+NWCzVbMUl9/Zk9Am6MC027hfVfyWQ==}
+  '@atomicstrata/llmwiki-core@1.4.2':
+    resolution: {integrity: sha512-LJXcPKSXPYWjmGHL5Rh9ezANn4Vf5c4cGZa0oyQsnQQMcacTkAi31JiRI65WO1e3jhDNMpizQFpZFb1/q7u3+A==}
     engines: {node: '>=24'}
 
-  '@atomicstrata/llmwiki-local-workflows@1.4.0-rc.2':
-    resolution: {integrity: sha512-hhYOZBJHdbfMraLyQEReztdTl6bOdHi3cmcVzvh6JzFT2lDUfrhOsp5dSgl3bkK+B27DawHuKcxnmNwvRrUMRw==}
+  '@atomicstrata/llmwiki-local-workflows@1.4.2':
+    resolution: {integrity: sha512-nVB1wmDmFgmBI6DfZdmAkkIK4LwEnVMX2x7Mj6oRdrk0w1MZLPeqRt2ikXgUhnjqJ7yQ6n4I0Nl+IAN4YDPmLA==}
     engines: {node: '>=24'}
     peerDependencies:
-      '@atomicstrata/llmwiki-core': 1.4.0-rc.2
+      '@atomicstrata/llmwiki-core': 1.4.2
 
   '@babel/runtime@7.29.7':
     resolution: {integrity: sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw==}
@@ -564,8 +564,8 @@ packages:
   linkify-it@5.0.2:
     resolution: {integrity: sha512-ONTm2jCMAVZjgQa/Fy1kScXsuOoF5NPTsoFBdE1KVIZ2vAh/r9+Bqo+0jINCBYnavTPQZz38QzFTme79ENoN3Q==}
 
-  llm-wiki-compiler@1.4.0-rc.2:
-    resolution: {integrity: sha512-idck1gdBJpTr3rOb0MEswfrLCOPgFyaL5NrXsOTon9FnzndkqmLiFi+nBb8JClSe/17/wZ4iDbKkdwoevw/bNg==}
+  llm-wiki-compiler@1.4.2:
+    resolution: {integrity: sha512-fQn8PWFhMFHRQBInNBZ42SvTTRoa6/HQO0yocG50TNQsk7+OXmLaYjPUt2dyzFA9puv4ArHCmiWB7/sgeBAyug==}
     engines: {node: '>=24'}
     hasBin: true
 
@@ -961,7 +961,7 @@ snapshots:
       '@csstools/css-tokenizer': 3.0.4
       lru-cache: 10.4.3
 
-  '@atomicstrata/llmwiki-core@1.4.0-rc.2(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(ws@8.22.0)':
+  '@atomicstrata/llmwiki-core@1.4.2(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(ws@8.22.0)':
     dependencies:
       '@anthropic-ai/claude-agent-sdk': 0.3.285(@anthropic-ai/sdk@0.101.0(zod@4.6.5))(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(zod@4.6.5)
       '@anthropic-ai/sdk': 0.101.0(zod@4.6.5)
@@ -991,9 +991,9 @@ snapshots:
       - utf-8-validate
       - ws
 
-  '@atomicstrata/llmwiki-local-workflows@1.4.0-rc.2(@atomicstrata/llmwiki-core@1.4.0-rc.2(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(ws@8.22.0))':
+  '@atomicstrata/llmwiki-local-workflows@1.4.2(@atomicstrata/llmwiki-core@1.4.2(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(ws@8.22.0))':
     dependencies:
-      '@atomicstrata/llmwiki-core': 1.4.0-rc.2(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(ws@8.22.0)
+      '@atomicstrata/llmwiki-core': 1.4.2(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(ws@8.22.0)
 
   '@babel/runtime@7.29.7': {}
 
@@ -1470,12 +1470,12 @@ snapshots:
     dependencies:
       uc.micro: 2.1.0
 
-  llm-wiki-compiler@1.4.0-rc.2(ws@8.22.0):
+  llm-wiki-compiler@1.4.2(ws@8.22.0):
     dependencies:
       '@anthropic-ai/claude-agent-sdk': 0.3.285(@anthropic-ai/sdk@0.101.0(zod@4.6.5))(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(zod@4.6.5)
       '@anthropic-ai/sdk': 0.101.0(zod@4.6.5)
-      '@atomicstrata/llmwiki-core': 1.4.0-rc.2(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(ws@8.22.0)
-      '@atomicstrata/llmwiki-local-workflows': 1.4.0-rc.2(@atomicstrata/llmwiki-core@1.4.0-rc.2(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(ws@8.22.0))
+      '@atomicstrata/llmwiki-core': 1.4.2(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(ws@8.22.0)
+      '@atomicstrata/llmwiki-local-workflows': 1.4.2(@atomicstrata/llmwiki-core@1.4.2(@modelcontextprotocol/sdk@1.31.0(zod@4.6.5))(ws@8.22.0))
       '@modelcontextprotocol/sdk': 1.31.0(zod@4.6.5)
       '@mozilla/readability': 0.6.0
       ajv: 8.20.0

@@ -1,0 +1,38 @@
+{
+  "id": "实形式的李代数命名规则-11c029f7",
+  "title": "实形式的李代数命名规则",
+  "slug": "实形式的李代数命名规则",
+  "summary": "factor_name 根据根系类型、秩、内类和 grading 分派经典型与例外型名称，涵盖四元数型与 so* 分支，并将签名参数按弱递减顺序打印。",
+  "sources": [
+    "topology-form-name.md"
+  ],
+  "body": "---\ntitle: 实形式的李代数命名规则\nsummary: factor_name 根据根系类型、秩、内类和 grading 分派经典型与例外型名称，涵盖四元数型与 so* 分支，并将签名参数按弱递减顺序打印。\nsources:\n  - topology-form-name.md\nkind: concept\ncreatedAt: \"2026-10-09T15:14:18.543Z\"\nupdatedAt: \"2026-10-09T15:14:18.543Z\"\ntags:\n  - 李代数\n  - 实形式\n  - 命名规则\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 实形式的李代数命名规则\n\n`form_name.rs` 为实形式生成李代数名称，对外接口为 `form_type_name(layout, grading)`。源材料将其描述为上游 `output::printType` 及辅助命名函数的移植，服务于 presentation 层；本材料的证据属于结构性源码阅读，不构成数学验收，也未独立核对所引用的上游代码字节。^[topology-form-name.md:10-14, topology-form-name.md:48-55, topology-form-name.md:82-87]\n\n## 输入与因子处理\n\n输入 grading 来自 `specialGrading` 的划分重载，是 datum 单根上的位集，其中 `1` 表示非紧虚根。命名前通过 `pulled[k] = grading[perm[k]]` 拉回到 Bourbaki 序，再逐因子消费对应切片。相关约定见 [[specialGrading 的分区代表与位集编码]]、[[specialGrading 的 Bourbaki 序拉回与因子切片]] 与 [[分级打印中的置换回拉]]。^[topology-form-name.md:50-55]\n\n`form_type_name` 按内类字母处理因子：`'C'` 消费两个同构因子及两段 grading 切片；环面因子不消费 grading 位；其他因子在置换拉回后调用 `factor_name(bits, letter, rank, ic)`。其中 `m` 定义为最低置位的位置加一，平凡位集取 `m = 0`。^[topology-form-name.md:62-73]\n\n## 名称生成规则\n\n辅助函数 `split(name, n, m)` 在 `m == 0` 时生成单参数形式 `(n)`，否则将参数整理为弱递减的 `(n-minority, minority)`。例如，`su(1,2)` 会打印为 `su(2,1)`。^[topology-form-name.md:57-58]\n\nA 型中，A1 的平凡 grading 给出 `su(2)`，非平凡 grading 给出 `sl(2,R)`。更高秩 A 型包含 `su` 的参数分配规则；不等秩 A 型的四元数分支要求秩为奇数且 grading 平凡，两项条件缺一不可。测试锚点包括不等秩 A2 只有 `sl(3,R)`，以及不等秩 A3 的 `sl(2,H)`、`sl(4,R)`。^[topology-form-name.md:62-65, topology-form-name.md:75-76]\n\nB 型按 `so(2n+1, 2m)` 规则处理。C 型在 `m == rank` 时生成 `sp(2n,R)`，否则采用 `sp(n,m)`。D 型的等秩分支包含 `so*` 系列，其 `[1,0]`／`[0,1]` 选择取决于 `rank % 4` 与 `m == rank` 的相等性条件；不等秩 D4 区分 `so(7,1)` 与 `so(5,3)`，任何非零 grading 都给出后者。^[topology-form-name.md:65-67]\n\nE 型在 grading 平凡且满足“紧或 `rank > 6`”时生成裸名称 `e{rank}`；E6、E7 使用基于 `m` 的分派表，E8 使用 `0xCC` 掩码，对应 `e7.su(2)` 的非紧位 `{2,3,6,7}`。实现还包含 F、G 型分支，但本源材料未展开其具体分派规则。^[topology-form-name.md:68-69]\n\n## 复型与环面\n\n复型条目 `'C'` 覆盖两个同构因子，`complex_name` 接收第一个因子并按下表生成名称。相关结构见 [[复型因子对与环面的名称表示]]。^[topology-form-name.md:59-61]\n\n| 因子类型 | 复李代数名称 |\n| --- | --- |\n| A | `sl(n+1,C)` |\n| B | `so(2n+1,C)` |\n| C | `sp(2n,C)` |\n| D | `so(2n,C)` |\n| E | `e{rank}(C)` |\n| F | `f4(C)` |\n| G | `g2(C)` |\n| T | `gl(1,C)` |\n\n实环面因子 T 在紧情形下命名为 `u(1)`，否则为 `gl(1,R)`。折叠小写字母 `'f'`、`'g'` 用于某些对偶实形的对偶侧命名，本移植不覆盖。^[topology-form-name.md:69-70]\n\n## 边界与测试证据\n\n接口拒绝 `perm` 中大于等于 128 的位置，以符合 `u128` 位集宽度。内部 `factor_name` 使用 `bits: u32`，假定单因子切片不超过 32 位，但源材料指出这一假定没有防护。^[topology-form-name.md:71-73, topology-form-name.md:85-86]\n\n源材料列出七组测试锚点，覆盖 A1、A2、A3、复型 A1 对、B2、不等秩 D4 与环面。其中 B2 测试明确 datum 序中 bit 0 对应前长根，并得到 `so(3,2)`。E/F/G 与 `so*` 分支没有测试锚点；本次知识维护未执行测试或 benchmark，因此这些锚点不能视为本次运行验证结果。^[topology-form-name.md:75-78, topology-form-name.md:85-87, topology-form-name.md:91-95]\n\n## Sources\n\n- [topology-form-name.md](topology-form-name.md) — 对偶分量群平凡性与实形命名（topology.rs / form_name.rs）\n",
+  "generatedAt": "2026-10-09T15:14:19.207Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "topology-form-name.md": {
+      "hash": "4502872aef3dbf7f8a6ac086ca47151e35bf649e71c3b2ad1fdef148cf082c85",
+      "concepts": [
+        "对偶分量群与实形式连通性",
+        "环面对合的-dualpi0-子商构造",
+        "余根限制映射与对合的格基转运",
+        "specialgrading-的-bourbaki-序拉回与因子切片",
+        "实形式的李代数命名规则",
+        "复型因子对与环面的名称表示",
+        "拓扑计算与实形命名的实现及验证边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

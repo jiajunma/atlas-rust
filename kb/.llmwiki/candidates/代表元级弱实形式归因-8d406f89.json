@@ -1,0 +1,38 @@
+{
+  "id": "代表元级弱实形式归因-8d406f89",
+  "title": "代表元级弱实形式归因",
+  "slug": "代表元级弱实形式归因",
+  "summary": "weak_real_form_at_representative 通过 dual fixed-point projection v↦(v+vθ)/2、配对奇偶性和虚根 grading 确定局部轨道，再经 RealFormLabels 映射为全局弱实形式编号。",
+  "sources": [
+    "weak-real-form.md"
+  ],
+  "body": "---\ntitle: 代表元级弱实形式归因\nsummary: weak_real_form_at_representative 通过 dual fixed-point projection v↦(v+vθ)/2、配对奇偶性和虚根 grading 确定局部轨道，再经 RealFormLabels 映射为全局弱实形式编号。\nsources:\n  - weak-real-form.md\nkind: concept\ncreatedAt: \"2026-10-09T15:15:48.985Z\"\nupdatedAt: \"2026-10-09T15:15:48.985Z\"\ntags:\n  - 弱实形式\n  - 对偶投影\n  - 实形标签\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 代表元级弱实形式归因\n\n代表元级弱实形式归因由 `weak_real_form_at_representative` 实现：给定 Cartan 分类中已存储的 twisted involution 代表元及其 torus factor，先确定局部 adjoint fiber 中的弱实形式轨道，再通过该 Cartan 的标签映射得到 fundamental weak-form 编号。它对应上游 `real_form_of` 的代表元级内核。^[weak-real-form.md:56-67]\n\n## 数学过程\n\n首先对 torus factor 施加 dual fixed-point projection：\n\\[\nv \\longmapsto \\frac{v+v\\theta}{2}.\n\\]\n这里采用 Atlas 的行向量、右乘约定。投影值的整数配对使平方中心化；其中偶数配对标记非紧单虚根，由此确定 grading。该 grading 决定一个局部 adjoint-fiber 轨道，再由 Cartan 标签映射到全局弱实形式编号。^[weak-real-form.md:58-63]\n\n局部轨道来自 [[弱实形式的伴随 Cartan 纤维轨道划分]]：`WeakRealFormPartition` 将 adjoint Cartan fiber 划分为 \\(W_{im}\\) 轨道，每个轨道对应该 Cartan involution 处的一个弱实形式。划分保存类表与确定性代表元，标签由 `RealFormLabels` 保存。^[weak-real-form.md:20-23]\n\n具体归因链为 `grading → element_from_grading → class_of → labels().label(local)`。这里必须区分局部轨道编号与标签映射后的全局编号；fundamental Cartan 划分产生的编号兼任 crate 的全局实形编号，相关编号约定见 [[WeakRealFormId 的确定性编号与上游对齐]]。^[weak-real-form.md:27-32, weak-real-form.md:80-82]\n\n## 调用前提与职责边界\n\n输入 `twisted` 必须恰好是 `classification` 存储的某个代表元。对一般 twisted involution，需要先通过 table-backed Tits cross actions 移到代表元，并同步搬运 torus factor；该 helper 不会隐式构建或扩展所需的表。后续 `minimal_torus_part` 下降还依赖目前仍分离的 inverse-Cayley 操作，参见 [[代表元归因与 Tits 搬运的职责边界]]。^[weak-real-form.md:65-72]\n\n由于 `CartanClassification` 不保留 `InnerClass` 句柄，函数将分类的第一个代表元重构为归一化 distinguished involution，作为显式来源一致性检查。来源不匹配报 `DatumMismatch`；随后还要检查 `twisted` 的 datum 与 distinguished-involution 分解，分解不匹配报 `DistinguishedInvolutionMismatch`。^[weak-real-form.md:68-71]\n\n## 验证顺序与整性门\n\n函数依次检查原始因子长度是否等于格秩、分类来源、`twisted` 的 datum，以及 \\(w\\cdot\\delta=\\theta\\) 分解。长度错误报 `RankMismatch`；分解检查通过 `compose_matrices` 同时核对 weight 与 coweight 两套矩阵。之后才查找 Cartan 代表元并执行投影。^[weak-real-form.md:74-77]\n\n**整性检查先于虚根 grading 提取**：投影值必须与每个单根都有整值配对，而非只检查虚根；失败报 `InvalidStrongTorusFactor`。这一顺序使虚基为空的实 Cartan 也无法绕过整性要求。通过检查后，才以 `divisible_by(2)` 判定非紧虚根并完成轨道归因与标签映射，详见 [[弱实形式归因的来源与整性门控]]。^[weak-real-form.md:78-82]\n\n## 测试锚点与证据边界\n\n来源列出的归因测试包括：合成 A1 中，紧或分裂 Cartan 配因子 \\(0\\) 得类 \\(0\\)，紧 Cartan 配 \\(1/2\\) 得类 \\(1\\)；另有秩与半整投影门控、外来同秩分类优先报 `DatumMismatch`，以及固定错误显示文案的 A2 反射半整投影案例。^[weak-real-form.md:84-87]\n\n本页依据对 `weak_real_form.rs` 的结构性阅读。来源包未执行构建、测试或原版运行，因此上述测试锚点不等于本次运行验证，也不构成新增数学验收结论。上游位置仅转述源码注释，未独立重读上游；正确性仍属于其既有 [[HPC 验收证据链]]。^[weak-real-form.md:9-16, weak-real-form.md:101-106]\n\n## Sources\n\n- [weak-real-form.md](weak-real-form.md) — 弱实形式划分：adjoint fiber 的 \\(W_{im}\\) 轨道。\n",
+  "generatedAt": "2026-10-09T15:15:49.666Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "weak-real-form.md": {
+      "hash": "fde39fa241361dc8f68b054e4332ca65e32bbe34eed72fada95796ebefed35aa",
+      "concepts": [
+        "弱实形式的伴随-cartan-纤维轨道划分",
+        "weakrealformid-的确定性编号与上游对齐",
+        "基于位掩码的-wim-轨道枚举",
+        "轨道枚举的规模预算与整数边界",
+        "代表元级弱实形式归因",
+        "弱实形式归因的来源与整性门控",
+        "代表元归因与-tits-搬运的职责边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

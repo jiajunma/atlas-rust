@@ -1,0 +1,38 @@
+{
+  "id": "atlas-类型模型与递归类型图-1c9e543a",
+  "title": "Atlas 类型模型与递归类型图",
+  "slug": "atlas-类型模型与递归类型图",
+  "summary": "类型子系统包含 axis 类型模型、二阶类型机器及递归 typedef 图安装，后者优先使用命名 RHS 槽位并保留环上匿名后代的身份。",
+  "sources": [
+    "atlas-core-root.md"
+  ],
+  "body": "---\ntitle: Atlas 类型模型与递归类型图\nsummary: 类型子系统包含 axis 类型模型、二阶类型机器及递归 typedef 图安装，后者优先使用命名 RHS 槽位并保留环上匿名后代的身份。\nsources:\n  - atlas-core-root.md\nkind: concept\ncreatedAt: \"2026-10-09T14:33:11.178Z\"\nupdatedAt: \"2026-10-09T14:33:11.178Z\"\ntags:\n  - 类型系统\n  - 递归类型\n  - 图结构\naliases:\n  - atlas-类型模型与递归类型图\nconfidence: 1\nprovenanceState: merged\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# Atlas 类型模型与递归类型图\n\nAtlas 的类型模型与递归类型图位于 `atlas-core` 的语言运行时中，主要由 `types.rs`、`types/polymorphic.rs` 和 `types/recursive.rs` 承担。类型化管线另设 `typed/type_groups.rs`，负责递归图构造前的组内名字解析。^[atlas-core-root.md:33-38]\n\n## 类型模型与类型机器\n\n`types.rs` 定位为 axis 类型模型，对应语言 phase B stage 1；文件头将其描述为对上游 `axis-types.w:289-388` 中 `type_expr` 的移植。`types/polymorphic.rs` 则承载二阶类型机器，其标注的上游来源为 `axis-types.w:2264+`。这些定位可与 [[Type 类型表示与语义等值]]及 [[TypeScheme 与类型变量作用域]]关联阅读。^[atlas-core-root.md:33-34]\n\n## 递归类型图\n\n`types/recursive.rs` 负责图级递归 typedef 安装，标注对应上游 `axis-types.w:1640-2010`。其角色描述明确了两项处理约定：优先处理命名 RHS（右侧）槽位，并为环上的匿名后代保留身份。来源未进一步展开节点表示或安装算法。^[atlas-core-root.md:35-35]\n\n递归图构造前，`typed/type_groups.rs` 执行组内名字解析；这一职责与 `global.w:1632-1860` 所对应的校验顺序及诊断保持分离。因此，来源在模块层面区分了构图前名字解析与递归 typedef 图级安装。^[atlas-core-root.md:35-38]\n\n## 与类型化管线的衔接\n\n`typed.rs` 是类型化管线核心，承担从解析结果到类型化可执行表示的转换及求值。其 `convert_expr` 被描述为镜像 `axis.w:272-487`，在单遍转换中完成检查与合成；相关机制见 [[convert_expr 的 in/out 类型模式与单遍转换]]。^[atlas-core-root.md:37-37]\n\n## 证据边界\n\n本页依据的是 crate 门面与模块地图的结构性阅读。上游文件及行号的对应关系属于实现方设计陈述，不能单独证明语义等值；来源明确要求以 HPC 差分门判断语义等值，也未声称完成语言或数学验收。^[atlas-core-root.md:9-13, atlas-core-root.md:55-61]\n\n来源列出了 `types/revision_tests.rs` 作为类型表修订测试，但未提供测试内容或结果，因此不能据此断言递归类型图的具体行为已获验证。相关主题可参见 [[TypeTable 修订身份与缓存失效]]。^[atlas-core-root.md:36-36]\n\n## Sources\n\n- [atlas-core-root.md](atlas-core-root.md) — crate 根：atlas-core 语言门面（lib.rs）。\n",
+  "generatedAt": "2026-10-09T14:33:11.329Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-root.md": {
+      "hash": "defd47f0fb81b7824e92dc98cab3da0ee28a37ac47d81691f5cbe475d1bfa6b4",
+      "concepts": [
+        "atlas-core-语言门面与兼容契约",
+        "有状态词法分析与逐命令执行",
+        "atlas-语法前端与运算符优先级归约",
+        "atlas-类型模型与递归类型图",
+        "类型化转换与求值管线",
+        "领域内建桥接与上下文句柄",
+        "精确整数矩阵约化"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

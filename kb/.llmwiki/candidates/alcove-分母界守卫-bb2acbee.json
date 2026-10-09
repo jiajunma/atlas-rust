@@ -1,0 +1,39 @@
+{
+  "id": "alcove-分母界守卫-bb2acbee",
+  "title": "Alcove 分母界守卫",
+  "slug": "alcove-分母界守卫",
+  "summary": "denominator_exceeds_alcove_bound 判断 denominator > 2^rank，并在 rank ≥ 63 时返回 false，以避免有符号 i64 移位导致阈值失真。",
+  "sources": [
+    "alcove.md"
+  ],
+  "body": "---\ntitle: Alcove 分母界守卫\nsummary: denominator_exceeds_alcove_bound 判断 denominator > 2^rank，并在 rank ≥ 63 时返回 false，以避免有符号 i64 移位导致阈值失真。\nsources:\n  - alcove.md\nkind: concept\ncreatedAt: \"2026-10-09T14:24:02.795Z\"\nupdatedAt: \"2026-10-09T14:24:02.795Z\"\ntags:\n  - 数值边界\n  - deformation\n  - Rust实现\naliases:\n  - alcove-分母界守卫\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# Alcove 分母界守卫\n\nAlcove 分母界守卫 `denominator_exceeds_alcove_bound` 用于 deformation 的分母检查，判断分母是否严格超过数学阈值 \\(2^{\\mathrm{rank}}\\)。它与 `alcove_center` 同为 alcove 模块的公开函数。^[alcove.md:17-24, alcove.md:91-97]\n\n## 接口与判定规则\n\n函数接收 `rank: usize` 与 `denominator: i64`，返回 `bool`，其签名与判定表达式如下。^[alcove.md:29-31, alcove.md:93-97]\n\n```rust\npub fn denominator_exceeds_alcove_bound(rank: usize, denominator: i64) -> bool\n\nrank < i64::BITS as usize - 1 && denominator > (1_i64 << rank)\n```\n\n当 `rank < 63` 时，守卫使用严格不等式 `denominator > 2^rank`：分母恰好等于阈值时返回 `false`，超过阈值才返回 `true`。^[alcove.md:93-97]\n\n当 `rank ≥ 63` 时，数学阈值已超出正 `i64` 的表示范围，因此任何 `i64` 分母都不可能超过它，守卫一律返回 `false`。前置秩判断也避免求值有符号左移 `1_i64 << 63`，该表达式会得到 `i64::MIN`，不能用作正的分母阈值。^[alcove.md:93-97]\n\n## 测试与证据边界\n\n单元测试覆盖 `rank = 62` 时分母取 \\(2^{62}\\) 与 \\(2^{62}+1\\) 的边界，以及 `rank = 63`、`rank = 64` 时分母取 `i64::MAX` 仍返回 `false` 的情况。^[alcove.md:93-97]\n\n这些测试提供了分母界守卫的边界覆盖；来源材料属于结构性源码阅读，不声称 alcove 计算已通过数学验收。材料中的上游引用转录自代码注释，未独立核对上游文件字节。^[alcove.md:9-13, alcove.md:173-176]\n\n## 相关概念\n\n同一模块中的 [[Alcove 重心计算与标准参数重建]] 解释 `alcove_center` 如何保留 KGB 坐标与 `lambda_rho`，仅替换 infinitesimal character；其求解和通分过程可参见 [[Alcove 算法中的精确有理线性代数]]。^[alcove.md:17-19, alcove.md:65-83]\n\n## Sources\n\n- [alcove.md](alcove.md)\n",
+  "generatedAt": "2026-10-09T14:24:02.822Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "alcove.md": {
+      "hash": "8fe7c97ed1f57157aa0c0a8cf956736228a0edd0093318d6d523acad24e3f630",
+      "concepts": [
+        "alcove-重心计算与标准参数重建",
+        "alcove-分母界守卫",
+        "根编号与负根镜像排序",
+        "alcove-墙集与整值墙选择",
+        "墙连通分量与重心分数约束",
+        "墙分量的本原-coroot-关系",
+        "alcove-根格顶点与基本-alcove-约化",
+        "alcove-算法中的精确有理线性代数"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,37 @@
+{
+  "id": "强实分类的构造与资源边界-ad7340f4",
+  "title": "强实分类的构造与资源边界",
+  "slug": "强实分类的构造与资源边界",
+  "summary": "StrongRealClassification::build 基于已有 Cartan 分类，逐类构造 adjoint fiber、ambient fiber 及 fiber map 的像坐标，用 ModTwoSubquotient 求平方商，并在 fiber 维数超过 MAX_MASK_BITS 时报告 StrongRealResourceLimit。",
+  "sources": [
+    "strong-real.md"
+  ],
+  "body": "---\ntitle: 强实分类的构造与资源边界\nsummary: StrongRealClassification::build 基于已有 Cartan 分类，逐类构造 adjoint fiber、ambient fiber 及 fiber map 的像坐标，用 ModTwoSubquotient 求平方商，并在 fiber 维数超过 MAX_MASK_BITS 时报告 StrongRealResourceLimit。\nsources:\n  - strong-real.md\nkind: concept\ncreatedAt: \"2026-10-09T15:12:43.457Z\"\nupdatedAt: \"2026-10-09T15:12:43.457Z\"\ntags:\n  - 分类算法\n  - 模二线性代数\n  - 资源限制\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 强实分类的构造与资源边界\n\n强实分类由 `StrongRealClassification::build(classification, max_fiber_elements)` 构造，建立在已完成的 [[Cartan 分类构造与共享分区|Cartan 分类]] 之上。一个强实形式代表元对应某个平方类的 fiber group 中的一个 $W_{im}$ 轨道，并归属于一个弱实形式。^[strong-real.md:19-22]\n\n## 构造流程与数据组织\n\n`build` 逐个 Cartan 类计算强实层：取得 grading 的 adjoint fiber 与 ambient fiber，构造 fiber map 的像坐标，再使用 `ModTwoSubquotient` 求平方商。最终分类保存 `per_cartan`、`local_of_form`、`kgb_sizes` 和 `global_kgb_size`。平方商所用的基础结构可参见 [[F₂ 子商的低主元坐标（ModTwoSubquotient）]]。^[strong-real.md:51-54]\n\n每个 Cartan 类的结果由 `StrongRealData` 承载，包括平方类集合、逐平方类的 fiber 轨道大小及强代表元。`StrongRealFormRep { fiber_orbit, square_class }` 标识一个平方类中的 $W_{im}$ 轨道；其轨道编号依赖消元时选取的具体解，但轨道大小不依赖该选择，因为 `ker(toAdjoint)` 的平移与作用交换。^[strong-real.md:34-47]\n\n平方类编号是商空间 `(adjoint fiber group) / im(toAdjoint)` 在 crate echelon 基下的陪集坐标整数。来源记录的排序审计确认，该编号在所述版本中与上游一致；这一对应依赖双方共享的 low-pivot RREF 约定。换基可以置换标签，但不会改变 partition 结构或各项大小，详见 [[平方类编号与换基不变量]]。^[strong-real.md:26-30]\n\n## 资源边界\n\n构造接口接受 `max_fiber_elements` 参数。来源明确记载的失败边界是：fiber 维数超过 `MAX_MASK_BITS` 时，构造返回 `StrongRealResourceLimit`。来源未进一步说明 `max_fiber_elements` 的具体检查位置、计数方式或触发条件，因此不能据此补出完整的资源预算规则。^[strong-real.md:19-20, strong-real.md:51-54]\n\n## 查询与大小汇总\n\n`strong_real_data(cartan)` 提供指定 Cartan 类的强实层。`fiber_size(form, cartan)` 在该 form 不属于该 Cartan 类时返回 `Some(0)`，使对全部 Cartan 类求和保持正确；`kgb_size(form)` 返回预计算大小，`global_kgb_size()` 返回所有强实形式的总和。相关汇总见 [[fiber 大小与 KGB 大小汇总]]。^[strong-real.md:56-58]\n\nCartan 类内部还可以查询平方类数量、升序平方类集合、逐平方类的轨道数量、轨道元素及轨道所属弱实形式。`square_class_representative(square)` 选取该平方类中编号最小的局部 weak class；`wrf_preimage_mask(local)` 则给出满足\n$\\mathrm{toAdjoint}(y)=\\mathrm{wrf\\_rep}-\\mathrm{class\\_base}$\n的 fiber 元素。详见 [[Cartan 类的强实层 StrongRealData]]。^[strong-real.md:39-47]\n\n## 证据范围\n\n本页依据对 `strong_real.rs` 的结构性阅读；来源快照记录的是 dirty 工作区字节。该来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。强实层正确性依赖其自身的 [[HPC 验收证据链]]，不能由这些构造说明推导出验收状态。^[strong-real.md:9-15, strong-real.md:77-81]\n\n## Sources\n\n- [strong-real.md](strong-real.md) — 强实形式分类：平方类编号与 fiber 轨道。\n",
+  "generatedAt": "2026-10-09T15:12:44.134Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "strong-real.md": {
+      "hash": "154c5c814ac5d539274cf7bfadb3fce4064e0f557038c79f8a9781257359777a",
+      "concepts": [
+        "强实形式与-fiber-轨道",
+        "平方类编号与换基不变量",
+        "cartan-类的强实层-strongrealdata",
+        "强实分类的构造与资源边界",
+        "fiber-大小与-kgb-大小汇总",
+        "强实分类打印视图-strongrealclassprint"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

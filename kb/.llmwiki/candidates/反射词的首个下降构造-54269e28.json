@@ -1,0 +1,38 @@
+{
+  "id": "反射词的首个下降构造-54269e28",
+  "title": "反射词的首个下降构造",
+  "slug": "反射词的首个下降构造",
+  "summary": "reflection_word 沿首个下降将根降到单根，再逆序回溯构造共轭反射词；simple_reflect_root_nbr 提供单根反射对根编号的作用。",
+  "sources": [
+    "atlas-core-center-classifier.md"
+  ],
+  "body": "---\ntitle: 反射词的首个下降构造\nsummary: reflection_word 沿首个下降将根降到单根，再逆序回溯构造共轭反射词；simple_reflect_root_nbr 提供单根反射对根编号的作用。\nsources:\n  - atlas-core-center-classifier.md\nkind: concept\ncreatedAt: \"2026-10-09T14:26:41.370Z\"\nupdatedAt: \"2026-10-09T14:26:41.370Z\"\ntags:\n  - 根系\n  - 反射词\n  - Weyl群\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 反射词的首个下降构造\n\n`reflection_word` 通过沿首个下降将根降到单根，再逆序回溯，构造相应反射的共轭词。源材料将这一实现对应到上游 `RootSystem::reflection_word`（`rootdata.cpp:601–618`）。^[atlas-core-center-classifier.md:48-50]\n\n## 构造过程\n\n构造分为下降与回溯两个阶段：先沿首个下降逐步到达单根，再按相反顺序回溯，得到共轭词。相关操作 `simple_reflect_root_nbr` 表示单根 `s` 的反射对 `RootNbr` 的作用；根编号背景可参见 [[RootNumbering 根编号与 RootNbr 顺序]]。^[atlas-core-center-classifier.md:48-50, atlas-core-center-classifier.md:57-58]\n\n## 词的作用顺序\n\n构造所得词的解释遵循“最后一个字母先作用”的约定：`word_act_root` 对根如此，`word_act_weight` 对权也如此。阅读下降路径与逆序回溯时，应结合这一作用方向；相关说明见 [[Weyl 词对根与权的作用顺序]]。^[atlas-core-center-classifier.md:51-53]\n\n在相邻的轨道词转换流程中，`convert_to_words` 经陪集树展开恒等元素，每一步将反射词左乘到父段条目上。源材料指出，这与子群见证词采用的词对权作用约定一致，可关联阅读 [[反射子群轨道与见证的独立验证]]。^[atlas-core-center-classifier.md:42-44]\n\n## 证据边界\n\n本来源属于结构性阅读，不声称数学验收；上游行号对应关系属于实现方的移植陈述，兼容性仍以 HPC 差分门为准。因此，首个下降与逆序回溯的描述是实现说明，不构成已通过数学或兼容性验收的结论。^[atlas-core-center-classifier.md:9-14, atlas-core-center-classifier.md:55-60]\n\n## Sources\n\n- [atlas-core-center-classifier.md](atlas-core-center-classifier.md)\n",
+  "generatedAt": "2026-10-09T14:26:41.432Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-center-classifier.md": {
+      "hash": "3789a332382aba6e50fe737a0315f2d9a0d93e31202e954afe423d79b05a1248",
+      "concepts": [
+        "中心分类器与根格陪集制表",
+        "中心陪集表驱动的根格移位枚举",
+        "adjoint-轨道的分层有序-bfs",
+        "levi-子商轨道与顶点轨道扩展",
+        "陪集树到-weyl-词的转换",
+        "反射词的首个下降构造",
+        "weyl-词对根与权的作用顺序"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

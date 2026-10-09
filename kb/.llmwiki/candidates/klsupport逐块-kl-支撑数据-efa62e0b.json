@@ -1,0 +1,39 @@
+{
+  "id": "klsupport逐块-kl-支撑数据-efa62e0b",
+  "title": "KlSupport：逐块 KL 支撑数据",
+  "slug": "klsupport逐块-kl-支撑数据",
+  "summary": "KlSupport 为块元素预计算下降集、good-ascent 集和 length-stop 表，并以本原索引组织 KLV 多项式列；来源仅完成结构性阅读，未作数学验收。",
+  "sources": [
+    "kl-support.md"
+  ],
+  "body": "---\ntitle: KlSupport：逐块 KL 支撑数据\nsummary: KlSupport 为块元素预计算下降集、good-ascent 集和 length-stop 表，并以本原索引组织 KLV 多项式列；来源仅完成结构性阅读，未作数学验收。\nsources:\n  - kl-support.md\nkind: concept\ncreatedAt: \"2026-10-09T14:55:42.771Z\"\nupdatedAt: \"2026-10-09T14:55:42.771Z\"\ntags:\n  - KL算法\n  - Rust设计\n  - 数据结构\naliases:\n  - klsupport逐块-kl-支撑数据\n  - KK支\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# KlSupport：逐块 KL 支撑数据\n\n`KlSupport<B: BlockTopology>` 为每个块预计算 KL 算法所需的支撑数据：各元素的下降集（tau-invariant）与 good-ascent 集、按长度定位的 length-stop 表，以及按给定下降集组织的本原索引表。KLV 多项式 `P_{x,y}` 存放在第 `y` 列的 `prim_index(x, desc(y))` 位置。^[kl-support.md:16-21]\n\n## 构造与数据约束\n\n`new` 首先通过 `validate_topology` 集中检查拓扑不变量：rank 不超过 32；各元素长度存在且按元素顺序非降；逐生成元所需的 descent、Cayley 与 inverse Cayley 数据存在；cross 与 Cayley 像均位于块内。这些检查旨在避免列填充深处发生 panic，相关边界见 [[KlSupport 的拓扑构造门控]]。^[kl-support.md:30-35]\n\n下降集与 good-ascent 集使用 [[RankFlags：简单生成元位集]] 表示，其底层为私有 `u32`，因此 rank 的硬上限是 32。`RankFlags::contains(other)` 表示超集判定，`first_bit` 按生成元编号升序查找最低置位；`set` 和 `is_set` 本身不检查边界，KlSupport 的使用路径依靠构造门控保证容量约束。^[kl-support.md:23-28]\n\n构造时，对每个元素逐生成元分类：满足 `is_descent()` 的生成元进入下降集；否则，仅在类型不是 `ImaginaryTypeII` 时进入 good-ascent 集。因而 `ImaginaryTypeII` 既不属于下降，也不属于 good ascent。^[kl-support.md:35-37]\n\n## 长度定位与判定语义\n\n[[length-stop 长度边界表]] 中，`length_stop[l]` 指向首个长度至少为 `l` 的元素，表末尾追加块大小 `size`。这一定位方式依赖构造期强制的长度非降顺序；本原索引则采用懒填充。^[kl-support.md:37-39]\n\n给定目标下降集 `desc_y`，`is_extremal(x, desc_y)` 判断 `desc(x) ⊇ desc_y`；`is_primitive(x, desc_y)` 判断 `good(x) ∩ desc_y` 是否为空。因此，`x` 对 `y` 的下降集本原，当且仅当 `x` 的 good ascent 中没有任何一个属于 `y` 的下降。相关概念见 [[下降集、good ascent 与本原性]]。^[kl-support.md:19-20, kl-support.md:41-43]\n\n`ascent_descent(x, y)` 查找 `desc(y) − desc(x)` 的最低置位。`unique_ascent(s, z)` 对复上升返回 cross 像，对虚 I 型上升返回第一个 Cayley 像，其余情况返回 `None`。`prim_back_up` 原地向下搜索，先自减再判定；失败时也会将 `*x` 置为 0，这一修改属于调用契约。^[kl-support.md:41-45]\n\n## 本原索引的懒填充\n\n`prepare_prim_index(desc_y)` 是幂等操作，按元素序号降序扫描。本原元素先记录已经遇到的更大本原元素数；遇到 `RealNonparity` 或没有唯一上升像时，记录 `DEAD_END` 哨兵（`usize::MAX`）；其他情况沿 `unique_ascent` 链继承索引。扫描结束后，以本原元素总数 `range` 重写结果：哨兵变为 `range`，其余槽位变为 `range - 1 - slot`。^[kl-support.md:47-53]\n\n`prim_index`、`nr_of_primitives`、`col_size` 和 `self_index` 均要求先针对同一下降集完成 prepare，否则会因 map 缺键而 panic；其中只有 `prim_index` 的文档注释显式声明了这一前置条件。降序扫描还依赖“上升像序号更大”的假定，但来源将其标为阅读观察，代码没有显式防护。^[kl-support.md:53-55, kl-support.md:70-71]\n\n## 测试与证据边界\n\n来源记录了 4 个基于 `FakeTopology` 的测试锚点，覆盖 RankFlags 基本位操作，以及 rank 为 33、长度不满足非降顺序、cross 目标越界三条构造拒绝路径。`new` 的成功路径、全部判定方法和整个本原索引机制没有直接单元测试；来源说明它们经 KL 层的 HPC 门覆盖。详见 [[KL 支撑层的测试覆盖与证据边界]]。^[kl-support.md:57-62]\n\n本页依据对 `crates/atlas-real-group/src/kl_support.rs` 的结构性阅读，不代表 KL 支撑层的数学验收。来源中的上游文件行号仅转录自代码注释，未核对上游字节；该次知识维护也未执行 Atlas、Cargo、测试或 benchmark。^[kl-support.md:9-12, kl-support.md:75-79]\n\n## Sources\n\n- [kl-support.md](../../sources/kl-support.md) — 逐块 KL 支撑数据：KlSupport 与 RankFlags（kl_support.rs）\n",
+  "generatedAt": "2026-10-09T14:55:43.219Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "kl-support.md": {
+      "hash": "4f1c57502a2f47b0a294d55bf3c4b59beb600e13e3dae9f5fc15da14d31ce716",
+      "concepts": [
+        "klsupport逐块-kl-支撑数据",
+        "rankflags简单生成元位集",
+        "klsupport-的拓扑构造门控",
+        "下降集good-ascent-与本原性",
+        "length-stop-长度边界表",
+        "本原索引表的惰性构建",
+        "唯一上升像与本原元素回退",
+        "kl-支撑层的测试覆盖与证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,37 @@
+{
+  "id": "环境根反射字的共享约定-b57d901b",
+  "title": "环境根反射字的共享约定",
+  "slug": "环境根反射字的共享约定",
+  "summary": "reflection_word 通过 to_dominant(reflection(α,2ρ)) 生成并反转反射字，逐轮选择首个负配对生成元并重启扫描；消费方共享这一上游移植约定，终止性依赖数学性质。",
+  "sources": [
+    "twisted-involution-trio.md"
+  ],
+  "body": "---\ntitle: 环境根反射字的共享约定\nsummary: reflection_word 通过 to_dominant(reflection(α,2ρ)) 生成并反转反射字，逐轮选择首个负配对生成元并重启扫描；消费方共享这一上游移植约定，终止性依赖数学性质。\nsources:\n  - twisted-involution-trio.md\nkind: concept\ncreatedAt: \"2026-10-09T15:14:46.728Z\"\nupdatedAt: \"2026-10-09T15:14:46.728Z\"\ntags:\n  - 根系\n  - 反射字\n  - 算法约定\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 环境根反射字的共享约定\n\n环境根反射字由 `root_reflection.rs` 中的 `reflection_word(rc, alpha)` 统一生成，是上游 `RootDatum::reflection_word`（`rootdata.cpp:1092-1095`）的唯一移植点。模块注释禁止消费方另建私有副本；extended parameters 与 common block packet 生成共用这一字约定，相关概念包括[[扩展参数值类型 ExtParam]]与[[公共块的构造与元素编号（PartialBlock）]]。^[twisted-involution-trio.md:66-75]\n\n## 构造与顺序约定\n\n函数的构造关系为 `reflection_word(rc, alpha) = to_dominant(reflection(α, 2ρ))`，返回字遵循上游约定，原样反转一次。这次反转属于共享接口的顺序约定。^[twisted-involution-trio.md:68-72]\n\n优势化采用贪心循环：每轮从生成元 `0` 开始扫描，选择第一个配对为负的生成元施行反射，然后重新从头扫描。循环没有迭代上限，终止性依赖数学性质，代码没有额外护栏。作用顺序可结合[[Weyl 词对根与权的作用顺序]]理解。^[twisted-involution-trio.md:71-75]\n\n## 算术与维度边界\n\n`wrapping_dot` 与 `add_scaled` 全程使用 wrapping `i32` 算术，溢出时静默回绕，没有错误返回路径。长度一致性仅由 `debug_assert_eq!` 检查；release 模式下，长度不一致会按 `zip` 的行为截断。^[twisted-involution-trio.md:73-75]\n\n这一策略与同一来源包中的其他工具不同：`twisted_involution` 全部采用 checked 算术，`involution_classification` 混用 checked、saturating 和普通算术，而 `root_reflection` 全部采用 wrapping 算术。来源未确定这种差异属于有意分层还是实现漂移。^[twisted-involution-trio.md:79-84]\n\n## 证据与覆盖限制\n\n来源记录的是结构性阅读，不构成数学验收；上游位置仅转录自代码注释。`root_reflection.rs` 没有文件内测试，`reflection_word` 全函数被列为未测路径，本次知识维护也未执行 Atlas、Cargo、测试或 benchmark。^[twisted-involution-trio.md:9-13, twisted-involution-trio.md:75-84, twisted-involution-trio.md:88-92]\n\n## Sources\n\n- [twisted-involution-trio.md](../../sources/twisted-involution-trio.md)\n",
+  "generatedAt": "2026-10-09T15:14:47.418Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "twisted-involution-trio.md": {
+      "hash": "b783154e20d31474660cc2dc9bfde380b9a2f64d780f96350452b0fa1220d53c",
+      "concepts": [
+        "扭对合与-weyl-平移",
+        "整数对合的-compactcomplexsplit-分类",
+        "对合分类的资源预算与验证顺序",
+        "cartan-纤维秩与-dualpi0",
+        "环境根反射字的共享约定",
+        "根论工具的整数算术与失败语义"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

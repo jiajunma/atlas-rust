@@ -1,0 +1,39 @@
+{
+  "id": "基于生成元闭包的-twisted-共轭分区-9c159856",
+  "title": "基于生成元闭包的 twisted 共轭分区",
+  "slug": "基于生成元闭包的-twisted-共轭分区",
+  "summary": "generated_twisted_conjugacy_partition 通过生成元闭包构造完整分区，以 twisted involutions 数量计预算、每类仅实例化一个 lattice involution，并使用紧凑根置换查询成员；外部 Cartan 编号仍由 CartanClassification 选举。",
+  "sources": [
+    "inner-class.md"
+  ],
+  "body": "---\ntitle: 基于生成元闭包的 twisted 共轭分区\nsummary: generated_twisted_conjugacy_partition 通过生成元闭包构造完整分区，以 twisted involutions 数量计预算、每类仅实例化一个 lattice involution，并使用紧凑根置换查询成员；外部 Cartan 编号仍由 CartanClassification 选举。\nsources:\n  - inner-class.md\nkind: concept\ncreatedAt: \"2026-10-09T14:51:15.008Z\"\nupdatedAt: \"2026-10-09T14:51:15.008Z\"\ntags:\n  - 生成元闭包\n  - 扭曲共轭\n  - 数据表示\n  - 预算控制\naliases:\n  - 基于生成元闭包的-twisted-共轭分区\n  - 基T共\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 基于生成元闭包的 twisted 共轭分区\n\n`generated_twisted_conjugacy_partition` 通过生成元闭包构建完整的 Weyl twisted-conjugacy 分区。相较于 legacy 版本，它以 twisted involutions 而非全部 Weyl elements 计量预算，并采用紧凑的根置换表示成员归属，以减少大群构造中的完整格数据克隆。^[inner-class.md:97-101]\n\n## 分区对象与接口关系\n\n`InnerClass` 的 `twisted_involutions` 枚举形如 `w after distinguished` 的根对合，得到稳定列表；该列表尚未按 twisted conjugacy 或 Cayley transforms 取商。`twisted_conjugacy_partition` 则提供带成员查找的完整分区，`twisted_conjugacy_classes` 只是其上的薄封装，用于取得确定性的 Weyl twisted-conjugacy 轨道。^[inner-class.md:89-96]\n\n这些轨道的代表元不是 Atlas-canonical 代表元，轨道枚举也不构造 Cartan fibers、real forms 或 Cartan partial order。因此，理解此接口时应区分根理论轨道分区与 [[Cartan 分类构造与共享分区]]，相关职责边界见 [[TwistedConjugacyClass 与 CartanClass 的职责划分]]。^[inner-class.md:92-101]\n\n## 生成元闭包版本的设计\n\n生成元闭包版本改变了预算的计数对象：预算约束的是 twisted involutions 数量，而不是所有 Weyl elements 的数量。该区别是它与 legacy 版本的重要接口语义差异。^[inner-class.md:97-99]\n\n在存储上，每个共轭类只实体化一个 lattice involution；成员归属使用 compact root permutations 表示。这避免了在大群构造中为每个候选项克隆完整 lattice datum，但来源未给出量化的内存或速度测量。^[inner-class.md:99-101, inner-class.md:114-114]\n\n完整分区的构建不决定外部 Cartan 编号：该编号仍由 `CartanClassification` 选举。分区中的成员归属与外部编号因此需要分别理解，可参见 [[CartanId 的 Atlas 编号顺序]]。^[inner-class.md:97-101]\n\n## 上下文与证据边界\n\n该功能属于 [[InnerClass 的根理论状态与实现边界]]：来源描述的 `InnerClass` 是部分实现，拥有已验证的 `BasedRootDatum`、有限根系 `RootSystem` 与 distinguished `RootInvolutionData`，能够枚举根理论的 twisted-conjugacy 轨道；它尚未构建 Atlas Cartan-class fibers，也不持有 real-form data 或构建 KGB graph 所需的 torus data。^[inner-class.md:19-25]\n\n来源属于结构性源码阅读，所依据的是 dirty 工作区的阅读快照。该来源未执行构建、测试或原版运行，也不提供数学验收、性能或并行结论；生成元闭包设计的说明不能替代独立的 [[HPC 验收证据链]]。^[inner-class.md:9-15, inner-class.md:114-114]\n\n## Sources\n\n- [inner-class.md](inner-class.md) — Inner class 层：构造、验证门与 twisted 共轭枚举。\n",
+  "generatedAt": "2026-10-09T14:51:15.487Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "inner-class.md": {
+      "hash": "175bbd59ec0454f638df9c3a189e065e32915d42cd41426f0e14eb207a0c4456",
+      "concepts": [
+        "innerclass-的根理论状态与实现边界",
+        "根-involution-的-innerclass-构造与-weyl-因子",
+        "based-involution-验证与生成元-twist",
+        "innerclass-成员判定与-twisted-分解",
+        "twisted-involution-的三阶段规范化",
+        "twisted-involution-的规范约化表达式",
+        "twisted-involution-枚举与共轭轨道分区",
+        "基于生成元闭包的-twisted-共轭分区"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

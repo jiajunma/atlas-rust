@@ -1,0 +1,37 @@
+{
+  "id": "秩二-dynkin-分类的顺序约定-17331a14",
+  "title": "秩二 Dynkin 分类的顺序约定",
+  "slug": "秩二-dynkin-分类的顺序约定",
+  "summary": "秩二分类按两个非对角 Cartan 条目的乘积分型，其中 B2/C2 标签由给定顶点顺序决定且保持顺序，G2 则按条目方向决定是否交换位置以使短根在前。",
+  "sources": [
+    "dynkin.md"
+  ],
+  "body": "---\ntitle: 秩二 Dynkin 分类的顺序约定\nsummary: 秩二分类按两个非对角 Cartan 条目的乘积分型，其中 B2/C2 标签由给定顶点顺序决定且保持顺序，G2 则按条目方向决定是否交换位置以使短根在前。\nsources:\n  - dynkin.md\nkind: concept\ncreatedAt: \"2026-10-09T14:45:26.234Z\"\nupdatedAt: \"2026-10-09T14:45:26.234Z\"\ntags:\n  - Dynkin分类\n  - 编号约定\n  - 兼容性\naliases:\n  - 秩二-dynkin-分类的顺序约定\n  - 秩D分\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 秩二 Dynkin 分类的顺序约定\n\n秩二 Dynkin 分类不仅确定类型字母，还规定顶点的输出顺序。对于 B2/C2，同构的秩二系统采用哪个标签，由有序 Cartan 条目决定，分类器保留给定顺序；对于 G2，分类器可能交换顶点，使短根在前。^[dynkin.md:51-56]\n\n## 分类规则\n\n对一个秩二连通分量，分类器按 `support` 的升序取顶点 `(i, j)`，再根据乘积 `cartan[i][j] * cartan[j][i]` 分派。乘积为 1 时归为 A 型；乘积为 2 时，若 `cartan[i][j] == -1` 则归为 C 型，否则归为 B 型，两者都不交换顶点；乘积为 3 时归为 G 型，若 `cartan[i][j] != -1` 则交换位置，使短根在前。^[dynkin.md:51-56]\n\n这里的“给定顺序”具体体现为原始顶点编号在 `support` 中的升序。B2/C2 的规则明确保留这一顺序，而不是通过交换顶点统一类型标签；来源将其标记为历史 B2/C2 编号教训的落点。^[dynkin.md:51-56]\n\n## 与 Bourbaki 置换的关系\n\n分类结果的 `position` 向量参与构造 [[Bourbaki 顶点排序与置换语义|Bourbaki 置换]]：`bourbaki_permutation` 按分量顺序拼接各个 `position`，其中 `result[k]` 表示占据 Bourbaki 位置 `k` 的 datum 顶点。因此，秩二分类中的保序或交换决定了对应顶点在置换结果中的顺序。^[dynkin.md:74-76]\n\n已有测试确认：`cartan[0][1] = -2` 的 B2 分类为 B 且不换序，`cartan[0][1] = -1` 的 C2 分类为 C；标准 B2/C2 的 Bourbaki 置换均为平凡置换。G2 的两种指向分别覆盖交换与不交换位置的情况，均以短根在前为约定。^[dynkin.md:89-96]\n\n## 输入与证据边界\n\n上述规则处于 [[Cartan 矩阵输入契约与连通分量划分|Cartan 矩阵分类]] 的输入契约之内：输入须满足 based-datum Cartan 不变量。入口检查方形、对角元为 2、非对角元属于 `-3..=0` 以及零模式对称，但不校验非零条目的数值配对；不能把这些检查视为完整的数学有效性验收。^[dynkin.md:38-41]\n\n本来源属于结构性阅读，未核对上游源码字节；“精确复现 upstream”是注释中的意图声明。现有六个测试均覆盖成功路径，错误路径没有测试覆盖，相关结论应结合 [[Dynkin 分类器的测试覆盖与证据边界]] 理解。^[dynkin.md:10-12, dynkin.md:100-102]\n\n## Sources\n\n- [dynkin.md](dynkin.md) — Dynkin 分类器：连通分量、Bourbaki 置换与折叠 Cartan（dynkin.rs）\n",
+  "generatedAt": "2026-10-09T14:45:26.558Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "dynkin.md": {
+      "hash": "bc6e2a40a58c551ecd96d34cfa6736dc147a4513a76a5ba64f50776637320d2f",
+      "concepts": [
+        "cartan-矩阵输入契约与连通分量划分",
+        "基于图结构的-dynkin-单分量分类",
+        "秩二-dynkin-分类的顺序约定",
+        "bourbaki-顶点排序与置换语义",
+        "基于轨道的折叠-cartan-矩阵",
+        "dynkin-分类器的测试覆盖与证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

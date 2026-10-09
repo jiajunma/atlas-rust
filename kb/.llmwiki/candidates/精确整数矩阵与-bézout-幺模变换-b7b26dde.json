@@ -1,0 +1,38 @@
+{
+  "id": "精确整数矩阵与-bézout-幺模变换-b7b26dde",
+  "title": "精确整数矩阵与 Bézout 幺模变换",
+  "slug": "精确整数矩阵与-bézout-幺模变换",
+  "summary": "IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。",
+  "sources": [
+    "integer-lattice.md"
+  ],
+  "body": "---\ntitle: 精确整数矩阵与 Bézout 幺模变换\nsummary: IntegerMatrix 使用 Malachite 大整数和行主序存储，构造时先校验形状；BezoutTransform 通过扩展最大公因数与精确商构造幺模变换系数。\nsources:\n  - integer-lattice.md\nkind: concept\ncreatedAt: \"2026-10-09T14:51:22.619Z\"\nupdatedAt: \"2026-10-09T14:51:22.619Z\"\ntags:\n  - 精确算术\n  - 整数矩阵\n  - 幺模变换\naliases:\n  - 精确整数矩阵与-bézout-幺模变换\n  - 精B幺\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 精确整数矩阵与 Bézout 幺模变换\n\n`IntegerMatrix` 与私有的 `BezoutTransform` 是 `integer_lattice.rs` 中的精确整数线性代数基础设施，基于 Malachite 大整数 `Integer`。该模块以形状与计算预算检查作为构造、收集入口的前置条件，在触碰存储之前完成相应校验。^[integer-lattice.md:19-20, integer-lattice.md:29-35]\n\n## 精确整数矩阵\n\n`IntegerMatrix` 采用行主序存储，`rows`、`columns` 与 `entries` 均为公开字段。`from_i32_entries` 按照“形状检查、分配、逐元素转换”的顺序构造矩阵：首先调用 `checked_shape`，形状不符时返回 `InvalidIntegerMatrixShape`，通过后才分配存储并将输入转换为精确整数。^[integer-lattice.md:31-35]\n\n计算预算由 `IntegerLatticeBudget` 表达，分别约束单次计算的每个矩阵维数（`max_rank`）、存活工作条目总量（`max_entries`）、初等操作次数（`max_steps`）与中间系数位长（`max_coefficient_bits`）。这些限制属于计算资源约束，不是数学上的秩限制；四个字段均为私有，构造函数 `new` 为 `pub const fn`。^[integer-lattice.md:22-27]\n\n## Bézout 幺模变换\n\n`BezoutTransform` 是私有辅助类型，携带与两个元素关联的幺模变换系数。其中 `s`、`t` 由 `extended_gcd` 得到，`u`、`v` 则通过除以 gcd 的精确商获得。来源材料未展开完整变换矩阵的排列与符号约定。^[integer-lattice.md:33-35]\n\n## 在整数核计算中的作用\n\n`saturated_kernel(matrix, budget)` 先执行预算检查，再进行行列混合约化，同时保持幺模右因子 \\(V\\)。矩阵对角化后，\\(V\\) 中对应零对角元的列构成完整整数核。实现刻意不采用“有理行约化再通分”的路径。^[integer-lattice.md:37-41]\n\n这一核计算用于[[余特征作用的负特征整数子格]]：`negative_coweight_eigenspace` 直接从余特征作用计算\n\\(\\ker_{\\mathbb Z}(I+\\theta_Y)\\)。由于 `LatticeInvolution::coweight_matrix()` 已存储余特征上的对偶作用，该函数不再转置矩阵。^[integer-lattice.md:43-45]\n\n## 相关封装与基的可观测性\n\n[[关系格封装与构造预检]]在 `IntegerMatrix` 之上提供 `RelationMatrix` 等类型。其 `preflight_shape` 在分配或复制条目前校验形状；`from_i32_iter` 在推进迭代器或保留存储之前拒绝超大形状；`RelationGenerator::try_collect` 则仅在生成元描述符计数及其蕴含的分子矩阵通过关系格预算后执行收集。^[integer-lattice.md:47-53]\n\n[[承载可观测量的适配基（adapted_basis）]]展示了整数约化中基选择的下游影响：实现伴随跟踪左变换的逆，并保留上游主元策略，因为选定的基固定 `stable_log` 代表元，进而固定 `g_rho_check` 与下游 `torus_factor` 有理量。该算法还会预检工作矩阵、基、逆与对角线的条目总量。^[integer-lattice.md:55-64]\n\n## 证据边界\n\n本页依据对 `integer_lattice.rs` 的结构性阅读材料，其快照对应 dirty 工作区字节。来源未执行构建、测试或原版运行，因此不提供数学验收、性能或并行结论；相关正确性仍归属于独立的 [[HPC 验收证据链]]。^[integer-lattice.md:9-15, integer-lattice.md:80-80]\n\n## Sources\n\n- [integer-lattice.md](integer-lattice.md) — 精确整数格线性代数：预算、饱和核与可观测基。\n",
+  "generatedAt": "2026-10-09T14:51:23.036Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "integer-lattice.md": {
+      "hash": "46317a3945e83c8951e46d80377f5cb3eb223c287a34ae30cdb455a11fa0bd02",
+      "concepts": [
+        "整数格计算预算integerlatticebudget",
+        "精确整数矩阵与-bézout-幺模变换",
+        "饱和整数核saturatedkernel",
+        "整数基的模-2-归约",
+        "余特征作用的负特征整数子格",
+        "关系格封装与构造预检",
+        "承载可观测量的适配基adaptedbasis"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

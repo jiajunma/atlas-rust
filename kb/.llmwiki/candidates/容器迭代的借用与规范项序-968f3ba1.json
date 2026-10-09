@@ -1,0 +1,38 @@
+{
+  "id": "容器迭代的借用与规范项序-968f3ba1",
+  "title": "容器迭代的借用与规范项序",
+  "slug": "容器迭代的借用与规范项序",
+  "summary": "迭代借用输入并仅构造当前所需分量或键；矩阵迭代避免另造列矩阵，多项式迭代保持 canonical 项序与属主形式。",
+  "sources": [
+    "atlas-core-typed-eval.md"
+  ],
+  "body": "---\ntitle: 容器迭代的借用与规范项序\nsummary: 迭代借用输入并仅构造当前所需分量或键；矩阵迭代避免另造列矩阵，多项式迭代保持 canonical 项序与属主形式。\nsources:\n  - atlas-core-typed-eval.md\nkind: concept\ncreatedAt: \"2026-10-09T14:37:25.842Z\"\nupdatedAt: \"2026-10-09T14:37:25.842Z\"\ntags:\n  - 容器迭代\n  - 借用纪律\n  - 多项式\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 容器迭代的借用与规范项序\n\n容器迭代的实现纪律是借用输入，仅构造当前所需的分量或键。矩阵迭代不得额外构造一个列矩阵；多项式迭代则须保持规范项序（canonical 项序）与属主形式。该纪律位于 `typed.rs` 的 12763 行起的求值实现范围内。^[atlas-core-typed-eval.md:33-37]\n\n## 按需求构造与表示保持\n\n矩阵迭代的约束针对迭代中的值构造：借用已有输入，按当前需求取得分量或键，同时避免再造一个列矩阵。多项式迭代除遵循这一借用纪律外，还与领域值层的 `loop_terms` 配对，保持项的规范顺序和属主形式。^[atlas-core-typed-eval.md:35-37]\n\n这一纪律处于 [[TypedExpr 六族求值与值需求层级]] 的整体求值框架中。求值入口按与转换遍相同的六族分派，`Level` 的 `NoValue` 与 `SingleValue` 两种取值一路下传，决定各个生产者构造多少值。^[atlas-core-typed-eval.md:14-31]\n\n## 证据边界\n\n来源完成的是结构性阅读，不构成语言或数学验收。`EvaluationContext` 的帧与上下文栈以及 133 个测试尚待单独分包；求值兼容性仍以 HPC 语料门为准，可参见 [[HPC 验收证据链]]。^[atlas-core-typed-eval.md:9-12, atlas-core-typed-eval.md:64-70]\n\n## Sources\n\n- [TypedExpr 求值（typed.rs 11565–13741）——六族求值、调用机器与回溯渲染](atlas-core-typed-eval.md)\n",
+  "generatedAt": "2026-10-09T14:37:26.044Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-typed-eval.md": {
+      "hash": "cfe0bf35d6ccf99f4864218b16b6395552ac65f1e18e162db2d2f07d0103a2f4",
+      "concepts": [
+        "typedexpr-六族求值与值需求层级",
+        "容器迭代的借用与规范项序",
+        "函数调用分派与内建参数解包",
+        "闭包参数绑定与无环递归帧",
+        "闭包返回控制与调用错误迹",
+        "源码位置与局部帧的回溯渲染",
+        "求值兼容性的证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

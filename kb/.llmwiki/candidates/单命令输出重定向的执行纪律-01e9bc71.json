@@ -1,0 +1,38 @@
+{
+  "id": "单命令输出重定向的执行纪律-01e9bc71",
+  "title": "单命令输出重定向的执行纪律",
+  "slug": "单命令输出重定向的执行纪律",
+  "summary": ">file 与 >>file 的命令体按表达式先解析，再打开 sink 并求值；解析失败不创建文件，求值失败可保留部分输出，打开失败仅报告且保持 clean。",
+  "sources": [
+    "atlas-core-session-frame.md"
+  ],
+  "body": "---\ntitle: 单命令输出重定向的执行纪律\nsummary: \">file 与 >>file 的命令体按表达式先解析，再打开 sink 并求值；解析失败不创建文件，求值失败可保留部分输出，打开失败仅报告且保持 clean。\"\nsources:\n  - atlas-core-session-frame.md\nkind: concept\ncreatedAt: \"2026-10-09T14:33:41.954Z\"\nupdatedAt: \"2026-10-09T14:33:41.954Z\"\ntags:\n  - 输出重定向\n  - 执行顺序\n  - 错误处理\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 单命令输出重定向的执行纪律\n\n单命令输出重定向由 `SessionFrame` 的 `run_redirect_command` 处理，支持 `>file EXPR` 与 `>>file EXPR`。其核心纪律是：先成功解析命令体，再打开输出文件，随后求值，并无条件关闭 sink。文件接口 `FileSink` 提供 `open(path, append)`、`write_bytes` 与 `close`。^[atlas-core-session-frame.md:23-25, atlas-core-session-frame.md:59-65]\n\n## 解析与文件打开顺序\n\n重定向命令体按**表达式**解析，对应源码包所述上游 `parser.y:180-181` 的 `TOFILE expr`。解析失败不会创建文件。例如，`> \"x\" set qfc = 10` 会在 `=` 处报告 `syntax error, unexpected '='`，属于 `eval/file_commands_b9` 覆盖的拒绝形状。^[atlas-core-session-frame.md:59-62]\n\n解析成功后，sink 才在求值之前打开，执行创建、截断或追加所需的打开操作。因此，语法错误不留下文件；求值失败则仍会留下文件，其中可能包含失败前产生的部分输出。求值失败也不免除关闭 sink 的步骤。^[atlas-core-session-frame.md:23-25, atlas-core-session-frame.md:59-65]\n\n## 输出事件的分流\n\n重定向将命令产生的 `Output` 与 `OutputBytes` 事件写入 sink，其余事件照常向上层传递。顶层执行层继续处理这些事件：非 void 的 `Value` 打印为 `Value: <display>`，void（空元组）不打印；`ReportLine` 与 `ReportBytes` 按当前包含深度缩进，每层两个空格。相关事件模型见 [[SessionEvent 与字节保留输出]]。^[atlas-core-session-frame.md:52-58, atlas-core-session-frame.md:63-65]\n\n## 失败行为与 clean 标志\n\n输出文件打开失败时，只向 stderr 输出一行裸消息 `Failed to open {name}`，跳过该命令并保持会话 clean。该行为与语法、类型和求值错误的处理不同：这些错误会将 `clean` 置为 false。文件打开失败与 abandon 级联本身刻意不弄脏会话，参见 [[clean 标志与 CLI 退出状态]]。^[atlas-core-session-frame.md:43-46, atlas-core-session-frame.md:59-65, atlas-core-session-frame.md:86-87]\n\n## 测试与证据边界\n\n文件内的单元测试覆盖求值前打开 sink、类型环境、命令体先解析、求值失败后关闭 sink，以及打开失败时跳过命令且保持 clean；另有重定向保留嵌套值原始字节的测试。这些测试提供单元级行为锚点，端到端文件命令兼容性仍以 HPC 差分语料为准，参见 [[HPC 验收证据链]]。^[atlas-core-session-frame.md:81-90]\n\n源码包属于结构性阅读，不声明语言或数学验收；其中对 `buffer.w`、`main.w`、`parser.y` 的上游引用是实现方的移植陈述，不能单独视为端到端兼容性证明。^[atlas-core-session-frame.md:9-16, atlas-core-session-frame.md:94-99]\n\n## Sources\n\n- [atlas-core-session-frame.md](atlas-core-session-frame.md)\n",
+  "generatedAt": "2026-10-09T14:33:42.104Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-session-frame.md": {
+      "hash": "ebc347813201c4efc2fdfdc5d2f7d31578cc9372f862a74480c04bd706b7ea0f",
+      "concepts": [
+        "sessionframe-会话帧与文件包含语义",
+        "单命令输出重定向的执行纪律",
+        "会话-clean-标志与诊断分流",
+        "嵌套包含的-abandon-级联",
+        "顶层会话事件的输出规则",
+        "续行预处理与物理行映射",
+        "文件命令兼容性的证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,39 @@
+{
+  "id": "弱实形式的外部编号与严格排序-3d0fa002",
+  "title": "弱实形式的外部编号与严格排序",
+  "slug": "弱实形式的外部编号与严格排序",
+  "summary": "ExternalFormOrder 建立内部弱实形编号与外部编号的双射，按 depth 和 specialGrading 位集严格升序排列，拒绝并列并断言 quasisplit 居末；compact 为 external 0 仅为文档声明。",
+  "sources": [
+    "real-form-labels-order.md"
+  ],
+  "body": "---\ntitle: 弱实形式的外部编号与严格排序\nsummary: ExternalFormOrder 建立内部弱实形编号与外部编号的双射，按 depth 和 specialGrading 位集严格升序排列，拒绝并列并断言 quasisplit 居末；compact 为 external 0 仅为文档声明。\nsources:\n  - real-form-labels-order.md\nkind: concept\ncreatedAt: \"2026-10-09T15:05:04.046Z\"\nupdatedAt: \"2026-10-09T15:05:04.046Z\"\ntags:\n  - 弱实形式\n  - 外部编号\n  - 排序不变量\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 弱实形式的外部编号与严格排序\n\n`ExternalFormOrder` 建立内部弱实形式编号与上游解释器外部输出编号之间的双射，对应 `FormNumberMap`。排序先比较深度 `depth`，再比较 `specialGrading` 位集；实现要求排序键严格有序，并断言 quasisplit 实形式位于最后。^[real-form-labels-order.md:49-59]\n\n## 排序键与不变量\n\n第一排序键是升序排列的 `depth`，即 distinguished involution 处极大正交 noncompact 虚根集的大小。同深度时，使用 `specialGrading` 的 PARTITION 重载所得位集作为第二排序键：位集定义在 twist-fixed 简单生成元上，按无符号数比较，生成元 0 对应最低位。^[real-form-labels-order.md:51-55]\n\n上游使用不稳定的 `std::sort`；Rust 移植则要求严格的 `(depth, grading)` 序，任何相同排序键都会触发 `\"strict (depth, grading) order\"` 不变量违例。quasisplit 必须居末，否则触发 `\"quasisplit last\"`。文档虽然声明 compact 实形式深度为 0、外部编号为 0，但代码没有显式断言首项深度为 0。^[real-form-labels-order.md:56-59]\n\n## 深度计算\n\n`DepthTables` 预计算正虚根及其基非紧奇偶，使用 \\(M=C^T\\) 的有理逆列和，并通过 `\"integral imaginary-simple coordinates\"` 检查整性。深度计算采用贪心过程：保持 `positive_imaginary` 顺序，每次选择首个 noncompact 根，从 noncompact 候选中移除与它不正交的根；对于与它正交但两根之和仍为根的候选，则翻转 compactness。后一情形涉及非单 lace 型的短根对。^[real-form-labels-order.md:61-66]\n\n## Grading 位集与坐标约束\n\n`special_grading_key` 以分区类代表为种子，升序扫描 `0..2^dimension`，以 `>=` 条件替换候选，因此在最大 popcount 的候选中选取最高 fiber 下标。随后在 fiber 秩内取补，再将补集 unslice 到 twist-fixed 简单生成元上，生成元 0 对应最低位。相关机制见 [[specialGrading 的分区代表与位集编码]]。^[real-form-labels-order.md:72-75]\n\n数值位集比较依赖具体坐标顺序。`verified_generator_map` 要求升序排列的 twist-fixed 简单生成元数量等于伴随 fiber 维数，并逐位验证实际有序基；仅有抽象双射并不足够。生成元下标大于或等于 `MAX_KEY_GENERATORS = 127` 时会被拒绝。参见 [[twist-fixed 生成元的有序基校验]]。^[real-form-labels-order.md:68-70]\n\nfiber 宽度受 `MAX_MASK_BITS` 限制，其数值定义不在本来源包内。`special_grading_key` 对 `0..(1 << dimension)` 进行全枚举，来源明确指出其安全性依赖这一宽度限制。^[real-form-labels-order.md:101-102]\n\n## 查询接口与编号衔接\n\n`internal` 和 `external` 在索引越界时返回 `None`。`quasisplit_external()` 返回 `form_count().saturating_sub(1)`；`special_grading(external)` 返回指定外部实形式的平局决胜位集。依据文档与字段注释，位 \\(g\\) 对应生成元 \\(g\\)，置位表示 noncompact imaginary。^[real-form-labels-order.md:77-80]\n\n[[弱实形式的局部到全局标签映射]] 使用 fundamental 分区的 quasisplit 类作为首标签锚点；外部编号层则要求同一锚点居末。`real_form_labels.rs` 与 `real_form_order.rs` 互不导入，来源中没有执行二者组合的代码或测试。^[real-form-labels-order.md:88-94]\n\n## 测试与证据边界\n\n测试锚点包括：SL(2) 的 compact 编号 0、split 居末及 KGB 大小 1、3；Spin(5) 的 `[1,4,11]`；等秩 A2 中 SU(3) 先于 SU(2,1)；twisted A2 的唯一 quasisplit 实形式；以及 Spin(8) 同深度时依靠 grading 严格排序、compact 居首且 split 居末。E6 twisted 回归验证生成元映射为 `[1, 3]`，期望来自给定置换，而非 Rust 输出。^[real-form-labels-order.md:82-86]\n\n这些材料属于结构性源码阅读，不构成数学或正确性验收。外部编号层几乎全部失败路径缺少测试锚点；测试涉及 A1、A2、B2、D4、E6，其中 E6 仅覆盖生成元映射。本次知识维护没有执行 Atlas、Cargo、测试或 benchmark。^[real-form-labels-order.md:98-104, real-form-labels-order.md:108-112]\n\n## Sources\n\n- [real-form-labels-order.md](real-form-labels-order.md)\n",
+  "generatedAt": "2026-10-09T15:05:04.585Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "real-form-labels-order.md": {
+      "hash": "1941572ec78b4058b4475f8b18beb2e7db1ca04960779cf6140d72d0d0270013",
+      "concepts": [
+        "弱实形式的局部到全局标签映射",
+        "cayley-回拉与模二-grading-求解",
+        "虚根上的基-grading-扩展",
+        "弱实形式的外部编号与严格排序",
+        "非紧虚根正交集的深度计算",
+        "specialgrading-的分区代表与位集编码",
+        "twist-fixed-生成元的有序基校验",
+        "局部标签到外部编号的类型组合"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,38 @@
+{
+  "id": "cartan-对合与单根类型分类-3d989ca2",
+  "title": "Cartan 对合与单根类型分类",
+  "slug": "cartan-对合与单根类型分类",
+  "summary": "原型 CartanInvolution 校验 M²=I 及单根像属于根系，RealReductiveGroup 根据像为原根、负根或其它根分类；虚根紧性标志是未经校验的调用方断言且已被 Grading 取代，simple_real_rank 的含义刻意窄于 real rank。",
+  "sources": [
+    "lib-root.md"
+  ],
+  "body": "---\ntitle: Cartan 对合与单根类型分类\nsummary: 原型 CartanInvolution 校验 M²=I 及单根像属于根系，RealReductiveGroup 根据像为原根、负根或其它根分类；虚根紧性标志是未经校验的调用方断言且已被 Grading 取代，simple_real_rank 的含义刻意窄于 real rank。\nsources:\n  - lib-root.md\nkind: concept\ncreatedAt: \"2026-10-09T14:58:57.263Z\"\nupdatedAt: \"2026-10-09T14:58:57.263Z\"\ntags:\n  - Cartan对合\n  - 根类型\n  - 实约化群\naliases:\n  - cartan-对合与单根类型分类\nconfidence: 1\nprovenanceState: merged\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# Cartan 对合与单根类型分类\n\n在 `atlas-real-group` 的 A1 迁移原型层中，`CartanInvolution` 表示 Cartan 对合，`RealReductiveGroup::classify_simple_root` 根据单根在对合下的像进行类型分类。这些定义均为 `pub(crate)`，实现注释标明尚待替换；应将其视为[[A1 迁移原型层与对偶格类型设计]]的一部分。^[lib-root.md:30-49]\n\n## 对合的验证条件\n\n`CartanInvolution` 校验矩阵满足 \\(M^2=I\\)，并要求每个单根的像属于根系。原型 `RootDatum::roots()` 从正、负单根出发，以 FIFO BFS 构造反射闭包，为根系提供确定性的坐标字典序输出；该原型 `RootDatum` 与 `root_datum` 模块中的 `BasedRootDatum` 并非同一类型。^[lib-root.md:34-47, lib-root.md:57-58]\n\n## 单根类型分类\n\n`RootType` 包含四种类型：`CompactImaginary`（紧虚根）、`NoncompactImaginary`（非紧虚根）、`Real`（实根）与 `Complex`（复根）。`classify_simple_root` 按单根的像等于自身、等于负根或属于其他情况进行分类：固定单根属于虚根，像为负根时属于实根，其余属于复根。^[lib-root.md:45-49, lib-root.md:53-54]\n\n虚根的紧性由原型中的 `compact_imaginary` 标志区分。该标志是未经校验的调用方断言，不能由矩阵对合条件直接保证；来源明确指出，它已被 `Grading` 取代。相关类型纪律可参见[[Grading 的位向量类型纪律]]。^[lib-root.md:45-49]\n\n`RealReductiveGroup` 还提供 `simple_real_rank`，但其含义刻意窄于 real rank，不能将二者等同。^[lib-root.md:47-49]\n\n## 测试与证据边界\n\n来源列出的三个测试分别检查 A1 反射取负、固定根按标志判为非紧虚根，以及极大坐标配对时返回 `ArithmeticOverflow` 而非回绕。其中，固定根测试直接涉及上述分类行为；这些测试锚点不构成四种根类型的完整覆盖证明。^[lib-root.md:51-58]\n\n本页依据的是 crate 门面与原型层的结构性阅读，来源不声称数学验收，也未在此次知识维护中执行 Atlas、Cargo、测试或 benchmark。更广泛的根分类主题可参见[[对合下的虚根、实根与复根分类]]。^[lib-root.md:10-14, lib-root.md:55-58, lib-root.md:62-66]\n\n## Sources\n\n- [lib-root.md](lib-root.md)：crate 根：60 模块组织、52 条再导出与 A1 原型层（lib.rs）。\n",
+  "generatedAt": "2026-10-09T14:58:57.751Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "lib-root.md": {
+      "hash": "be28091e5dee51e6325b4a5f82717d6690d49db09e2f75e74c452e66b307143d",
+      "concepts": [
+        "atlas-real-group-的-crate-门面与数学值边界",
+        "a1-迁移原型层与对偶格类型设计",
+        "原型-rootdatum-的构造校验与配对约定",
+        "根系的-bfs-反射闭包枚举",
+        "原型-weyl-群的作用像枚举",
+        "cartan-对合与单根类型分类",
+        "原型层的测试锚点与证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

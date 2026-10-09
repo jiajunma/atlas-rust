@@ -1,0 +1,38 @@
+{
+  "id": "内类字母的字节解析与规范化-d11703e0",
+  "title": "内类字母的字节解析与规范化",
+  "slug": "内类字母的字节解析与规范化",
+  "summary": "checked_inner_class_letters 按字节读取并跳过 ASCII 标点和空白，将 e 归一为 c，依据类型与秩坍缩 s、u；C 消耗两个相同连续因子。",
+  "sources": [
+    "primitive-involution.md"
+  ],
+  "body": "---\ntitle: 内类字母的字节解析与规范化\nsummary: checked_inner_class_letters 按字节读取并跳过 ASCII 标点和空白，将 e 归一为 c，依据类型与秩坍缩 s、u；C 消耗两个相同连续因子。\nsources:\n  - primitive-involution.md\nkind: concept\ncreatedAt: \"2026-10-09T15:03:55.451Z\"\nupdatedAt: \"2026-10-09T15:03:55.451Z\"\ntags:\n  - 内类\n  - 字节解析\n  - 规范化\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 内类字母的字节解析与规范化\n\n`checked_inner_class_letters` 将内类字符串按单因子解析为规范化字母序列，供后续[[单连通群基本权基上的逐字母对合表]]使用。它属于 `primitive_involution.rs` 的纯表实现，不涉及 root datum、Weyl group 或完整 inner-class 管线。^[primitive-involution.md:17-25,39-42,84-91]\n\n## 字节解析\n\n函数接收 `symbols: impl AsRef<[u8]>` 与因子序列 `factors: &[(char, usize)]`，返回 `Result<Vec<char>, InnerClassLetterError>`。输入按字节处理，通过 `char::from(u8)` 转为字符；不进行 UTF-8 解码或替换。未知字节以对应的字节值字符进入 `UnknownSymbol` 诊断，以保留解释器字符串与上游字节流的语义。^[primitive-involution.md:39-40,65-69]\n\n每次读取符号前，解析器通过 `skip_punctuation` 跳过 ASCII 标点与空白。通常一个字母消耗一个因子；大写 `'C'` 消耗两个连续且相同的因子。允许的符号集合为 `\"Ccesu\"`，大小写具有不同含义。^[primitive-involution.md:65-75]\n\n## 规范化规则\n\n解析器会根据因子类型与秩折叠同义字母或不再区分内类的字母；输出不一定保留输入拼写。规则如下。^[primitive-involution.md:74-82]\n\n| 输入字母 | 条件 | 规范化结果 |\n| --- | --- | --- |\n| `'C'` | 当前因子与下一因子的类型、秩均相同 | 保留 `'C'`，消耗两个因子 |\n| `'c'`、`'e'` | 当前因子存在 | 输出 `'c'` |\n| `'s'` | A 型且秩 ≥ 2、奇秩 D 型、E6 或 T 型 | 保留 `'s'` |\n| `'s'` | 其他情形 | 输出 `'c'` |\n| `'u'` | 偶秩 D 型 | 保留 `'u'` |\n| `'u'` | 奇秩 D 型、A 型且秩 ≥ 2、E6 或 T 型 | 输出 `'s'` |\n| `'u'` | 其他情形 | 返回 `MeaninglessUnequalRank` |\n\n源码文档将 `'s'` 向 `'c'` 的折叠解释为：恰在 `-1` 属于 Weyl 群时发生，所列类型为 A1、B、C、偶秩 D、E7、E8、F、G。`'e'` 则始终是 `'c'` 的同义词，不出现在规范化输出中。^[primitive-involution.md:76-81]\n\n## 诊断顺序\n\n解析器先判断符号是否属于 `\"Ccesu\"`，再检查是否还有可消费的因子。因此，即使因子已经耗尽，未知符号仍优先触发 `UnknownSymbol`；合法但多余的符号才触发 `TooManySymbols`。输入结束后若仍有因子未消费，则返回 `TooFewSymbols`。这一顺序属于[[内类字母解析的错误模型与诊断顺序]]的可观测行为。^[primitive-involution.md:71-82]\n\n`'C'` 后没有第二个因子，或两个连续因子的类型、秩不相同，都会返回 `ComplexPair`。`'u'` 用于不支持 unequal-rank 类的类型时，返回携带该因子类型与秩的 `MeaninglessUnequalRank { letter, rank }`。^[primitive-involution.md:60-61,74-81]\n\n## 与对合查表的衔接\n\n`layout_involution` 要求 `letters` 来自上述检查与规范化过程，并要求 `perm` 是 `0..rank` 的排列。它不返回 `Result`；违反前置条件可能导致下标越界 panic 或进入 `unreachable!`。因此，字母解析承担了后续查表所依赖的输入约束。^[primitive-involution.md:86-91]\n\n遵守解析前置条件时，B、C、E7、E8、F、G 上的 `'s'` 已折叠为 `'c'`，不会进入查表中对应的 `'s'` 默认分支；这些分支仅对绕过解析的输入起防御作用。^[primitive-involution.md:138-139]\n\n## 测试与证据边界\n\n测试锚点覆盖 `'s'` 在 A1、B2、C3、D4、D6、E7、E8、F4、G2 上折叠，以及在 A2、A5、D5、E6、T1 上保留；也覆盖 `'u'` 在 D4、D6 上保留，在 A2、D5、E6、T1 上转为 `'s'`，以及若干不支持类型的错误。^[primitive-involution.md:117-121]\n\n该来源是结构性阅读记录，不构成数学或正确性验收，上游引用也未独立核对。已列出的测试缺口包括 `TooManySymbols`、`TooFewSymbols` 的 `Display` 文案及退化空输入；相关限制见[[对合查表实现的证据范围与测试缺口]]。^[primitive-involution.md:134-141]\n\n## Sources\n\n- [内类字母解析与逐字母对合查表（primitive_involution.rs）](primitive-involution.md)\n",
+  "generatedAt": "2026-10-09T15:03:55.997Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "primitive-involution.md": {
+      "hash": "01e78dfdafa9d080af5ea2eb84c7b0038098b28ccc4832638deac371f49adbe7",
+      "concepts": [
+        "内类字母的字节解析与规范化",
+        "内类字母解析的错误模型与诊断顺序",
+        "单连通群基本权基上的逐字母对合表",
+        "bourbaki-重编号与对合矩阵下标映射",
+        "有理运算实现的整数矩阵精确换基",
+        "换基失败的统一不兼容格语义",
+        "对合查表实现的证据范围与测试缺口"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

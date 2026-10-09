@@ -1,0 +1,39 @@
+{
+  "id": "块修正子的相对化与标准参数恢复-70c328d4",
+  "title": "块修正子的相对化与标准参数恢复",
+  "slug": "块修正子的相对化与标准参数恢复",
+  "summary": "make_relative_to 先逆合成定位器，再用更新后的 Weyl 元素变换并计算整正交平移；sr_with_modifier 依次平移、逆向变换和标准化，来源记录了 SL(3,R) 的精确往返测试锚点但未声称数学验收。",
+  "sources": [
+    "block-access-modifier.md"
+  ],
+  "body": "---\ntitle: 块修正子的相对化与标准参数恢复\nsummary: make_relative_to 先逆合成定位器，再用更新后的 Weyl 元素变换并计算整正交平移；sr_with_modifier 依次平移、逆向变换和标准化，来源记录了 SL(3,R) 的精确往返测试锚点但未声称数学验收。\nsources:\n  - block-access-modifier.md\nkind: concept\ncreatedAt: \"2026-10-09T14:40:57.575Z\"\nupdatedAt: \"2026-10-09T14:40:57.575Z\"\ntags:\n  - 块修正子\n  - 参数恢复\n  - 测试覆盖\naliases: []\nconfidence: 1\nprovenanceState: merged\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 块修正子的相对化与标准参数恢复\n\n块修正子的相对化由 `RepContext::make_relative_to` 完成：它更新定位器的相对 Weyl 姿态，并计算两个表示参数之间的整正交位移。恢复路径 `sr_with_modifier` 则先施加位移，再执行反向姿态变换，最后转换为标准参数。这两条路径依赖同一典范 Weyl 词在两个方向上的逐字母互逆性。^[block-access-modifier.md:58-81]\n\n## 修正子表示\n\n[[BlockModifier 块修正子]]包含 `locator: BlockLocator` 与 `shift: RationalWeight`。`trivial(system, simp_int)` 使用恒等 Weyl 元、恒等 `simple_pi` 和零位移；其 `int_sys` 为仅供局部使用且永不读取的 `u32::MAX` 哨兵。`from_locator` 直接包装而不校验；`clear` 保留 `int_sys` 与 `simp_int`，重置 Weyl 元、生成元排列和位移。^[block-access-modifier.md:52-56]\n\n## 相对化流程\n\n`make_relative_to(loc, srm0, bm, srm1)` 首先对定位器部分执行逆合成，随后使用**更新后的** `bm.w`，通过 `transform<true>` 将 `srm1` 移回基姿态，最后把 `bm.shift` 设置为两个 `gamma_lambda` 的整正交差。这里的先后顺序决定了位移计算所用的姿态，相关定位器运算见[[定位器的相对姿态变换]]。^[block-access-modifier.md:76-78]\n\n整正交差由 `make_diff_integral_orthogonal` 构造：从两个代表的差中减去其在 `(1−θ)X*` 中的固定原像，使结果与 `srm.gamma_lambda()` 的整根系正交。该步骤经过 `IntegralSubsystem::integral`、`RepTable::integral_codec` 与 `theta_1_preimage`；差为零时直接返回，debug 构建另有正交性断言。^[block-access-modifier.md:72-75]\n\n## Weyl 姿态变换\n\n`transform_srm<LEFT_TO_RIGHT>` 按 Weyl 词逐字母处理，并根据 `kgb_status(x, s)` 分派。Complex 分支对 `x` 执行 cross，同时对有理权分子施加 offset 为零的简单反射；Real 分支保持 `x` 不变，对分子施加以 `−ρ_R` 为中心的仿射反射，offset 取分母；Imaginary 分支返回 `RepInvariantViolation`。施加方向由 `LEFT_TO_RIGHT` 决定，结束时在最终 `x` 处执行 `real_unique` 归一化。^[block-access-modifier.md:66-70]\n\n私有函数 `simple_reflect_numerator` 保持分母不变，按下式更新分子，并对全过程使用 checked 算术。^[block-access-modifier.md:83-85]\n\n\\[\nv \\leftarrow v-\\alpha_s\\bigl(\\langle v,\\operatorname{coroot}_s\\rangle+\\mathrm{offset}\\bigr).\n\\]\n\nRust 实现使用 `WeylElement::reduced_word` 给出的典范最左下降约化词，上游则使用 transducer 随元素存储的词。源码文档将此声明为对目标域无语义差异的有意偏差：两个方向使用同一典范词，使 `transform<false>` 成为 `transform<true>` 的逐字母逆；相对化与标准参数恢复依赖这一性质。相关背景见[[Weyl 姿态变换与典范约化词]]。^[block-access-modifier.md:58-62]\n\n## 标准参数恢复\n\n`sr_with_modifier(srm, bm, gamma)` 严格按“加位移、逆向变换、转换标准参数”的顺序执行：先加 `bm.shift`，再调用 `transform<false>(bm.w)`，最后调用 `to_standard`。其中 `shift_srm` 对 `gamma_lambda` 加上指定量后，在不变的 involution 处归一化；恢复结果对应[[StandardRepr 标准表示参数]]。^[block-access-modifier.md:71-81]\n\n## 测试与证据边界\n\n源码包含两个集成测试。恒等修正子测试使用 A2 的 SL(3,R) fixture（KGB 尺寸为 4），检查 `sr_with_modifier` 与无修正子的 `sr` 一致。相对化往返测试使用定位到同一典范数据的 SL(3,R) 锚点对，其中 `bm.w` 的词为 `[1]`、位移为 `[0,1]/4`；位移与变换逐字母恢复查询参数，且完整 `sr_with_modifier` 精确恢复 `q` 本身，而非仅相差根平移。^[block-access-modifier.md:89-95]\n\n这些是结构性阅读中的测试锚点，不构成数学或正确性验收。来源记录时，整个 `block_modifier` 切片尚未接线且无现存消费方；`transform_srm` 的分支覆盖依赖集成测试间接提供，`shift_srm` 与 `make_diff_integral_orthogonal` 没有独立单元测试。该次知识维护未执行测试或 benchmark，上游行号也仅转录自源码注释，未核对上游字节。^[block-access-modifier.md:9-13, block-access-modifier.md:99-105, block-access-modifier.md:109-115]\n\n## Sources\n\n- [只读块拓扑与块修正子（block_access.rs / block_modifier.rs）](block-access-modifier.md)\n",
+  "generatedAt": "2026-10-09T14:40:57.863Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "block-access-modifier.md": {
+      "hash": "79d094275987ce6fb664bc2e2397a774cee5a0adae2ee1b58dc45480d6926666",
+      "concepts": [
+        "blocktopology-只读块拓扑接口",
+        "cayley-链的双层无效性与-partialblock-适配",
+        "bruhat-偏序的-hasse-图构造",
+        "blockmodifier-块修正子",
+        "weyl-姿态变换与典范约化词",
+        "有理权分子的-checked-仿射反射",
+        "表示参数差的整根系正交化",
+        "块修正子的相对化与标准参数恢复"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

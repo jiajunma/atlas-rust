@@ -1,0 +1,38 @@
+{
+  "id": "源余权格到伴随余权格的整数投影-dbbc635b",
+  "title": "源余权格到伴随余权格的整数投影",
+  "slug": "源余权格到伴随余权格的整数投影",
+  "summary": "整数投影 Y → P∨ 按源单根顺序计算 pair(root, y) 作为目标坐标，保持可加性且可能具有中心核，因此不应视为同构。",
+  "sources": [
+    "adjoint-fiber.md"
+  ],
+  "body": "---\ntitle: 源余权格到伴随余权格的整数投影\nsummary: 整数投影 Y → P∨ 按源单根顺序计算 pair(root, y) 作为目标坐标，保持可加性且可能具有中心核，因此不应视为同构。\nsources:\n  - adjoint-fiber.md\nkind: concept\ncreatedAt: \"2026-10-09T14:23:41.972Z\"\nupdatedAt: \"2026-10-09T14:23:41.972Z\"\ntags:\n  - 整数格\n  - 余权投影\n  - 中心核\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 源余权格到伴随余权格的整数投影\n\n源余权格到伴随余权格的整数投影由 `map_coweight` 实现，记为 \\(Y \\to P^\\vee\\)。它通过源单根与源余权的整数配对，生成伴随余权坐标；该映射可以具有中心核，不能视为同构。^[adjoint-fiber.md:39-44]\n\n## 坐标构造\n\n`AdjointBasedRootDatum` 仅使用源 datum 的 Cartan 矩阵，通过 `BasedRootDatum::standard` 构造伴随根数据。其 character 基为源单根全基，cocharacter 基为对应的基本余权基，因此目标余权的各坐标与源单根顺序对应。^[adjoint-fiber.md:17-19]\n\n设源单根依次为 \\(\\alpha_1,\\ldots,\\alpha_s\\)，对应基本余权为 \\(\\omega_1^\\vee,\\ldots,\\omega_s^\\vee\\)。投影的坐标表达为\n\\[\n\\pi(y)=\\bigl(\\langle\\alpha_1,y\\rangle,\\ldots,\\langle\\alpha_s,y\\rangle\\bigr),\n\\]\n即在基本余权基下表示为 \\(\\sum_{i=1}^{s}\\langle\\alpha_i,y\\rangle\\omega_i^\\vee\\)。实现按源单根顺序逐项计算 `pair(root, y)`。^[adjoint-fiber.md:17-19, adjoint-fiber.md:41-44]\n\n## 出处绑定与调用检查\n\n`AmbientCoweight` 和 `AdjointCoweight` 均持有 `Arc<AdjointProjectionModel>` 与裸 `Coweight`。裸坐标本身不携带 datum 出处，因此包装类型将坐标绑定到投影模型；相等判定同时要求模型满足 `Arc::ptr_eq` 和坐标相等。两次独立构建的投影互不接受对方绑定的坐标，并返回 `DatumMismatch`。相关设计见 [[余权坐标的投影出处绑定]]。^[adjoint-fiber.md:19-23]\n\n`map_coweight` 先通过 `ensure_source` 检查模型指针身份，再检查预算，最后计算整数配对。运行期投影工作量按 `lr·target·vector_count` 计费，每次调用独立检查，不跨调用累计；预算乘加采用受检运算，溢出返回 `ArithmeticOverflow`。^[adjoint-fiber.md:41-44, adjoint-fiber.md:52-58]\n\n## 中心核与对合作用\n\n中心方向可以被投影消去。已有测试覆盖维数 \\(2\\to1\\) 的情形，验证中心余权映到单位元，并验证可加性\n\\[\n\\pi(a+b)=\\pi(a)+\\pi(b).\n\\]\n这也限定了该映射的用途：它描述向伴随半单商的投影，而不保证保留源格的全部信息。^[adjoint-fiber.md:10-12, adjoint-fiber.md:41-44, adjoint-fiber.md:66-67]\n\n伴随对合作用先以根像的单根坐标列构造根作用矩阵，再取转置得到余权作用矩阵。通常对偶作用使用逆转置；这里 `RootInvolutionData` 已验证根作用为对合，因此逆转置等于转置。A1+A2 非对称作用测试逐坐标基验证了交织关系\n\\[\n\\pi(\\theta y)=\\theta_{\\mathrm{adjoint}}\\pi(y).\n\\]\n该构造与 [[伴随 Cartan fiber 的对合作用构造]] 相关。^[adjoint-fiber.md:29-34, adjoint-fiber.md:69-71]\n\n## 与模二纤维映射的关系\n\n整数投影另有模二形态 `apply_mod_two`：它按根系数的奇性逐坐标翻转奇偶位。构建伴随纤维时，投影作为 `ModTwoAmbientMap` 传入 `source.validate_induced_map`，验证其可以下降到纤维子商；`FiberToAdjoint::apply` 随后依次取源元素的规范代表、执行模二投影、构造目标纤维元素。相关概念见 [[mod-2 投影与纤维商上的诱导映射]] 和 [[FiberToAdjoint 的按需投影]]。^[adjoint-fiber.md:34-37, adjoint-fiber.md:45-48]\n\n## 证据范围\n\n来源是对 `adjoint_fiber.rs` 的结构性阅读，不构成数学验收。材料记录了中心核、可加性、跨投影拒绝和对合作用交织关系等测试锚点，但本次知识维护没有执行 Atlas、Cargo、测试或 benchmark；部分错误分支也未被所列测试覆盖。^[adjoint-fiber.md:9-13, adjoint-fiber.md:64-75, adjoint-fiber.md:81-85]\n\n## Sources\n\n- [adjoint-fiber.md](adjoint-fiber.md) — 伴随 Cartan 纤维：构建、投影与 mod-2 商（adjoint_fiber.rs）\n",
+  "generatedAt": "2026-10-09T14:23:41.983Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "adjoint-fiber.md": {
+      "hash": "e016d680ae678e233a266d5925db41dbc6c7072659a127b62f410cd467bcb1d5",
+      "concepts": [
+        "伴随-cartan-纤维的构建与下降验证",
+        "余权坐标的投影出处绑定",
+        "根对合诱导的伴随余权作用",
+        "源余权格到伴随余权格的整数投影",
+        "mod-2-投影与纤维商上的诱导映射",
+        "伴随纤维的资源预算与可恢复错误",
+        "伴随纤维映射的测试证据与覆盖边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

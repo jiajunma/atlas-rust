@@ -1,0 +1,39 @@
+{
+  "id": "对合表达式的打印约定-8f1682b1",
+  "title": "对合表达式的打印约定",
+  "slug": "对合表达式的打印约定",
+  "summary": "involution_expression 遵循 printInvolution 的表示约定：生成元编号从 1 开始，^ 表交叉、x 表共轭，并以 e 收尾。",
+  "sources": [
+    "atlas-core-domain-validate-print.md"
+  ],
+  "body": "---\ntitle: 对合表达式的打印约定\nsummary: involution_expression 遵循 printInvolution 的表示约定：生成元编号从 1 开始，^ 表交叉、x 表共轭，并以 e 收尾。\nsources:\n  - atlas-core-domain-validate-print.md\nkind: concept\ncreatedAt: \"2026-10-09T14:29:51.759Z\"\nupdatedAt: \"2026-10-09T14:29:51.759Z\"\ntags:\n  - 对合\n  - 表达式打印\n  - 表示约定\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 对合表达式的打印约定\n\n`involution_expression` 用于打印对合表达式；源材料将其对应到上游 `printInvolution`（`prettyprint.cpp:219–232`），并规定生成元编号、操作标记与结尾符号的表示方式。^[atlas-core-domain-validate-print.md:53-54]\n\n## 表示规则\n\n表达式中的生成元使用 **1 基数字编号**；`^` 表示交叉操作，`x` 表示共轭操作，末尾以 `e` 收尾。理解相关操作时，可参见 [[Cross、Cayley 与逆 Cayley 链接]] 与 [[Weyl 元素的扭曲共轭]]。^[atlas-core-domain-validate-print.md:53-54]\n\n## 证据边界\n\n上述约定来自对 `domain_builtins.rs` 块打印机部分的结构性阅读，不构成数学验收。上游函数及行号的对应关系属于实现方的移植陈述；打印兼容性仍以 HPC 语料门为准，相关证据要求可参见 [[HPC 验收证据链]]。^[atlas-core-domain-validate-print.md:9-12, atlas-core-domain-validate-print.md:34-54, atlas-core-domain-validate-print.md:80-81]\n\n## Sources\n\n- [校验与打印（domain_builtins.rs 9730–12263）](atlas-core-domain-validate-print.md)\n",
+  "generatedAt": "2026-10-09T14:29:51.850Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-validate-print.md": {
+      "hash": "546db6d40cf4d2e423135d2a9854dad54750006091540b76269c934b2ba26e94",
+      "concepts": [
+        "领域内建函数的校验顺序契约",
+        "完整块打印的构造与初始行定位",
+        "kl-块与列的共享查找路径",
+        "部分块打印的种子归约与生存标志",
+        "对合表达式的打印约定",
+        "kgb-打印与实形一致性",
+        "分级打印中的置换回拉",
+        "实-weyl-群打印的前置检查"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

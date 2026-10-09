@@ -1,0 +1,39 @@
+{
+  "id": "weylaction-的对偶全格作用-1dc5442a",
+  "title": "WeylAction 的对偶全格作用",
+  "slug": "weylaction-的对偶全格作用",
+  "summary": "在 character 与 cocharacter 全格上维护反射矩阵及复合作用，反射构造使用检查算术，但矩阵复合包含未经检查的 i32 收窄。",
+  "sources": [
+    "weyl-layer.md"
+  ],
+  "body": "---\ntitle: WeylAction 的对偶全格作用\nsummary: 在 character 与 cocharacter 全格上维护反射矩阵及复合作用，反射构造使用检查算术，但矩阵复合包含未经检查的 i32 收窄。\nsources:\n  - weyl-layer.md\nkind: concept\ncreatedAt: \"2026-10-09T15:17:25.853Z\"\nupdatedAt: \"2026-10-09T15:17:25.853Z\"\ntags:\n  - Weyl群\n  - 矩阵作用\n  - 对偶格\n  - 算术边界\naliases:\n  - weylaction-的对偶全格作用\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# WeylAction 的对偶全格作用\n\n`WeylAction` 是 Weyl 群的矩阵级作用表示，同时作用于 character 与 cocharacter 两个全格，并携带所属的 `BasedRootDatum`。它与以枚举根置换表示元素的词级组合层共同构成 [[Weyl 群的矩阵作用与词级元素双层结构]]；构造矩阵作用本身无需枚举整个 Weyl 群。^[weyl-layer.md:19-26]\n\n## 数据与反射构造\n\n`WeylAction` 保存三个字段：`datum: Arc<BasedRootDatum>`、`weight_matrix` 和 `coweight_matrix`。两套矩阵分别描述权与余权方向的作用；`identity` 使用阶数为 `lattice_rank` 的单位矩阵，因此表示范围是完整格，而不只是半单部分。^[weyl-layer.md:19-21, weyl-layer.md:30-32]\n\n`simple_reflection` 根据根与余根的对偶配对构造反射矩阵，其条目为\n\\(M_{ij}=\\delta_{ij}-\\mathrm{reflected}_i\\,\\mathrm{pairing}_j\\)。\n构造过程采用受检查的 `i128` 算术，再收窄为 `i32`。`root_reflection` 则支持任意枚举根上的反射，且不依赖根的符号；这为 Cayley/cross 分解重放中强正交根的反射提供支持。^[weyl-layer.md:31-36]\n\n## 作用、复合与层间转换\n\n`act` 与 `act_on_coweight` 分别执行两个格上的作用。`compose(right)` 的顺序是先作用 `right`，再作用 `self`。访问器包括 `datum`、`datum_arc`、`rank`、`matrix` 和 `coweight_matrix`，其中 `datum_arc` 会增加 `Arc` 引用计数。^[weyl-layer.md:37-39]\n\n矩阵作用可通过 `RootSystem::action_permutation` 转为根排列，并由 `WeylElement::from_action` 桥接到词级元素层。该词级层提供长度、下降、乘法、逆与按需约化词等组合操作，参见 [[WeylElement 的置换表示与长度下降不变量]]。^[weyl-layer.md:22-26, weyl-layer.md:70-79]\n\n## 等值语义与安全边界\n\n“相等即矩阵作用相等”的描述需要结合 datum 理解：实际实现使用派生的逐字段比较，包含 datum 的值。即使矩阵相同，datum 值不同的两个作用仍不相等；`Arc` 的 `PartialEq` 比较其内部值，因此这里也不是按指针身份判等。参见 [[WeylAction 的等值与 datum 身份语义]]。^[weyl-layer.md:45-47]\n\n反射构造与矩阵复合的算术保护程度不同。`compose_matrices` 使用 `i64` 累加，随后以 `sum as i32` 无检查截断；源码注释以 Weyl 矩阵条目的 Cartan 界解释其合理性，但该论证未形式化。供枚举热循环使用的 `compose_fast` 完全无检查，违反前置条件可能触发 panic。^[weyl-layer.md:48-51]\n\n`simple_reflection` 对根使用 `.get`，越界返回 `IndexOutOfRange { upper_bound: semisimple_rank }`；余根则直接下标访问，长度不一致时存在潜在 panic 面。此外，`apply_matrix` 对不规则矩阵行复用 `InvalidRootAutomorphism` 错误变体。^[weyl-layer.md:33-35, weyl-layer.md:51-51]\n\n## 测试锚点与证据范围\n\n来源列出的相关测试锚点包括：格秩为 2、半单秩为 1 的 A1 全格作用，A2 编织关系的值相等，非对称 Cartan 情形下双作用保持配对，空半单部分的越界错误，同秩异 datum 的 `DatumMismatch`，以及 `i32::MAX` 根坐标触发的 `ArithmeticOverflow`。这些锚点涉及全格覆盖、对偶配对、等值与错误处理。^[weyl-layer.md:59-62]\n\n该来源属于结构性源码阅读，未执行构建、测试或原版运行；测试锚点不能视为本次运行结果，也不构成数学验收或性能结论。Weyl 层的正确性另由其自身的 [[HPC 验收证据链]] 支撑，本页不扩展其范围。^[weyl-layer.md:9-15, weyl-layer.md:121-121]\n\n## Sources\n\n- [weyl-layer.md](weyl-layer.md)：Weyl 群层：矩阵作用与词级元素的双层结构。\n",
+  "generatedAt": "2026-10-09T15:17:26.575Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "weyl-layer.md": {
+      "hash": "9584adc0171179e475fb3017f93af12877ee7deeae61278e6f131b76a2e67d12",
+      "concepts": [
+        "weyl-群的矩阵作用与词级元素双层结构",
+        "weylaction-的对偶全格作用",
+        "weylaction-的等值与-datum-身份语义",
+        "带基数预算的-weyl-群作用枚举",
+        "weylelement-的置换表示与长度下降不变量",
+        "weyl-元素的扭曲共轭",
+        "基于左下降剥离的规范约化词",
+        "parabolicpieces-的抛物分解与排序键"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

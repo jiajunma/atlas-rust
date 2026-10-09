@@ -1,0 +1,39 @@
+{
+  "id": "表示参数差的整根系正交化-ede4a848",
+  "title": "表示参数差的整根系正交化",
+  "slug": "表示参数差的整根系正交化",
+  "summary": "make_diff_integral_orthogonal 借助整根子系统编码和 theta_1_preimage 减去差在 (1-θ)X* 中的固定原像，使结果与指定参数的整根系正交，并对零差短路。",
+  "sources": [
+    "block-access-modifier.md"
+  ],
+  "body": "---\ntitle: 表示参数差的整根系正交化\nsummary: make_diff_integral_orthogonal 借助整根子系统编码和 theta_1_preimage 减去差在 (1-θ)X* 中的固定原像，使结果与指定参数的整根系正交，并对零差短路。\nsources:\n  - block-access-modifier.md\nkind: concept\ncreatedAt: \"2026-10-09T14:40:34.975Z\"\nupdatedAt: \"2026-10-09T14:40:34.975Z\"\ntags:\n  - 整根系\n  - 表示论\n  - 正交化\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 表示参数差的整根系正交化\n\n表示参数差的整根系正交化由 `RepContext::make_diff_integral_orthogonal` 实现：从两个代表的差中减去其在 `(1−θ)X*` 中的固定原像，使结果与 `srm.gamma_lambda()` 的整根系正交。该操作用于块修正子的相对化计算，确定其平移量 `shift`。^[block-access-modifier.md:72-78]\n\n## 正交化过程\n\n实现通过 `IntegralSubsystem::integral`、`RepTable::integral_codec` 与 `theta_1_preimage` 取得所需的固定原像，再从代表差中减去该原像。差为零时直接短路；debug 构建另以 `debug_assert` 检查正交性。相关图像格背景可参见 [[对合的 (1−θ)X* 图像基对]]。^[block-access-modifier.md:72-75]\n\n## 在块修正子中的作用\n\n[[BlockModifier 块修正子]] 包含定位器 `locator` 与有理权平移量 `shift`。`make_relative_to(loc, srm0, bm, srm1)` 先执行定位器部分的逆合成，再使用**更新后的** `bm.w`，通过 `transform<true>` 将 `srm1` 移回基姿态，最后将 `bm.shift` 设为两个 `gamma_lambda` 的整正交差。因此，正交化发生在姿态调整之后。^[block-access-modifier.md:52-56, block-access-modifier.md:76-78]\n\n读取修正后的参数时，`sr_with_modifier` 先加上 `bm.shift`，再施加 `transform<false>(bm.w)`，最后调用 `to_standard`。这一顺序构成 [[块修正子的相对化与标准参数恢复]] 的恢复路径；正反方向使用同一典范约化词，使两个方向的变换互为逐字母逆。^[block-access-modifier.md:58-62, block-access-modifier.md:79-81]\n\n## 测试与证据边界\n\n源码包含一个 SL(3,R) 的 `make_relative_to` 往返集成测试：锚点对的定位器在同一典范数据上碰撞，`bm.w` 的词为 `[1]`，`shift` 为 `[0,1]/4`。测试检查平移与变换后精确返回查询参数，并由完整的 `sr_with_modifier` 恢复该参数；比较标准是精确相等，而非仅相差根平移。^[block-access-modifier.md:89-95]\n\n`make_diff_integral_orthogonal` 没有独立单元测试。来源仅报告结构性源码阅读，不构成数学或正确性验收；该来源记录时，整个 `block_modifier` 切片尚未接线、没有现存消费方，本次知识维护也未执行测试或 benchmark。^[block-access-modifier.md:9-13, block-access-modifier.md:99-105, block-access-modifier.md:114-115]\n\n## Sources\n\n- [只读块拓扑与块修正子（block_access.rs / block_modifier.rs）](block-access-modifier.md)\n",
+  "generatedAt": "2026-10-09T14:40:35.226Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "block-access-modifier.md": {
+      "hash": "79d094275987ce6fb664bc2e2397a774cee5a0adae2ee1b58dc45480d6926666",
+      "concepts": [
+        "blocktopology-只读块拓扑接口",
+        "cayley-链的双层无效性与-partialblock-适配",
+        "bruhat-偏序的-hasse-图构造",
+        "blockmodifier-块修正子",
+        "weyl-姿态变换与典范约化词",
+        "有理权分子的-checked-仿射反射",
+        "表示参数差的整根系正交化",
+        "块修正子的相对化与标准参数恢复"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

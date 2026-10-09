@@ -1,0 +1,38 @@
+{
+  "id": "续行预处理与物理行映射-da73f766",
+  "title": "续行预处理与物理行映射",
+  "slug": "续行预处理与物理行映射",
+  "summary": "preprocess 先去除行尾空白，再将反斜杠结尾的行与下一行直接拼接，并记录重写行到首个物理行的映射以支持诊断和 abandon 定位。",
+  "sources": [
+    "atlas-core-session-frame.md"
+  ],
+  "body": "---\ntitle: 续行预处理与物理行映射\nsummary: preprocess 先去除行尾空白，再将反斜杠结尾的行与下一行直接拼接，并记录重写行到首个物理行的映射以支持诊断和 abandon 定位。\nsources:\n  - atlas-core-session-frame.md\nkind: concept\ncreatedAt: \"2026-10-09T14:34:06.329Z\"\nupdatedAt: \"2026-10-09T14:34:06.329Z\"\ntags:\n  - 预处理\n  - 续行\n  - 源码定位\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 续行预处理与物理行映射\n\n续行预处理由 `SessionFrame` 的 `preprocess` 完成：它重写输入文本，并生成 `line_map`，将重写后的行映射到对应的首个物理行。诊断与文件读取放弃报告使用这一映射，将行号还原到原始输入的物理行。^[atlas-core-session-frame.md:72-79]\n\n## 续行规则\n\n预处理对每一行先剥除尾部空白，再检查行尾是否为反斜杠 `\\`。若是，则将该行与下一行直接拼接，不插入任何内容。因此，反斜杠后即使带有空白，例如 `foo\\ `，剥除空白后仍会触发续行。^[atlas-core-session-frame.md:74-76]\n\n## 物理行映射与诊断\n\n`line_map` 保存“重写行 → 首个物理行”的对应关系，供 `describe` 与 `abandon` 使用。`SessionFrame` 的源码注册表按 `SourceId` 保存 `FileRecord`，其中包含来源 `origin`、预处理后文本和 `line_map`。^[atlas-core-session-frame.md:29-33, atlas-core-session-frame.md:74-76]\n\n`describe_bytes` 的诊断输出包含 `{Kind} error at {origin}:{physical}:{column}: {msg}`，随后给出源行与脱字符指示符。没有源码跨度的诊断只使用裸 `{Kind} error:` 头。这里的物理行号通过映射获得，可结合 [[CLI 事件输出与源码诊断]] 理解其输出用途。^[atlas-core-session-frame.md:77-79]\n\n## 文件包含中的放弃报告\n\n`abandon` 先用 `lexer.offset()-1` 回退到正在读取的行，再经 `line_map` 换算物理行号，输出 `Abandoning reading of file '{origin}' at line {physical}`。嵌套包含发生放弃时，各外层分别补发报告，顺序为最内层在先；相关行为见 [[嵌套包含的 abandon 级联]]。^[atlas-core-session-frame.md:66-68]\n\n## 测试与证据边界\n\n源文件内的测试锚点包括续行与物理行报告。这些属于单元级行为证据；端到端文件命令兼容性仍以 HPC 差分语料门为准。源材料记录的是结构性阅读，不构成语言或数学验收。^[atlas-core-session-frame.md:9-16, atlas-core-session-frame.md:81-90]\n\n## Sources\n\n- [atlas-core-session-frame.md](atlas-core-session-frame.md)\n",
+  "generatedAt": "2026-10-09T14:34:06.488Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-session-frame.md": {
+      "hash": "ebc347813201c4efc2fdfdc5d2f7d31578cc9372f862a74480c04bd706b7ea0f",
+      "concepts": [
+        "sessionframe-会话帧与文件包含语义",
+        "单命令输出重定向的执行纪律",
+        "会话-clean-标志与诊断分流",
+        "嵌套包含的-abandon-级联",
+        "顶层会话事件的输出规则",
+        "续行预处理与物理行映射",
+        "文件命令兼容性的证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

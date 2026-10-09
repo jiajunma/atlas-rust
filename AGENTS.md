@@ -587,8 +587,12 @@ ceiling and default one focused job; do not trade correctness for speed.
   23 packets plus the regression-library map cover every module of all three
   crates, byte-exact snapshots at git base `964f0033`, implementation-stated
   versus HPC-verified claims separated; index audit fix landed in `5630a1f5`.
-  The wiki COMPILATION step (`./kb/llmwiki compile --review`) is blocked on
-  the user's interactive `codex login` (recorded in `kb/log.md`).
+  Wiki COMPILATION unblocked 2026-10-09: the recorded `codex login` blocker
+  was misdiagnosed — the real failure was a strict-JSON-schema 400 from the
+  pinned rc.2 provider (misclassified as auth by its stderr regex), fixed by
+  the reviewed upgrade to llm-wiki-compiler 1.4.2 (its #266).  First compile
+  succeeded: 73/73 packets, 533 candidates, ALL held for review; approvals
+  proceed per the hold-all discipline, never bulk.
 - After the G2 capture: B2/C2, reverse operand orders, inner-class-dual
   and no-value gates, each with its own original-backed capture; only after
   all of them pass comes the cache work-count BEFORE and any production

@@ -1,0 +1,37 @@
+{
+  "id": "bylastcoordinate-逆坐标字典序-d2dc4216",
+  "title": "ByLastCoordinate 逆坐标字典序",
+  "slug": "bylastcoordinate-逆坐标字典序",
+  "summary": "ByLastCoordinate 通过 iter().rev() 从末坐标向前进行字典序比较，来源称其与 C++ root_compare 的顺序一致，但兼容性仍须 HPC 差分验证。",
+  "sources": [
+    "atlas-core-domain-scc-root-table.md"
+  ],
+  "body": "---\ntitle: ByLastCoordinate 逆坐标字典序\nsummary: ByLastCoordinate 通过 iter().rev() 从末坐标向前进行字典序比较，来源称其与 C++ root_compare 的顺序一致，但兼容性仍须 HPC 差分验证。\nsources:\n  - atlas-core-domain-scc-root-table.md\nkind: concept\ncreatedAt: \"2026-10-09T14:29:18.003Z\"\nupdatedAt: \"2026-10-09T14:29:18.003Z\"\ntags:\n  - 排序规则\n  - 根数据\n  - 兼容性\naliases:\n  - bylastcoordinate-逆坐标字典序\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# ByLastCoordinate 逆坐标字典序\n\n`ByLastCoordinate` 采用**从末坐标向前比较的字典序**：实现通过 `iter().rev()` 逆序遍历坐标进行比较。这里的“逆序”指坐标的比较顺序。^[atlas-core-domain-scc-root-table.md:24-25]\n\n## 与上游实现的对应\n\n该比较顺序与 C++ 上游 `rootdata.cpp:118–129` 中 `root_compare` 的“末坐标向前”规则一致。这一对应属于实现方的移植陈述；兼容性仍以 [[HPC 验收证据链|HPC 差分门]]为准。^[atlas-core-domain-scc-root-table.md:24-25, atlas-core-domain-scc-root-table.md:44-44]\n\n## 证据范围\n\n来源将该规则列入 `crates/atlas-core/src/domain_builtins.rs` 的 7992–9606 区域阅读范围，同一来源还涉及矩阵辅助、对合构造校验及 [[RootTable 的根与余根构建]]。这份材料属于结构性阅读记录，不声称数学验收。^[atlas-core-domain-scc-root-table.md:9-14]\n\n## Sources\n\n- [atlas-core-domain-scc-root-table.md](../../sources/atlas-core-domain-scc-root-table.md)\n",
+  "generatedAt": "2026-10-09T14:29:18.102Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-scc-root-table.md": {
+      "hash": "343742d922dfc6159d8a9727f615309845cee1c82c7417ae7dae997a0578ac4e",
+      "concepts": [
+        "块图的迭代式强连通分量算法",
+        "bylastcoordinate-逆坐标字典序",
+        "整数矩阵乘积的宽累积",
+        "对合构造器的矩阵维数校验",
+        "roottable-的根与余根构建",
+        "根向量到环境格基的表达"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

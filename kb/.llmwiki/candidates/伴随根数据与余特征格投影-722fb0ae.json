@@ -1,0 +1,39 @@
+{
+  "id": "伴随根数据与余特征格投影-722fb0ae",
+  "title": "伴随根数据与余特征格投影",
+  "slug": "伴随根数据与余特征格投影",
+  "summary": "伴随根数据采用 simple-root 与 fundamental-coweight 对偶基，AdjointProjection 通过源余特征与各 simple root 的配对计算目标坐标，并允许中心方向落入核。",
+  "sources": [
+    "cartan-fibers.md"
+  ],
+  "body": "---\ntitle: 伴随根数据与余特征格投影\nsummary: 伴随根数据采用 simple-root 与 fundamental-coweight 对偶基，AdjointProjection 通过源余特征与各 simple root 的配对计算目标坐标，并允许中心方向落入核。\nsources:\n  - cartan-fibers.md\nkind: concept\ncreatedAt: \"2026-10-09T14:43:09.800Z\"\nupdatedAt: \"2026-10-09T14:43:09.800Z\"\ntags:\n  - 伴随根数据\n  - 格投影\n  - 中心核\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 伴随根数据与余特征格投影\n\n伴随根数据与余特征格投影由 `AdjointBasedRootDatum` 和 `AdjointProjection` 表达：前者构造伴随格的坐标模型，后者将源余特征按其与单根的配对映入伴随格。投影可以具有中心核，因此不应将其视为同构。^[cartan-fibers.md:101-112]\n\n## 伴随根数据的坐标约定\n\n`AdjointBasedRootDatum` 使用源数据的 Cartan 矩阵克隆，通过 `BasedRootDatum::standard` 构造。代码文档声明，其 character 基是源 datum 的完整 simple-root 基，cocharacter 基则是对应的 fundamental-coweight 基。这一约定将目标余特征坐标与源单根的配对联系起来。相关根数据构造背景见 [[BasedRootDatum：带基根数据与构造不变量]]。^[cartan-fibers.md:101-106]\n\n## 余特征格投影\n\n`AdjointProjection` 是从 ambient 余特征格到伴随格的限制映射。对源余特征 \\(y\\)，目标第 \\(i\\) 个坐标为它与源 simple root \\(\\alpha_i\\) 的配对：\n\\[\np(y)_i=\\langle \\alpha_i,y\\rangle.\n\\]\n由于允许中心核，目标坐标不必保留全部源方向的信息。^[cartan-fibers.md:105-106]\n\n原始坐标通过 `source_coweight` 进入接口时，会检查 rank 并绑定源 datum。`map_coweight` 随后先调用 `ensure_source`，以 `Arc::ptr_eq` 验证来源身份；不匹配时返回 `DatumMismatch`。因此，坐标相同并不足以替代来源身份校验，相关语义见 [[余权坐标的投影出处绑定]]。^[cartan-fibers.md:107-108]\n\n通过身份检查后，`map_coweight` 执行 `check_projection_work(1)`，再逐根调用 `pair` 收集目标坐标。逐次投影预算要求“源秩 × 目标秩 × 向量数”不超过 `max_projection_operations`，把投影工作量纳入显式资源约束。^[cartan-fibers.md:109-110]\n\n## 模二投影与 Cartan 纤维\n\n`AdjointProjection` 实现 `ModTwoAmbientMap`，其 `apply_mod_two` 按奇偶逐个计算目标坐标；读取位时，`bit()` 越界返回 `None`，而非触发 panic。该 trait 是 `cartan_fiber.rs` 与 `adjoint_fiber.rs` 之间的连接点。^[cartan-fibers.md:110-112]\n\n为了将投影用于伴随 Cartan 纤维，构造过程先计算单根基上的对合作用，并按列写入 `root_action`，再取转置得到 `coweight_action`。代码注释给出的依据是：对偶作用应为 inverse-transpose，而已验证的根作用是对合，所以其 inverse-transpose 等于转置；这一论证在来源中属于注释声明。^[cartan-fibers.md:129-133, cartan-fibers.md:153-154]\n\n目标 `LatticeInvolution` 和 `CartanFiber` 构造完成后，`source.validate_induced_map(&fiber, &projection)` 一次性验证投影沿分子、分母关系下降。后续 [[FiberToAdjoint 的按需投影]] 依次取源元素的 canonical 代表、应用模二投影、构造目标元素，不保存稠密模二矩阵或缓存像。下降验证的相关概念见 [[Ambient 映射的子商下降验证]]。^[cartan-fibers.md:90-92, cartan-fibers.md:134-141]\n\n## 测试锚点与证据边界\n\n来源记录的测试锚点包括：A1 恒等投影中，纤维映射与先做整格投影再模二构造元素的路径一致；带中心余方向的例子中，中心方向映为单位元，root 方向映为生成元，且映射保持加法。A1+A2 非对称例还逐坐标基向量检查了交错关系 \\(p(\\theta(x))=\\theta_{\\mathrm{adjoint}}(p(x))\\)。^[cartan-fibers.md:143-149]\n\n这些记录属于结构性源码阅读，不构成 fiber 层的数学验收。伴随基约定与投影可有中心核的说明来自代码文档，来源包未核对上游字节；此外，`AdjointProjection::from_source` 未显式校验 simple-root 数量与目标 rank 的一致性，输出长度依赖这一隐含构造不变量。^[cartan-fibers.md:9-12, cartan-fibers.md:101-106, cartan-fibers.md:161-163]\n\n## Sources\n\n- [cartan-fibers.md](cartan-fibers.md) — Cartan fiber 与伴随 Cartan fiber（`cartan_fiber.rs` / `adjoint_fiber.rs`）。\n",
+  "generatedAt": "2026-10-09T14:43:10.108Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "cartan-fibers.md": {
+      "hash": "889ff8b1782f1ed9103bd071f0f75960bb4cb3accbd86d3c39ae5e90603c81a8",
+      "concepts": [
+        "cartan-fiber-的有限域子商模型",
+        "cartan-fiber-的先分母后分子构造",
+        "fiber-元素的模型来源绑定与规范代表",
+        "ambient-映射的子商下降验证",
+        "伴随根数据与余特征格投影",
+        "伴随-cartan-fiber-的对合作用构造",
+        "伴随-fiber-的分配前资源预算",
+        "fibertoadjoint-的按需投影"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

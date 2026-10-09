@@ -1,0 +1,39 @@
+{
+  "id": "rayon-工作线程栈配置-40dc9751",
+  "title": "Rayon 工作线程栈配置",
+  "slug": "rayon-工作线程栈配置",
+  "summary": "CLI 将 Rayon 工作线程栈设为 2 MiB，源码说明其依据是相关并行算法采用迭代实现并意在降低 RSS；该说明不构成实测性能结论。",
+  "sources": [
+    "atlas-cli-main.md"
+  ],
+  "body": "---\ntitle: Rayon 工作线程栈配置\nsummary: CLI 将 Rayon 工作线程栈设为 2 MiB，源码说明其依据是相关并行算法采用迭代实现并意在降低 RSS；该说明不构成实测性能结论。\nsources:\n  - atlas-cli-main.md\nkind: concept\ncreatedAt: \"2026-10-09T14:25:24.404Z\"\nupdatedAt: \"2026-10-09T14:25:24.404Z\"\ntags:\n  - Rayon\n  - 内存管理\n  - 并行计算\naliases:\n  - rayon-工作线程栈配置\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# Rayon 工作线程栈配置\n\nAtlas CLI 在 `main` 中通过 `rayon::ThreadPoolBuilder` 将 Rayon 工作线程栈设为 **2 MiB**。这一配置旨在降低并行工作线程的内存占用（RSS）。^[atlas-cli-main.md:26-29]\n\n## 配置依据\n\n源码说明指出，Weyl 枚举、轨道共轭和 KGB BFS 等并行通道采用迭代实现，因此使用适度大小的工作栈。源材料将默认每个 worker 的 8 MiB 栈与实际约 1–2 MiB 的需求作对照，作为采用 2 MiB 配置的依据。相关算法可参见 [[Twisted involution 枚举与共轭轨道分区]] 与 [[KGB 图与弱实形式]]。^[atlas-cli-main.md:26-28]\n\n## 证据边界\n\n上述配置及其动机来自对 CLI 前端的结构性阅读；源材料未提供该配置的独立内存测量或性能验收结果。`main.rs` 本身没有测试，行为由 HPC 语料门覆盖，因此不应把栈大小对比理解为已经测得的 RSS 降幅。相关验收要求可参见 [[HPC 验收证据链]]。^[atlas-cli-main.md:9-14, atlas-cli-main.md:26-28, atlas-cli-main.md:41-44]\n\n## Sources\n\n- [atlas-cli-main.md](atlas-cli-main.md)：CLI 前端（`atlas-cli/main.rs`），重点为第 26–29 行的 Rayon 工作线程栈配置说明。\n",
+  "generatedAt": "2026-10-09T14:25:24.435Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-cli-main.md": {
+      "hash": "239bde9ed2849955465e28238eecedcc1ac50e2a5bb713016b2f573ca4a2d205",
+      "concepts": [
+        "会话帧驱动的-cli-执行模型",
+        "包含文件的搜索路径解析",
+        "文件输入的有损-utf-8-解码",
+        "cli-事件输出与源码诊断",
+        "交互式与非交互式输入分流",
+        "clean-标志与-cli-退出状态",
+        "rayon-工作线程栈配置",
+        "cli-兼容性的证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

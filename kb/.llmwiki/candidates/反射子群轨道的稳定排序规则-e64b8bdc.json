@@ -1,0 +1,38 @@
+{
+  "id": "反射子群轨道的稳定排序规则-e64b8bdc",
+  "title": "反射子群轨道的稳定排序规则",
+  "slug": "反射子群轨道的稳定排序规则",
+  "summary": "轨道沿用 rootdata.cpp 的 BitMap 排序：BFS 仅对新层去重并保留首次插入，内部稳定器按 RootNbr 排序，用户生成元顺序控制优势化与扩展。",
+  "sources": [
+    "atlas-core-weyl-subgroup.md"
+  ],
+  "body": "---\ntitle: 反射子群轨道的稳定排序规则\nsummary: 轨道沿用 rootdata.cpp 的 BitMap 排序：BFS 仅对新层去重并保留首次插入，内部稳定器按 RootNbr 排序，用户生成元顺序控制优势化与扩展。\nsources:\n  - atlas-core-weyl-subgroup.md\nkind: concept\ncreatedAt: \"2026-10-09T14:39:36.147Z\"\nupdatedAt: \"2026-10-09T14:39:36.147Z\"\ntags:\n  - 轨道算法\n  - 广度优先搜索\n  - 兼容性\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 反射子群轨道的稳定排序规则\n\n反射子群内建 `Weyl_orbit` 与 `Weyl_orbit_ws` 的轨道排序遵循 `rootdata.cpp` 中 BitMap 的 `basic_orbit`／`extend_orbit` 规则，而非 alcove 变体的分层排序。排序涉及用户给定的生成元顺序、内部稳定器 BFS 的根号顺序，以及新层中首次插入的保留规则。^[atlas-core-weyl-subgroup.md:9-12, atlas-core-weyl-subgroup.md:18-23, atlas-core-weyl-subgroup.md:38-42, atlas-core-weyl-subgroup.md:68-69]\n\n## 两种生成元顺序\n\n用户给定的生成元顺序控制 dominance 与轨道扩展。`dominant` 每次选择首个 level 为负的生成元进行反射，并按实际应用顺序记录事件；陪集树则逐个非稳定器生成元扩展。生成元可以是任意配对合法的有符号根号，不限于单根。^[atlas-core-weyl-subgroup.md:36-37, atlas-core-weyl-subgroup.md:47-48, atlas-core-weyl-subgroup.md:68-69]\n\n内部稳定器 BFS 使用独立的顺序：活动生成元按 RootNbr 根号排序。它只对新层去重，并保留首次插入的项。因此，解释输出顺序时必须区分用户序控制的 dominance／扩展与根号序控制的稳定器 BFS。^[atlas-core-weyl-subgroup.md:38-42, atlas-core-weyl-subgroup.md:68-69]\n\n## 陪集坐标为何保持排序\n\n`cosets` 使用精确的单根或单余根配对坐标构造陪集树。原版选择的核向量在旧稳定器生成元上的配对为零，在新增生成元 \\(i\\) 上的配对为正数 \\(c\\)；本实现将该值取为 \\(1\\)。两者在扩大后的子群上仅相差正比例缩放，因此符号、相等判定与 BFS 边保持一致。^[atlas-core-weyl-subgroup.md:38-42]\n\n有限型 Cartan 矩阵的可逆性保证上述坐标限制在轨道差上是单射，而活动子群以外的坐标不改变相等判定。这个表示保留陪集树的遍历依据，同时避免任意的格核选举与定宽溢出。^[atlas-core-weyl-subgroup.md:38-42]\n\n## 优势化与原版兼容边界\n\n初始优势化实际使用给定的子群生成元，这与 original `7e1b958c` 的 `rootdata.h` 行为存在有意差异：原版转发 `make_(co)dominant` 时忽略生成元参数 `g`，而见证函数正确传递了该参数。R3 反例为 A2、空生成元与输入 `[-1,-2]`：原版矩阵轨道给出 `[2,1]`，见证却为恒等。理解稳定排序时，应同时考虑[[反射子群轨道与生成元约束下的优势化]]，不能把这一原版反例作为应复制的输出行为。^[atlas-core-weyl-subgroup.md:18-23]\n\n## 轨道列与见证词\n\n`Weyl_orbit` 将轨道元素按顺序组成矩阵列；`Weyl_orbit_ws` 返回见证词。见证的事件拼接还受作用方向约束：权从右到左作用，余权从左到右作用，因此 dual 形式按事件正序拼接，非 dual 形式按逆序拼接。随后通过 `build_weyl_context` 与逐次 `right_multiply_simple` 重建元素，再由 `weyl_elt_value` 固定为 canonical word。相关约定见[[ambient Weyl 见证词与作用方向]]。^[atlas-core-weyl-subgroup.md:44-51]\n\n## 测试与证据边界\n\n文件内测试包含三类相关锚点：空子群保持负权不动并返回 ambient 恒等；陪集轨道与独立穷举闭包一致，且每个见证可重建对应轨道列；全单子群与全群 `Weyl_orbit`／`Weyl_orbit_ws` 的输出逐项相等，保持完整全群轨道序。这些检查与[[反射子群轨道与见证的独立验证]]相联系。^[atlas-core-weyl-subgroup.md:56-62]\n\n本来源覆盖 `domain_builtins/weyl_subgroup.rs` 的结构性阅读与测试锚点，不声称数学验收；相应 HPC 验收门另见来源所指的 `weyl_subgroup_orbits` 切片与下游目录。^[atlas-core-weyl-subgroup.md:9-14]\n\n## Sources\n\n- [atlas-core-weyl-subgroup.md](atlas-core-weyl-subgroup.md)\n",
+  "generatedAt": "2026-10-09T14:39:36.398Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-weyl-subgroup.md": {
+      "hash": "8d98987d0623fc897f520a078b04d4320e73d074693b1967e99c01d9ade27741",
+      "concepts": [
+        "反射子群轨道与生成元约束下的优势化",
+        "精确根配对坐标的陪集树算法",
+        "反射子群轨道的稳定排序规则",
+        "ambient-weyl-见证词与作用方向",
+        "反射子群构造校验与安全整数运算",
+        "buildanddrop-领域内建验证策略",
+        "反射子群轨道与见证的独立验证"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

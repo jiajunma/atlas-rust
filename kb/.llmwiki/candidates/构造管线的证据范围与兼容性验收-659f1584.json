@@ -1,0 +1,39 @@
+{
+  "id": "构造管线的证据范围与兼容性验收-659f1584",
+  "title": "构造管线的证据范围与兼容性验收",
+  "slug": "构造管线的证据范围与兼容性验收",
+  "summary": "结构性阅读及上游行号引用仅支持实现与移植陈述，构造兼容性仍须通过 HPC 差分门；快照哈希仅标识字节，不构成数学验收。",
+  "sources": [
+    "atlas-core-domain-construction.md"
+  ],
+  "body": "---\ntitle: 构造管线的证据范围与兼容性验收\nsummary: 结构性阅读及上游行号引用仅支持实现与移植陈述，构造兼容性仍须通过 HPC 差分门；快照哈希仅标识字节，不构成数学验收。\nsources:\n  - atlas-core-domain-construction.md\nkind: concept\ncreatedAt: \"2026-10-09T14:28:50.294Z\"\nupdatedAt: \"2026-10-09T14:28:50.294Z\"\ntags:\n  - 证据管理\n  - 兼容性验收\n  - HPC验证\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 构造管线的证据范围与兼容性验收\n\n领域构造管线的现有证据来自对 `crates/atlas-core/src/domain_builtins.rs` 第 1628–2527 行的结构性阅读，覆盖根数据、中央商、显式根数据、内类、对偶内类及实形的构造。该阅读用于说明实现结构与构造顺序，不声称数学验收。^[atlas-core-domain-construction.md:9-14]\n\n## 结构性证据的覆盖范围\n\n根数据构造的记录包括单连通与伴随情形的格基选择、简单根数据校验、同源类型判定，以及环面因子置于半单类型之后的顺序约定。中央商构造涵盖中间商，显式矩阵构造则保留空维矩阵的维数信息；这些内容可关联至 [[BasedRootDatum：带基根数据与构造不变量]] 和 [[中央商与显式矩阵根数据构造]]。^[atlas-core-domain-construction.md:16-33]\n\n内类装配证据明确记录了分类、强实分类、外部形式排序、布局、对偶侧构造、展示数据及规范实形弱缓存的固定顺序，并标明分类预算、`FIBER_BUDGET` 与 `INTEGER_BUDGET` 的门控位置。它支持对 [[内类上下文的装配顺序与预算门]] 的结构性说明。^[atlas-core-domain-construction.md:35-43]\n\n内类与对偶内类的记录涉及余权部分的转置、根数据对合的构造入口、对偶 datum 的余根偏好翻转，以及通过内容弱驻留共享 Weyl 身份的路径。实形构造的记录则涵盖外部编号转换、非法编号错误、规范上下文弱缓存、自定义属主创建，以及带预算的基本 Cartan 与自定义种子构造。^[atlas-core-domain-construction.md:45-65]\n\n## 兼容性验收的判据\n\n源材料中的上游 C++ 与 CWEB 行号引用属于**实现方的移植陈述**；构造兼容性以 HPC 差分门为准。因此，阅读到对应的上游位置或移植说明，不应被表述为已经完成兼容性验收。相关证据要求可参见 [[HPC 验收证据链]]。^[atlas-core-domain-construction.md:73-75]\n\n源材料给出 Git base `964f0033` 和 `domain_builtins.rs` 的 SHA-256 缩写 `e6987e7c…`，并注明该文件与已验收 after-v5 清单中的字节相同。这一信息用于识别所读快照的字节；源材料同时明确，字节数与哈希仅标识快照字节，构造兼容仍以 HPC 差分门为准。^[atlas-core-domain-construction.md:73-75]\n\n## 覆盖边界与引用纪律\n\n该包未展开第 2657–2933 行的形变缓存机器，也未展开 `strong_components`、`RootNumbering`、`CenterClassifier`、`RootTable` 及 `validate/print_text`。身份机制与派发机制分别指向其他源包，因此不能仅凭本包对这些部分作出完整解释或验收结论。^[atlas-core-domain-construction.md:67-72]\n\n虽然实形构造部分记录了 `FallibleOnce` 管理的 `kgb/rep` 以及普通、扭曲两个形变缓存，但这些记录只说明上下文持有哪些组件；形变缓存机器的详细机制仍在本包覆盖范围之外。^[atlas-core-domain-construction.md:61-70]\n\n## Sources\n\n- [领域构造管线（domain_builtins.rs 1628–2527）](atlas-core-domain-construction.md)\n",
+  "generatedAt": "2026-10-09T14:28:50.376Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-construction.md": {
+      "hash": "d70fe7e4d84d85c790b634f206c8a16532ba3b5c2475f5e53e090f6a1b083773",
+      "concepts": [
+        "由-lie-类型构造根数据",
+        "中央商与显式矩阵根数据构造",
+        "内类上下文的装配顺序与预算门",
+        "从根数据对合构造内类",
+        "对偶内类与-weyl-身份共享",
+        "规范实形的编号映射与弱缓存",
+        "自定义实形的种子与上下文构造",
+        "构造管线的证据范围与兼容性验收"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

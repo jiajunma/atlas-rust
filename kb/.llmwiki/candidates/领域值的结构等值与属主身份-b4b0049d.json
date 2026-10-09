@@ -1,0 +1,38 @@
+{
+  "id": "领域值的结构等值与属主身份-b4b0049d",
+  "title": "领域值的结构等值与属主身份",
+  "slug": "领域值的结构等值与属主身份",
+  "summary": "DomainValue 按变体定义结构等值，RootDatumHandle 比较忽略 Weyl 缓存，实形相关值使用 same_real_form，而 same_real_form_owner 单独表达上下文指针同一性。",
+  "sources": [
+    "atlas-core-domain-values.md"
+  ],
+  "body": "---\ntitle: 领域值的结构等值与属主身份\nsummary: DomainValue 按变体定义结构等值，RootDatumHandle 比较忽略 Weyl 缓存，实形相关值使用 same_real_form，而 same_real_form_owner 单独表达上下文指针同一性。\nsources:\n  - atlas-core-domain-values.md\nkind: concept\ncreatedAt: \"2026-10-09T14:30:48.227Z\"\nupdatedAt: \"2026-10-09T14:30:48.227Z\"\ntags:\n  - 领域建模\n  - 等值语义\n  - 属主身份\naliases: []\nconfidence: 1\nprovenanceState: merged\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 领域值的结构等值与属主身份\n\n领域值的等值判断区分结构相等、属主上下文的指针身份与 Weyl 抽象群身份。`DomainValue` 总体采用结构等值，使独立构造的同一数学对象句柄能够相等；但 Weyl 元素另有抽象群身份门控，部分包装操作也要求共享同一实形属主。^[atlas-core-domain-values.md:69-85]\n\n## 结构等值\n\n`DomainValue` 包含 13 个变体：LieType、RootDatum、InnerClass、RealForm、KgbElement、Block、WeylElement、CartanClass、Split、KType、KTypePol、Param 和 ParamPol。其结构等值对应上游 memoized 句柄的可观察语义。^[atlas-core-domain-values.md:69-74]\n\n`RootDatumHandle::PartialEq` 只比较 `datum`、`lie_type`、`isogeny` 与 `prefers_coroots`，刻意忽略 Weyl 身份缓存。唯一构造入口 `interned` 则保证等值且仍存活的数据共享一个 Weyl 身份；因此，结构比较与缓存身份复用是不同的契约。相关机制见 [[RootDatum 弱驻留与规范活对象身份]]。^[atlas-core-domain-values.md:39-45]\n\nInnerClass、CartanClass 和 KgbElement 按内类、形式号及适用的元素 id 比较；RealForm、KType、Param 及两个多项式变体先通过 `same_real_form` 比较实形，再比较严格分量。`same_real_form` 要求同内类、同形式、同基余特征标和同初始环面部；Block 则比较两侧实形的内类。^[atlas-core-domain-values.md:76-79]\n\n## 实形属主身份\n\n`KTypeValue` 与 `ParamValue` 分别携带 `KType`、`StandardRepr` 及其实形属主；`KTypePolValue` 与 `ParamPolValue` 保存同一实形上的有序系数—参数项，同类项合并，零系数删项。属主信息因而贯穿参数与多项式的表示。^[atlas-core-domain-values.md:64-67]\n\n`same_real_form_owner` 检查指针同一性，供直接比较 `shared_real_form` 字段的包装使用。规范构造通过父弱缓存共享上下文；自定义构造即使数学上相等，也总是创建新的属主。因此，通过实形结构等值检查并不意味着通过属主身份检查。相关设计见 [[实形式的规范弱缓存与属主身份]]。^[atlas-core-domain-values.md:83-85]\n\n多项式写系数时，只替换精确 final 键的系数，不累加，也不展开非 final 键；在触碰目标项之前拒绝不兼容属主，即使写入零或结果被丢弃也执行校验。遍历 `loop_terms` 时，键继续保留其实形属主，并借用规范非零项序。相关契约见 [[实形属主约束下的多项式系数契约]] 与 [[容器迭代的借用与规范项序]]。^[atlas-core-domain-values.md:97-107]\n\n## Weyl 元素的身份与跨坐标等值\n\n`WeylEltContext` 同时保存根数据属主的局部坐标 kernel 和抽象 Weyl 群身份。兼容性仅由抽象群 `Arc` 的指针身份决定，不由结构相等的根数据句柄或坐标 kernel 决定。`WeylEltValue` 在构造时冻结 canonical 既约 word，之后 `Display` 与 `word` 只读取该结果。^[atlas-core-domain-values.md:53-58]\n\n`weyl_elements_equal` 先检查抽象群 `Arc` 同一性，再将右元素的 canonical 外生成元 word 在左侧系统中重放并比较。这允许辫子等价词跨坐标相等，同时禁止直接比较或复合外来根置换。二元关系和乘积通过 `require_weyl_compatible` 在无值门之前检查兼容性，不兼容时报告 `Weyl group mismatch`。参见 [[Weyl 元素兼容性与跨坐标词重放]] 与 [[Weyl 元素的可失败关系与跨坐标运算]]。^[atlas-core-domain-values.md:80-82, atlas-core-domain-values.md:87-95]\n\n身份共享还受存活状态和初始化历史约束：完整内容相等的活跃根数据属主共享身份单元，强引用全部消失后，后续等值构造重新开始；对偶构造只向尚未初始化的 canonical dual 共享抽象群，已预热目标不会被覆盖，并与源保持不兼容。参见 [[dual 预热历史与 Weyl 群兼容性]]。^[atlas-core-domain-values.md:28-37]\n\n## 证据范围\n\n来源包对 `domain_builtins.rs` 的相关区域进行了结构性阅读，其交叉引用的 Weyl owner/dual 修复语义验收限定于 A1。派发表、内类与实形管线实现及测试本身不在该包覆盖范围内，不能据此推导更广范围的验收结论。^[atlas-core-domain-values.md:9-17, atlas-core-domain-values.md:119-126]\n\n## Sources\n\n- [atlas-core-domain-values.md](atlas-core-domain-values.md)\n",
+  "generatedAt": "2026-10-09T14:30:48.362Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-values.md": {
+      "hash": "095720e96102e5ab1fb47dca42f32f1eaeaa4c7837c41b6504180e2558b299e6",
+      "concepts": [
+        "根数据的-weyl-身份与弱驻留机制",
+        "可失败重试的惰性身份初始化",
+        "领域值的结构等值与属主身份",
+        "weyl-元素兼容性与跨坐标词重放",
+        "split-系数算术与零因子筛选",
+        "实形属主约束下的多项式系数契约",
+        "领域内建调用的所有权派发与打印侧通道"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

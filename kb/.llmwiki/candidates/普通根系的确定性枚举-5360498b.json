@@ -1,0 +1,39 @@
+{
+  "id": "普通根系的确定性枚举-5360498b",
+  "title": "普通根系的确定性枚举",
+  "slug": "普通根系的确定性枚举",
+  "summary": "RootSystem 从 BasedRootDatum 播种正负简单根并以 BFS 求反射闭包，最终按环境坐标字典序排列根，结果顺序独立于发现顺序。",
+  "sources": [
+    "root-system.md"
+  ],
+  "body": "---\ntitle: 普通根系的确定性枚举\nsummary: RootSystem 从 BasedRootDatum 播种正负简单根并以 BFS 求反射闭包，最终按环境坐标字典序排列根，结果顺序独立于发现顺序。\nsources:\n  - root-system.md\nkind: concept\ncreatedAt: \"2026-10-09T15:11:32.750Z\"\nupdatedAt: \"2026-10-09T15:11:32.750Z\"\ntags:\n  - 根系\n  - 枚举算法\n  - 确定性\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 普通根系的确定性枚举\n\n`RootSystem` 从 [[BasedRootDatum：带基根数据与构造不变量|BasedRootDatum]] 生成有限普通根系，以环境坐标字典序确定根的最终编号。根、余根与简单根坐标三张表保持索引对齐，同一个 `RootId` 同时指向三者。枚举使用调用方显式提供的预算，预算不保存在生成的 `RootSystem` 中。^[root-system.md:18-24]\n\n## 枚举流程与确定性\n\n`enumerate_with_budget` 首先按格秩、根数、坐标条目、反射步数的固定顺序检查预算，比较均使用严格的 `>`；随后通过 `datum.try_clone()` 创建自有快照。播种阶段按简单生成元插入每个简单根及其负根，简单根坐标分别为 \\(\\pm e_i\\)，负根坐标取反使用受检算术。^[root-system.md:55-58]\n\n闭包通过广度优先搜索构造：从待处理队列头部取出记录，依次对每个简单生成元 \\(g\\) 计算根与简单余根的配对系数，再更新简单根坐标的第 \\(g\\) 项，并分别调用 `reflect_weight` 与 `reflect_coweight` 生成候选根及余根。简单坐标更新使用 `checked_sub`。^[root-system.md:58-61]\n\n最终根序仅取决于闭包 `BTreeMap` 的键序，与 BFS 的发现顺序无关。因此，遍历负责求得闭包，环境坐标字典序负责确定最终索引；A2 的六根字典序是对应的测试锚点。^[root-system.md:61-62]\n\n## 闭包插入的不变量\n\n每次插入候选时，先检查自配对 \\(\\langle\\alpha,\\alpha^\\vee\\rangle=2\\)，再检查根坐标是否已经存在；重复候选也必须通过自配对检查。若根坐标重复，对应余根和简单根坐标必须逐字节一致，否则返回 `\"coroot agreement\"` 不变量错误。源码注释将这些检查描述为防御性检查，测试通过直接注入私有 `Closure` 覆盖拒绝路径。^[root-system.md:64-69]\n\n重复候选不占用新的根数预算；对于新根，当 `seen.len() == max_roots` 时拒绝插入，返回 `RootSystemResourceLimit { resource: \"roots\" }`。^[root-system.md:66-67]\n\n## 资源预算与兼容接口\n\n`RootSystemBudget` 包含格秩、根数、坐标条目数和反射步数四类限额。静态预算采用 `u128` 饱和算术，其坐标条目上界覆盖借入的 datum、自有快照、映射、待处理队列和一个在途候选；静态检查与运行时根数拒绝是不同的路径，分别有测试锚定。^[root-system.md:30-31, root-system.md:71-74]\n\n兼容接口 `enumerate(datum, max_roots)` 通过 `RootSystemBudget::complete_for` 将条目和步数限额设为饱和最坏值，使运行中只有根数限额能够触发预算拒绝。它将根数资源错误映射为历史错误 `ResourceLimitExceeded { limit }`，其他错误原样透传。^[root-system.md:50-53]\n\n## 结果表示与查询\n\n[[RootId 与根系索引对齐|RootId]] 是 `usize` 的 newtype，crate 外通过 `from_usize` 和 `index()` 构造或读回。`RootSystem` 除三张索引对齐表外，还保存正根标志、按生成元顺序排列的简单根 ID，以及每根对应的根和余根梯子底表。相关访问器通过 `Option` 或 `Result` 处理越界。^[root-system.md:18-24]\n\n`id_of` 对有序根表执行二分查找。正根判定读取预计算标志，其判据是简单根坐标中存在正分量；由于根表按环境坐标排序，不能通过将表等分来区分正负根。`simple_root_ids()` 保留生成元顺序，供下降查询使用，避免逐次二分查找。^[root-system.md:78-82]\n\n`bracket(root, coroot)` 使用根在左、余根在右的配对约定，任一 ID 越界均返回 `IndexOutOfRange`。[[Weyl 作用到根排列的转换|action_permutation]] 先验证 datum 一致性，再逐根作用并反查索引；`combine_roots` 使用逐坐标受检加减，随后查询成员资格，以 `Ok(None)` 表示结果不是根。^[root-system.md:78-85]\n\n## 梯子底表\n\n构造时全量预计算 `min_roots` 与 `min_coroots`：对于固定的 \\(\\alpha\\)，根梯子底表记录所有使 \\(\\beta-\\alpha\\) 不是根的 \\(\\beta\\)，其中包含 \\(\\alpha\\) 自身；余根表在配对余根上定义同一关系。根成员查询使用二分查找，余根因跟随根序而不保证自身有序，因此先建立坐标到下标的映射。^[root-system.md:89-92, root-system.md:128-129]\n\n梯子底成员查询采用[[Rust ladder 成员查询的选择性溢出处理|溢出即非成员]]规则：如果 `checked_sub` 溢出，精确坐标差已超出 `i32` 范围，不可能等于任何已存根或余根，因此按非成员处理；分配等其他错误仍然传播。集合由 [[RootSet 只读位图集合|RootSet]] 表示，构造后只读，迭代按稳定根序升序进行，越界成员查询返回 `false`。^[root-system.md:93-96, root-system.md:106-109]\n\n## 测试与证据边界\n\n来源列出的测试覆盖 A2 字典序与简单坐标、根与余根配对、每根自配对为 2、A2 全部六个 Weyl 作用的运输一致性、预算边界与运行时根数拒绝、兼容包装器结果一致性、秩 33 的动态枚举，以及种子余根 `i32::MIN` 取反溢出等情形。^[root-system.md:114-120]\n\n这些记录属于结构性源码阅读，不构成数学正确性验收。来源未核对注释所引用的上游源码字节或 HPC 捕获数据，本次知识维护也未执行 Atlas、Cargo、测试或 benchmark；`DatumMismatch`、`InvalidRootAutomorphism`、`AllocationFailed` 等路径尚未见直接触发的测试。^[root-system.md:10-14, root-system.md:124-131, root-system.md:135-139]\n\n## Sources\n\n- [root-system.md](root-system.md)：普通根系的确定性枚举：RootSystem、RootId 与梯子底表。\n",
+  "generatedAt": "2026-10-09T15:11:33.408Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "root-system.md": {
+      "hash": "565f18b744021ff39471e7df8d5bb836b2deec51afd31e2a79d99e50855d1377",
+      "concepts": [
+        "普通根系的确定性枚举",
+        "rootid-与根系索引对齐",
+        "根系枚举的显式资源预算",
+        "反射闭包的防御性不变量",
+        "根与余根的梯子底表",
+        "梯子底成员查询的坐标溢出语义",
+        "rootset-只读位图集合",
+        "weyl-作用到根排列的转换"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

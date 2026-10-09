@@ -1,0 +1,39 @@
+{
+  "id": "全局环面元素的算术历史表示-6ad07e7c",
+  "title": "全局环面元素的算术历史表示",
+  "slug": "全局环面元素的算术历史表示",
+  "summary": "GlobalTorusElement 用有理坐标表示 exp(iπ·numerator/denominator)，构造入口约化而反射后保留非规范分子，加法也仅作有限条件修正，因此算术历史会影响打印形式。",
+  "sources": [
+    "global-kgb.md"
+  ],
+  "body": "---\ntitle: 全局环面元素的算术历史表示\nsummary: GlobalTorusElement 用有理坐标表示 exp(iπ·numerator/denominator)，构造入口约化而反射后保留非规范分子，加法也仅作有限条件修正，因此算术历史会影响打印形式。\nsources:\n  - global-kgb.md\nkind: concept\ncreatedAt: \"2026-10-09T14:49:01.975Z\"\nupdatedAt: \"2026-10-09T14:49:01.975Z\"\ntags:\n  - 环面元素\n  - 有理算术\n  - 表示约定\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 全局环面元素的算术历史表示\n\n`GlobalTorusElement` 是全局 KGB 实现中的私有环面元素类型，以 `numerator: Vec<i64>` 和 `denominator: i64` 表示\n\\[\n\\exp\\!\\left(i\\pi\\,\\frac{\\mathrm{numerator}}{\\mathrm{denominator}}\\right),\n\\]\n坐标按模 \\(2\\mathbb Z^{\\mathrm{rank}}\\) 理解。其表示保留算术操作的历史：构造入口进行约化，但后续反射不恢复统一的规范代表元。^[global-kgb.md:17-29]\n\n## 构造约化与反射\n\n`reduce_raw`、`exp_pi` 和 `exp_2pi` 使用 `rem_euclid`，把分子坐标约化到区间 \\([0,2\\cdot\\mathrm{denominator})\\)。`simple_reflect` 则在对偶侧预根 datum 上执行\n\\[\n\\mathrm{numer}\\leftarrow\n\\mathrm{numer}-\\langle\\mathrm{numer},\\alpha\\rangle\\,\\alpha^\\vee,\n\\]\n并有意省略事后约化。因此，负分子可以保留在内部表示和打印输出中；B2 元素 15 的标签 `[0,-1]/2` 是这一行为的测试锚点。^[global-kgb.md:19-25]\n\n`add` 先以最小公倍数合并分母，再用最大公约数归一化，最后对每个坐标至多执行一次条件减法。这一步只纠正落在 \\([2,4)\\) 的和，并不把任意非规范加数全面约化。`log_2pi` 返回“分子／两倍分母”，也只做最大公约数归一化，因此不会消除此前保留的代表元差异。^[global-kgb.md:25-29]\n\n## 根求值与虚根交叉作用\n\n`negative_at` 要求根配对为整数；若不满足，返回 `KgbInvariantViolation \"integral root evaluation\"`。配对为奇数时判为紧。对于非紧情形，`imaginary_cross_act` 使用以 `coroot·(denominator − remainder)` 构造的 `exp_2pi` 加数进行平移。^[global-kgb.md:26-29]\n\n在 [[GlobalKgb 的分阶段广度优先构造]] 的 cross/Cayley 闭包阶段，非零半长度差对应的复根情形调用 `simple_reflect`；虚根情形调用 `imaginary_cross_act`，并由 `negative_at` 判定紧或非紧。Cayley 链接仅针对 `ImaginaryNoncompact` 元素，其环面部分原样克隆。^[global-kgb.md:67-74]\n\n## 去重与可观测输出\n\n去重使用独立的 `fingerprint`：将 `log_2pi` 的分子投影到 \\(\\theta+I\\) 饱和像的适应基各列，对分母取 `rem_euclid`，并只保留 `diagonal.len()` 个分量。源码注释以同一饱和像的两组基相差幺模变换、该变换模分母仍可逆为依据说明无损性。相关机制见 [[基于饱和像适应基的 KGB 去重指纹]]。^[global-kgb.md:31-36]\n\n算术历史也进入查询和打印接口。`torus_label()` 将 `log_2pi` 的错误转成 `None`，而 `print_layout` 传播同一错误，两条路径的错误语义不同。SC B2 的逐字节打印测试包含负分子标签 `[0,-1]/2`，因此这一输出行为已有具体回归锚点；相关接口见 [[GlobalKgb 查询接口与 print_X 布局兼容]]。^[global-kgb.md:84-88, global-kgb.md:96-100]\n\n## 前置条件与证据边界\n\n实现依赖维度匹配、`denominator != 0` 以及直接下标索引有效等隐式前置条件，违反时会 panic。`reduce_raw`、`evaluate_at` 等位置的 `2 * denominator` 使用普通乘法，溢出时在 debug 模式下 panic，在 release 模式下回绕。现有测试未覆盖错误分支；半单秩 0 也有意未测，因为共享内类机制在空生成元集合上会 panic。^[global-kgb.md:101-105]\n\n来源材料属于结构性源码阅读记录，未核对所引上游代码的字节，也不声称数学验收；本次知识维护未执行 Atlas、Cargo、测试或 benchmark。^[global-kgb.md:9-15, global-kgb.md:109-113]\n\n## Sources\n\n- [global-kgb.md](../../sources/global-kgb.md) — 内类范围 KGB 图与 print_X 布局（global_kgb.rs）\n",
+  "generatedAt": "2026-10-09T14:49:02.349Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "global-kgb.md": {
+      "hash": "41f770a3ff10e2ca21b41d284e8ed84ff648f4c7504929f25c99dd15a07502e1",
+      "concepts": [
+        "内类范围的-globalkgb-图",
+        "全局环面元素的算术历史表示",
+        "基于饱和像适应基的-kgb-去重指纹",
+        "基本纤维与平方类播种",
+        "globalkgb-的分阶段广度优先构造",
+        "cross-与-cayley-闭包的根类型规则",
+        "globalkgb-查询接口与-printx-布局兼容",
+        "globalkgb-的回归测试与证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

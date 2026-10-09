@@ -1,0 +1,38 @@
+{
+  "id": "饥饿乘积的所有权消费路径-3d0f9d75",
+  "title": "饥饿乘积的所有权消费路径",
+  "slug": "饥饿乘积的所有权消费路径",
+  "summary": "call_owned_with_printed 对 LieType×LieType、WeylElement×Vector 与 Vector×WeylElement 先校验秩或维度再消费操作数，与 typed.rs 的 HungryBuiltinCall 配对，其余调用走借用适配路径。",
+  "sources": [
+    "atlas-core-domain-dispatch.md"
+  ],
+  "body": "---\ntitle: 饥饿乘积的所有权消费路径\nsummary: call_owned_with_printed 对 LieType×LieType、WeylElement×Vector 与 Vector×WeylElement 先校验秩或维度再消费操作数，与 typed.rs 的 HungryBuiltinCall 配对，其余调用走借用适配路径。\nsources:\n  - atlas-core-domain-dispatch.md\nkind: concept\ncreatedAt: \"2026-10-09T14:28:53.224Z\"\nupdatedAt: \"2026-10-09T14:28:53.224Z\"\ntags:\n  - Rust设计\n  - 所有权\n  - 求值策略\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 饥饿乘积的所有权消费路径\n\n饥饿乘积的所有权消费路径位于 `domain_builtins.rs` 的 `call_owned_with_printed` 入口：三个同结果类型的乘积进入 `hungry_product_owned`，先完成秩或维度校验，再就地消费参数。该路径与 `typed.rs` 中的 `HungryBuiltinCall` 配对，共同落实饥饿求值纪律。^[atlas-core-domain-dispatch.md:18-23]\n\n## 支持的乘积与处理顺序\n\n所有权消费路径覆盖以下三种乘积；它们分别执行组合秩检查或权、余权大小匹配检查，然后执行对应操作。^[atlas-core-domain-dispatch.md:18-22]\n\n| 乘积类型 | 消费前校验 | 就地消费操作 |\n| --- | --- | --- |\n| `LieType × LieType` | 按 `RANK_MAX` 校验组合秩 | 合并 factors |\n| `WeylElement × Vector` | 校验权向量大小匹配 | 执行 `word_act_weight` |\n| `Vector × WeylElement` | 校验余权向量大小匹配 | 逐生成元执行 `simple_coreflect` |\n\n这里的关键顺序是“先校验，再消费”。两个涉及 Weyl 元素的乘积具有不同的操作方向：前者作用于权，后者逐生成元作用于余权，可结合 [[Weyl 词对根与权的作用顺序]] 阅读。^[atlas-core-domain-dispatch.md:20-22]\n\n## 与普通调用路径的关系\n\n除上述三种乘积外，`call_owned_with_printed` 的其余调用均进入普通借用适配路径。相关的领域调用入口还包括 `call(name, arguments, span)`，它调用 `call_with_printed` 并丢弃打印侧通道；`call_with_printed` 则通过 `printed: &mut Vec<String>` 保留该通道，目前只有 `partial_extended_KL_block` 使用它。可参见 [[函数调用分派与内建参数解包]]。^[atlas-core-domain-dispatch.md:17-25]\n\n## 证据边界\n\n本说明依据派发入口的结构性阅读，只说明所有权路径的选择、校验顺序和消费操作。源材料不声称语言或数学验收，也未逐臂覆盖全部派发内容；其中的校验顺序契约属于实现方陈述，行为仍以 HPC 语料门为准，相关证据要求见 [[HPC 验收证据链]]。^[atlas-core-domain-dispatch.md:9-13, atlas-core-domain-dispatch.md:68-69]\n\n## Sources\n\n- [atlas-core-domain-dispatch.md](atlas-core-domain-dispatch.md)\n",
+  "generatedAt": "2026-10-09T14:28:53.301Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-dispatch.md": {
+      "hash": "1f905fd7913027864ad4525f547a173f749c10e15cbfb202245a23b31a0b20ff",
+      "concepts": [
+        "领域内建函数派发契约",
+        "饥饿乘积的所有权消费路径",
+        "领域调用的打印侧通道",
+        "领域强转标签与转换路径",
+        "表示多项式强转的-final-展开与规范排序",
+        "实形式的规范弱缓存与属主身份",
+        "领域包装器的校验顺序契约"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

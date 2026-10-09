@@ -1,0 +1,39 @@
+{
+  "id": "整数消元中的下取整除法与-gcd-主元选择-d350bbf5",
+  "title": "整数消元中的下取整除法与 gcd 主元选择",
+  "slug": "整数消元中的下取整除法与-gcd-主元选择",
+  "summary": "divide 对正除数实现下取整并避开 i32::MIN 取负；gcd 使用 wrapping_abs 选择主元，通过除法消元、负主元归一和列交换记录相应符号变化。",
+  "sources": [
+    "matreduc.md"
+  ],
+  "body": "---\ntitle: 整数消元中的下取整除法与 gcd 主元选择\nsummary: divide 对正除数实现下取整并避开 i32::MIN 取负；gcd 使用 wrapping_abs 选择主元，通过除法消元、负主元归一和列交换记录相应符号变化。\nsources:\n  - matreduc.md\nkind: concept\ncreatedAt: \"2026-10-09T15:00:21.647Z\"\nupdatedAt: \"2026-10-09T15:00:21.647Z\"\ntags:\n  - 整数运算\n  - 最大公约数\n  - 消元算法\naliases:\n  - 整数消元中的下取整除法与-gcd-主元选择\n  - 整G主\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 整数消元中的下取整除法与 gcd 主元选择\n\n`matreduc` 的整数消元通过下取整除法、最小绝对值主元选择及符号记录，复现上游 C++ 的确切幺模操作序列。这样做是因为欠定系统 $Ax=b$ 的被选解在下游可观测：$\\tau$/$t$ 坐标的奇偶性会进入 `ext_block::same_sign`，因此仅返回任意一个正确解并不足以满足移植契约。^[matreduc.md:20-26]\n\n## 正除数下的下取整除法\n\n`divide(a, b)` 在正除数 $b>0$ 下计算下取整商。非负被除数直接相除；负被除数使用以下表达式，避免直接对 `i32::MIN` 取负。^[matreduc.md:37-38]\n\n$$\n\\operatorname{divide}(a,b)=\n\\begin{cases}\na/b, & a\\ge 0,\\\\\n-1-\\bigl((-1-a)/b\\bigr), & a<0.\n\\end{cases}\n$$\n\n其中分支内的除法使用整数除法，整体实现 $\\lfloor a/b\\rfloor$。该辅助函数用于 `gcd` 消元；模块的算术采用 wrapping `i32`，以复现上游 `int` 的运算行为，包括在被选解中可观测的溢出行为域。^[matreduc.md:24-26, matreduc.md:37-41]\n\n## gcd 主元选择与符号记录\n\n`gcd(row, &mut flip, dest)` 使用 `wrapping_abs` 选择最小绝对值主元，并通过 `divide` 消元。负主元取正时，算法翻转 `flip`，同时在记录矩阵中执行 `col.set(mindex, mindex, -1)`；末尾将主元列交换到 `dest` 时，也会翻转 `flip`。因此，主元处理同时记录了取负和交换带来的行列式符号变化。^[matreduc.md:39-41]\n\n这些局部操作服务于 `diagonalise(m)`：它返回 `(row, col, diagonal)`，其中 `row`、`col` 为幺模矩阵，使 `row * m * col` 对角化，对角元素除第一个外均为正。精确的符号记录属于操作保真契约的一部分，详见 [[对角化的行列式符号簿记]]。^[matreduc.md:30-33]\n\n## 对整数求解的影响\n\n`has_solution(a, b)` 先对角化矩阵，再将 `b` 左乘 `row`，逐坐标检查可除性；`find_solution(a, b)` 返回一个解，无整数解时返回 `None`。结合被选解可观测的要求，除法规则、主元选择和幺模变换序列共同构成求解兼容性的一部分。^[matreduc.md:20-26, matreduc.md:56-59]\n\n## 验证范围与限制\n\n来源列出的测试包括 11 个对角化重构用例，以及满秩、秩亏和矩形系统的求解用例。`oracle_reference_cases` 还固定了 C++ oracle 的精确结果，包括 `[[0,5],[0,0]]` 的对角结果 `[-5]`、对应的 `row`/`col`，以及一个主元列未左对齐的 6×6 秩亏案例。^[matreduc.md:69-74]\n\n这些锚点不覆盖 wrapping 溢出域；空形状对角化及部分 panic 路径也未测试。来源包本身仅作结构性阅读，未执行构建、测试或原版运行；模块文档所述逐位验证属于其独立的 [[HPC 验收证据链]]。^[matreduc.md:9-16, matreduc.md:75-76, matreduc.md:89-89]\n\n## Sources\n\n- [matreduc.md](matreduc.md) — 精确整数矩阵约化：matreduc 的逐操作移植\n",
+  "generatedAt": "2026-10-09T15:00:22.329Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "matreduc.md": {
+      "hash": "157e83664adbfa96014a6a864b0d0e1fb91408367e03b40ede10afc6014c0006",
+      "concepts": [
+        "整数矩阵算法的逐操作保真移植",
+        "整数矩阵的幺模对角化",
+        "整数消元中的下取整除法与-gcd-主元选择",
+        "对角化的行列式符号簿记",
+        "整数线性系统求解与像判定",
+        "单位上三角整数矩阵求逆",
+        "偶数指数的虚数单位幂计算",
+        "整数矩阵移植的-oracle-回归锚点与证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,38 @@
+{
+  "id": "强对合数据的弱实形式归属-cee50a6f",
+  "title": "强对合数据的弱实形式归属",
+  "slug": "强对合数据的弱实形式归属",
+  "summary": "real_form_of 将 twisted 与 theta-fixed rational coweight factor 归属到弱实形式，通过 complex simple roots 的 cross 行走定位 Cartan 代表元，再以 simple-imaginary root 配对为偶数整数判定 noncompact grading；详细接口同时返回 Cartan 类。",
+  "sources": [
+    "cartan-classification.md"
+  ],
+  "body": "---\ntitle: 强对合数据的弱实形式归属\nsummary: real_form_of 将 twisted 与 theta-fixed rational coweight factor 归属到弱实形式，通过 complex simple roots 的 cross 行走定位 Cartan 代表元，再以 simple-imaginary root 配对为偶数整数判定 noncompact grading；详细接口同时返回 Cartan 类。\nsources:\n  - cartan-classification.md\nkind: concept\ncreatedAt: \"2026-10-09T14:42:32.053Z\"\nupdatedAt: \"2026-10-09T14:42:32.053Z\"\ntags:\n  - 实形式归属\n  - 强对合\n  - 根分级\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 强对合数据的弱实形式归属\n\n`CartanClassification::real_form_of(inner_class, twisted, factor)` 用于确定强对合数据 `(twisted, factor)` 所属的弱实形式。其中，`factor` 是调用方投影得到的、被 θ 固定的有理余权。上游唯一调用者是合成实形的 `real_form(InnerClass,mat,ratvec)` wrapper，其 torus factor 经历加倍、中心性检查及减半处理。^[cartan-classification.md:56-62]\n\n## Cartan 类定位与因子传输\n\n归属计算通过 Weyl 部分的 cross orbit 定位 Cartan 类。规范化所用的共轭词只包含 COMPLEX letters，因此 `real_form_of` 内唯一触发的传输是 `complex_cross_act`，即对 `factor` 施加一次简单反射。行走也只在 complex simple roots 上分枝。^[cartan-classification.md:63-66]\n\n这一限制来自 imaginary 与 real simple roots 对 Weyl 部分的固定性：当 $\\theta(\\alpha_s)=\\pm\\alpha_s$ 时，$s\\theta s=\\theta$。因此，仅使用 complex 步骤即可穷尽 Weyl-part cross orbit；遇到的第一个 class representative 就确定了该数据的 Cartan 类。相关代表元与类数据的职责见 [[TwistedConjugacyClass 与 CartanClass 的职责划分]]。^[cartan-classification.md:66-69, cartan-classification.md:80-90]\n\n## Grading 与弱实形式标签\n\n在命中的 Cartan 类代表元处，算法测量 `factor` 与 simple-imaginary roots 的配对。Grading 的 bit 置位表示 noncompact，其充要条件是对应配对为**偶数整数**。上游通过 `gr.set(i, not a.torus_part().negative_at(...))` 实现这一规则；配对的整数性由上游 `negative_at` 内部断言，而本 crate 使用命名不变量门控。^[cartan-classification.md:70-73]\n\n实形式标签通过 `RealFormLabels` 在同一代表元处关联。`CartanClass` 持有 `TwistedConjugacyClass`，并承载 fiber groups、实形式归属与实 Cartan 分量数据；相关接口包括 `decomposition`、`grading`、`partition` 和 `labels`。^[cartan-classification.md:80-90]\n\n## 返回值与合成实形的衔接\n\n`real_form_of` 返回弱实形式，不返回 cocharacter。上游的 `coch` 输出仅用于 `minimal_torus_part` 及 default-seed 比较；本 crate 的 `RealFormSeed` 则仅根据 form id 重算 elected seed。相关构造约束见 [[RealFormSeed 的封装与构造不变量]]。^[cartan-classification.md:56-62]\n\n`real_form_of_detailed` 在弱实形式之外，还返回 `twisted` 所属的 Cartan 类。合成实形 wrapper 需要这一类，以便在调用 `minimal_torus_part` 前，将 involution table 扩展到它之下的每个类；这里的“之下”对应 [[严格 Cayley 偏序]]。^[cartan-classification.md:43-49, cartan-classification.md:74-76]\n\n分类还提供弱实形式总数、每个形式所属的升序 Cartan 集合，以及该形式唯一的 most-split Cartan 类。这些接口将归属结果与 [[弱实形式的 Cartan 集与唯一 most-split 类]] 联系起来。^[cartan-classification.md:53-55]\n\n## 证据边界\n\n本页依据对 `cartan_classification.rs` 与 `cartan_class.rs` 的结构性阅读；对应快照记录的是 dirty 工作区字节。来源中的上游行号转述自源码注释，未独立重读上游，可能随版本漂移。该来源包未执行构建、测试或原版运行，不构成新的数学验收、性能或并行结论；Cartan 分类的正确性由其独立的 [[HPC 验收证据链]] 承载。^[cartan-classification.md:9-14, cartan-classification.md:94-105]\n\n## Sources\n\n- [Cartan 分类：编号、预算与实形式归属](cartan-classification.md)\n",
+  "generatedAt": "2026-10-09T14:42:32.328Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "cartan-classification.md": {
+      "hash": "2f240501a21fdd11a726e1c64c37b88a050bcb6a2401a53e30f6f79ecf552e52",
+      "concepts": [
+        "cartan-分类构造与共享分区",
+        "cartanid-的-atlas-编号顺序",
+        "cartan-分类的分层预算",
+        "严格-cayley-偏序",
+        "弱实形式的-cartan-集与唯一-most-split-类",
+        "强对合数据的弱实形式归属",
+        "twistedconjugacyclass-与-cartanclass-的职责划分"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

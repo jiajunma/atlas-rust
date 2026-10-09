@@ -1,0 +1,39 @@
+{
+  "id": "唯一上升像与本原元素回退-b16fdc20",
+  "title": "唯一上升像与本原元素回退",
+  "slug": "唯一上升像与本原元素回退",
+  "summary": "unique_ascent 对复上升返回 cross 像、对虚 I 型上升返回首个 Cayley 像，其余返回 None；prim_back_up 原地先递减后判定，失败时仍将位置置为 0。",
+  "sources": [
+    "kl-support.md"
+  ],
+  "body": "---\ntitle: 唯一上升像与本原元素回退\nsummary: unique_ascent 对复上升返回 cross 像、对虚 I 型上升返回首个 Cayley 像，其余返回 None；prim_back_up 原地先递减后判定，失败时仍将位置置为 0。\nsources:\n  - kl-support.md\nkind: concept\ncreatedAt: \"2026-10-09T14:56:10.679Z\"\nupdatedAt: \"2026-10-09T14:56:10.679Z\"\ntags:\n  - 拓扑遍历\n  - 本原元素\n  - 接口契约\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 唯一上升像与本原元素回退\n\n`KlSupport<B: BlockTopology>` 为块元素预计算下降集、good-ascent 集及本原索引。唯一上升像查询 `unique_ascent` 为本原索引构造提供沿上升链继承索引的路径；`prim_back_up` 则原地向下寻找本原元素。两者使用的本原性条件是：元素 `x` 的 good-ascent 集与给定下降集 `desc_y` 的交集为空。^[kl-support.md:16-21, kl-support.md:41-55]\n\n## 唯一上升像\n\n`unique_ascent(s, z)` 按生成元 `s` 在元素 `z` 处的类型返回目标：复上升返回 cross 像，虚 I 型上升返回第一个 Cayley 像，其余情况返回 `None`。因此，此接口的返回规则由上升类型决定。相关拓扑接口见 [[BlockTopology 只读块拓扑接口]]。^[kl-support.md:43-45]\n\n这些查询建立在构造期的拓扑验证之上：`KlSupport::new` 检查 rank 不超过 32、元素长度存在且非降、逐生成元的 descent/cayley/inverse_cayley 数据存在，以及 cross 与 Cayley 像的目标位于块内。参见 [[KlSupport 的拓扑构造门控]]。^[kl-support.md:32-39]\n\n## 本原性与向下回退\n\n对给定下降集 `desc_y`，`is_primitive(x, desc_y)` 检查 `good(x) ∩ desc_y` 是否为空。good ascent 的分类规则是“不是下降，且不是 `ImaginaryTypeII`”；`ImaginaryTypeII` 既不属于下降，也不属于 good ascent。该区别直接影响本原性判定，参见 [[下降集、good ascent 与本原性]]。^[kl-support.md:35-43]\n\n`prim_back_up` 原地向下搜索，顺序是**先自减，再判定**，因此不会先检查传入位置本身。失败时，调用方传入的 `*x` 已被置为 `0`；这一原地修改属于接口契约，不能将失败理解为保留原位置。^[kl-support.md:44-45]\n\n## 在本原索引构造中的作用\n\n`prepare_prim_index(desc_y)` 是幂等的，按元素序号降序扫描。本原元素记录已经遇到的更大本原元素数；需要继续处理的元素若为 `RealNonparity`，或没有唯一上升像，则记为 `DEAD_END`（`usize::MAX`）；否则沿 `unique_ascent` 链继承索引。结束时，将哨兵改写为 `range`，其余槽位改写为 `range - 1 - slot`。^[kl-support.md:49-53]\n\n降序扫描依赖“上升像序号更大”这一关系，但来源将其标为阅读观察，并指出没有显式防护；它与构造期强制保证的长度非降应加以区分。`prim_index`、`nr_of_primitives`、`col_size` 和 `self_index` 均要求先对同一下降集完成 prepare，否则会因映射缺键而 panic。^[kl-support.md:53-55, kl-support.md:70-71]\n\n## 证据与覆盖边界\n\n来源是对 `kl_support.rs` 的结构性阅读，不构成数学验收，代码注释中的上游行号也未核对原始字节。所列四个单元测试覆盖基本位操作及三条构造拒绝路径；全部判定方法与整个本原索引机制没有单元测试，来源称它们经 KL 层的 HPC 门覆盖。参见 [[KL 支撑层的测试覆盖与证据边界]]。^[kl-support.md:9-12, kl-support.md:57-62]\n\n## Sources\n\n- [kl-support.md](../../sources/kl-support.md) — 逐块 KL 支撑数据：KlSupport 与 RankFlags（kl_support.rs）\n",
+  "generatedAt": "2026-10-09T14:56:11.141Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "kl-support.md": {
+      "hash": "4f1c57502a2f47b0a294d55bf3c4b59beb600e13e3dae9f5fc15da14d31ce716",
+      "concepts": [
+        "klsupport逐块-kl-支撑数据",
+        "rankflags简单生成元位集",
+        "klsupport-的拓扑构造门控",
+        "下降集good-ascent-与本原性",
+        "length-stop-长度边界表",
+        "本原索引表的惰性构建",
+        "唯一上升像与本原元素回退",
+        "kl-支撑层的测试覆盖与证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

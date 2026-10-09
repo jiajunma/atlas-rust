@@ -1,0 +1,37 @@
+{
+  "id": "限制根的可乘性ismultipliable-ea3ba7c3",
+  "title": "限制根的可乘性（is_multipliable）",
+  "slug": "限制根的可乘性ismultipliable",
+  "summary": "通过检查二倍限制权类是否仍为限制根判定可乘性；给定 A2 对合测试覆盖可乘实例，但本包未验收其与 BC 型非约化根系的数学关系。",
+  "sources": [
+    "layout-restricted-roots.md"
+  ],
+  "body": "---\ntitle: 限制根的可乘性（is_multipliable）\nsummary: 通过检查二倍限制权类是否仍为限制根判定可乘性；给定 A2 对合测试覆盖可乘实例，但本包未验收其与 BC 型非约化根系的数学关系。\nsources:\n  - layout-restricted-roots.md\nkind: concept\ncreatedAt: \"2026-10-09T14:58:23.412Z\"\nupdatedAt: \"2026-10-09T14:58:23.412Z\"\ntags:\n  - 限制根系\n  - 可乘性\n  - 测试覆盖\naliases:\n  - 限制根的可乘性ismultipliable\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 限制根的可乘性（is_multipliable）\n\n`RestrictedRootSystem::is_multipliable(weight)` 判定给定限制权的二倍类是否也属于限制根集合。这里的“可乘性”指二倍类仍是限制根，不是该限制根的纤维重数（multiplicity）。^[layout-restricted-roots.md:57-66]\n\n## 商类表示与判定\n\n`RestrictedWeight` 表示商格 \\(X^*/\\ker(1-\\theta)\\) 中的元素，以 \\((1-\\theta)(weight)\\) 的坐标编码等价类。这是商格到像格的单射表示，不能将编码直接视为原来的环境权坐标。例如，split A1 中 \\(\\alpha\\) 的类编码为 \\(2\\alpha\\)，但它并不等于 \\(2\\alpha\\) 的类。^[layout-restricted-roots.md:50-53]\n\n可乘性检查针对商类的加倍。私有方法 `doubled` 仅供 `is_multipliable` 使用，通过逐坐标 `checked_mul(2)` 计算加倍编码；因此，判定对象是原商类的二倍，而不是依据编码外观判断根是否已经“加倍”。^[layout-restricted-roots.md:50-55, layout-restricted-roots.md:61-62]\n\n## 限制根集合与查找\n\n`RestrictedRootSystem::build` 首先检查 datum 一致性与格秩，然后遍历原根系，跳过限制为零的根，将其余根按 `RestrictedWeight` 聚合成纤维。限制根由 `BTreeMap` 收集，按编码坐标的字典序升序排列；`root(weight)` 使用二分查找，`is_multipliable(weight)` 则判定二倍类是否也在限制根集合中。^[layout-restricted-roots.md:57-62]\n\n系统的 `rank` 取自对合的 `anti_invariant_rank`，即 \\(-1\\) 特征空间的秩，而非纤维数量；相关概念见[[对合的反不变秩]]。^[layout-restricted-roots.md:59-60]\n\n## 测试锚点\n\nsplit A1 的测试给出秩为 1、两个限制根，且 \\(\\alpha\\) 的纤维重数为 1、不可乘。A2 在对合矩阵\n\\(\\begin{pmatrix}0&-1\\\\-1&0\\end{pmatrix}\\)\n下的测试给出秩为 1，且 \\(\\lambda\\) 的纤维重数为 2、可乘。compact A1 的测试则确认没有限制根。^[layout-restricted-roots.md:64-66]\n\n## 证据边界\n\n这些结论来自结构性源码阅读，不构成数学或正确性验收。源包指出，错误分支没有失败路径测试，`rank` 与限制根条数的一致性未作断言；`is_multipliable` 与 BC 型非约化根系的关系等数学性质也未在该文件中断言或由源包验收。此次知识维护未执行测试或 benchmark。^[layout-restricted-roots.md:79-85, layout-restricted-roots.md:89-93]\n\n## Sources\n\n- [内类布局与限制根系（layout.rs / restricted_roots.rs）](layout-restricted-roots.md)\n",
+  "generatedAt": "2026-10-09T14:58:23.888Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "layout-restricted-roots.md": {
+      "hash": "b952ec75bec9047bf4c68267126a429161bd6c6bd16d57b6a1d79e340950d78b",
+      "concepts": [
+        "内类布局innerclasslayout",
+        "dynkin-分支的内类字母判定与-complex-因子重排",
+        "中心环面的商对合分类",
+        "限制权的商格单射表示restrictedweight",
+        "限制根系的纤维聚合与有序查询",
+        "限制根的可乘性ismultipliable"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

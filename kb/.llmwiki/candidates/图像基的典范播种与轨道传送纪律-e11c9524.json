@@ -1,0 +1,39 @@
+{
+  "id": "图像基的典范播种与轨道传送纪律-e11c9524",
+  "title": "图像基的典范播种与轨道传送纪律",
+  "slug": "图像基的典范播种与轨道传送纪律",
+  "summary": "图像基不由 θ 唯一决定：在 canonical involution 处进行列 echelon 归约播种，再沿 cross-action BFS 传送，以保持代表元与 y_lift 所依赖的精确基选择。",
+  "sources": [
+    "real-projection.md"
+  ],
+  "body": "---\ntitle: 图像基的典范播种与轨道传送纪律\nsummary: 图像基不由 θ 唯一决定：在 canonical involution 处进行列 echelon 归约播种，再沿 cross-action BFS 传送，以保持代表元与 y_lift 所依赖的精确基选择。\nsources:\n  - real-projection.md\nkind: concept\ncreatedAt: \"2026-10-09T15:06:32.915Z\"\nupdatedAt: \"2026-10-09T15:06:32.915Z\"\ntags:\n  - 基选择\n  - 交叉作用\n  - 算法兼容性\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 图像基的典范播种与轨道传送纪律\n\n图像基的典范播种与轨道传送纪律，是为每个对合 $\\theta$ 维护 $(1-\\theta)X^*$ 图像基对的构造约定：先在 Cartan 轨道的 canonical involution 处进行列阶梯归约，再沿 cross-action BFS 传送基对。基并不由 $\\theta$ 唯一决定；选用的精确图像基会影响 `lambda-rho` 代表元与 `y_lift` 的符号，因此播种与传送方式也是需要保留的行为。^[real-projection.md:27-34]\n\n## 图像基对与分解不变量\n\n[[对合的 (1−θ)X* 图像基对]]由两个矩阵组成：`lift_mat`（记为 $L$）是 $1-\\theta$ 像的列阶梯基，维数为 $n\\times r$；`m_real`（记为 $M$）维数为 $r\\times n$。二者满足\n\\[\nLM=1-\\theta.\n\\]\n对权向量 $v$，`coordinates(v)` 返回 $(1-\\theta)v$ 在该基下的坐标 $Mv$；`lift(c)` 则以 $Lc$ 将坐标提升回 $X^*$。^[real-projection.md:21-25, real-projection.md:61-63]\n\n## 典范播种\n\n播种只在 Cartan 轨道的 canonical involution 处进行。`build(theta)` 将上游 `column_echelon` 应用于 $1-\\theta$ 的过程移植过来，增量跟踪列操作矩阵及其逆，并取逆矩阵的前 $r$ 行作为 $M$。行扫描自底向上；每次 `gcd_sweep(row, limit)` 后，主元位于列 `limit-1`。擦除零列时，核列逐列轮转到右端，已经停放的列不再移动。^[real-projection.md:29-39]\n\n`gcd_sweep` 的符号与除法约定决定了基的定向：复制局部行后选择绝对值最小的主元；负主元取正时，必须记录 `ops[mindex][mindex] = -1`。消元使用 `div_euclid`，避免负余数引出负主元并反转典范像基定向；随后通过 `apply_column_ops` 将操作同时施加于工作矩阵 `a` 与列操作矩阵 `col`。源码注释特别指出，E6 involution-187 的分解需要该符号记录才能成立。^[real-projection.md:41-45]\n\n播种还包含逆矩阵与分解自校验。`invert_integer_matrix` 通过欧几里得行消元求幺模逆，要求对角主元为 $\\pm1$，并逐项验证 $MM^{-1}=I$。`build` 收尾调用 `check_against` 检查图像基分解，失败时报告 `RepInvariantViolation { invariant: \"image basis factorization\" }`。相关过程见[[幺模矩阵求逆与分解自校验]]。^[real-projection.md:46-49]\n\n## 沿轨道传送\n\n沿一条 cross 边的单反射 $s$，`transported(reflection)` 按照\n\\[\nL'=sL,\\qquad M'=Ms\n\\]\n传送基对，从而保持\n\\[\nL'M'=(sL)(Ms)=s(1-\\theta)s=1-\\theta'.\n\\]\n传送使用受检的 `i64` 算术，溢出报告 `ArithmeticOverflow`。这一操作对应[[单反射下的图像基传送]]。^[real-projection.md:53-58]\n\n传送所得的基与直接对 $1-\\theta'$ 重新进行阶梯归约的结果会相差列符号或列次序。因此，上游将基保存在 involution record 中，沿 cross-action BFS 携带它，而不是在每个新对合处重新播种。这一约定将典范起点的基选择延续到轨道内的记录，关联[[实投影像基的播种与路径依赖传送]]。^[real-projection.md:29-34, real-projection.md:53-58]\n\n## 校验边界与证据范围\n\n`transported` 本身只检查反射矩阵是否为方阵，不检查其阶是否等于 $n$，也不重新调用 `check_against`；入表时由 `push_record` 对照新鲜的 $\\theta$ 检查分解。理解这一职责边界时，应结合[[Twisted involution 表与 Cartan 轨道存储]]，不能将传送接口本身视为完整的维数与分解验证入口。^[real-projection.md:65-67]\n\n源材料列出的测试锚点覆盖带符号 gcd 扫描、斜环面与斜乘积的像基字面量，以及零像和满像边界；例如斜环面的基对为 `lift_mat = [[4],[2]]`、`m_real = [[2,-3]]`，恒等对合对应秩零，$-I$ 对应满秩且 `lift_mat = 2I`。该次阅读明确记录 `transported` 无测试，详见[[图像基算法的测试锚点与证据范围]]。^[real-projection.md:73-77]\n\n本文依据结构性源码阅读材料；该材料未执行构建、测试或原版运行，不构成新的数学验收、性能或并行结论。上游文件行号来自 Rust 源码注释的转述，未独立重读上游，可能随版本变化而漂移。^[real-projection.md:9-17, real-projection.md:87-92]\n\n## Sources\n\n- [real-projection.md](real-projection.md)：per-involution (1-θ)X* 图像基对：播种、传送与坐标。\n",
+  "generatedAt": "2026-10-09T15:06:33.516Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "real-projection.md": {
+      "hash": "a9bca5a0a8815764fc34cb30d45b204c8bd5c499bc670e8dc4efda5db2197ee3",
+      "concepts": [
+        "对合的-1θx-图像基对",
+        "图像基的典范播种与轨道传送纪律",
+        "整数列阶梯归约与带符号-gcd-扫描",
+        "幺模矩阵求逆与分解自校验",
+        "单反射下的图像基传送",
+        "图像坐标计算与提升映射",
+        "图像基接口的维度与算术安全边界",
+        "图像基算法的测试锚点与证据范围"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

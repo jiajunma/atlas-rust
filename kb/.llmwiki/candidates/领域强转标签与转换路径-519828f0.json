@@ -1,0 +1,38 @@
+{
+  "id": "领域强转标签与转换路径-519828f0",
+  "title": "领域强转标签与转换路径",
+  "slug": "领域强转标签与转换路径",
+  "summary": "coerce 根据标签选择内建函数调用、句柄导航、机器整数收窄或多项式展开，与 coercions.rs 的语言侧注册配对；未知标签产生运行时错误。",
+  "sources": [
+    "atlas-core-domain-dispatch.md"
+  ],
+  "body": "---\ntitle: 领域强转标签与转换路径\nsummary: coerce 根据标签选择内建函数调用、句柄导航、机器整数收窄或多项式展开，与 coercions.rs 的语言侧注册配对；未知标签产生运行时错误。\nsources:\n  - atlas-core-domain-dispatch.md\nkind: concept\ncreatedAt: \"2026-10-09T14:29:02.122Z\"\nupdatedAt: \"2026-10-09T14:29:02.122Z\"\ntags:\n  - 类型转换\n  - 领域模型\n  - 错误处理\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 领域强转标签与转换路径\n\n领域强转由 `domain_builtins.rs` 中的 `coerce(tag, value, span)` 实现，按标签选择函数派发、句柄导航、数值构造或多项式展开路径。它与 `coercions.rs` 中的语言侧强转表注册配对；语言层的重载解析则位于 `typed.rs`。^[atlas-core-domain-dispatch.md:40-53, atlas-core-domain-dispatch.md:70-72]\n\n## 函数派发与句柄导航\n\n`LT` 与 `IcRf` 分别调用 `Lie_type`、`inner_class` 派发臂。领域派发臂的共同结构是先检查参数个数，再按类型提取参数、执行调用，最后包装为 `Value`；错误通过对应的诊断路径发出。相关调用机制见 [[函数调用分派与内建参数解包]]。^[atlas-core-domain-dispatch.md:29-32, atlas-core-domain-dispatch.md:42-42]\n\n`RdIc` 与 `RdRf` 分别从 `InnerClass`、`RealForm` 句柄导航到其根数据，不经过函数调用。^[atlas-core-domain-dispatch.md:43-44]\n\n## 分裂整数构造\n\n`SpI` 将 `int` 转换为 `Split`，`Sp(I,I)` 将 `(int,int)` 转换为 `Split`。两条路径都先进行机器位宽收窄，再构造分裂整数值；相关值表示见 [[SplitInteger 分裂整数系数]]。^[atlas-core-domain-dispatch.md:45-46]\n\n## 多项式转换与规范项序\n\n`KpolK` 将 `KType` 转换为 `KTypePol`：先通过 `finals_for`（`K_repr`）展开为 final 组分，再逐项调用 `merge_ktype_term` 合并，最后按 canonical `K_type_pol` 项序排序。因此，这条转换路径包含组分展开、合并与规范排序。相关概念见 [[finals_for 带号重数展开]]。^[atlas-core-domain-dispatch.md:47-49]\n\n`PolP` 将 `Param` 转换为 `ParamPol`：通过 `expand_final` 展开为 final 标准组分，合并后按 `SR_poly` 项序排序。相关参数与 final 化机制见 [[StandardRepr 标准表示参数]]、[[可约点与标准参数 final 化]]。^[atlas-core-domain-dispatch.md:50-52]\n\n## 错误与证据边界\n\n未知标签产生运行时错误 `conversion '<tag>' is not implemented`。^[atlas-core-domain-dispatch.md:53-53]\n\n本页依据的材料属于结构性阅读，未声称通过语言或数学验收；各派发臂的完整数学内容以及 `merge_*`、`sort_*` 等适配器实现不在该材料的覆盖范围内。材料中的校验顺序契约属于实现方陈述，其行为仍以 HPC 语料门为准。^[atlas-core-domain-dispatch.md:9-13, atlas-core-domain-dispatch.md:63-69]\n\n## Sources\n\n- [atlas-core-domain-dispatch.md](atlas-core-domain-dispatch.md)\n",
+  "generatedAt": "2026-10-09T14:29:02.206Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-dispatch.md": {
+      "hash": "1f905fd7913027864ad4525f547a173f749c10e15cbfb202245a23b31a0b20ff",
+      "concepts": [
+        "领域内建函数派发契约",
+        "饥饿乘积的所有权消费路径",
+        "领域调用的打印侧通道",
+        "领域强转标签与转换路径",
+        "表示多项式强转的-final-展开与规范排序",
+        "实形式的规范弱缓存与属主身份",
+        "领域包装器的校验顺序契约"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

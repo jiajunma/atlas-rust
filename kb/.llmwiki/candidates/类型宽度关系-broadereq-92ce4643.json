@@ -1,0 +1,38 @@
+{
+  "id": "类型宽度关系-broadereq-92ce4643",
+  "title": "类型宽度关系 broader_eq",
+  "slug": "类型宽度关系-broadereq",
+  "summary": "broader_eq 定义 void 最宽、* 最窄的平衡序，原始类型吸收可转入者，行和元组逐分量比较，函数比较要求参数类型相等。",
+  "sources": [
+    "atlas-core-support-layer.md"
+  ],
+  "body": "---\ntitle: 类型宽度关系 broader_eq\nsummary: broader_eq 定义 void 最宽、* 最窄的平衡序，原始类型吸收可转入者，行和元组逐分量比较，函数比较要求参数类型相等。\nsources:\n  - atlas-core-support-layer.md\nkind: concept\ncreatedAt: \"2026-10-09T14:35:46.143Z\"\nupdatedAt: \"2026-10-09T14:35:46.143Z\"\ntags:\n  - 类型关系\n  - 平衡序\n  - 函数类型\naliases:\n  - 类型宽度关系-broadereq\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 类型宽度关系 broader_eq\n\n`broader_eq(a, b)` 是类型比较中的“平衡序”谓词，用于判断类型 `a` 是否至少与 `b` 一样宽。源码材料将其对应到上游 `axis-types.w:3339-3364`，并规定了边界类型、原始类型、行、元组与函数的比较规则。^[atlas-core-support-layer.md:62-64]\n\n## 比较规则\n\n`void` 是最宽类型，`*` 是最窄类型。原始类型吸收所有可转换到它的类型，因此转换方向是判断原始类型宽度关系的依据。^[atlas-core-support-layer.md:62-64]\n\n行与元组按分量比较。函数类型的比较则要求参数类型相等；不能仅凭参数之间存在转换关系，就认定满足这一要求。类型表示与等值语义可参见 [[Type 类型表示与语义等值]]。^[atlas-core-support-layer.md:62-64]\n\n## 与邻近关系及强转的区别\n\n同一模块中的 `is_close(x, y)` 返回三比特结果，分别表示左侧可转到右侧、右侧可转到左侧，以及二者邻近。它规定 `void` 与 `*` 只与自身邻近；`broader_eq` 则将二者分别作为最宽和最窄类型。因此，邻近关系与类型宽度关系具有不同的边界规则。^[atlas-core-support-layer.md:58-64]\n\n`broader_eq` 所在的 `coercions.rs` 提供强转表及相关适用性判断，转换节点由类型化管线承接。理解这些判断与可执行转换之间的职责边界时，可参见 [[TypedExpr 可执行表达式树]]。^[atlas-core-support-layer.md:40-66]\n\n## 证据边界\n\n本页依据支撑层源码包的结构性阅读说明，不代表语言或数学验收。上游行号对应关系属于实现方的移植陈述，行为兼容仍以 HPC 语料门为准，参见 [[HPC 验收证据链]]。^[atlas-core-support-layer.md:9-12, atlas-core-support-layer.md:70-74]\n\n## Sources\n\n- [atlas-core-support-layer.md](atlas-core-support-layer.md)\n",
+  "generatedAt": "2026-10-09T14:35:46.321Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-support-layer.md": {
+      "hash": "0ccb11cea1a059562ca322e7fee6cd5ce235ab492c814cc80f8e39a7fe68256a",
+      "concepts": [
+        "结构化诊断与原始字节保真",
+        "运行时回溯的累积与暴露",
+        "源文本身份与-unicode-位置映射",
+        "有序强制转换注册表",
+        "列表显示的行转换选择",
+        "类型邻近谓词-isclose",
+        "类型宽度关系-broadereq"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

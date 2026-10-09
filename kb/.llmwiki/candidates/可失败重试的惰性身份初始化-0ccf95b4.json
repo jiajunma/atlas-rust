@@ -1,0 +1,38 @@
+{
+  "id": "可失败重试的惰性身份初始化-0ccf95b4",
+  "title": "可失败重试的惰性身份初始化",
+  "slug": "可失败重试的惰性身份初始化",
+  "summary": "WeylIdentityCell 以 OnceLock、互斥锁和双检查避免并发重复初始化，仅成功时发布值，失败可重试，锁毒化或二次初始化报告表示不变量错误。",
+  "sources": [
+    "atlas-core-domain-values.md"
+  ],
+  "body": "---\ntitle: 可失败重试的惰性身份初始化\nsummary: WeylIdentityCell 以 OnceLock、互斥锁和双检查避免并发重复初始化，仅成功时发布值，失败可重试，锁毒化或二次初始化报告表示不变量错误。\nsources:\n  - atlas-core-domain-values.md\nkind: concept\ncreatedAt: \"2026-10-09T14:30:24.773Z\"\nupdatedAt: \"2026-10-09T14:30:24.773Z\"\ntags:\n  - Rust\n  - 并发\n  - 惰性初始化\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 可失败重试的惰性身份初始化\n\n可失败重试的惰性身份初始化由 `WeylIdentityCell<T>` 实现，用于按需建立 Weyl 身份相关状态。其核心约定是：`get_or_try_init` 仅在初始化成功时发布结果；失败不会占用单元，因此后续调用仍可重试。^[atlas-core-domain-values.md:21-23]\n\n## 初始化与并发控制\n\n`WeylIdentityCell<T>` 将 `OnceLock` 值与初始化互斥锁组合，通过双重检查和加锁避免并发重复初始化。锁毒化或二次初始化会转为 `StructureError::RepInvariantViolation`，归入 [[StructureError 统一错误分类学]]。这一机制体现了[[仅成功发布的惰性初始化]]的约定。^[atlas-core-domain-values.md:21-23]\n\n## Weyl 身份的分层\n\n`DatumWeylIdentity` 为每个根数据属主保存惰性的坐标 kernel 与抽象群身份。`DatumWeylKernel` 缓存属主局部坐标中的枚举根系，由克隆、别名以及 `root_datum(WeylElt)` 往返共享；`AbstractWeylGroup` 提供 canonical-word 接口，其共享范围对应上游 `WeylGroup` 指针的共享范围。两个初始化单元均不回指 handle，因此不会形成所有权环，参见 [[Rust Weyl 内核与抽象群的无环所有权模型]]。^[atlas-core-domain-values.md:24-29]\n\n这两层身份不能混同：Weyl 元素的兼容性由抽象群的 `Arc` 指针同一性决定，而非结构相等的根数据 handle 或坐标 kernel。惰性初始化所发布的抽象群身份因而参与后续兼容性判断。^[atlas-core-domain-values.md:53-56, atlas-core-domain-values.md:89-91]\n\n## 对偶共享与预热历史\n\n`share_group_into_if_cold` 仅在目标 canonical dual 尚未初始化时，将源的抽象群装入目标。已经预热的目标不会被覆盖，并与源保持不兼容；并发共享发生竞争时，只发布一个结果，另一个被丢弃。这使[[dual 预热历史与 Weyl 群兼容性]]成为可观察语义的一部分。^[atlas-core-domain-values.md:30-33]\n\n## 驻留与生命周期\n\n全局表 `DATUM_WEYL_IDENTITIES` 按完整内容保存弱引用。等值属主仍存活时，新构造会复用其身份单元；所有强引用消失后，槽位过期，后来构造的等值对象会重新开始初始化。表规模超过 4096 时才清扫失效槽位，相关机制见 [[RootDatum 弱驻留与规范活对象身份]]。^[atlas-core-domain-values.md:34-37]\n\n`RootDatumHandle::interned` 是唯一构造入口，保证等值活数据共享 Weyl 身份。不过，handle 的 `PartialEq` 刻意忽略身份缓存，仅比较 `datum`、`lie_type`、`isogeny` 与 `prefers_coroots`；因此结构相等与 Weyl 身份兼容是不同的判定。^[atlas-core-domain-values.md:41-43, atlas-core-domain-values.md:89-91]\n\n## 证据边界\n\n本页依据的材料属于结构性阅读，未覆盖测试实现。材料指向 A1 限定的 HPC 语义验收记录 `tests/reference/hpc/math_weyl_context_core_after_v5_acceptance_2026_10_06.json`，以及 `tests/math/generics/weyl_context_core_*` 中的差异发现与回归金标；该证据范围不应扩展为更高秩或全部并发情形的验收结论。^[atlas-core-domain-values.md:9-17, atlas-core-domain-values.md:119-126]\n\n## Sources\n\n- [atlas-core-domain-values.md](atlas-core-domain-values.md) — 领域值与 Weyl 身份（domain_builtins.rs 上部）。\n",
+  "generatedAt": "2026-10-09T14:30:24.882Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-values.md": {
+      "hash": "095720e96102e5ab1fb47dca42f32f1eaeaa4c7837c41b6504180e2558b299e6",
+      "concepts": [
+        "根数据的-weyl-身份与弱驻留机制",
+        "可失败重试的惰性身份初始化",
+        "领域值的结构等值与属主身份",
+        "weyl-元素兼容性与跨坐标词重放",
+        "split-系数算术与零因子筛选",
+        "实形属主约束下的多项式系数契约",
+        "领域内建调用的所有权派发与打印侧通道"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

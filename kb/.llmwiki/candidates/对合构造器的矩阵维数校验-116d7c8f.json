@@ -1,0 +1,37 @@
+{
+  "id": "对合构造器的矩阵维数校验-116d7c8f",
+  "title": "对合构造器的矩阵维数校验",
+  "slug": "对合构造器的矩阵维数校验",
+  "summary": "对合构造器包装侧先校验保留原始维数的 mat，再适配为行向量，以保留 0×N 等形状信息，并以矩阵行数作为独立情形的期望秩。",
+  "sources": [
+    "atlas-core-domain-scc-root-table.md"
+  ],
+  "body": "---\ntitle: 对合构造器的矩阵维数校验\nsummary: 对合构造器包装侧先校验保留原始维数的 mat，再适配为行向量，以保留 0×N 等形状信息，并以矩阵行数作为独立情形的期望秩。\nsources:\n  - atlas-core-domain-scc-root-table.md\nkind: concept\ncreatedAt: \"2026-10-09T14:29:27.550Z\"\nupdatedAt: \"2026-10-09T14:29:27.550Z\"\ntags:\n  - 对合\n  - 矩阵维数\n  - 输入校验\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 对合构造器的矩阵维数校验\n\n对合构造器在包装层执行公共校验：先检查原始矩阵值，再将其适配为行表示。独立情形下，Atlas 以**矩阵行数**作为期望秩。^[atlas-core-domain-scc-root-table.md:30-32]\n\n## 维数保留与校验顺序\n\n原始 `mat` 保留了 `Vec<Vec<_>>` 无法恢复的维数信息，特别是 `0×N` 矩阵的列数。因此，校验必须在适配成行之前进行，利用原始矩阵值中仍然可用的维数信息。^[atlas-core-domain-scc-root-table.md:30-32]\n\n这一规则属于构造器包装侧的公共校验，可结合 [[对合类型的分层构造验证与错误优先级]] 理解其在整体构造流程中的位置；本来源明确记录的顺序是“先检查值，再适配成行”。^[atlas-core-domain-scc-root-table.md:30-32]\n\n## 证据边界\n\n本说明来自 `crates/atlas-core/src/domain_builtins.rs` 相关区域的结构性阅读，不代表数学验收。来源中的上游行号引用属于实现方的移植陈述；兼容性仍以 HPC 差分门为准，参见 [[HPC 验收证据链]]。^[atlas-core-domain-scc-root-table.md:9-14, atlas-core-domain-scc-root-table.md:44-45]\n\n## Sources\n\n- [块图 SCC 与根表（domain_builtins.rs 3022–5005 + 7992–9606）](atlas-core-domain-scc-root-table.md)\n",
+  "generatedAt": "2026-10-09T14:29:27.647Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-scc-root-table.md": {
+      "hash": "343742d922dfc6159d8a9727f615309845cee1c82c7417ae7dae997a0578ac4e",
+      "concepts": [
+        "块图的迭代式强连通分量算法",
+        "bylastcoordinate-逆坐标字典序",
+        "整数矩阵乘积的宽累积",
+        "对合构造器的矩阵维数校验",
+        "roottable-的根与余根构建",
+        "根向量到环境格基的表达"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

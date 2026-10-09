@@ -1,0 +1,39 @@
+{
+  "id": "中央商与显式矩阵根数据构造-b5c53508",
+  "title": "中央商与显式矩阵根数据构造",
+  "slug": "中央商与显式矩阵根数据构造",
+  "summary": "商构造支持单连通与伴随端点之间的中央商；显式构造接受根与余根矩阵，并保留空矩阵的维数信息。",
+  "sources": [
+    "atlas-core-domain-construction.md"
+  ],
+  "body": "---\ntitle: 中央商与显式矩阵根数据构造\nsummary: 商构造支持单连通与伴随端点之间的中央商；显式构造接受根与余根矩阵，并保留空矩阵的维数信息。\nsources:\n  - atlas-core-domain-construction.md\nkind: concept\ncreatedAt: \"2026-10-09T14:28:11.509Z\"\nupdatedAt: \"2026-10-09T14:28:11.509Z\"\ntags:\n  - 根数据\n  - 中央商\n  - 矩阵表示\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 中央商与显式矩阵根数据构造\n\n领域构造管线提供中央商与显式矩阵两类根数据构造入口：`build_quotient_datum`、`build_quotient_from_handle` 处理中央商数据，`build_explicit_datum` 处理显式根与余根矩阵。中央商路径覆盖中间商，并不限于单连通与伴随两个端点。^[atlas-core-domain-construction.md:27-33]\n\n## 基础根数据的坐标约定\n\n作为构造背景，`build_datum` 从 Lie 类型取得半单 Cartan 矩阵，并按单连通或伴随情形选择格基。单连通情形使用权格基，根取 Cartan 矩阵的行、余根取基向量；伴随情形使用根格基，根取基向量、余根取 Cartan 矩阵的列。坐标均以零填充到格秩，再由 `BasedRootDatum::from_simple_data` 校验，可参见 [[BasedRootDatum：带基根数据与构造不变量]]。^[atlas-core-domain-construction.md:16-22]\n\n当格秩与半单秩不同时，isogeny 记为 `Other`；否则调用 `classify_isogeny`。简单数据的排列将环面 T1 因子放在半单类型之后，不保留输入中交错的环面位置，也不改变调用方的 LieType 值。^[atlas-core-domain-construction.md:21-25]\n\n## 中央商构造\n\n`build_quotient_datum` 与 `build_quotient_from_handle` 分别位于 `domain_builtins.rs` 的 1682 行与 1702 行。两者承担中央商数据的构造，明确包含单连通与伴随端点之间的中间商。^[atlas-core-domain-construction.md:27-30]\n\n## 显式矩阵构造\n\n`build_explicit_datum` 位于 `domain_builtins.rs` 的 1846 行，以显式根矩阵与余根矩阵构造根数据。空维输入仍须保留矩阵维数；源材料特别指出派发层 `as_matrix_rows` 的 `0xN` 表示约定，因此空矩阵表示中的维数信息也是该入口需要保留的内容。^[atlas-core-domain-construction.md:31-33]\n\n## 证据范围\n\n本页依据的是构造管线的结构性阅读记录，不代表数学验收。源材料中的上游行号引用属于实现方的移植陈述，构造兼容性仍以 HPC 差分门为准，相关证据要求可参见 [[HPC 验收证据链]]。^[atlas-core-domain-construction.md:9-14, atlas-core-domain-construction.md:73-75]\n\n## Sources\n\n- [领域构造管线（domain_builtins.rs 1628–2527）——datum/内类/实形的构造顺序与预算](atlas-core-domain-construction.md)\n",
+  "generatedAt": "2026-10-09T14:28:11.580Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-construction.md": {
+      "hash": "d70fe7e4d84d85c790b634f206c8a16532ba3b5c2475f5e53e090f6a1b083773",
+      "concepts": [
+        "由-lie-类型构造根数据",
+        "中央商与显式矩阵根数据构造",
+        "内类上下文的装配顺序与预算门",
+        "从根数据对合构造内类",
+        "对偶内类与-weyl-身份共享",
+        "规范实形的编号映射与弱缓存",
+        "自定义实形的种子与上下文构造",
+        "构造管线的证据范围与兼容性验收"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,39 @@
+{
+  "id": "形变计算的协作式截止-e7c1a159",
+  "title": "形变计算的协作式截止",
+  "slug": "形变计算的协作式截止",
+  "summary": "在计算阶段之间检查截止时间，超限返回 None 且不缓存部分结果；扭曲全形变在 extended_finalise 后才开始计时，setup 成本不计入截止预算。",
+  "sources": [
+    "atlas-core-deformation-cache.md"
+  ],
+  "body": "---\ntitle: 形变计算的协作式截止\nsummary: 在计算阶段之间检查截止时间，超限返回 None 且不缓存部分结果；扭曲全形变在 extended_finalise 后才开始计时，setup 成本不计入截止预算。\nsources:\n  - atlas-core-deformation-cache.md\nkind: concept\ncreatedAt: \"2026-10-09T14:27:56.637Z\"\nupdatedAt: \"2026-10-09T14:27:56.637Z\"\ntags:\n  - 协作式取消\n  - 超时控制\n  - 缓存\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 形变计算的协作式截止\n\n形变计算采用协作式截止：通过 `deadline_expired` 在阶段之间检查是否超限，超限时返回 `None`，且不缓存部分结果。这使截止处理与“只缓存完整、canonical 排序结果”的缓存纪律保持一致。^[atlas-core-deformation-cache.md:19-27]\n\n## 截止与递归缓存\n\n普通全形变的 `full_deformation_terms` 在分母超过 alcove 界时先调用 `domain_alcove_center` 取中，随后依次查缓存、进入 active 集、递归计算、排序并缓存。`active: HashSet<FullDeformKey>` 用于显式检测递归环；缓存键为 canonical 单元 `(x, y_bits, gamma)`，而非顶层参数键。相关机制见 [[全形变缓存与递归环检测]]。^[atlas-core-deformation-cache.md:19-27, atlas-core-deformation-cache.md:34-35]\n\n缓存通过 `Mutex<DeformationCache>` 保护，但锁只在读写瞬间持有；缓存锁和块属主锁都不跨递归调用持有。协作式截止与这一锁纪律共同约束递归计算：超限返回不完整状态时，不将部分结果发布到缓存。^[atlas-core-deformation-cache.md:20-27]\n\n## 扭曲全形变的计时范围\n\n`compute_twisted_full_deform` 先执行 `distinguished_twist`、构造 `ExtRepContext`，再调用 `extended_finalise`；计时在 `extended_finalise` 完成之后才开始，因此这些 setup 成本处于协作截止范围之外。此后计算使用 `twisted_reducibility_lookup` 与 `twisted_deformation_with_cancel`，并逐项合并、排序结果。完整流程见 [[扭曲全形变计算流程]]。^[atlas-core-deformation-cache.md:44-50]\n\n## 证据边界\n\n上述说明来自形变机器的结构性阅读，不代表数学验收。源材料中的上游行号引用属于实现方的移植陈述；形变兼容性仍以 HPC 差分门为准，普通全形变弧对应的门为 `3845838/3845872`。相关背景见 [[形变兼容性的证据边界]] 与 [[HPC 验收证据链]]。^[atlas-core-deformation-cache.md:9-15, atlas-core-deformation-cache.md:62-64]\n\n## Sources\n\n- [atlas-core-deformation-cache.md](atlas-core-deformation-cache.md)\n",
+  "generatedAt": "2026-10-09T14:27:56.692Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-deformation-cache.md": {
+      "hash": "251d08951979797aa316b4de309b7b4c52e32ad225d643780c204413bcae0295",
+      "concepts": [
+        "全形变缓存与递归环检测",
+        "普通全形变的递推关系",
+        "全形变中的-split-因子与后代保留",
+        "全形变参数规范化与结果聚合",
+        "扭曲全形变计算流程",
+        "形变计算的协作式截止",
+        "精确-cramer-求解与矩阵辅助",
+        "形变兼容性的证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

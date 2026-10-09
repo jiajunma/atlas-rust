@@ -1,0 +1,39 @@
+{
+  "id": "表示参数构造与权重恢复-dd21a23d",
+  "title": "表示参数构造与权重恢复",
+  "slug": "表示参数构造与权重恢复",
+  "summary": "通过 sr_gamma 和 sr 构造标准参数，恢复 lambda-rho、lambda 与 nu，并支持 K-type 转换；lambda-rho 的减半步骤要求坐标和为偶数。",
+  "sources": [
+    "rep-context.md"
+  ],
+  "body": "---\ntitle: 表示参数构造与权重恢复\nsummary: 通过 sr_gamma 和 sr 构造标准参数，恢复 lambda-rho、lambda 与 nu，并支持 K-type 转换；lambda-rho 的减半步骤要求坐标和为偶数。\nsources:\n  - rep-context.md\nkind: concept\ncreatedAt: \"2026-10-09T15:08:32.710Z\"\nupdatedAt: \"2026-10-09T15:08:32.710Z\"\ntags:\n  - 表示论\n  - 权重计算\n  - 参数构造\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 表示参数构造与权重恢复\n\n表示参数构造与权重恢复由 [[RepContext 借用上下文与一致性约束|RepContext]] 提供：构造时将权重的挠部分打包，并保存无穷小特征；恢复时结合对合及图像基，重建 `lambda_rho`、`lambda` 与 `nu`。[[StandardRepr 标准表示参数|StandardRepr]] 对应四元组 $(x,y,\\gamma,\\mathrm{height})$，只能经 `RepContext::sr_gamma` 或 `RepContext::sr` 构造。^[rep-context.md:20-28, rep-context.md:51-63]\n\n## 参数表示与构造前提\n\n`StandardRepr` 保存 `x: KgbId`、`y_bits: ModTwoVector`、经 gcd 归一化的 `gamma: RationalWeight` 和 `height: u32`。其中 `y_bits` 是 `lambda` 的打包挠部分，$\\gamma$ 是无穷小特征。相等性只比较 `x`、打包挠部分与 `gamma`，派生的 `height` 不参与比较。^[rep-context.md:32-38]\n\n`RepContext<'a>` 借用 inner class、involution 表和该实形式的 KGB 图，并共享包含 $2\\rho$、$2\\rho^\\vee$、$\\rho$ 的派生常量。构造器 `new` 检查表的 inner class 是否匹配，以及表与图的 `Arc` 指针是否一致；不一致均返回 `DatumMismatch`。^[rep-context.md:42-47]\n\n## 构造入口\n\n`sr_gamma(x, lambda_rho, gamma)` 打包 `lambda_rho` 的挠部分，保存 `gamma`，并存入由 $(1+\\theta)\\gamma$ 得到的 height。`sr(x, lambda_rho, nu)` 则先计算 `gamma`，再转交 `sr_gamma` 完成构造。^[rep-context.md:51-54]\n\n与 [[KType 表示参数与规范化构造|KType]] 的转换也经由这一参数层：`sr_of_ktype` 取 $\\nu=0$，将 K-type 扩张为标准参数；`sr_k_of_standard` 则反向从标准参数得到 `KType`。^[rep-context.md:53-55]\n\n## 挠部分的打包与提升\n\n每个 involution 的 [[对合的 (1−θ)X* 图像基对|$(1-\\theta)X^*$ 图像基对]] `lift_mat`、`M_real` 存储在 involution 表记录中，并沿 cross-action BFS 传送；`RepContext` 只读这些数据。精确的图像基会影响选出的 `lambda-rho` 代表元，因此阶梯归约逐步复刻上游 `column_echelon` 及其 gcd sweep。^[rep-context.md:23-28]\n\n`y_pack` 将 `lambda_rho` 的 `M_real` 坐标模二化，得到图像基上的 `ModTwoVector`；`y_lift` 从打包挠部分计算 $(1-\\theta)\\lambda_\\rho$，供权重恢复使用。^[rep-context.md:61-63]\n\n## 权重恢复\n\n`lambda_rho(z)` 先将 $\\gamma-\\rho$ 与其 $\\theta$ 像相加，取整坐标，再逐坐标加上 `y_lift` 给出的挠提升，最后减半。若待减半的坐标和为奇数，则返回 `RepInvariantViolation`，诊断为 `\"lambda-rho halving\"`。^[rep-context.md:56-58]\n\n其余权重通过\n\\[\n\\lambda(z)=\\rho+\\operatorname{lambda\\_rho}(z),\n\\qquad\n\\nu(z)=\\frac{\\gamma-\\theta\\gamma}{2}\n\\]\n恢复；其中 $\\nu$ 是 $-\\theta$-不动投影。^[rep-context.md:59-60]\n\n## 代表元归一化\n\n`lambda_unique`、`real_unique` 和 `gamma_lambda` 用于代表元归一化。`lambda_unique` 以欧几里得除法 `div_euclid(2)` 取半：对负奇数使用 C++ 内建有符号除法的截断规则，会选出同一陪集中的不同代表元，导致公式项无法合并。^[rep-context.md:64-67]\n\n`mod_reduce(z)` 将 $\\gamma-\\rho-\\lambda_\\rho$ 经 `real_unique` 归一化，返回 $(x,\\gamma_\\lambda)$，用于打印 wrapper 的种子计算；`build_srm(x, gamma_lambda)` 则在对应 involution 处对 `gamma_lambda` 应用 `real_unique` 并规范化。^[rep-context.md:77-80]\n\n## 未定义参数与证据边界\n\n仅 `UndefKGB` twist 携带缓存 `undefined_print_weights`，使打印不依赖图索引；普通参数自行派生两个权重。对 undefined 参数的操作通过 `ensure_defined` 返回 `RepInvariantViolation`。^[rep-context.md:34-38]\n\n本文依据的源文档属于结构性阅读记录，其快照对应 dirty 工作区字节。文档未执行构建、测试或原版运行，不提供数学验收、性能或并行结论；上游行号来自源码注释，未独立重读上游。参数层正确性仍属于其自身的 [[HPC 验收证据链]]。^[rep-context.md:9-16, rep-context.md:93-99]\n\n## Sources\n\n- [rep-context.md](rep-context.md) — 表示参数上下文：StandardRepr 与 RepContext\n",
+  "generatedAt": "2026-10-09T15:08:33.317Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "rep-context.md": {
+      "hash": "2db29d2aede61b26bc8320170ff93cf6c66cfadbdd8a50bc1c8a74c3a82b9abe",
+      "concepts": [
+        "standardrepr-标准表示参数",
+        "repcontext-借用上下文与一致性约束",
+        "表示参数构造与权重恢复",
+        "挠部分打包与-involution-图像基",
+        "表示参数代表元归一化",
+        "表示参数的奇偶判定与朝向数",
+        "可约点与标准参数-final-化",
+        "形变项计算的边界情形与输出顺序"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

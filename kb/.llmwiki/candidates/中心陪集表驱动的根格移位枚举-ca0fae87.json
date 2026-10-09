@@ -1,0 +1,38 @@
+{
+  "id": "中心陪集表驱动的根格移位枚举-ca0fae87",
+  "title": "中心陪集表驱动的根格移位枚举",
+  "slug": "中心陪集表驱动的根格移位枚举",
+  "summary": "shifts(fix, pos, neg) 利用陪集匹配、分数部借位与子集筛选，枚举 fw(fix+A)−fw(B) 的单根坐标，其中 A⊆pos、B⊆neg。",
+  "sources": [
+    "atlas-core-center-classifier.md"
+  ],
+  "body": "---\ntitle: 中心陪集表驱动的根格移位枚举\nsummary: shifts(fix, pos, neg) 利用陪集匹配、分数部借位与子集筛选，枚举 fw(fix+A)−fw(B) 的单根坐标，其中 A⊆pos、B⊆neg。\nsources:\n  - atlas-core-center-classifier.md\nkind: concept\ncreatedAt: \"2026-10-09T14:26:23.631Z\"\nupdatedAt: \"2026-10-09T14:26:23.631Z\"\ntags:\n  - 根格\n  - 陪集\n  - 组合枚举\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 中心陪集表驱动的根格移位枚举\n\n中心陪集表驱动的根格移位枚举由 `CenterClassifier::shifts(fix, pos, neg)` 实现。它利用基本权子集和的根格陪集分类，枚举形如\n\\[\n\\operatorname{fw}(fix+A)-\\operatorname{fw}(B),\n\\qquad A\\subseteq pos,\\quad B\\subseteq neg\n\\]\n且落在根格中的移位，输出其 adjoint（单根）坐标。相关分类结构见 [[中心分类器与根格陪集制表]]。^[atlas-core-center-classifier.md:16-29]\n\n## 中心陪集表的构造\n\n构造器先求 Cartan 矩阵的伴随矩阵与行列式 `(adjugate, det)`，再遍历全部 \\(2^{rank}\\) 个基本权子集并计算子集和。计算使用逆 Cartan 矩阵的伴随矩阵／行列式表示，以 `rem_euclid(det)` 提取分数部并分桶，以 `div_euclid(det)` 提取整数部并存入 `shift_of`。其中，adjoint 坐标的分数部用来区分根格陪集。^[atlas-core-center-classifier.md:18-25]\n\n最终，`table` 保存排序后的“分数部、子集列表”条目，`class_of` 记录每个子集所属的陪集号；`shift_of` 则保留计算移位所需的整数部。该结构将陪集分类信息与整数坐标信息分别保存，供后续枚举使用。^[atlas-core-center-classifier.md:21-29]\n\n## 移位枚举与借位\n\n`shifts(fix, pos, neg)` 通过陪集表计算上述基本权组合的根格移位，并处理分数部相减引起的借位。源码摘要给出的分支规则是：若 `fix_entry ≤ entry`，直接相减；否则执行 `rts+1`，并以 `entry -= fix_entry - det` 调整分数部。^[atlas-core-center-classifier.md:26-29]\n\n候选子集还必须满足位掩码条件 `pos & subset == subset` 才能输出。这一筛选与陪集表、借位处理共同构成移位枚举机制；输出采用单根坐标。^[atlas-core-center-classifier.md:26-29]\n\n## 实现对应与证据边界\n\n来源将 `CenterClassifier` 对应到上游 `alcoves.cpp:793–870` 的 `center_classifier`，并陈述其逆 Cartan 算术表示与上游 `C_denom` 一致。这属于实现方的移植陈述：当前材料仅完成结构性阅读，不构成数学验收或兼容性验证；兼容性仍以 HPC 差分门为准，可参见 [[HPC 验收证据链]]。^[atlas-core-center-classifier.md:9-16, atlas-core-center-classifier.md:21-25, atlas-core-center-classifier.md:55-60]\n\n## Sources\n\n- [中心分类器与轨道词（domain_builtins.rs 6102–7992）](atlas-core-center-classifier.md)\n",
+  "generatedAt": "2026-10-09T14:26:23.672Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-center-classifier.md": {
+      "hash": "3789a332382aba6e50fe737a0315f2d9a0d93e31202e954afe423d79b05a1248",
+      "concepts": [
+        "中心分类器与根格陪集制表",
+        "中心陪集表驱动的根格移位枚举",
+        "adjoint-轨道的分层有序-bfs",
+        "levi-子商轨道与顶点轨道扩展",
+        "陪集树到-weyl-词的转换",
+        "反射词的首个下降构造",
+        "weyl-词对根与权的作用顺序"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

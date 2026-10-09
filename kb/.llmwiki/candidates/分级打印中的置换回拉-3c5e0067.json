@@ -1,0 +1,39 @@
+{
+  "id": "分级打印中的置换回拉-3c5e0067",
+  "title": "分级打印中的置换回拉",
+  "slug": "分级打印中的置换回拉",
+  "summary": "print_gradings 输出虚根子系统与实形分级时通过 sigma.pull_back(gr) 重排位，使打印位 i 对应原分级的位 sigma[i]。",
+  "sources": [
+    "atlas-core-domain-validate-print.md"
+  ],
+  "body": "---\ntitle: 分级打印中的置换回拉\nsummary: print_gradings 输出虚根子系统与实形分级时通过 sigma.pull_back(gr) 重排位，使打印位 i 对应原分级的位 sigma[i]。\nsources:\n  - atlas-core-domain-validate-print.md\nkind: concept\ncreatedAt: \"2026-10-09T14:30:09.753Z\"\nupdatedAt: \"2026-10-09T14:30:09.753Z\"\ntags:\n  - 分级\n  - 置换\n  - 输出格式\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 分级打印中的置换回拉\n\n分级打印中的置换回拉指 `print_gradings` 输出 grading 位时采用的索引规则：**打印位置 \\(i\\) 读取原 grading 的位置 \\(\\sigma[i]\\)**，对应上游操作 `sigma.pull_back(gr)`。^[atlas-core-domain-validate-print.md:66-67]\n\n## 输出与索引规则\n\n`print_text` 按名称分发打印操作；其中 `print_gradings` 输出虚根子系统行，以及实形部分的 gradings。分级位的打印遵循上述置换回拉规则。^[atlas-core-domain-validate-print.md:56-67]\n\n若以 \\(gr\\) 表示原 grading、\\(gr_{\\mathrm{print}}\\) 表示打印位序，则该规则可写为\n\\[\ngr_{\\mathrm{print}}[i]=gr[\\sigma[i]].\n\\]\n这里的索引方向是从打印位置 \\(i\\) 查找输入位置 \\(\\sigma[i]\\)；不能把它理解为将输入位 \\(gr[i]\\) 放到输出位置 \\(\\sigma[i]\\)。^[atlas-core-domain-validate-print.md:66-67]\n\n## 证据边界\n\n本页依据的来源包完成了结构性阅读，但不声称数学验收；其中涉及上游实现的对应关系属于实现方的移植陈述。分级打印的兼容性仍以 HPC 语料门为准，可结合 [[HPC 验收证据链]] 理解其验证边界。^[atlas-core-domain-validate-print.md:9-12, atlas-core-domain-validate-print.md:74-81]\n\n## Sources\n\n- [atlas-core-domain-validate-print.md](atlas-core-domain-validate-print.md)\n",
+  "generatedAt": "2026-10-09T14:30:09.856Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-validate-print.md": {
+      "hash": "546db6d40cf4d2e423135d2a9854dad54750006091540b76269c934b2ba26e94",
+      "concepts": [
+        "领域内建函数的校验顺序契约",
+        "完整块打印的构造与初始行定位",
+        "kl-块与列的共享查找路径",
+        "部分块打印的种子归约与生存标志",
+        "对合表达式的打印约定",
+        "kgb-打印与实形一致性",
+        "分级打印中的置换回拉",
+        "实-weyl-群打印的前置检查"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

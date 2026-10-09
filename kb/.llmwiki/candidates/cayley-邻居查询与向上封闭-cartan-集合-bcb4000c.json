@@ -1,0 +1,39 @@
+{
+  "id": "cayley-邻居查询与向上封闭-cartan-集合-bcb4000c",
+  "title": "Cayley 邻居查询与向上封闭 Cartan 集合",
+  "slug": "cayley-邻居查询与向上封闭-cartan-集合",
+  "summary": "cayley 以 s·w 的置换查表寻找邻居，目标 Cartan 未添加时返回 None；stage e 要求预先添加该 form 的向上封闭 Cartan 集合。",
+  "sources": [
+    "involution-table.md"
+  ],
+  "body": "---\ntitle: Cayley 邻居查询与向上封闭 Cartan 集合\nsummary: cayley 以 s·w 的置换查表寻找邻居，目标 Cartan 未添加时返回 None；stage e 要求预先添加该 form 的向上封闭 Cartan 集合。\nsources:\n  - involution-table.md\nkind: concept\ncreatedAt: \"2026-10-09T14:52:42.234Z\"\nupdatedAt: \"2026-10-09T14:52:42.234Z\"\ntags:\n  - Cayley变换\n  - Cartan分类\n  - 接口契约\naliases:\n  - cayley-邻居查询与向上封闭-cartan-集合\n  - C邻C集\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# Cayley 邻居查询与向上封闭 Cartan 集合\n\n`InvolutionTable::cayley(generator, id)` 查询对合记录的 Cayley 邻居，其词级表达式为 \\(s\\cdot w\\)。查询通过反射乘积与根置换查表完成；目标 Cartan 类尚未加入表时，返回 `None`。因此，返回值的解释依赖于调用方是否已准备好所需的 Cartan 集合。^[involution-table.md:73-75]\n\n## 查询与存储基础\n\n[[Twisted involution 表与 Cartan 轨道存储|Twisted involution 表]]按 Cartan 类连续存储对合轨道，`InvolutionId` 跨 Cartan 全局连续递增。`add_cartan(classification, cartan)` 将指定类的轨道加入表，重复添加则返回已有切片；种子与期望轨道大小来自 classification，生成结果必须恰好符合期望大小。^[involution-table.md:20-24, involution-table.md:33-35, involution-table.md:44-49]\n\n表的查找键是前向根置换。Cayley 查询计算 \\(s\\cdot w\\) 后通过置换查表定位目标；相较之下，`cross(generator, id)` 查询的是 \\(s\\cdot w\\cdot\\mathrm{twist}(s)\\)，使用构建时存储的链接。两者的作用公式与查询路径不同。^[involution-table.md:67-75]\n\n## 向上封闭的调用契约\n\nKGB 构建的 stage-(e) 契约要求：调用 Cayley 邻居查询前，先添加该实形式的向上封闭 Cartan 集合。该准备工作完成后，`None` 即表示调用方违反不变量；不能将它解释为符合该契约的正常查询结果。此要求将邻居查询的有效性与表中已加入的 Cartan 类范围联系起来。^[involution-table.md:73-75]\n\n## 测试与证据边界\n\n来源记录了一项针对 Cayley 边的测试锚点：目标 Cartan 类加入前，查询返回 `None`；加入后，同一条边的查询返回 `Some`。这一锚点直接覆盖了 Cartan 类是否入表对查询结果的影响。^[involution-table.md:79-84]\n\n本页依据的是源码结构性阅读及所记录的测试锚点。来源包未执行构建、测试或原版运行，也不提供数学验收、性能或并行结论；相关正确性仍属于独立的 [[HPC 验收证据链]]。^[involution-table.md:9-16, involution-table.md:103-106]\n\n## Sources\n\n- [involution-table.md](involution-table.md) — Twisted involution 表（KGB stage b）\n",
+  "generatedAt": "2026-10-09T14:52:42.643Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "involution-table.md": {
+      "hash": "9ca49e0bb668a06008f529f13028dcd9301251198c173e1159e88c654f3557b5",
+      "concepts": [
+        "twisted-involution-表与-cartan-轨道存储",
+        "实投影像基的播种与路径依赖传送",
+        "twisted-cross-action-的-bfs-轨道构建",
+        "twisted-involution-记录的数学不变量",
+        "cartan-轨道的幂等添加与容量约束",
+        "前向根置换索引及其调用方契约",
+        "cayley-邻居查询与向上封闭-cartan-集合",
+        "involution-表的测试锚点与证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

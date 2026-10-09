@@ -1,0 +1,37 @@
+{
+  "id": "坐标边界修复的-tests-first-验证链-8408c4d0",
+  "title": "坐标边界修复的 tests-first 验证链",
+  "slug": "坐标边界修复的-tests-first-验证链",
+  "summary": "BEFORE-v3 确认未修复代码出现两条 kernel 失败和一条完整流失败，AFTER-v3 验证其通过，并结合完整 Rust 测试套件、保留门禁及源码完整性检查限定修复证据。",
+  "sources": [
+    "root-ladder-overflow-repair.md"
+  ],
+  "body": "---\ntitle: 坐标边界修复的 tests-first 验证链\nsummary: BEFORE-v3 确认未修复代码出现两条 kernel 失败和一条完整流失败，AFTER-v3 验证其通过，并结合完整 Rust 测试套件、保留门禁及源码完整性检查限定修复证据。\nsources:\n  - root-ladder-overflow-repair.md\nkind: concept\ncreatedAt: \"2026-10-09T15:11:21.755Z\"\nupdatedAt: \"2026-10-09T15:11:21.755Z\"\ntags:\n  - 回归测试\n  - HPC验证\n  - 证据链\naliases:\n  - 坐标边界修复的-tests-first-验证链\n  - 坐T验\nconfidence: 1\nprovenanceState: merged\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 坐标边界修复的 tests-first 验证链\n\n坐标边界修复的 tests-first 验证链，围绕 root/coroot ladder bottom 构造中的 `i32` 坐标差溢出展开：先证明新增回归在未修复源码上按预期失败，再验证修复后的定向回归、完整测试套件和原版输出一致性，最后以独立 review 与正式账本约束接受范围。^[root-ladder-overflow-repair.md:13-15, root-ladder-overflow-repair.md:100-130]\n\n## 修复对象与数学依据\n\n对完整存储的有限根集 \\(R\\subseteq\\mathbb Z^d\\)，ladder bottom 集定义为 \\(B_\\alpha=\\{\\beta\\in R\\mid\\beta-\\alpha\\notin R\\}\\)。当所有已存坐标均为 `i32` 时，若精确整数差的某个坐标超出 `i32` 范围，该差就不可能属于已存集合。因此，成员查询应返回 `false`，相应的 \\(\\beta\\) 应进入 bottom 集，而不应导致整个 `RootSystem` 构造失败。相关数学对象见 [[Root ladder bottom 集与固定宽度成员查询]]。^[root-ladder-overflow-repair.md:13-15, root-ladder-overflow-repair.md:41-49]\n\n修复仅在 `build_ladder_bottoms` 的两次成员查询中选择性处理 `StructureError::ArithmeticOverflow`；正常差值继续使用原有查找，分配失败和其他错误继续传播，root 查询溢出也不会跳过 coroot 查询。这一论证不授权 wrapping/saturating 算术，也不适用于一般向量减法、反射或输入验证。实现边界见 [[Rust ladder 成员查询的选择性溢出处理]]。^[root-ladder-overflow-repair.md:51-53, root-ladder-overflow-repair.md:74-83]\n\n## 历史 oracle 与边界 fixture\n\n`tests/math/generics/root_ladder_coordinate_boundary.atlas` 包含 11 个 A1+torus case，覆盖 root/coroot 交换、两种 numbering、阈值两侧及 `i32::MAX`，并保留 recovery marker `719`。原版完整输出来自历史 capture job `3868832`，其记录绑定 case、oracle binary/source 与 raw stream；这份历史捕获不是候选 AFTER 执行。详见 [[A1 加中心环面边界 fixture 与历史 oracle]]。^[root-ladder-overflow-repair.md:92-98]\n\n原版 Atlas 在抽象简单根坐标中构造 ladder，再通过 Weyl reflection permutation 传送到所有根；含环面因子的环境格大坐标不参与该阶段的减法。Rust 的实现策略不同，但两者需要保持相同的根与余根成员关系，这也是完整输出比较的语义背景。^[root-ladder-overflow-repair.md:57-66]\n\n## BEFORE：确认回归能够检出错误\n\nBEFORE-v3 job `3873400` 在未修复生产代码上运行固定的测试增量。独立检查记录确认 65 个 harness checker 通过，测试 inventory 为 atlas-real-group `521` 项、atlas-core `630` 项，并精确出现两条 domain 回归失败与一条 core full-stream 回归失败，`0 ignored`。这些预期失败构成 tests-first 证据，不能记作修复后的通过结果。^[root-ladder-overflow-repair.md:74-76, root-ladder-overflow-repair.md:100-107]\n\n该阶段的独立记录为 `tests/reference/hpc/math_ladder_boundary_before_v3_2026_10_01.json`，SHA-256 为 `608e996acac10ea1bacca177468fcd83f3ec39c3e579899440e11aab674fc37f`，用于标识这份具体证据。^[root-ladder-overflow-repair.md:100-107]\n\n## AFTER：验证修复与保留的约束\n\nAFTER 的送审条件包括：三条 focused 回归全部通过，两个 crate 的完整 `521/630` 测试实际全部通过，Rust 与历史原版完整流相等，相关溢出负例及 retained gates 保留，并且源码、补丁、报告哈希闭合。执行报告不能自我验收，独立 review 也不能绕过正式账本；这些职责共同组成 [[HPC 验收证据链]]。^[root-ladder-overflow-repair.md:109-113]\n\nAFTER-v3 job `3875239` 最终状态为 `COMPLETED 0:0`。其[独立检查记录](../../tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json)记为 `LADDER_BOUNDARY_AFTER_ACCEPTED`，报告 95 项 harness checker、完整 stager 清点 `70/67`、domain `521/2/521` 与 core `630/1/630` 全部通过，源码与最终完整性复核也通过。^[root-ladder-overflow-repair.md:19-28]\n\n接受绑定的 `root_system.rs` 字节 SHA-256 为 `cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9`；候选 Git base 为 `eba9c7ea080e61de9d4b105fbf54589c44a10b87`。该绑定限定了验证所针对的源码版本。^[root-ladder-overflow-repair.md:27-28, root-ladder-overflow-repair.md:70-72]\n\n## 账本状态与接受边界\n\n来源保留了两个不同的状态表述：前部将 AFTER-v3 描述为限定接受，并明确排除 acceptance-index 登记；后部则记载已追加 entry `0003-a1-torus-root-coroot-ladder-boundary`，状态为 `acceptance: accepted`、`status: math_pass`，同时绑定 AFTER 报告、独立 review 和 canonical 源文件清单的哈希。阅读时应保留这一状态差异，参见 [[Root ladder 修复的限定接受与账本状态歧义]]。^[root-ladder-overflow-repair.md:9-11, root-ladder-overflow-repair.md:30-37, root-ladder-overflow-repair.md:115-123]\n\n后部账本叙述所列断言覆盖 11 个 case 的 22 条原版记录、两条 kernel 回归、两个 crate 完整套件、Rust 与历史原版完整流一致，以及三条回归修复前确实失败。其范围仍仅限 A1+中心环面坐标边界 fixture；AFTER 没有重跑原版 oracle，完整 Rust 套件只是回归守卫，不能据此证明一般 root system 正确性、更高 rank 或 KLV、unitarity、Hodge、associated cycle、AV-ann，也不能推出性能或并行验收结论。^[root-ladder-overflow-repair.md:124-130]\n\n## Sources\n\n- [Root ladder 固定宽度坐标溢出修复](../../sources/root-ladder-overflow-repair.md)\n",
+  "generatedAt": "2026-10-09T15:11:22.380Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "root-ladder-overflow-repair.md": {
+      "hash": "630225a1efd35e788009d5d82dc26c16f9112806ac56ee0a14a889281f74fe6e",
+      "concepts": [
+        "root-ladder-bottom-集与固定宽度成员查询",
+        "original-atlas-的抽象坐标-ladder-构造",
+        "rust-ladder-成员查询的选择性溢出处理",
+        "坐标边界修复的-tests-first-验证链",
+        "a1-加中心环面边界-fixture-与历史-oracle",
+        "root-ladder-修复的限定接受与账本状态歧义"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

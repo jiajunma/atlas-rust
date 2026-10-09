@@ -1,0 +1,38 @@
+{
+  "id": "权与余权的典范配对-1315a3a4",
+  "title": "权与余权的典范配对",
+  "slug": "权与余权的典范配对",
+  "summary": "pair 先检查权与余权的秩一致，再通过 i128 checked 累加计算坐标配对并检查收窄至 i32；内部 pair_coordinates 的 zip 截断风险由调用方控制。",
+  "sources": [
+    "lattice-types.md"
+  ],
+  "body": "---\ntitle: 权与余权的典范配对\nsummary: pair 先检查权与余权的秩一致，再通过 i128 checked 累加计算坐标配对并检查收窄至 i32；内部 pair_coordinates 的 zip 截断风险由调用方控制。\nsources:\n  - lattice-types.md\nkind: concept\ncreatedAt: \"2026-10-09T14:57:12.034Z\"\nupdatedAt: \"2026-10-09T14:57:12.034Z\"\ntags:\n  - 格配对\n  - 秩检查\n  - 检查算术\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 权与余权的典范配对\n\n权与余权的典范配对（canonical character–cocharacter pairing）由 `pair(weight, coweight)` 提供，连接 character lattice $X^*$ 与 cocharacter lattice $X_*$。两格之间具有完美配对（perfect pairing），但属于不同类型；即使所选基下的坐标表示相同，也不可互换。^[lattice-types.md:17-25, lattice-types.md:29-31]\n\n## 类型与存储纪律\n\n`Weight(Vec<i32>)` 表示权，`Coweight(Vec<i32>)` 表示余权。实现刻意将二者分离为两个 newtype，并使用带检查的固定宽度坐标存储；精确解释器值在领域边界处转换，而不是改变每个根系矩阵条目的表示。该设计与 [[A1 迁移原型层与对偶格类型设计]] 相关。^[lattice-types.md:17-25]\n\n## 配对计算与秩检查\n\n公开入口 `pair` 首先检查两个输入的秩是否一致。若不一致，返回 `RankMismatch { expected: weight.rank(), actual: coweight.rank() }`；通过检查后，才委托内部辅助函数 `pair_coordinates` 进行坐标级配对。^[lattice-types.md:29-32]\n\n`pair_coordinates` 使用带溢出检查的 `i128` 累加，并通过 `i32::try_from` 将结果收窄到 `i32`。因此，较宽的中间累加类型并不改变最终结果的整数范围约束。内部坐标遍历采用 `zip`，其长度不等时的截断行为需要由调用方的秩一致性保证来防止。^[lattice-types.md:29-34]\n\n## 与有理权配对的区别\n\n整权与余权的 `pair` 应与有理权的 `RationalWeight::dot_coroot` 区分：后者对应上游 `dot_Q`，返回已约分的 `(i64, i64)`。其秩失配错误使用 `expected: coroot.rank(), actual: self.rank()`，字段顺序与 `pair` 的惯例相反；解释诊断时需要保留这一差别。^[lattice-types.md:59-64]\n\n## 证据范围\n\n本文依据 `lattice.rs` 的结构性阅读材料说明类型纪律、计算流程与错误行为。该材料未执行构建、测试或原版运行，不构成数学验收、性能或并行结论；正确性验收属于独立的 [[HPC 验收证据链]]。^[lattice-types.md:9-13, lattice-types.md:81-89]\n\n## Sources\n\n- [权格类型层：Weight、Coweight 与有理权](lattice-types.md)\n",
+  "generatedAt": "2026-10-09T14:57:12.503Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "lattice-types.md": {
+      "hash": "c26117b7976b777a3bce01448a27ee1ed900da6053cdb6135bc9d056649a64b1",
+      "concepts": [
+        "权格与余权格的类型隔离",
+        "格坐标的固定宽度检查算术",
+        "权与余权的典范配对",
+        "有理权的公共分母表示与归一化",
+        "有理权的矩阵作用整性检查与余根配对",
+        "有理余权的逐坐标表示与-api-边界",
+        "重复-gcd-实现的语义漂移"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,38 @@
+{
+  "id": "对合下的虚根实根与复根分类-b3782d13",
+  "title": "对合下的虚根、实根与复根分类",
+  "slug": "对合下的虚根实根与复根分类",
+  "summary": "按 θ(α)=α、θ(α)=−α、其余情形依次将根分类为 Imaginary、Real、Complex，并提供按 RootId 升序遍历及越界返回 None 的查询。",
+  "sources": [
+    "involution-types.md"
+  ],
+  "body": "---\ntitle: 对合下的虚根、实根与复根分类\nsummary: 按 θ(α)=α、θ(α)=−α、其余情形依次将根分类为 Imaginary、Real、Complex，并提供按 RootId 升序遍历及越界返回 None 的查询。\nsources:\n  - involution-types.md\nkind: concept\ncreatedAt: \"2026-10-09T14:53:19.924Z\"\nupdatedAt: \"2026-10-09T14:53:19.924Z\"\ntags:\n  - 根系\n  - 根分类\n  - 对合\naliases:\n  - 对合下的虚根实根与复根分类\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 对合下的虚根、实根与复根分类\n\n`RootInvolutionData` 在枚举根系上建立对合的根置换，并将根分为虚根（`Imaginary`）、实根（`Real`）与复根（`Complex`）。它以 `LatticeInvolution` 为基础，进一步验证根与余根的运输；仅有格上的配对保持对合，并不足以保证根数据自同构。^[involution-types.md:13-15, involution-types.md:63-65, involution-types.md:82-84]\n\n## 分类规则\n\n设对合为 \\(\\theta\\)，根为 \\(\\alpha\\)。分类按以下顺序判定：若 \\(\\theta(\\alpha)=\\alpha\\)，则为虚根；否则，若 \\(\\theta(\\alpha)=-\\alpha\\)，则为实根；其余情况为复根。实现中，负根坐标通过逐项 `checked_neg` 计算。^[involution-types.md:86-92]\n\n## 分类成立的构造前提\n\n`RootInvolutionData::new` 首先检查 datum 一致性与秩，随后验证单根的像，最后遍历全部根。主循环要求每个根的像仍是根，并且每个存储余根都被运输到像根对应的余根。后一个条件排除了“固定所有根却移动余根中心环面坐标”的作用；这种作用可能通过配对保持检查，却不满足根数据自同构要求。^[involution-types.md:82-91]\n\n错误顺序属于构造契约：`DatumMismatch` 先于 `RankMismatch`，单根阶段的 `SimpleRootImageNotRoot` 与 `SimpleCorootImageMismatch` 先于主循环中的 `InvalidRootAutomorphism` 与 `InvalidRootDatumAutomorphism`。相关层次可参见 [[对合类型的分层构造验证与错误优先级]]。^[involution-types.md:86-91]\n\n根置换本身没有独立的二阶检查；其对合性质依赖底层 `LatticeInvolution` 已完成的代数验证，包括权格与余权格作用各自平方为单位，以及两者保持配对。^[involution-types.md:67-71, involution-types.md:144-145]\n\n## 虚根与实根子系统的单根\n\n实现分别为虚根和实根计算子系统单根。它先选出该类中简单坐标全非负的根，以继承原根系的正系，再按 `RootId` 升序处理候选：若候选可写成集合内另一成员减去某个正坐标向量，则跳过，否则入选。最终单根列表仍按 `RootId` 升序排列。^[involution-types.md:94-97]\n\n## 查询接口\n\n`image(root)` 返回根在对合下的像，`kind(root)` 返回分类；两者遇到越界 `RootId` 都返回 `None`，不会 panic。`image_permutation()` 暴露根像列表，`roots_of_kind(kind)` 按 `RootId` 升序惰性枚举指定类别；`imaginary_simple_roots()` 与 `real_simple_roots()` 提供对应子系统的单根列表。^[involution-types.md:39-46, involution-types.md:99-100]\n\n## 测试锚点与证据边界\n\n在 A2 测试中，取负反对角对合时，实根为 2 个、复根为 4 个、虚根为 0 个，实根子系统单根为 `[id_of([1,1])]`。恒等对合下所有根均为虚根，虚根子系统单根按枚举顺序为 `[id_of([0,1]), id_of([1,0])]`。^[involution-types.md:123-125]\n\n测试还给出了配对保持但不置换根的作用：它通过 `LatticeInvolution::new`，却在 `RootInvolutionData::new` 中触发 `SimpleRootImageNotRoot { simple_root: 0 }`；余根运输错误则由正、负单根相关测试以 `SimpleCorootImageMismatch` 锚定。^[involution-types.md:126-129]\n\n这些记录来自结构性源码阅读与测试断言转录，不构成数学验收；本次知识维护未执行测试。`image()` 与 `kind()` 的越界 `None` 路径也未被所列测试覆盖。^[involution-types.md:9-15, involution-types.md:138-141, involution-types.md:149-156]\n\n## Sources\n\n- [involution-types.md](involution-types.md) — 对合类型三件套：LatticeInvolution / RootInvolutionData / TwistedInvolution。\n",
+  "generatedAt": "2026-10-09T14:53:20.349Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "involution-types.md": {
+      "hash": "582246dd07b0e95233c4fffb4685ee4ebfdaaa27cd8e26bd6282aaf33b1f8ed3",
+      "concepts": [
+        "格对合latticeinvolution",
+        "对合的反不变秩",
+        "根对合数据rootinvolutiondata",
+        "对合下的虚根实根与复根分类",
+        "继承正系中的子系统单根提取",
+        "扭曲对合twistedinvolution",
+        "对合类型的分层构造验证与错误优先级"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,38 @@
+{
+  "id": "虚根的-noncompact-grading-d97500d9",
+  "title": "虚根的 noncompact grading",
+  "slug": "虚根的-noncompact-grading",
+  "summary": "simple_grading 按 offset[s] XOR ⟨alpha_s mod 2, torus bits⟩ 判断简单虚根的非紧性，须由调用方守卫根类型；任意虚根的 grading 使用 conjugate-to-simple 循环，非虚根返回 None。",
+  "sources": [
+    "tits-element.md"
+  ],
+  "body": "---\ntitle: 虚根的 noncompact grading\nsummary: simple_grading 按 offset[s] XOR ⟨alpha_s mod 2, torus bits⟩ 判断简单虚根的非紧性，须由调用方守卫根类型；任意虚根的 grading 使用 conjugate-to-simple 循环，非虚根返回 None。\nsources:\n  - tits-element.md\nkind: concept\ncreatedAt: \"2026-10-09T15:13:14.160Z\"\nupdatedAt: \"2026-10-09T15:13:14.160Z\"\ntags:\n  - 虚根\n  - 分级\n  - 非紧性\naliases:\n  - 虚根的-noncompact-grading\n  - 虚NG\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 虚根的 noncompact grading\n\n虚根的 noncompact grading 用于判定一个根在给定 `TitsElement` 处是否为 noncompact（非紧）。`TitsCoset` 提供简单根接口 `simple_grading` 与任意虚根接口 `grading`；这一判定只对该元素的 involution 处属于 IMAGINARY 的根有意义。^[tits-element.md:47-49, tits-element.md:61-62]\n\n## 简单虚根的计算\n\n对于简单根 $\\alpha_s$，计算公式为\n\\[\n\\operatorname{simple\\_grading}(s,e)\n=\\operatorname{offset}[s]\\;\\operatorname{XOR}\\;\n\\langle \\alpha_s\\bmod 2,\\operatorname{torus\\ bits}(e)\\rangle.\n\\]\n结果为 `true` 表示 noncompact。调用方必须先通过 `InvolutionTable::simple_root_kind` 确认该简单根在当前元素处为 IMAGINARY，不能将公式无条件用于其他根类型。参见 [[对合下的虚根、实根与复根分类]]。^[tits-element.md:47-49]\n\n这里的 torus bits 来自 [[TitsElement 的元素表示与正规形契约|TitsElement]] 的二元组表示 `(involution, torus bits)`。grading offset 则是构造 `TitsCoset` 时由调用方选定的输入：stage (d) 从 square-class cocharacter 导出；adjoint 约定为 `offset[s] = (twist(s) == s)`。^[tits-element.md:19-22, tits-element.md:38-40]\n\n## 上下文一致性\n\ngrading 的上下文不能只由 datum 身份确定。`TitsCoset` 要求完整 inner class 相等，因为同一 datum 上不同 distinguished involution 对应不同的 twist 与 transport，仅检查 datum 会破坏操作语义。相关约束见 [[TitsCoset 的 grading offset 与完整 inner-class 门控]]。^[tits-element.md:38-43]\n\n## 任意虚根的判定\n\n`grading` 使用上游的 conjugate-to-simple 循环，将任意 IMAGINARY 根的 noncompactness 判定归到简单根情形。若输入根在该元素处不是 imaginary，接口返回 `None`；这一返回值表示该判定不适用，而不是 compact。^[tits-element.md:61-62]\n\n## 逆 Cayley 变换中的 grading 修复\n\n`inverse_cayley` 需要处理源端模约化遗忘 grading 的情况。它先执行裸的 `sigma_inv_mult`：反射左 torus 部分，并在左乘增加 Weyl 长度时加入 $m_\\alpha$。如果重建的根为 compact，则使用第一个与该根配对非平凡的 source mod-space 基向量进行修复；找不到这样的基向量时，报 `TitsCosetInvariantViolation`。^[tits-element.md:54-58]\n\n修复后，操作在 imaginary target 处通过 `quotient_representative` 归约，并复核目标的 simple grading。若源根不是 real，或向下的 Cartan 类尚未加入表，则返回 `None`。这将 grading 检查与 [[Cayley 变换与目标模空间归约]] 联系起来。^[tits-element.md:58-60]\n\n## 证据范围\n\n本页依据对 `tits_element.rs` 的结构性阅读说明。来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论；其中上游 `tits.cpp` 行号转述自源码注释，未独立重读上游，可能随版本变化。^[tits-element.md:9-15, tits-element.md:65-72]\n\n## Sources\n\n- [tits-element.md](tits-element.md) — Tits 元素：torus 部分与 Tits 群操作（KGB stage c）\n",
+  "generatedAt": "2026-10-09T15:13:14.821Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "tits-element.md": {
+      "hash": "cb5890beea34491afdecdfb9aa0fe8778c6c66730b86d996e1cf3bcae6ef8a68",
+      "concepts": [
+        "titselement-的元素表示与正规形契约",
+        "titscoset-的-grading-offset-与完整-inner-class-门控",
+        "torus-部分的模二矩阵传输",
+        "虚根的-noncompact-grading",
+        "based-cross-action-的闭式实现",
+        "cayley-变换与目标模空间归约",
+        "逆-cayley-变换的-grading-修复"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

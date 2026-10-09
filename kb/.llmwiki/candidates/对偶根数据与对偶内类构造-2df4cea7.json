@@ -1,0 +1,39 @@
+{
+  "id": "对偶根数据与对偶内类构造-2df4cea7",
+  "title": "对偶根数据与对偶内类构造",
+  "slug": "对偶根数据与对偶内类构造",
+  "summary": "对偶根数据转置 Cartan 并交换根与余根后复用构造校验，对偶内类以 −(q·W0)ᵗ 和 −(q·W0) 分别构造权与余权作用，并分配最长元和根系闭包预算。",
+  "sources": [
+    "root-datum-dual.md"
+  ],
+  "body": "---\ntitle: 对偶根数据与对偶内类构造\nsummary: 对偶根数据转置 Cartan 并交换根与余根后复用构造校验，对偶内类以 −(q·W0)ᵗ 和 −(q·W0) 分别构造权与余权作用，并分配最长元和根系闭包预算。\nsources:\n  - root-datum-dual.md\nkind: concept\ncreatedAt: \"2026-10-09T15:10:35.531Z\"\nupdatedAt: \"2026-10-09T15:10:35.531Z\"\ntags:\n  - 对偶根数据\n  - 内类\n  - 格对合\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 对偶根数据与对偶内类构造\n\n对偶构造由 `dual.rs` 中的自由函数实现：`dual_datum` 构造对偶根数据，`dual_inner_class` 构造对偶内类，另有最长 Weyl 元定位、Cartan 类对应与对偶实形式计数等配套函数。根数据本身由 [[BasedRootDatum：带基根数据与构造不变量]] 承载，区分整个格的秩 `lattice_rank` 与简单根个数 `semisimple_rank`。^[root-datum-dual.md:18-25]\n\n## 对偶根数据\n\n`dual_datum` 将 Cartan 矩阵转置，并互换简单根与简单余根，最后调用 `BasedRootDatum::from_simple_data`。因此，对偶构造复用原有的全部构造校验，接口仍保留可失败语义；来源材料未将“已校验数据的对偶必然通过重校验”作为已验收结论。^[root-datum-dual.md:108-112]\n\n这些校验按固定顺序检查 Cartan 矩阵、格秩与半单秩的关系、简单根及余根的数量、各向量维数，以及根与余根的配对是否等于对应 Cartan 元素。构造允许中心环面，即 `lattice_rank > semisimple_rank`，也允许空 Cartan 矩阵配合正格秩表示纯环面。^[root-datum-dual.md:39-51]\n\n## 最长 Weyl 元的定位\n\n对偶内类构造使用 `longest_action` 定位最长 Weyl 元的作用 \\(W_0\\)。该函数返回把 \\(2\\rho\\) 送到 \\(-2\\rho\\) 的 `WeylAction`：每轮按生成元升序，选择第一个与当前权有正余根配对的简单反射，左合成该反射并更新当前权。这是 [[最长 Weyl 元的下坡行走]]，不依赖群元素枚举。^[root-datum-dual.md:114-125]\n\n行走允许恰好 `weyl_budget` 步；若步数超过预算，或尚未完成却无法推进，均返回 `StructureError::LayoutInvariantViolation`，其不变量名称为 `\"longest Weyl element\"`。`two_rho` 对正根坐标使用带检查的 `i64` 累加并转换为 `i32`，但行走中的内层配对采用未检查的 `i64` 累加；来源材料将这一差异保留为待核对事项。^[root-datum-dual.md:116-127]\n\n## 对偶内类的格作用\n\n记 distinguished involution 的权作用矩阵为 \\(q\\)。辅助函数 `dual_involution` 只计算乘积\n\\[\nM=qW_0,\n\\]\n本身不执行取负或转置。`dual_inner_class` 随后构造对偶权格与余权格上的作用：\n\\[\n\\theta^\\vee_{\\mathrm{weight}}=-(qW_0)^t=-M^t,\n\\qquad\n\\theta^\\vee_{\\mathrm{coweight}}=-(qW_0)=-M.\n\\]\n代码注释以 \\(M\\) 是对合解释余权作用的推导。^[root-datum-dual.md:129-137]\n\n实现对矩阵元素逐一执行 `checked_neg`，分别填入转置后的权作用矩阵与未转置的余权作用矩阵，再经 `LatticeInvolution::new` 和 `InnerClass::new(dual, involution, root_budget)` 完成构造。预算职责分开：`weyl_budget` 只约束最长元定位，`root_budget` 约束对偶根系闭包。^[root-datum-dual.md:134-139]\n\n## Cartan 类与代表元的对偶对应\n\n`dual_cartan_correspondence` 按原分类的 crate Cartan 顺序，为每个类返回“对偶 `CartanId`、该对偶类的弱实形式计数”。它先检查两侧 fundamental 的存在性与 datum 一致性，再通过带来源校验的 `TwistedConjugacyPartition::class_of` 建立反查表；找不到类被视为不变量错误，而不是允许缺失的对应。^[root-datum-dual.md:141-155]\n\n实现以格映射在对偶根上诱导的根像置换为查找键。其文档理由是：对偶 twisted involution 会被规范化，存储代表元一般只是原始 `tw * w0` 的共轭，因此直接比较代表元矩阵不可靠。公开参数 `_weyl_budget` 已不再使用，此处最长元行走改用对偶根系已枚举的根数作为预算。上述对偶对应的数学解释来自代码注释，来源材料未独立验证。^[root-datum-dual.md:147-154]\n\n内部函数 `dual_twisted_representative` 则提取原代表元的规范 Weyl 字，在对偶 datum 上逐生成元重放，末步左合成最长元，再结合对偶 distinguished involution 构造 `TwistedInvolution`。这条路径保留两种格作用及 distinguished involution 的来源信息，关联 [[Weyl 元素兼容性与跨坐标词重放]]。^[root-datum-dual.md:157-164]\n\n## 对偶实形式计数\n\n`dual_real_form_count` 采用固定管线：`dual_inner_class` → `CartanFiber::build` → `AdjointCartanFiber::build` → `CartanGradingData::build` → `WeakRealFormPartition::build` → `class_count()`。各阶段通过 `?` 传播错误，预算分别覆盖最长元、对偶根系、Cartan fiber、伴随 fiber 与弱实形式分区；详见 [[对偶实形式的分层计数管线]]。^[root-datum-dual.md:166-172]\n\n## 测试锚点与证据边界\n\n来源记录的测试断言包括：单连通 A1 与伴随 A1 均有 2 个对偶实形式，等秩紧 A2 为 1，扭 A2 为 2，紧 B2 为 3。A2 的单位 involution 对应的 `dual_involution` 结果为 `[[0,-1],[-1,0]]`。单连通 A1 的 Cartan 对应表为 `[(CartanId(1), 1), (CartanId(0), 2)]`，并记录了 oracle capture 3501500；紧 B2 的对应表覆盖全部四个对偶 CartanId。^[root-datum-dual.md:174-182]\n\n这些内容属于源码结构性阅读与测试断言记录，不构成根数据层或对偶构造的数学验收。来源未核对所引上游 C++ 字节，也未在本次维护中执行 Atlas、Cargo、测试或 benchmark；最长元复杂度及对偶实形式计数的数学正确性仍属于代码意图，不能据此宣称已获独立验证。^[root-datum-dual.md:9-14, root-datum-dual.md:204-216]\n\n## Sources\n\n- [root-datum-dual.md](../../sources/root-datum-dual.md) — BasedRootDatum 与对偶内类构造（root_datum.rs / dual.rs）。\n",
+  "generatedAt": "2026-10-09T15:10:36.164Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "root-datum-dual.md": {
+      "hash": "2bc8c4ab0e92ecaec6000570f61e223eccf912f489165b8afef35b93a0bd4f0a",
+      "concepts": [
+        "basedrootdatum带基根数据与构造不变量",
+        "cartan-矩阵的精确有理有限型检查",
+        "根数据的-radical-与-coradical-饱和核基",
+        "权与余权的简单反射及算术保护",
+        "最长-weyl-元的下坡行走",
+        "对偶根数据与对偶内类构造",
+        "跨对偶的-cartan-类对应与扭曲代表元",
+        "对偶实形式的分层计数管线"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

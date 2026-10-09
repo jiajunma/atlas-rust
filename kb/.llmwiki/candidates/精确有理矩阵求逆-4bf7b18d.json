@@ -1,0 +1,38 @@
+{
+  "id": "精确有理矩阵求逆-4bf7b18d",
+  "title": "精确有理矩阵求逆",
+  "slug": "精确有理矩阵求逆",
+  "summary": "invert_rational 使用 first-nonzero pivot 的精确有理高斯消元，按列返回逆矩阵；此处秩有界的消元不设置 budget knob。",
+  "sources": [
+    "real-form-seed.md"
+  ],
+  "body": "---\ntitle: 精确有理矩阵求逆\nsummary: invert_rational 使用 first-nonzero pivot 的精确有理高斯消元，按列返回逆矩阵；此处秩有界的消元不设置 budget knob。\nsources:\n  - real-form-seed.md\nkind: concept\ncreatedAt: \"2026-10-09T15:05:42.908Z\"\nupdatedAt: \"2026-10-09T15:05:42.908Z\"\ntags:\n  - 矩阵求逆\n  - 精确有理数\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 精确有理矩阵求逆\n\n精确有理矩阵求逆由 `invert_rational` 实现：它使用精确有理高斯消元，以首个非零项作为主元（first-nonzero pivot），并以列的形式返回逆矩阵。在 KGB 种子构造中，该函数用于计算 Cartan 矩阵的逆，为基本余权提供精确有理数基础。^[real-form-seed.md:33-45]\n\n## 在基本余权构造中的应用\n\n设 Cartan 矩阵为 \\(C\\)，实际简单余根为 \\(\\alpha_j^\\vee\\)，则基本余权按逆矩阵的列构造：\n\\[\n\\varpi_i^\\vee=\\sum_j(C^{-1})_{ji}\\,\\alpha_j^\\vee.\n\\]\n实现先用 `invert_rational` 求出 \\(C^{-1}\\)，再将每列按实际简单余根展开，而不是把余根视为恒等填充的坐标轴。结果以完整格秩的坐标表示。^[real-form-seed.md:35-40]\n\n这些基本余权满足\n\\[\n\\langle\\alpha_s,\\varpi_i^\\vee\\rangle=\\delta_{si},\n\\]\n并取 radical 分量为零的唯一有理解。因此，矩阵求逆提供展开系数，实际简单余根决定这些系数在完整格中的坐标表达；相关构造见 [[基本余权的精确构造]]。^[real-form-seed.md:35-40]\n\n## 构造位置与资源约束\n\nKGB 种子 \\(x_0\\) 的实现分为两步：先建立 `stable_log` 与基本余权的精确有理数机制，再实现 `RealFormSeed` 构建器。精确有理矩阵求逆属于其中的基本余权计算环节，可关联阅读 [[stable_log：选举的稳定对数]] 与 [[RealFormSeed 的封装与构造不变量]]。^[real-form-seed.md:19-22, real-form-seed.md:33-40]\n\n此处的有理消元受秩约束，按 crate 的记录纪律，不提供额外的预算调节参数（budget knob）。^[real-form-seed.md:38-40]\n\n## 证据边界\n\n来源包记录的是对 `real_form_seed.rs` 的结构性阅读，所读字节来自 dirty 工作区快照。包内没有执行构建、测试或原版运行，也不包含数学验收、性能或并行结论；种子构造的正确性依赖其独立的 [[HPC 验收证据链]]，不能由本页的算法说明替代。^[real-form-seed.md:9-15, real-form-seed.md:79-79]\n\n## Sources\n\n- [real-form-seed.md](real-form-seed.md)\n",
+  "generatedAt": "2026-10-09T15:05:43.512Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "real-form-seed.md": {
+      "hash": "41538c389dcf3ce0ec65180cc77d9b726a458a3768ea8518454baeb5400b34db",
+      "concepts": [
+        "stablelog选举的稳定对数",
+        "kgb-种子代表元的可观测影响",
+        "基本余权的精确构造",
+        "有限域线性求解的规范截面",
+        "精确有理矩阵求逆",
+        "realformseed-的封装与构造不变量",
+        "realformseed-的构建门控与自定义种子"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

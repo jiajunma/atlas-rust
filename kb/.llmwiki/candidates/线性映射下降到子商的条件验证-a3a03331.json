@@ -1,0 +1,38 @@
+{
+  "id": "线性映射下降到子商的条件验证-a3a03331",
+  "title": "线性映射下降到子商的条件验证",
+  "slug": "线性映射下降到子商的条件验证",
+  "summary": "诱导映射必须同时将源分子映入目标分子、源分母映入目标分母；仅检查商基代表不足以保证映射良定义。",
+  "sources": [
+    "mod-two.md"
+  ],
+  "body": "---\ntitle: 线性映射下降到子商的条件验证\nsummary: 诱导映射必须同时将源分子映入目标分子、源分母映入目标分母；仅检查商基代表不足以保证映射良定义。\nsources:\n  - mod-two.md\nkind: concept\ncreatedAt: \"2026-10-09T15:02:48.552Z\"\nupdatedAt: \"2026-10-09T15:02:48.552Z\"\ntags:\n  - 子商空间\n  - 诱导映射\n  - 良定义性\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 线性映射下降到子商的条件验证\n\n线性映射要从环境空间下降到子商，必须同时保持分子与分母的包含关系。`ModTwoSubquotient::validate_induced_map_to(target, map)` 通过检查两者的基向量，验证映射能否在目标子商上定义良好的映射；失败时返回 `CartanFiberMapDoesNotDescend`。^[mod-two.md:75-79]\n\n## 子商模型与下降条件\n\n`ModTwoSubquotient` 表示共同环境空间中两个 $\\mathbb{F}_2$ 子空间的商。记源子商为 $N/D$，目标子商为 $N'/D'$，其中分子、分母分别对应 `numerator`、`denominator`。构造时检查环境维数一致、分母秩不超过分子秩，以及分母的每个基向量都属于分子；该类型还保存用于典范坐标的补基。相关坐标约定见 [[F₂ 子商的低主元坐标（ModTwoSubquotient）]]。^[mod-two.md:64-70]\n\n对环境空间上的线性映射 $f$，验证要求为\n\\[\nf(N)\\subseteq N',\\qquad f(D)\\subseteq D'.\n\\]\n实现逐一检查源分子的基向量是否映入 `target.numerator`，以及源分母的基向量是否映入 `target.denominator`。前者失败时，错误的 `relation` 为 `\"numerator\"`；后者失败时为 `\"denominator\"`。^[mod-two.md:75-79]\n\n## 为什么不能只检查商基代表\n\n只检查商基代表不足以验证下降条件。源码注释指出：当某个源分母向量的像在目标商中非零时，正规形选择仍可能让映射“看似”有定义。因此，分母上的检查不能由商基代表检查替代。^[mod-two.md:75-79]\n\n典范代表与映射下降承担不同职责：`canonical_representative(vector)` 先检查向量是否属于分子，再用分母的 `quotient_representative` 取得代表元；`to_coordinates` 与 `ambient_representative` 则按补基最低置位读写坐标。这些操作提供确定性表示，而下降验证另行检查分子和分母的像。可参见 [[F₂ 商空间的确定性代表元与陪集判定]] 与 [[Ambient 映射的子商下降验证]]。^[mod-two.md:72-81]\n\n## 实现边界\n\n`ModTwoSubquotient` 刻意保持 crate 私有，因为它承载当前 Cartan-fiber 结构层使用的低主元打包坐标；公开 API 是数学层的 `CartanFiber` 包装，而非这些内部坐标的序列化格式。环境映射通过 `ModTwoAmbientMap` trait 提供，使领域层可以在稠密矩阵会造成多余分配时直接实现映射；`ModTwoLinearMap` 仅作为 `#[cfg(test)]` 下的稠密测试辅助。^[mod-two.md:64-67, mod-two.md:80-81]\n\n## 证据与覆盖限制\n\n来源记录了子商低主元坐标等测试锚点，但 `CartanFiberMapDoesNotDescend` 的两个 `relation` 分支未被覆盖，`validate_induced_map_to` 在该文件内也没有调用方。来源仅作结构性源码阅读，未执行构建、测试或原版运行，因此不能据此宣称下降验证已获得运行验收或数学验收。^[mod-two.md:85-93, mod-two.md:103-103]\n\n## Sources\n\n- [mod-two.md](mod-two.md)：mod-2 线性代数：位打包向量与子空间。\n",
+  "generatedAt": "2026-10-09T15:02:49.075Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "mod-two.md": {
+      "hash": "b48cb0917b1ae8f678bb9994a3e3a14d6bd47bc5e7f025a29136e7d84e1963d1",
+      "concepts": [
+        "f₂-上的位打包向量modtwovector",
+        "最低主元索引的典范-rref-子空间",
+        "f₂-商空间的确定性代表元与陪集判定",
+        "由自由坐标构造-f₂-右核",
+        "保留首批独立列的典范截面canonicalmodtwosection",
+        "f₂-子商的低主元坐标modtwosubquotient",
+        "线性映射下降到子商的条件验证"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,39 @@
+{
+  "id": "整数线性系统求解与像判定-e4a5e4cd",
+  "title": "整数线性系统求解与像判定",
+  "slug": "整数线性系统求解与像判定",
+  "summary": "has_solution 对角化后检查变换右端的逐坐标可除性，find_solution 无解时返回 None，in_left_image 与 in_right_image 提供像判定，而右端长度不匹配会触发 panic。",
+  "sources": [
+    "matreduc.md"
+  ],
+  "body": "---\ntitle: 整数线性系统求解与像判定\nsummary: has_solution 对角化后检查变换右端的逐坐标可除性，find_solution 无解时返回 None，in_left_image 与 in_right_image 提供像判定，而右端长度不匹配会触发 panic。\nsources:\n  - matreduc.md\nkind: concept\ncreatedAt: \"2026-10-09T15:00:34.915Z\"\nupdatedAt: \"2026-10-09T15:00:34.915Z\"\ntags:\n  - 整数线性系统\n  - 整数格\n  - 像判定\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 整数线性系统求解与像判定\n\n`matreduc` 提供整数线性系统 \\(Ax=b\\) 的可解性判定、选定解构造及像判定。其 Rust 移植强调复现上游的确切幺模操作序列：欠定系统中被选解的 \\(\\tau\\)/\\(t\\) 坐标奇偶性会进入 `ext_block::same_sign`，因此兼容目标不仅是得到一个正确解，还包括选出与上游一致的解。^[matreduc.md:20-26]\n\n## 对角化与可解性\n\n内部类型 `IntMatrix` 表示行主序矩形整数矩阵。`diagonalise(m)` 返回 `(row, col, diagonal)`，其中幺模矩阵 `row`、`col` 使 `row * m * col` 成为对角矩阵；对角元素除首项外均为正。空形状 \\(0\\times n\\) 或 \\(n\\times0\\) 提前返回。精确的符号处理见 [[对角化的行列式符号簿记]]。^[matreduc.md:30-33]\n\n`has_solution(a, b)` 判定 \\(ax=b\\) 是否存在整数解：先对角化矩阵，再将右端向量左乘 `row`，逐坐标检查可除性。^[matreduc.md:56-57]\n\n## 选定解与像判定接口\n\n`find_solution(a, b)` 返回一个整数解；不存在整数解时返回 `None`，而上游在此情形抛出异常。该移植的调用方预期先运行 `has_solution`。解的选择受逐操作兼容要求约束，不能任意替换为另一种返回不同解的求解过程。^[matreduc.md:20-26, matreduc.md:58-59]\n\n`in_left_image` 与 `in_right_image` 提供像判定。二者的源码注释分别归属 `ext_block.cpp` 中的 `in_L_image` 与 `in_R_image`，应与来自 `matreduc.cpp` 的对角化及求解接口区分。^[matreduc.md:20-21, matreduc.md:60-61]\n\n## 算术与失败边界\n\n模块采用 wrapping `i32` 算术，旨在镜像上游 C++ `int` 的行为，包括会影响被选解的溢出行为域。正除数下的 `divide(a, b)` 使用向下取整除法；负被除数采用 `-1 - ((-1 - a) / b)`，以避免直接对 `i32::MIN` 取负。^[matreduc.md:24-26, matreduc.md:37-38]\n\n输入契约并非全部通过可恢复错误表达。矩阵构造形状、矩阵作用的向量长度、转置的方阵要求及行列操作边界均由 `assert` 检查。因此，向 `has_solution` 等接口传入长度不匹配的 \\(b\\) 会触发 panic，而不是返回 `Err`；这与合法输入下无整数解的情况不同。^[matreduc.md:50-52, matreduc.md:58-59]\n\n## 测试与证据范围\n\n所列测试覆盖 `find_solution` 的满秩、秩亏与矩形三种形态，以及一维像判定。对角化的 11 个重构用例检查 \\(|\\det(\\mathrm{row})|=1\\)、\\(\\det(\\mathrm{col})=1\\)、逐对角一致性及首项外为正。`oracle_reference_cases` 还以 C++ oracle 数据锚定精确的 `row`、`col` 与解，其中包含一个主元列未左对齐的 \\(6\\times6\\) 秩亏案例，选定解为 \\([6,14,5,-37,-421,345]\\)。^[matreduc.md:69-74]\n\n已列出的覆盖缺口包括 wrapping 溢出域、`in_*_image` 的矩形与秩亏输入、空形状对角化，以及 `from_entries`、`apply_to` 的 panic 路径。来源包仅作结构性阅读，未执行构建、测试或原版运行；模块文档记载的逐位 oracle 验证属于独立的 [[HPC 验收证据链]]，不能视为该来源包重新验证的结果。^[matreduc.md:9-16, matreduc.md:75-76, matreduc.md:89-89]\n\n## Sources\n\n- [matreduc.md](matreduc.md) — 精确整数矩阵约化：matreduc 的逐操作移植。\n",
+  "generatedAt": "2026-10-09T15:00:35.416Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "matreduc.md": {
+      "hash": "157e83664adbfa96014a6a864b0d0e1fb91408367e03b40ede10afc6014c0006",
+      "concepts": [
+        "整数矩阵算法的逐操作保真移植",
+        "整数矩阵的幺模对角化",
+        "整数消元中的下取整除法与-gcd-主元选择",
+        "对角化的行列式符号簿记",
+        "整数线性系统求解与像判定",
+        "单位上三角整数矩阵求逆",
+        "偶数指数的虚数单位幂计算",
+        "整数矩阵移植的-oracle-回归锚点与证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

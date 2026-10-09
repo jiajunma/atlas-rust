@@ -1,0 +1,38 @@
+{
+  "id": "余权坐标的投影出处绑定-d8190036",
+  "title": "余权坐标的投影出处绑定",
+  "slug": "余权坐标的投影出处绑定",
+  "summary": "AmbientCoweight 与 AdjointCoweight 将坐标绑定到 Arc<AdjointProjectionModel>，以指针身份和坐标共同判等，并拒绝跨独立投影实例复用坐标。",
+  "sources": [
+    "adjoint-fiber.md"
+  ],
+  "body": "---\ntitle: 余权坐标的投影出处绑定\nsummary: AmbientCoweight 与 AdjointCoweight 将坐标绑定到 Arc<AdjointProjectionModel>，以指针身份和坐标共同判等，并拒绝跨独立投影实例复用坐标。\nsources:\n  - adjoint-fiber.md\nkind: concept\ncreatedAt: \"2026-10-09T14:23:33.418Z\"\nupdatedAt: \"2026-10-09T14:23:33.418Z\"\ntags:\n  - Rust设计\n  - 出处绑定\n  - 余权\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 余权坐标的投影出处绑定\n\n余权坐标的投影出处绑定，是将裸 `Coweight` 与特定伴随投影模型关联的机制。`AmbientCoweight` 和 `AdjointCoweight` 均持有 `Arc<AdjointProjectionModel>` 与裸坐标；由于裸 `Coweight` 不携带 datum 出处，包装类型通过模型身份记录调用方的出处断言，并阻止坐标跨投影复用。^[adjoint-fiber.md:17-23]\n\n## 模型身份与相等性\n\n两种包装类型的手写 `PartialEq` 同时要求模型满足 `Arc::ptr_eq`，且坐标相等。因此，坐标相同并不足以判定包装值相等；两次独立构建的投影也不能互用其绑定坐标，相关操作会以 `DatumMismatch` 拒绝跨投影输入。^[adjoint-fiber.md:19-23]\n\n这一身份约束也体现在纤维对象上：`AdjointCartanFiber` 没有实现 `Eq`，因为值相等不能表达出处；需要通过 `ambient_fiber()` 关联到确切的源纤维实例。^[adjoint-fiber.md:76-77]\n\n## 绑定坐标与整数投影\n\n`AdjointBasedRootDatum` 仅使用源 datum 的 Cartan 矩阵，通过 `BasedRootDatum::standard` 构造伴随根数据。其 character 基对应源单根全基，cocharacter 基对应基本余权基，为源余权到伴随余权的坐标投影提供目标模型。^[adjoint-fiber.md:17-19]\n\n整数投影 `map_coweight` 实现限制映射 \\(Y \\to P^\\vee\\)：先由 `ensure_source` 通过指针身份检查出处，再检查预算，最后按源单根顺序计算 `pair(root, y)`，得到目标坐标。该映射可以具有中心核，不能视为同构；出处绑定也不意味着投影是单射。相关构造可参见 [[伴随根数据与余特征格投影]]。^[adjoint-fiber.md:41-44]\n\n## 与纤维商映射的关系\n\n出处检查之外，[[伴随 Cartan 纤维的构建与下降验证]]还要求构建时检查 datum 一致性和源纤维对合一致性，并在目标纤维构造后调用 `source.validate_induced_map(&fiber, &projection)` 验证投影能够下降到纤维商。出处绑定与下降验证分别约束输入模型身份和诱导映射的有效性。^[adjoint-fiber.md:27-37]\n\n[[FiberToAdjoint 的按需投影]]通过 `canonical_representative` 取得代表元，执行 mod-2 投影，再由 `element_from_ambient` 构造目标纤维元素。mod-2 投影按根系数的奇性翻转坐标位；映射不缓存稠密 mod-2 矩阵，而是在每次应用时计算。^[adjoint-fiber.md:35-48]\n\n## 测试与证据边界\n\n测试锚点包含跨投影坐标触发 `DatumMismatch`、中心余权入核及投影可加性，以及 A1+A2 非对称作用下逐坐标基的交织关系 `map(θ·y) == θ_adjoint·map(y)`。但构建入口的 `DatumMismatch` 分支未被覆盖，不能将跨投影坐标测试视为所有出处错误路径均已验证。^[adjoint-fiber.md:66-75]\n\n这些说明来自对 `adjoint_fiber.rs` 的结构性阅读，不构成数学验收；本次知识维护未执行 Atlas、Cargo、测试或 benchmark。^[adjoint-fiber.md:9-13, adjoint-fiber.md:81-85]\n\n## Sources\n\n- [adjoint-fiber.md](adjoint-fiber.md)\n",
+  "generatedAt": "2026-10-09T14:23:33.432Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "adjoint-fiber.md": {
+      "hash": "e016d680ae678e233a266d5925db41dbc6c7072659a127b62f410cd467bcb1d5",
+      "concepts": [
+        "伴随-cartan-纤维的构建与下降验证",
+        "余权坐标的投影出处绑定",
+        "根对合诱导的伴随余权作用",
+        "源余权格到伴随余权格的整数投影",
+        "mod-2-投影与纤维商上的诱导映射",
+        "伴随纤维的资源预算与可恢复错误",
+        "伴随纤维映射的测试证据与覆盖边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

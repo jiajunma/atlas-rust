@@ -1,0 +1,38 @@
+{
+  "id": "反射子群轨道与见证的独立验证-67bb15cc",
+  "title": "反射子群轨道与见证的独立验证",
+  "slug": "反射子群轨道与见证的独立验证",
+  "summary": "测试以空子群不变量、独立穷举闭包、逐见证重建和全单子群轨道顺序对齐检验实现；该源包仅报告结构性阅读和测试锚点，不构成数学验收。",
+  "sources": [
+    "atlas-core-weyl-subgroup.md"
+  ],
+  "body": "---\ntitle: 反射子群轨道与见证的独立验证\nsummary: 测试以空子群不变量、独立穷举闭包、逐见证重建和全单子群轨道顺序对齐检验实现；该源包仅报告结构性阅读和测试锚点，不构成数学验收。\nsources:\n  - atlas-core-weyl-subgroup.md\nkind: concept\ncreatedAt: \"2026-10-09T14:40:11.484Z\"\nupdatedAt: \"2026-10-09T14:40:11.484Z\"\ntags:\n  - 测试验证\n  - 数学不变量\n  - 证据边界\naliases: []\nconfidence: 1\nprovenanceState: merged\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 反射子群轨道与见证的独立验证\n\n反射子群轨道与见证的独立验证，针对 `Weyl_orbit` 返回的轨道矩阵和 `Weyl_orbit_ws` 返回的 ambient Weyl 见证词，分别检查轨道是否完整、见证是否能重建对应轨道列，以及边界输入是否满足子群不变量。相关实现与四类测试锚点位于 `crates/atlas-core/src/domain_builtins/weyl_subgroup.rs`。^[atlas-core-weyl-subgroup.md:10-14, atlas-core-weyl-subgroup.md:44-64]\n\n## 轨道与见证的交叉核验\n\n核心测试将陪集算法产生的轨道与**独立穷举闭包**比较，并检查每个见证的 `word` / `root_datum` 往返，以及通过逐见证 `*` 作用重建对应轨道列。这同时覆盖轨道结果与见证的可用性，可关联[[反射子群轨道与生成元约束下的优势化]]。^[atlas-core-weyl-subgroup.md:60-61]\n\n见证核验必须保留作用方向：权从右到左作用，余权从左到右作用；dual 情形按事件正序拼接，否则逆序拼接。实现通过 `build_weyl_context` 和逐次 `right_multiply_simple` 重建 Weyl 元素，再由 `weyl_elt_value` 冻结为 canonical word。因此，理解重建过程需要区分反射事件顺序与最终规范词，参见[[ambient Weyl 见证词与作用方向]]。^[atlas-core-weyl-subgroup.md:36-37, atlas-core-weyl-subgroup.md:47-51]\n\n## 平凡子群不变量与历史反例\n\n空生成元集合的测试要求负权保持不动，并返回 ambient 恒等见证；覆盖范围为九个类型、两种编号、两种 isogeny 和两种作用。这为平凡子群提供了独立的不变量检查。^[atlas-core-weyl-subgroup.md:58-59]\n\n该检查对应一个保留的历史反例：original `7e1b958c` 的 `rootdata.h` 在初始 dominance 转发中忽略生成元参数，而见证函数正确传递参数。在 A2、空生成元、输入 `[-1,-2]` 时，原版矩阵轨道给出 `[2,1]`，见证却是恒等。Rust 实现的初始 dominance 确实使用给定生成元；因此，原版输出必须与独立子群不变量一并审视。^[atlas-core-weyl-subgroup.md:18-23]\n\n## 顺序兼容与失败行为\n\n全单子群测试要求轨道及见证与全群 `Weyl_orbit` / `_ws` 逐等，以检查完整全群轨道序。实现采用 `rootdata.cpp` 的 BitMap `basic_orbit` / `extend_orbit` 排序，而非 alcove 变体的分层排序；内部稳定器 BFS 使用 RootNbr 序，用户生成元顺序则控制 dominance 和扩展。相关约定见[[反射子群轨道的稳定排序规则]]。^[atlas-core-weyl-subgroup.md:18-19, atlas-core-weyl-subgroup.md:62-69]\n\n非法生成元测试要求在结果丢弃前完成校验，并匹配原版的非法根号、非 Cartan 矩阵文本及 i32 收窄诊断。溢出和向量错秩应产生安全错误，而非回绕轨道；向量大小不匹配时返回 `\"Wrong vector size for Weyl subgroup orbit\"`，不模拟上游短向量越界读取行为。^[atlas-core-weyl-subgroup.md:53-54, atlas-core-weyl-subgroup.md:63-64]\n\n`validate` 仅调用 `Subgroup::new`，采用 [[BuildAndDrop 领域内建验证策略]]，不会计算轨道。因此，构造校验与轨道、见证的结果核验具有不同覆盖范围。^[atlas-core-weyl-subgroup.md:52-52]\n\n## 证据边界\n\n源包记录的是结构性阅读及文件内测试锚点，不声称数学验收，也不提供这些测试的运行报告。其覆盖范围限于该实现文件；数学验收的 HPC 门需另查 `docs/slices` 下的 `weyl_subgroup_orbits` 切片与下游目录，并遵循[[HPC 验收证据链]]。^[atlas-core-weyl-subgroup.md:9-14, atlas-core-weyl-subgroup.md:56-64, atlas-core-weyl-subgroup.md:70-72]\n\n## Sources\n\n- [atlas-core-weyl-subgroup.md](atlas-core-weyl-subgroup.md) — 反射子群轨道与 ambient Weyl 见证（domain_builtins/weyl_subgroup.rs）\n",
+  "generatedAt": "2026-10-09T14:40:11.765Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-weyl-subgroup.md": {
+      "hash": "8d98987d0623fc897f520a078b04d4320e73d074693b1967e99c01d9ade27741",
+      "concepts": [
+        "反射子群轨道与生成元约束下的优势化",
+        "精确根配对坐标的陪集树算法",
+        "反射子群轨道的稳定排序规则",
+        "ambient-weyl-见证词与作用方向",
+        "反射子群构造校验与安全整数运算",
+        "buildanddrop-领域内建验证策略",
+        "反射子群轨道与见证的独立验证"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,39 @@
+{
+  "id": "内建注册表的启动清单与覆盖边界-3aff9b92",
+  "title": "内建注册表的启动清单与覆盖边界",
+  "slug": "内建注册表的启动清单与覆盖边界",
+  "summary": "builtin_registry() 使用 OnceLock<Vec<Builtin>> 一次初始化 321 个条目、170 个不同名字，尚未覆盖上游完整清单，且与 309 个启动补全名清单分别维护。",
+  "sources": [
+    "atlas-core-builtin-registry.md"
+  ],
+  "body": "---\ntitle: 内建注册表的启动清单与覆盖边界\nsummary: builtin_registry() 使用 OnceLock<Vec<Builtin>> 一次初始化 321 个条目、170 个不同名字，尚未覆盖上游完整清单，且与 309 个启动补全名清单分别维护。\nsources:\n  - atlas-core-builtin-registry.md\nkind: concept\ncreatedAt: \"2026-10-09T14:25:54.438Z\"\nupdatedAt: \"2026-10-09T14:25:54.438Z\"\ntags:\n  - 内建注册表\n  - 启动初始化\n  - 覆盖范围\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 内建注册表的启动清单与覆盖边界\n\n`builtin_registry()` 是内建函数启动清单的构造入口，以 `OnceLock<Vec<Builtin>>` 一次建成。所提供的源码阅读记录统计了 321 个注册条目、170 个不同名字；清单按整数位工具等主题分节，各节注释标明上游出处。^[atlas-core-builtin-registry.md:66-73]\n\n## 注册条目与可见性\n\n每个 `Builtin` 条目包含名字 `name`、参数类型 `arg_type`、结果类型 `result`、饥饿求值位 `hunger`、重载可见性 `overload_visible` 和实现分发字段 `implementation`。其中 `hunger` 与 `HungryBuiltinCall` 配对，`overload_visible` 控制条目是否出现在重载解析与补全中；这些字段的职责可参见 [[内建函数元数据与实现分发]]。^[atlas-core-builtin-registry.md:15-21]\n\n## 注册清单与补全清单\n\n注册表自述为正在向已追踪的清单扩展，尚未覆盖上游完整启动清单；缺口由 `docs/REMAINING_BUILTINS.md` 跟踪。与之相关的 `STARTUP_COMPLETION_NAMES` 包含按上游哈希序排列的 309 个启动名，并显式固定注册缺口。因此，321 个注册条目、170 个不同注册名字与 309 个启动补全名分别描述不同的清单统计，不能混为同一覆盖指标。^[atlas-core-builtin-registry.md:68-73]\n\n补全名清单也不是无值求值策略清单。领域调用在 `NoValue` 级别的行为由 `DomainNoValue` 决定：`Skip` 跳过调用，`Validate` 执行校验，`BuildAndDrop` 完整构造后丢弃结果。例如，`orientation_nr` 注册为 `BuildAndDrop`，不能依据补全名清单将其视为 `Skip`；相关策略见 [[BuildAndDrop 领域内建验证策略]]。^[atlas-core-builtin-registry.md:39-44]\n\n## 覆盖范围与证据限制\n\n本来源覆盖 `crates/atlas-core/src/typed.rs` 第 5973–11565 行，内容包括 `Builtin` 接口、`BuiltinImpl`、`DomainNoValue`、`ScalarOp`、部分求值辅助契约及启动清单组织。其证据性质是结构性阅读，不构成语言或数学验收。^[atlas-core-builtin-registry.md:9-13]\n\n该来源未逐项解释 321 个注册条目的语义；`TypedExpr` 的求值实现与 133 个测试也仍待另行分包。上游行号引用属于实现方的移植陈述，行为兼容应以 HPC 语料门为准，可结合 [[HPC 验收证据链]] 理解这一边界。快照的字节数与哈希仅用于标识所记录的源码字节，不能代替行为兼容证据。^[atlas-core-builtin-registry.md:75-80]\n\n## Sources\n\n- [内建注册表（typed.rs 5973–11565）——Builtin/BuiltinImpl 面、无值门策略与启动清单](../../sources/atlas-core-builtin-registry.md)\n",
+  "generatedAt": "2026-10-09T14:25:54.467Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-builtin-registry.md": {
+      "hash": "6137d56971c4cef9fbefa6ee17e77c8af66607b9cbb1ad9375711aedcca138c0",
+      "concepts": [
+        "内建函数元数据与实现分发",
+        "领域调用的无值门策略",
+        "内建注册表的启动清单与覆盖边界",
+        "打印字符串转换与运行时错误的输出契约",
+        "向量逐项除法与非负余数约定",
+        "二进制补码的置位索引",
+        "尺寸自适应多项式运算与尾零规则",
+        "有理向量加减与规范化"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

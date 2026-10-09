@@ -1,0 +1,38 @@
+{
+  "id": "结构化诊断与原始字节保真-bd311604",
+  "title": "结构化诊断与原始字节保真",
+  "slug": "结构化诊断与原始字节保真",
+  "summary": "Diagnostic 将错误类别与措辞分离，以 raw_message 保存非 UTF-8 原始字节、message 提供转义预览，并支持不改变会话 clean 标志及成功退出状态的警告。",
+  "sources": [
+    "atlas-core-support-layer.md"
+  ],
+  "body": "---\ntitle: 结构化诊断与原始字节保真\nsummary: Diagnostic 将错误类别与措辞分离，以 raw_message 保存非 UTF-8 原始字节、message 提供转义预览，并支持不改变会话 clean 标志及成功退出状态的警告。\nsources:\n  - atlas-core-support-layer.md\nkind: concept\ncreatedAt: \"2026-10-09T14:35:28.611Z\"\nupdatedAt: \"2026-10-09T14:35:28.611Z\"\ntags:\n  - 结构化诊断\n  - 字节保真\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 结构化诊断与原始字节保真\n\n结构化诊断通过 `Diagnostic` 将错误类别、消息、源位置、警告状态与回溯信息组合起来，并为非 UTF-8 的 Atlas 数据保留精确原始字节。错误类别与消息措辞刻意分离，使调用方能够按类别比较行为，而不依赖具体文案。^[atlas-core-support-layer.md:20-30]\n\n## 诊断结构与字节保真\n\n`ErrorKind` 包含 `Lexical`、`Syntax`、`Name`、`Type`、`Program`、`Runtime` 与 `Io`。其中 `Program` 表示表达式分析失败，与类型合一失败相区分。`Diagnostic` 则包含 `kind`、`message`、`raw_message: Option<AtlasString>`、`span`、`warning` 和 `back_trace: Vec<AtlasString>`。^[atlas-core-support-layer.md:20-27]\n\n当消息包含非 UTF-8 的 Atlas 数据时，`new_bytes` 将消息分流：`raw_message` 保存精确字节，`message` 提供经过转义的编辑器预览。`message` 不能作为字节输出的权威来源；这一约定与 [[AtlasString 字节保留串与原始字节打印]] 相关。诊断的实际渲染与打印由 `session_frame.rs` 中的 `describe_bytes` 承担。^[atlas-core-support-layer.md:23-27, atlas-core-support-layer.md:70-72]\n\n## 源身份与位置\n\n`SourceId(u64)` 标识源缓冲的稳定身份，值 `0` 表示无需区分的匿名输入。`SourcePosition` 使用从 1 开始的行号和列号；`SourceSpan` 采用含头不含尾的区间，并在构造时断言 `byte_start <= byte_end`。^[atlas-core-support-layer.md:16-19]\n\n`SourceText { source_id, text, line_starts }` 持有源文本，并在构造时预存各行的起始字节位置。`position(byte)` 先将偏移钳制到文本长度，再退到字符边界，通过 `line_starts` 上的 `partition_point` 确定行号；列号是行首到该位置的 Unicode 标量数加 1。因此，字节偏移与用户可见列号采用不同的计数方式。`span(start, end)` 用于组装源跨度。^[atlas-core-support-layer.md:34-38]\n\n## 警告与运行时回溯\n\n`warning` 表示需要向用户报告、但不使会话变脏的诊断。源材料记录的上游词法恢复行为是向 stderr 打印警告而不将会话标记为不 clean，退出状态保持为 0。这与 [[会话 clean 标志与诊断分流]] 及 [[clean 标志与 CLI 退出状态]] 相关。^[atlas-core-support-layer.md:25-27]\n\n运行时错误在展开过程中累积 `back_trace`，顺序为最外层在前。`trace()` 通过前插维持这一顺序，对应上游 `error_base::trace` 的 `push_front` 行为；命令层将非空 trace 拷入 `back_trace` 系统变量。^[atlas-core-support-layer.md:28-30]\n\n## 证据与边界\n\n源位置部分的测试锚点覆盖匿名身份稳定、源身份随跨度保留，以及按 Unicode 标量和换行计算位置、将越界位置钳制到文本末尾。该源包属于结构性阅读记录，不声称完成语言或数学验收；上游行号引用属于实现方的移植陈述，行为兼容仍以 HPC 语料门为准，参见 [[HPC 验收证据链]]。^[atlas-core-support-layer.md:9-12, atlas-core-support-layer.md:34-38, atlas-core-support-layer.md:70-74]\n\n## Sources\n\n- [atlas-core-support-layer.md](atlas-core-support-layer.md)\n",
+  "generatedAt": "2026-10-09T14:35:28.780Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-support-layer.md": {
+      "hash": "0ccb11cea1a059562ca322e7fee6cd5ce235ab492c814cc80f8e39a7fe68256a",
+      "concepts": [
+        "结构化诊断与原始字节保真",
+        "运行时回溯的累积与暴露",
+        "源文本身份与-unicode-位置映射",
+        "有序强制转换注册表",
+        "列表显示的行转换选择",
+        "类型邻近谓词-isclose",
+        "类型宽度关系-broadereq"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

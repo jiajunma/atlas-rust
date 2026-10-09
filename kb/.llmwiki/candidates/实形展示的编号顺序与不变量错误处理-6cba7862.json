@@ -1,0 +1,38 @@
+{
+  "id": "实形展示的编号顺序与不变量错误处理-6cba7862",
+  "title": "实形展示的编号顺序与不变量错误处理",
+  "slug": "实形展示的编号顺序与不变量错误处理",
+  "summary": "build_presentations 按 external 编号生成展示数据，将布局错误统一报告为 LayoutInvariantViolation；对合扫描先于仅检查行数的秩检查，失败时整体丢弃结果。",
+  "sources": [
+    "weyl-size-presentation.md"
+  ],
+  "body": "---\ntitle: 实形展示的编号顺序与不变量错误处理\nsummary: build_presentations 按 external 编号生成展示数据，将布局错误统一报告为 LayoutInvariantViolation；对合扫描先于仅检查行数的秩检查，失败时整体丢弃结果。\nsources:\n  - weyl-size-presentation.md\nkind: concept\ncreatedAt: \"2026-10-09T15:18:29.267Z\"\nupdatedAt: \"2026-10-09T15:18:29.267Z\"\ntags:\n  - 实形\n  - 错误处理\n  - 顺序约束\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 实形展示的编号顺序与不变量错误处理\n\n`presentation.rs` 的 `build_presentations` 按 external 编号顺序逐个计算实形展示数据。每个 `RealFormPresentation` 包含 Lie 代数名称与 `IsCompact`、`IsSplit`、`IsQuasisplit`、`IsConnected` 四个状态位；展示构建中的不变量错误统一表示为 `LayoutInvariantViolation`。^[weyl-size-presentation.md:45-56]\n\n## 编号顺序与状态判定\n\nexternal 编号决定展示数据的构建顺序，也直接参与 quasisplit 判定：`IsQuasisplit` 仅检查当前 external 编号是否等于 `quasisplit_external()`。compact 与 split 状态则通过将 most-split Cartan 对合 `ms_tau` 与 ±1 逐元素比较来确定；连通性委托给 `topology::dual_component_group_trivial`。这些判定可结合 [[实形展示状态的构建与判定]] 阅读。^[weyl-size-presentation.md:45-53]\n\n现有测试中的顺序锚点包括：单连通 A1 的 compact 形 `\"su(2)\"` 位于 split 形 `\"sl(2,R)\"` 之前；单连通 B2 的三个实形中，compact 形 `\"so(5)\"` 居首，split 且 quasisplit 的 `\"so(3,2)\"` 居末。这些是具体案例的测试锚点，不构成所有实形均按 compact 到 split 排序的证据。^[weyl-size-presentation.md:58-60]\n\n## 不变量错误与检查顺序\n\n构建失败统一使用 [[StructureError 统一错误分类学|StructureError]] 中的 `LayoutInvariantViolation`，通过四个 reason 字符串区分失败位置：`\"external form number\"`、`\"most split Cartan\"`、`\"most split involution rank\"` 和 `\"special grading\"`。其中 `\"most split Cartan\"` 在两处共用，因此 reason 字符串并不与失败位置一一对应。^[weyl-size-presentation.md:54-56]\n\n检查顺序存在一个明确细节：compact/split 的逐元素扫描先于 `ms_tau` 的秩检查，而该秩检查仅检查行数。来源将这一顺序记为源码阅读观察，并指出失败时构建结果会整体丢弃，没有可观察副作用。^[weyl-size-presentation.md:52-56]\n\n## 测试与证据边界\n\n展示层的三个测试锚点覆盖上述 A1、B2 案例，以及伴随 A1 的 split 形不连通这一情况；非恒等对合（非 split 内类）、quasisplit 但非 split 的实形，以及四个不变量分支均未获测试覆盖。因而，现有锚点不能证明全部编号情形或错误路径的正确性。^[weyl-size-presentation.md:58-60, weyl-size-presentation.md:75-76]\n\n来源属于结构性阅读记录，不声称数学验收；上游行号仅转录自代码注释，未核对上游字节。本次知识维护也未执行 Atlas、Cargo、测试或 benchmark。^[weyl-size-presentation.md:9-13, weyl-size-presentation.md:80-84]\n\n## Sources\n\n- [weyl-size-presentation.md](../../sources/weyl-size-presentation.md)\n",
+  "generatedAt": "2026-10-09T15:18:30.252Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "weyl-size-presentation.md": {
+      "hash": "d0cb871ac40342500de6698af1ea06ec7b12979baaa81e2ee41c5e1faddbd4a9",
+      "concepts": [
+        "基于-cartan-矩阵识别的-weyl-群阶计算",
+        "dynkin-图分支形状与-weyl-群阶识别",
+        "cartan-类型识别的输入校验边界",
+        "实形展示状态的构建与判定",
+        "实形展示的编号顺序与不变量错误处理",
+        "weyl-群阶模块与实形展示模块的架构边界",
+        "结构性源码阅读的验证与覆盖限制"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

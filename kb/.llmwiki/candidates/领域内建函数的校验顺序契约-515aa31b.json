@@ -1,0 +1,39 @@
+{
+  "id": "领域内建函数的校验顺序契约-515aa31b",
+  "title": "领域内建函数的校验顺序契约",
+  "slug": "领域内建函数的校验顺序契约",
+  "summary": "validate 的 46 个分支遵循各自的上游顺序契约，参数收窄、边界检查与构造检查相对无值门的次序具有可观察意义；本包仅列举部分分支。",
+  "sources": [
+    "atlas-core-domain-validate-print.md"
+  ],
+  "body": "---\ntitle: 领域内建函数的校验顺序契约\nsummary: validate 的 46 个分支遵循各自的上游顺序契约，参数收窄、边界检查与构造检查相对无值门的次序具有可观察意义；本包仅列举部分分支。\nsources:\n  - atlas-core-domain-validate-print.md\nkind: concept\ncreatedAt: \"2026-10-09T14:29:52.908Z\"\nupdatedAt: \"2026-10-09T14:29:52.908Z\"\ntags:\n  - 领域内建函数\n  - 参数校验\n  - 兼容性\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 领域内建函数的校验顺序契约\n\n领域内建函数的校验顺序契约规定各项检查相对于“无值门”的执行位置，以及检查之间的先后关系。`domain_builtins.rs` 的 `validate` 包含 46 个分支，每个领域名对应一个分支，分别遵循实现注释引用的上游顺序契约；无值门之前执行多少检查，因分支而异。^[atlas-core-domain-validate-print.md:14-17]\n\n## 无值门之前的检查\n\n整性相关函数 `integrality_simples`、`integrality_rank`、`is_integrally_dominant` 和 `integrality_datum` 在无值门之前调用 `check_integrality_dimension`。`KL_block` 则先执行 `test_standard`，再经过无值门。这些顺序分别对应实现所引用的 `atlas-types.w:1766` 与 `atlas-types.w:6868-6872`。^[atlas-core-domain-validate-print.md:22-24, atlas-core-domain-validate-print.md:32-32]\n\n`KGB_elt` 在无值门之前执行全部构造检查，然后丢弃构造结果。三参数形式的 `Weyl_orbit` 与 `Weyl_orbit_ws` 则调用 `weyl_subgroup::validate`，采用只构造、不计算的 [[BuildAndDrop 领域内建验证策略]]。^[atlas-core-domain-validate-print.md:20-21, atlas-core-domain-validate-print.md:30-31]\n\n## 参数检查与可观察顺序\n\n`fundamental_weight` 和 `fundamental_coweight` 检查参数个数及半单秩范围内的索引。`W_refl` 的契约还明确要求：`int_val` 收窄发生在索引校验之前，而且这一先后关系是可观察的行为。^[atlas-core-domain-validate-print.md:19-25]\n\n`real_form` 按参数个数区分 `(InnerClass,int)` 与 `(InnerClass,mat,ratvec)` 两种形式；外部实形式编号经 `order.internal` 翻译，非法编号对应 `Illegal real form number: n`。`KGB` 则先依据 `kgb_size` 检查边界，越界对应 `Inexistent KGB element: n`。^[atlas-core-domain-validate-print.md:26-29]\n\n## 打印入口中的校验\n\n校验契约也体现在 `print_text` 的具体打印分支中。`print_real_Weyl` 必须在分支内，按照上游包装器的措辞与顺序先执行检查；否则，外来的外部实形式编号会被 `ExternalFormOrder` 静默翻译。相关主题见 [[实 Weyl 群打印的前置检查]]。^[atlas-core-domain-validate-print.md:56-70]\n\n`print_KGB` 的选择形式要求所列元素属于同一实形式，跨形式时报告 `Real form mismatch when printing KGB element`，参见 [[KGB 打印与实形一致性]]。另一方面，来源明确记载 `print_X` 与 `print_blockstabilizer` 的上游入口没有检查；后者仅从块中取得两个实形式。^[atlas-core-domain-validate-print.md:60-72]\n\n## 证据范围\n\n本来源完成的是结构性阅读，不构成数学验收，也未列出全部 46 个分支的逐项内容。完整的逐分支顺序契约保留在实现注释中；所引上游行号属于实现方的移植陈述，打印与校验的兼容性仍以 HPC 语料门为准，参见 [[HPC 验收证据链]]。^[atlas-core-domain-validate-print.md:9-12, atlas-core-domain-validate-print.md:74-80]\n\n## Sources\n\n- [atlas-core-domain-validate-print.md](atlas-core-domain-validate-print.md)\n",
+  "generatedAt": "2026-10-09T14:29:53.022Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-domain-validate-print.md": {
+      "hash": "546db6d40cf4d2e423135d2a9854dad54750006091540b76269c934b2ba26e94",
+      "concepts": [
+        "领域内建函数的校验顺序契约",
+        "完整块打印的构造与初始行定位",
+        "kl-块与列的共享查找路径",
+        "部分块打印的种子归约与生存标志",
+        "对合表达式的打印约定",
+        "kgb-打印与实形一致性",
+        "分级打印中的置换回拉",
+        "实-weyl-群打印的前置检查"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

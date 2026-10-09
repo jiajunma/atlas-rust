@@ -1,0 +1,39 @@
+{
+  "id": "精确-cramer-求解与矩阵辅助-06fb18c0",
+  "title": "精确 Cramer 求解与矩阵辅助",
+  "slug": "精确-cramer-求解与矩阵辅助",
+  "summary": "矩阵辅助函数提供行主序转置、行数据到 Matrix 值的转换，以及采用分数自由变量消元的精确 Cramer 求解。",
+  "sources": [
+    "atlas-core-deformation-cache.md"
+  ],
+  "body": "---\ntitle: 精确 Cramer 求解与矩阵辅助\nsummary: 矩阵辅助函数提供行主序转置、行数据到 Matrix 值的转换，以及采用分数自由变量消元的精确 Cramer 求解。\nsources:\n  - atlas-core-deformation-cache.md\nkind: concept\ncreatedAt: \"2026-10-09T14:27:59.731Z\"\nupdatedAt: \"2026-10-09T14:27:59.731Z\"\ntags:\n  - 线性代数\n  - 精确计算\n  - 矩阵\naliases:\n  - 精确-cramer-求解与矩阵辅助\n  - 精C求\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 精确 Cramer 求解与矩阵辅助\n\n形变机器源码中的矩阵辅助位于 `crates/atlas-core/src/domain_builtins.rs` 的 2933–3022 行，包含 `transpose_matrix`、`matrix_value` 与 `cramer_solution`，分别承担矩阵转置、矩阵值构造和精确求解。^[atlas-core-deformation-cache.md:52-55]\n\n## 矩阵转置与值构造\n\n`transpose_matrix` 实现行主序矩阵的转置；`matrix_value` 将行数据转换为 `Matrix` 值。来源仅概述这两个函数的用途，未展开其输入校验或错误处理。^[atlas-core-deformation-cache.md:52-55]\n\n## 精确 Cramer 求解\n\n`cramer_solution` 提供精确 Cramer 解，来源将其方法描述为“分数自由变量消元”。该概述未给出具体公式、消元步骤或奇异矩阵的处理约定，因此不能据此补充这些算法细节。^[atlas-core-deformation-cache.md:54-55]\n\n## 上下文与证据边界\n\n这组辅助函数与普通、扭曲全形变的计算及缓存函数一起纳入同一源码阅读包；相关主题包括 [[全形变缓存与递归环检测]] 和 [[扭曲全形变计算流程]]。来源并未说明各形变函数如何调用这些矩阵辅助。^[atlas-core-deformation-cache.md:9-15]\n\n现有证据属于结构性阅读，不构成数学验收。来源还明确指出，上游行号引用属于实现方的移植陈述，形变兼容性需以 HPC 差分门为准；这一限制也应在理解相关辅助函数时保留。^[atlas-core-deformation-cache.md:15-15, atlas-core-deformation-cache.md:62-64]\n\n## Sources\n\n- [形变缓存机器（domain_builtins.rs 2657–2933）——full/twisted full deformation 的递归、缓存纪律与协作截止](atlas-core-deformation-cache.md)\n",
+  "generatedAt": "2026-10-09T14:27:59.804Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-deformation-cache.md": {
+      "hash": "251d08951979797aa316b4de309b7b4c52e32ad225d643780c204413bcae0295",
+      "concepts": [
+        "全形变缓存与递归环检测",
+        "普通全形变的递推关系",
+        "全形变中的-split-因子与后代保留",
+        "全形变参数规范化与结果聚合",
+        "扭曲全形变计算流程",
+        "形变计算的协作式截止",
+        "精确-cramer-求解与矩阵辅助",
+        "形变兼容性的证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

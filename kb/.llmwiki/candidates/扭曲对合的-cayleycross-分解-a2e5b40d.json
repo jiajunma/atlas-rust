@@ -1,0 +1,38 @@
+{
+  "id": "扭曲对合的-cayleycross-分解-a2e5b40d",
+  "title": "扭曲对合的 Cayley/Cross 分解",
+  "slug": "扭曲对合的-cayleycross-分解",
+  "summary": "以 Cayley 根、生成器下标组成的 cross word 及其 WeylAction 表示扭曲对合，并通过重放验证输入；分解在不同实现间不唯一，应比较重放不变量或标签结果。",
+  "sources": [
+    "cayley-cross.md"
+  ],
+  "body": "---\ntitle: 扭曲对合的 Cayley/Cross 分解\nsummary: 以 Cayley 根、生成器下标组成的 cross word 及其 WeylAction 表示扭曲对合，并通过重放验证输入；分解在不同实现间不唯一，应比较重放不变量或标签结果。\nsources:\n  - cayley-cross.md\nkind: concept\ncreatedAt: \"2026-10-09T14:43:41.739Z\"\nupdatedAt: \"2026-10-09T14:43:41.739Z\"\ntags:\n  - 扭曲对合\n  - Weyl群\n  - 因子分解\naliases:\n  - 扭曲对合的-cayleycross-分解\n  - 扭C分\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 扭曲对合的 Cayley/Cross 分解\n\n`CayleyCrossDecomposition` 将[[扭曲对合（TwistedInvolution）]]表示为一段 cross 作用与一组 Cayley 根反射：从 distinguished involution 出发，先按顺序执行 cross word 的 twisted 共轭，再依次左乘 Cayley 根的反射，即可复现输入；每个 Cayley 根在对应重放步骤上必须为 imaginary。构造过程会验证这些不变量。^[cayley-cross.md:17-24]\n\n## 表示与比较契约\n\n分解存储四部分：`cayley_roots` 是 `RootId` 列表，`cross_word` 存储生成器下标而非 `RootId`，`cross_action` 是重放复合得到的 `WeylAction`，`twisted` 保存输入的克隆。^[cayley-cross.md:17-19]\n\nCayley 根与 cross word 在不同移植实现之间并不唯一；Atlas 使用其内部 transducer 顺序进行剥离。因此，跨实现比较应依据重放不变量或 label 级结果，不能要求原始分解部分相同。^[cayley-cross.md:22-24]\n\n## 构造流程\n\n### 输入校验与 twist 置换\n\n`build` 首先检查输入 Weyl 作用的 datum 是否匹配，否则返回 `DatumMismatch`；随后在 weight 与 coweight 两侧验证存储对合恰为 \\(w\\circ\\delta\\)，否则返回 `DistinguishedInvolutionMismatch`。这一校验也支撑终止性论证，因为它迫使 \\(w^{-1}=\\delta w\\delta\\)。^[cayley-cross.md:28-31]\n\n构造器为每个简单根取得 `simple_ids`，并建立生成器置换 `twist[g]`：它记录 \\(\\delta\\) 将第 \\(g\\) 个简单根映到哪个简单生成器。若无法取得相应下标，则返回 `InvalidBasedAutomorphism`。^[cayley-cross.md:32-34]\n\n### 下降剥离\n\n[[Cayley/Cross 的下降剥离算法]]按生成器下标升序选择首个 descent，判据是 \\(\\delta(\\theta(\\alpha_g))\\) 的简单坐标全部不大于零。若找不到 descent，但当前作用仍非单位，则报告 `\"peeling termination\"` 不变量错误。^[cayley-cross.md:35-37]\n\n剥离操作由根类型决定：Real 根产生 Cayley 字母，并将当前作用更新为 \\(s_g\\circ\\mathrm{current}\\)；Complex 根产生 Cross 字母，并更新为 \\(s_g\\circ\\mathrm{current}\\circ s_{\\mathrm{twist}[g]}\\)。Imaginary 根若被判为 descent，则触发 `\"descent kind\"` 错误；源码注释声明这种情形不应发生。^[cayley-cross.md:40-43]\n\n预算在找到 descent 之后、执行步骤之前检查。当 `steps == max_peeling_steps` 时，返回资源为 `\"peeling steps\"` 的 `CayleyCrossResourceLimit`。因此，不需要剥离的输入可以在预算为零时通过；Complex 步骤虽然复合两次反射，仍只计一个预算步骤。^[cayley-cross.md:37-43]\n\n### 逆序收集与根集规范化\n\n剥离完成后，算法逆序重放所记录的字母。Cayley 字母将 `simple_ids[g]` 加入根集；Cross 字母追加到 `cross_word`，同时反射所有已经收集的 Cayley 根。^[cayley-cross.md:44-45]\n\n随后进行[[Cayley 根的长根化与强正交规范化]]：先检查每对根在两个方向上的 bracket 均为零，再把和为根的正交短根对替换为长根的和与差；若所需差不是根，则报告 `\"B2 pair\"` 错误。每次替换严格增加长根数。最后逐根取正并按升序排序，访问器文档保证输出根集强正交、全为正根且有序。^[cayley-cross.md:46-50]\n\n### 重放验证\n\n最终验证从 identity 出发，依次施加 cross 字母，再遍历排序后的 Cayley 根。每一步先验证该根为 imaginary，否则报告 `\"Cayley root imaginary\"`，随后左乘对应根反射；若终态不等于输入，则报告 `\"replay equality\"`。^[cayley-cross.md:51-53]\n\n## 测试与证据边界\n\n所列测试锚点包括两种 distinguished involution 下的空 identity 分解、A1×A1 的单 Cayley 根与单 cross 字母案例，以及 A2 最长元 \\(s_0s_1s_0\\) 分解为 Cayley 根 `[1,1]` 与 `cross_word [0]` 的案例。B2 的短根与长根 pinning 案例分别覆盖长根化生效与无需变换的路径。^[cayley-cross.md:55-58]\n\nA2、B2 的 twisted involution 全枚举测试检查分解成功、重放相等和 Cayley 根两两正交；负路径测试精确匹配零预算、异 datum 与异 backing 的错误。但六种 `CayleyCrossInvariantViolation` 不变量串均无专门负测试，A1×A1 swap 案例也只固定 cross word 长度为一，未固定具体内容。^[cayley-cross.md:58-59, cayley-cross.md:97-99]\n\n本页依据结构性源码阅读，不代表数学或正确性验收。剥离每步长度下降一或二、长根化终止性、imaginary 根不可能为 descent，以及跨实现分解不唯一等性质，均为来源对文档或注释的转述；此次知识维护未执行 Atlas、Cargo、测试或 benchmark。^[cayley-cross.md:95-96, cayley-cross.md:107-111]\n\n## Sources\n\n- [cayley-cross.md](../../sources/cayley-cross.md) — Cayley/Cross 分解与整对合分类（cayley_cross.rs / involution_classification.rs）\n",
+  "generatedAt": "2026-10-09T14:43:42.020Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "cayley-cross.md": {
+      "hash": "0e5779035378026f3a24545a7605e9b5cb2ecea2e745f31e19b3415c101769a9",
+      "concepts": [
+        "扭曲对合的-cayleycross-分解",
+        "cayleycross-的下降剥离算法",
+        "cayley-根的长根化与强正交规范化",
+        "整对合的-compactcomplexsplit-因子计数",
+        "利用饱和核与模二秩计算整对合分类",
+        "整对合分类的预算门与检查顺序",
+        "对偶分量群的-fiber-rank"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

@@ -1,0 +1,38 @@
+{
+  "id": "未移植代码路径的显式失败语义-5f8f4d75",
+  "title": "未移植代码路径的显式失败语义",
+  "slug": "未移植代码路径的显式失败语义",
+  "summary": "NotYetImplemented 表示上游 oracle 已定义但 Rust crate 尚未移植的功能，要求显式报错，避免以错误近似继续计算。",
+  "sources": [
+    "error-global-tits.md"
+  ],
+  "body": "---\ntitle: 未移植代码路径的显式失败语义\nsummary: NotYetImplemented 表示上游 oracle 已定义但 Rust crate 尚未移植的功能，要求显式报错，避免以错误近似继续计算。\nsources:\n  - error-global-tits.md\nkind: concept\ncreatedAt: \"2026-10-09T14:45:46.760Z\"\nupdatedAt: \"2026-10-09T14:45:46.760Z\"\ntags:\n  - Rust\n  - 移植策略\n  - 错误处理\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 未移植代码路径的显式失败语义\n\n`StructureError::NotYetImplemented { feature }` 表示上游 oracle 已定义、但 `atlas-real-group` 尚未移植的代码路径。其语义是显式报错，避免在错误近似上继续计算；它标记的是实现缺口，而非上游行为未定义。^[error-global-tits.md:53-56]\n\n## 错误类型与表达\n\n`NotYetImplemented` 属于 [[StructureError 统一错误分类学]]，携带 `feature` 字段，也是该枚举中唯一带文档注释的变体。源码将其与 `InvalidIntegerMatrixShape`、`ArithmeticOverflow` 一同列入算术与移植状态类别，但明确赋予它“尚未移植代码路径”的含义。^[error-global-tits.md:53-56]\n\n`StructureError` 实现了 `std::error::Error`，其 `source()` 等方法使用默认实现。`error.rs` 不提供构造函数或 `From` 转换，错误构造点分散在各子系统中；该文件也没有序列化机制或错误码，`Display` 使用包含字段插值的英文固定字符串。^[error-global-tits.md:18-21, error-global-tits.md:149-149]\n\n## 证据边界\n\n现有来源支持上述错误契约，但没有列出 `NotYetImplemented` 的具体触发功能或全部调用位置。`global_tits.rs` 直接构造的七种错误不包含该变体；其依赖调用通过 `?` 传播的具体错误变体不在来源覆盖范围内，因此不能据此断言全局 Tits 传输绝不会传播此错误。^[error-global-tits.md:112-116, error-global-tits.md:154-154]\n\n该来源属于结构性阅读，不构成错误覆盖面或数学验收的证明。`error.rs` 没有测试模块，本次知识维护也未执行 Atlas、Cargo、测试或 benchmark；因而这里记录的是源码所表达的失败语义，并非该语义已被运行验证的结论。^[error-global-tits.md:9-14, error-global-tits.md:120-120, error-global-tits.md:158-162]\n\n## Sources\n\n- [error-global-tits.md](error-global-tits.md)：StructureError 错误分类学与全局 Tits 交叉作用传输层（error.rs / global_tits.rs）。\n",
+  "generatedAt": "2026-10-09T14:45:47.099Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "error-global-tits.md": {
+      "hash": "e1fca212437016e9ff68ebe99314ce73afb2de16d40c9dd0670ec76750df3cdc",
+      "concepts": [
+        "structureerror-统一错误分类学",
+        "未移植代码路径的显式失败语义",
+        "全局-tits-元素的精确有理环面表示",
+        "按根类型划分的单生成元交叉作用",
+        "weyl-字的前向交叉作用顺序",
+        "全局-tits-传输的上下文一致性校验",
+        "全局-tits-传输的测试锚点与证据边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

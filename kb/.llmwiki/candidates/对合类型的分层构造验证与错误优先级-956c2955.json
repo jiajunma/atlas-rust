@@ -1,0 +1,38 @@
+{
+  "id": "对合类型的分层构造验证与错误优先级-956c2955",
+  "title": "对合类型的分层构造验证与错误优先级",
+  "slug": "对合类型的分层构造验证与错误优先级",
+  "summary": "私有字段和门控构造逐层强化不变量；datum、秩、单根像及一般根像检查的固定顺序决定错误优先级，矩阵运算使用 i128 检验算术并收窄至 i32。",
+  "sources": [
+    "involution-types.md"
+  ],
+  "body": "---\ntitle: 对合类型的分层构造验证与错误优先级\nsummary: 私有字段和门控构造逐层强化不变量；datum、秩、单根像及一般根像检查的固定顺序决定错误优先级，矩阵运算使用 i128 检验算术并收窄至 i32。\nsources:\n  - involution-types.md\nkind: concept\ncreatedAt: \"2026-10-09T14:54:02.155Z\"\nupdatedAt: \"2026-10-09T14:54:02.155Z\"\ntags:\n  - Rust设计\n  - 不变量\n  - 错误处理\n  - 精确算术\naliases: []\nconfidence: 1\nprovenanceState: merged\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 对合类型的分层构造验证与错误优先级\n\n`LatticeInvolution`、`RootInvolutionData` 与 `TwistedInvolution` 分层建立不同强度的不变量：格上的配对保持对合、根系上的根置换与余根运输，以及 Weyl 平移后的对合条件。构造器按固定顺序验证，因此多个条件同时失效时，错误优先级由检查顺序决定。^[involution-types.md:13-15, involution-types.md:67-71, involution-types.md:86-92, involution-types.md:108-112]\n\n## 格对合：先验证对合，再验证配对\n\n`LatticeInvolution` 分别存储 character 与 cocharacter 格上的作用矩阵 \\(W\\) 和 \\(C\\)，并在构造时一起验证。它保证配对保持，但不保证有限根系被保持；后者属于 `RootInvolutionData` 的职责。^[involution-types.md:63-65]\n\n`LatticeInvolution::new` 首先要求两个矩阵均为 `lattice_rank` 阶方阵，否则返回 `InvalidInvolution`。随后依次检查 \\(W^2=I\\) 与 \\(C^2=I\\)，两项通过 `||` 短路求值；检验使用 `i128` 检查算术，溢出传播为 `ArithmeticOverflow`。只有对合检查通过后，才验证\n\\[\nW^{T}C=I,\n\\qquad\n\\sum_{\\mathrm{row}}W[\\mathrm{row}][i]C[\\mathrm{row}][j]=\\delta_{ij}.\n\\]\n配对保持失败返回 `InvalidRootAutomorphism`。因此，形状与对合条件的错误优先于配对保持错误。^[involution-types.md:67-71]\n\n测试锚点区分了这两个层次：\\(W=[[-1]], C=[[1]]\\) 返回 `InvalidRootAutomorphism`；\\(W=[[2]], C=[[0]]\\) 则返回 `InvalidInvolution`。^[involution-types.md:120-122]\n\n## 根对合：身份与秩优先，单根诊断先于全根诊断\n\n`RootInvolutionData` 在格对合之上验证根的像仍是根，并要求每个存储余根被运输到像根的余根。这一额外条件用于排除“固定所有根却移动余根中心环面坐标”的作用；仅验证配对保持不足以排除这种情况。^[involution-types.md:82-84]\n\n构造器首先检查 datum 一致性，失败返回 `DatumMismatch`；随后检查秩，失败返回 `RankMismatch`。接着运行 `validate_simple_root_images`，最后才进入逐根主循环。因此，单根级错误 `SimpleRootImageNotRoot { simple_root }` 和 `SimpleCorootImageMismatch { simple_root, image_root }` 优先于主循环中的泛型错误。主循环遇到像非根时返回 `InvalidRootAutomorphism`，余根运输不符时返回 `InvalidRootDatumAutomorphism`。^[involution-types.md:86-92]\n\n一个测试中的配对保持作用\n\\[\nW=\\begin{pmatrix}-1&0\\\\1&1\\end{pmatrix},\n\\qquad\nC=\\begin{pmatrix}-1&1\\\\0&1\\end{pmatrix}\n\\]\n能够通过 `LatticeInvolution::new`，却在 `RootInvolutionData::new` 中返回 `SimpleRootImageNotRoot { simple_root: 0 }`。余根运输错误另有针对正、负单根的 `SimpleCorootImageMismatch` 测试。^[involution-types.md:126-129]\n\n根类型判定同样具有固定顺序：像等于自身时为 `Imaginary`；否则，像等于负根时为 `Real`；其余为 `Complex`，负根通过逐坐标 `checked_neg` 计算。相关分类见 [[对合下的虚根、实根与复根分类]]。^[involution-types.md:91-92]\n\n## 扭曲对合：先检查上下文，再重新建立完整不变量\n\n[[扭曲对合（TwistedInvolution）]] 表示 \\(w\\theta\\) 仍满足 \\((w\\theta)^2=1\\) 的情形。本层仅建立这一根论条件；Cayley/cross 分解由 `CayleyCrossDecomposition` 负责，规范化由 `InnerClass::canonicalize` 负责。^[involution-types.md:104-106]\n\n`TwistedInvolution::new` 先完成三个 datum 一致性检查，任一不符都返回 `DatumMismatch`，优先于所有秩检查。随后按 `root_system`、`distinguished`、`weyl_action` 的顺序检查秩，再在两个格上计算 `compose_matrices(w, θ)`，其中 \\(w\\) 在左、\\(\\theta\\) 在右。合成结果重新经过 `LatticeInvolution::new` 的完整验证，再由 `RootInvolutionData::new` 验证根置换与余根运输。构造结果不存储 distinguished 对合，但原样保留并公开访问 `weyl_action`。^[involution-types.md:108-112]\n\n这一过程不会因输入来自 Weyl 作用就跳过合成结果的对合检查：A1 的 `s0` 平移合法，而 A2 的三阶元 `s0·s1` 返回 `InvalidInvolution`。不同但同秩的 datum（A2 与 B2）之间混用 Weyl 作用则返回 `DatumMismatch`，说明秩相同不能替代 datum 一致性。^[involution-types.md:130-132]\n\n## 算术错误与诊断边界\n\n`compose_matrices` 是 `pub(crate)` 辅助函数，采用标准三重循环，以 `i128` 检查算术并收窄到 `i32`。形状不符时返回 `RankMismatch { expected: rank, actual: right.len() }`；即使实际问题是某行长度不符，`actual` 仍取 `right.len()`。这一诊断细节属于源码阅读观察。^[involution-types.md:114-116]\n\n`RootInvolutionData::new` 不独立检查根置换本身是否满足平方为恒等，而是依赖 `LatticeInvolution` 已建立的代数对合不变量。字段私有使实例必须经构造验证；私有辅助函数中裸下标访问的安全性依赖调用点的方阵与秩预检，潜在 panic 路径的判断属于阅读推断。^[involution-types.md:142-145]\n\n## 证据范围\n\n本页依据结构性源码阅读材料，不代表数学或正确性验收；材料中的上游引用仅转录自代码文档注释，未核对上游字节。测试覆盖仍有缺口，包括 `anti_invariant_rank` 的全部分支、`act_on_*` 的错误路径、访问器越界返回 `None`，以及直接触发 `compose_matrices` 的 `RankMismatch`。后者在 `TwistedInvolution::new` 中被前置秩检查阻挡，但辅助函数自身仍具有 crate 内可见性。^[involution-types.md:9-15, involution-types.md:134-141]\n\n## Sources\n\n- [involution-types.md](involution-types.md) — 对合类型三件套：LatticeInvolution / RootInvolutionData / TwistedInvolution\n",
+  "generatedAt": "2026-10-09T14:54:02.585Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "involution-types.md": {
+      "hash": "582246dd07b0e95233c4fffb4685ee4ebfdaaa27cd8e26bd6282aaf33b1f8ed3",
+      "concepts": [
+        "格对合latticeinvolution",
+        "对合的反不变秩",
+        "根对合数据rootinvolutiondata",
+        "对合下的虚根实根与复根分类",
+        "继承正系中的子系统单根提取",
+        "扭曲对合twistedinvolution",
+        "对合类型的分层构造验证与错误优先级"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

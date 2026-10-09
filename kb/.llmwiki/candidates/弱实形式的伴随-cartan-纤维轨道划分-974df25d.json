@@ -1,0 +1,38 @@
+{
+  "id": "弱实形式的伴随-cartan-纤维轨道划分-974df25d",
+  "title": "弱实形式的伴随 Cartan 纤维轨道划分",
+  "slug": "弱实形式的伴随-cartan-纤维轨道划分",
+  "summary": "WeakRealFormPartition 将 adjoint Cartan fiber 划分为 W_im 轨道，各轨道对应该 Cartan involution 处的弱实形式，并提供类查询和确定性代表元。",
+  "sources": [
+    "weak-real-form.md"
+  ],
+  "body": "---\ntitle: 弱实形式的伴随 Cartan 纤维轨道划分\nsummary: WeakRealFormPartition 将 adjoint Cartan fiber 划分为 W_im 轨道，各轨道对应该 Cartan involution 处的弱实形式，并提供类查询和确定性代表元。\nsources:\n  - weak-real-form.md\nkind: concept\ncreatedAt: \"2026-10-09T15:15:25.818Z\"\nupdatedAt: \"2026-10-09T15:15:25.818Z\"\ntags:\n  - 弱实形式\n  - Cartan纤维\n  - 轨道划分\naliases:\n  - 弱实形式的伴随-cartan-纤维轨道划分\n  - 弱C纤\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 弱实形式的伴随 Cartan 纤维轨道划分\n\n`WeakRealFormPartition` 将一个伴随 Cartan 纤维（adjoint Cartan fiber）划分为 $W_{im}$ 轨道；每个轨道对应内类在该 Cartan 对合处的一个弱实形式。划分保存类表及每类的确定性代表元；实形标签由 `RealFormLabels` 保存，平方类与强实层则属于[[强实形式与 fiber 轨道|强实形式分类]]。^[weak-real-form.md:20-23]\n\n## 轨道编号与代表元\n\n`WeakRealFormId` 按各轨道在 canonical-coordinate 整数序下的最小元升序分配，该最小元同时作为轨道代表元。类 0 是单位元素所在的轨道，对应 quasisplit normalization；由 fundamental Cartan 划分产生的编号还充当 crate 的全局实形编号。^[weak-real-form.md:27-32]\n\n来源记录的 stage-(d) 排序审计确认，这一编号与上游内部 `RealFormNbr` 一致：双方采用相同的升序轨道播种、low-pivot RREF subquotient 基和坐标提取方式。解释器外部的 `FormNumberMap` 顺序仍需要适配器置换，因此应区分内部编号与外部展示顺序，参见[[WeakRealFormId 的确定性编号与上游对齐]]。^[weak-real-form.md:27-32]\n\n## 掩码轨道枚举\n\n`walk_mask_orbits` 用整数掩码表示纤维的 canonical 坐标，按掩码升序选取种子，并以 LIFO 栈遍历轨道。生成元 `i` 的转移遵循 `FiberAction`：当 `base[i] XOR parity(mask ∧ alpha_columns[i])` 判定为非紧时，以 `m_alpha_masks[i]` 作平移。类号按轨道最小掩码的升序分配，首次出现的元素即为代表元。^[weak-real-form.md:37-43]\n\n类表采用 `Vec<u32>`，并保留 `u32::MAX` 作为 `CLASS_SENTINEL`。生成元的对合性依据 $\\langle\\alpha,\\alpha^\\vee\\rangle=2$ 的模二关系，但实现中仅以 `debug_assert` 检查。相关遍历机制可参见[[基于位掩码的 W_im 轨道枚举]]。^[weak-real-form.md:40-43]\n\n## 构建、预算与查询\n\n`WeakRealFormPartition::build(grading, max_elements)` 对已校验 grading 表背后的伴随纤维构建划分；调用方通过 `max_elements` 限制枚举规模 $2^{\\mathrm{dimension}}$。掩码类型为 `u64`，`MAX_MASK_BITS = 63`，用于保证移位有效。实现以 `u128` 计算规模并与加宽后的预算比较，故意不采用饱和计算，以防维数为 64 时借 `usize::MAX` 上限漏过检查。^[weak-real-form.md:34-39, weak-real-form.md:49-51]\n\n类号也有独立容量限制：若新类序号无法装入 `u32`，或等于保留哨兵，`seeded_class` 会返回 `limit_error(\"classes\", …)`。在没有伴随 `m_alpha`、每个掩码自成一类的单连通积情形下，这一守卫原则上可达。^[weak-real-form.md:43-45]\n\n查询接口包括 `class_count`、按升序提供 `ExactSizeIterator` 的 `classes`、通过 canonical 坐标掩码查询的 `class_of`／`class_of_mask`，以及返回最小代表元的 `class_representative`。`quasisplit_class` 返回类 0，`adjoint_fiber` 提供底层伴随纤维；掩码查询还支撑语言级 `fiber_partition`。^[weak-real-form.md:49-54]\n\n## 从局部轨道到全局弱实形式\n\n代表元级归因内核先按 Atlas 行向量右乘约定施加 dual fixed-point projection：\n\\[\nv\\longmapsto \\frac{v+v\\theta}{2}.\n\\]\n投影值的整数配对使平方中心化，偶数配对标记非紧单虚根。由此得到的 grading 确定局部伴随纤维轨道，再通过该 Cartan 的标签映射到 fundamental weak-form 编号，参见[[代表元级弱实形式归因]]与[[弱实形式的局部到全局标签映射]]。^[weak-real-form.md:58-63]\n\n这一归因要求 `twisted` 已是分类中存储的代表元。一般 twisted involution 的归约还须通过基于表的 Tits cross actions 同时搬运环面因子，该 helper 不会隐式构建或扩展所需表。归因还在虚根 grading 提取之前，对每个单根检查投影配对的整性，避免虚基为空的实 Cartan 绕过检查。^[weak-real-form.md:65-82]\n\n## 测试锚点与证据边界\n\n来源列出的划分测试包括 A2 恒等对合的 2 类、B2 恒等对合的 3 类及其精确代表元、单连通 A1 平凡作用的 2 个单元类，以及 A2 图扭转的 1 类；另覆盖外来元素、预算不足和 `seeded_class` 哨兵拒绝。rank-33 因预算不足被拒绝，rank-64 因掩码位数限制被拒绝，两者反映不同的资源边界。^[weak-real-form.md:84-89]\n\n尚未覆盖的分支包括 `class_of_mask` 越界、各 `ArithmeticOverflow` 转换分支，以及 `max_elements == 2^dimension` 的显式边界断言。该来源属于结构性源码阅读，未执行构建、测试或原版运行，不提供数学验收、性能或并行结论；正确性须由相应的[[HPC 验收证据链]]支持。^[weak-real-form.md:9-12, weak-real-form.md:89-91, weak-real-form.md:106-106]\n\n## Sources\n\n- [weak-real-form.md](weak-real-form.md) — 弱实形式划分：adjoint fiber 的 W_im 轨道。\n",
+  "generatedAt": "2026-10-09T15:15:26.708Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "weak-real-form.md": {
+      "hash": "fde39fa241361dc8f68b054e4332ca65e32bbe34eed72fada95796ebefed35aa",
+      "concepts": [
+        "弱实形式的伴随-cartan-纤维轨道划分",
+        "weakrealformid-的确定性编号与上游对齐",
+        "基于位掩码的-wim-轨道枚举",
+        "轨道枚举的规模预算与整数边界",
+        "代表元级弱实形式归因",
+        "弱实形式归因的来源与整性门控",
+        "代表元归因与-tits-搬运的职责边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

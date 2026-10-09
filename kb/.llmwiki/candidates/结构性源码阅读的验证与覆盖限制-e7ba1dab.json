@@ -1,0 +1,38 @@
+{
+  "id": "结构性源码阅读的验证与覆盖限制-e7ba1dab",
+  "title": "结构性源码阅读的验证与覆盖限制",
+  "slug": "结构性源码阅读的验证与覆盖限制",
+  "summary": "来源记录源码快照和已有测试锚点，但本次未执行测试或数学验收，亦未核对上游字节；例外型部分分支、错误路径及若干实形情形仍缺少测试覆盖。",
+  "sources": [
+    "weyl-size-presentation.md"
+  ],
+  "body": "---\ntitle: 结构性源码阅读的验证与覆盖限制\nsummary: 来源记录源码快照和已有测试锚点，但本次未执行测试或数学验收，亦未核对上游字节；例外型部分分支、错误路径及若干实形情形仍缺少测试覆盖。\nsources:\n  - weyl-size-presentation.md\nkind: concept\ncreatedAt: \"2026-10-09T15:19:00.311Z\"\nupdatedAt: \"2026-10-09T15:19:00.311Z\"\ntags:\n  - 证据溯源\n  - 测试覆盖\n  - 知识维护\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 结构性源码阅读的验证与覆盖限制\n\n结构性源码阅读用于说明代码的接口、执行流程、错误处理与测试覆盖，同时明确证据能够支持的结论范围。`weyl_size.rs` 与 `presentation.rs` 的阅读包已完成结构性阅读，并由维护者对照源码逐条核对草案；这一状态不表示两层实现已经通过数学或正确性验收。^[weyl-size-presentation.md:9-13, weyl-size-presentation.md:70-76]\n\n## 证据来源与验证层级\n\n本包覆盖 `crates/atlas-real-group/src/` 下的 `weyl_size.rs`（262 行）与 `presentation.rs`（186 行）。来源快照 `2026-10-06-weyl-size-presentation.json` 记录 Git base、两文件字节的 SHA-256 与 Kimi 调用记录。草案依据完整文件字节生成，随后经人工核对；本次维护未执行 Atlas、Cargo、测试或 benchmark，因此不能将阅读过程表述为运行验证。^[weyl-size-presentation.md:10-13, weyl-size-presentation.md:80-84]\n\n上游 C++ 与 CWEB 行号仅转录自代码注释，本包没有核对对应上游字节。阶数字面量与上游引用也不构成独立数学验收证据；相关兼容性或正确性结论需要保留这一来源限制。^[weyl-size-presentation.md:11-13, weyl-size-presentation.md:70-74]\n\n## 阅读观察与输入校验边界\n\n`weyl_size.rs` 通过连通分量拆分与分支形状识别计算 Weyl 群阶，但源码阅读发现若干校验留白：单节点分量对任意非零对角值都返回 2；非对角项乘积为负时仍计入度数，却不提高最大边重数；秩大于 4 的双键链不检查双键位置。这些是实现行为的阅读观察，不能据此将该函数视为完整的 Cartan 矩阵有效性检查器。相关主题见 [[Cartan 类型识别的输入校验边界]]。^[weyl-size-presentation.md:23-38]\n\n`branch_lengths` 从唯一的度 3 节点向外遍历，但没有环检测。来源明确将“含环输入可能不终止而非报错”标为阅读观察；本次维护没有通过执行验证这一行为。^[weyl-size-presentation.md:31-34, weyl-size-presentation.md:80-84]\n\n`presentation.rs` 中，compact/split 的逐元素扫描先于 `ms_tau` 的秩检查，而秩检查仅检查行数。来源同时说明，失败时结果整体丢弃，没有可观察副作用。此类顺序与失败行为属于结构性阅读能够揭示的实现细节，相关主题见 [[实形展示的编号顺序与不变量错误处理]]。^[weyl-size-presentation.md:52-56]\n\n## 测试锚点与未覆盖分支\n\nWeyl 群阶计算的测试锚点包括 A4、B5/C5、D5、G2、F4、E6，以及含环面行的 A1×A1 和空系统。所有错误分支、E7/E8 分支以及秩 4 的非 F4 分支 B4/C4 均无测试；因此，已有测试锚点不能代表分类器全部路径的覆盖。另一个接口观察是，`factorial` 虽返回 `Result`，函数内部没有可失败操作，该签名属于预留。详见 [[Dynkin 分类器的测试覆盖与证据边界]]。^[weyl-size-presentation.md:40-41, weyl-size-presentation.md:72-74]\n\n实形展示层的三个测试锚点涉及单连通 A1 的名称与顺序、伴随 A1 的 split 形不连通，以及单连通 B2 的三个实形。非恒等对合（非 split 内类）、quasisplit 但非 split 的实形，以及四个不变量错误分支均无测试。这些测试覆盖的范围应与 [[实形展示状态的构建与判定]] 中的一般实现规则区分。^[weyl-size-presentation.md:58-60, weyl-size-presentation.md:75-76]\n\n## 架构结论的可见范围\n\n两文件互不导入，共享的是同一 `StructureError` 类型的不同导入路径。模块注释分别描述阶商校验与展示状态位的用途，但仅凭这两个文件，无法确认 `CartanClassification` 内部是否调用 `weyl_order_of_cartan`。因此，局部源码阅读可以确认可见依赖，却不能补全未读取调用方的关系；参见 [[Weyl 群阶模块与实形展示模块的架构边界]]。^[weyl-size-presentation.md:62-68]\n\n## Sources\n\n- [weyl-size-presentation.md](weyl-size-presentation.md) — Weyl 群阶识别与实形展示层（weyl_size.rs / presentation.rs）\n",
+  "generatedAt": "2026-10-09T15:19:01.813Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "weyl-size-presentation.md": {
+      "hash": "d0cb871ac40342500de6698af1ea06ec7b12979baaa81e2ee41c5e1faddbd4a9",
+      "concepts": [
+        "基于-cartan-矩阵识别的-weyl-群阶计算",
+        "dynkin-图分支形状与-weyl-群阶识别",
+        "cartan-类型识别的输入校验边界",
+        "实形展示状态的构建与判定",
+        "实形展示的编号顺序与不变量错误处理",
+        "weyl-群阶模块与实形展示模块的架构边界",
+        "结构性源码阅读的验证与覆盖限制"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

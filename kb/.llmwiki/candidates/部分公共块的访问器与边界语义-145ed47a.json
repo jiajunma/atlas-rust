@@ -1,0 +1,38 @@
+{
+  "id": "部分公共块的访问器与边界语义-145ed47a",
+  "title": "部分公共块的访问器与边界语义",
+  "slug": "部分公共块的访问器与边界语义",
+  "summary": "通过 Option 表达元素或链接缺失，区分 imaginary ascent 的前向 Cayley 像与 real descent 的逆像，并以奇异生成元的下降状态判定 survives。",
+  "sources": [
+    "partial-common-block.md"
+  ],
+  "body": "---\ntitle: 部分公共块的访问器与边界语义\nsummary: 通过 Option 表达元素或链接缺失，区分 imaginary ascent 的前向 Cayley 像与 real descent 的逆像，并以奇异生成元的下降状态判定 survives。\nsources:\n  - partial-common-block.md\nkind: concept\ncreatedAt: \"2026-10-09T15:03:23.064Z\"\nupdatedAt: \"2026-10-09T15:03:23.064Z\"\ntags:\n  - 接口语义\n  - 部分公共块\n  - 边界处理\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 部分公共块的访问器与边界语义\n\n部分公共块 `PartialBlock` 表示积分子系统上的 Bruhat 区间。其访问器提供元素数据、生成元状态及 cross/Cayley 链接；读取结果必须结合区间边界解释，尤其要区分元素查找失败、链接未定义和内部不一致。^[partial-common-block.md:20-38, partial-common-block.md:40-42, partial-common-block.md:69-81]\n\n## 元素数据与编号\n\n`size`、`rank` 提供块的大小与秩；`element`、`x`、`y`、`length`、`gamma_lambda` 均返回 `Option`。`lookup` 按标准模参数查找对应块元素，参数不在区间内时返回 `None`，对应上游的 `UndefBlock`。^[partial-common-block.md:71-73]\n\n部分块构造器 `build` 消费 `bruhat_below` 产出的、按 `x` 排序的标准模参数区间，构造结束后再按 `(length, x, y)` 排序。因此，最终元素编号与 oracle 打印行号一致，不能将输入列表的位置直接视为最终编号。构造背景见 [[公共块的构造与元素编号（PartialBlock）]]。^[partial-common-block.md:65-67]\n\n## 生成元状态与链接\n\n`descent(z, s)` 返回元素 `z` 在生成元 `s` 下的 `BlockDescent` 状态，可参见 [[BlockDescent 八值状态体系]]。`cross(s, z)` 返回 `None` 时，含义是该链接离开区间或尚未设置，对应上游 `UndefBlock`；因此，`None` 本身不足以区分这两种情况。^[partial-common-block.md:74-75]\n\n`cayley(s, z)` 返回 Cayley 像对：对于 imaginary ascent，它表示前向 Cayley 目标；对于 real descent，它表示逆 Cayley 目标。打印层通过 `isWeakDescent` 选择解释方式，不能将所有像对统一理解为同一方向的变换。相关操作见 [[Cross、Cayley 与逆 Cayley 链接]]。^[partial-common-block.md:76-78]\n\n## 打印辅助与存活判定\n\n`highest_x`、`highest_y` 对应上游打印接口的 `max_x`、`max_y`。`survives` 判断元素是否存活，其条件是：不存在既为 singular、又是该元素 descent 的生成元。这里的 singular 标志由积分子系统生成元逐一确定，判据是对应余根在 `gamma` 的分子上取零。^[partial-common-block.md:56-57, partial-common-block.md:79-81]\n\n## 对偶后的边界与 KL 递归限制\n\n`dual()` 反转元素顺序，令 \\(z'=\\mathrm{size}-1-z\\)，交换 `x`、`y`，并将长度变为 \\(\\mathrm{max\\_len}-\\ell(z)\\)。下降状态通过 `BlockDescent::dual` 转换，已定义的 cross/Cayley 目标编号随之反转；Cayley 第二像仅在第一像有定义时映射。^[partial-common-block.md:85-90]\n\n部分块中离开区间的链接在对偶后仍保持未定义。这会限制 KL 递归：外出的 complex ascent 可对偶化为 cross 未定义的 complex descent，因而被 `KlTable` 拒绝。来源明确将对偶后的 KL 递归有效性限定于链接闭合的源块，即完整块。详见 [[公共块对偶变换及 KL 递归的闭合限制]]。^[partial-common-block.md:92-96]\n\n对偶操作返回 `BareBlock`。其行不再是原块 context 中的标准模参数，因此原有参数池和查找表没有对应的对偶结构，不能直接延续原块的参数查找语义。^[partial-common-block.md:95-96]\n\n## 错误处理与证据范围\n\n区间外查找和未定义链接通过上述 `None` 语义表达；真正的内部不一致则以 `StructureError` 报告，而非 panic。来源同时说明，属于上游调用方契约的断言在移植中省略，并逐处保留注释。^[partial-common-block.md:40-42]\n\n本页依据结构性源码阅读材料；该材料未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。其上游行号转述自源码注释，未独立重读上游，可能随版本变化而漂移。^[partial-common-block.md:9-16, partial-common-block.md:103-108]\n\n## Sources\n\n- [partial-common-block.md](partial-common-block.md) — 部分公共块：Bruhat 区间上的块构造。\n",
+  "generatedAt": "2026-10-09T15:03:23.599Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "partial-common-block.md": {
+      "hash": "2276b0ce55a4ca161e29f8e627addb666512250fb7e7b65514e081fe03bb00b1",
+      "concepts": [
+        "标准模参数的约化表示standardreprmod",
+        "积分子系统integralsubsystem",
+        "公共上下文的生成元操作commoncontext",
+        "种子下方的-bruhat-区间生成",
+        "公共块的构造与元素编号partialblock",
+        "部分公共块的访问器与边界语义",
+        "公共块对偶变换及-kl-递归的闭合限制"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

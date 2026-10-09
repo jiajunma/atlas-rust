@@ -1,0 +1,39 @@
+{
+  "id": "类型抽象中的-typefloor-调整-a7554f04",
+  "title": "类型抽象中的 type_floor 调整",
+  "slug": "类型抽象中的-typefloor-调整",
+  "summary": "convert_expr_context 调整类型下限，使类型抽象内的 return 操作数能够引用外层函数要求，并按该要求实际的 fixed 下限解释类型变量。",
+  "sources": [
+    "atlas-core-convert-expr.md"
+  ],
+  "body": "---\ntitle: 类型抽象中的 type_floor 调整\nsummary: convert_expr_context 调整类型下限，使类型抽象内的 return 操作数能够引用外层函数要求，并按该要求实际的 fixed 下限解释类型变量。\nsources:\n  - atlas-core-convert-expr.md\nkind: concept\ncreatedAt: \"2026-10-09T14:26:53.412Z\"\nupdatedAt: \"2026-10-09T14:26:53.412Z\"\ntags:\n  - 类型系统\n  - 类型抽象\n  - 转换上下文\naliases:\n  - 类型抽象中的-typefloor-调整\n  - 类T调\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 类型抽象中的 type_floor 调整\n\n`type_floor` 调整是 `convert_expr_context` 在类型抽象内处理 `return` 操作数时的上下文规则：操作数可以引用外层函数的类型要求，其中的类型变量按该要求**实际的 fixed 下限**解读。这一处理对应上游 `convert_expr` 的规则。^[atlas-core-convert-expr.md:23-25]\n\n## 转换入口与上下文传递\n\n`convert_expr(expression, required: &mut Type, analysis)` 将所需类型 `required` 装入共享的 `ConversionType`，使用当前 `analysis.type_floor`，并在转换完成后写回。因此，入口建立的类型上下文与调度器针对类型抽象内 `return` 的下限调整，是理解这一规则的两个环节。相关整体机制见 [[convert_expr 的 in/out 类型模式与单遍转换]]。^[atlas-core-convert-expr.md:21-25]\n\n转换遍采用单遍检查与合成，in/out 类型模式只通过 `specialise` 变异；`conform_types` 依次尝试特化、强制转换，否则报告类型错误。`type_floor` 调整处于这一转换框架之中。^[atlas-core-convert-expr.md:12-17]\n\n## 表达式族之间的衔接\n\n`return` 属于 `atom` 转换族，`TypeAbstraction` 与 `Cast` 属于 `type_context` 转换族。调度器将已调整的共享转换上下文传递给各族助手；十二个族助手的拆分是机械分区，保留原有分支体与语义。^[atlas-core-convert-expr.md:26-38]\n\n## 证据边界\n\n现有材料记录了调整规则及转换入口，但属于结构性阅读，不构成语言行为验收。上游行号是实现方的移植陈述，转换行为兼容仍以 HPC 语料门为准；相关证据要求可参见 [[HPC 验收证据链]]。^[atlas-core-convert-expr.md:9-17, atlas-core-convert-expr.md:67-69]\n\n## Sources\n\n- [atlas-core-convert-expr.md](atlas-core-convert-expr.md)\n",
+  "generatedAt": "2026-10-09T14:26:53.459Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-convert-expr.md": {
+      "hash": "3ee2bcd3ba829916afb4c6f570caee7e5ef3c95d6b09bf3b8afc9d4f41026cb8",
+      "concepts": [
+        "convertexpr-的-inout-类型模式与单遍转换",
+        "类型抽象中的-typefloor-调整",
+        "表达式转换器的十二族分派",
+        "while-转换的上下文模式与循环边界",
+        "简单赋值的统一路径与目标查找契约",
+        "分量赋值的类型权限",
+        "基于保留类型定义的投影解析",
+        "变换调用中的二元操作数保留"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

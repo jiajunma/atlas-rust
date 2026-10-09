@@ -1,0 +1,39 @@
+{
+  "id": "高度受限的块形变-b4053c6d",
+  "title": "高度受限的块形变",
+  "slug": "高度受限的块形变",
+  "summary": "block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。",
+  "sources": [
+    "deformation-drivers.md"
+  ],
+  "body": "---\ntitle: 高度受限的块形变\nsummary: block_deformation_to_height 计算 full block 中高度不超过给定界的形变项，按逆块序返回结果及已消费项标记，并以完整 KL 表填充替代上游 plug_hole 优化。\nsources:\n  - deformation-drivers.md\nkind: concept\ncreatedAt: \"2026-10-09T14:45:08.453Z\"\nupdatedAt: \"2026-10-09T14:45:08.453Z\"\ntags:\n  - 块形变\n  - 高度截断\n  - 不可变数据\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 高度受限的块形变\n\n高度受限的块形变由 `block_deformation_to_height` 实现：它计算参数 `p` 的完整块中高度不超过 `height_bound` 的形变项，返回带有 `SplitInteger` 系数的标准表示参数。该实现移植自上游 `Rep_table::block_deformation_to_height`，属于冻结的 `domain/deform` 契约，并限定于平凡的 block modifier 情形。^[deformation-drivers.md:115-122]\n\n## 高度界与返回顺序\n\n`height_bound` 限定输出项的高度；`u32::MAX` 对应上游以负界表示的 “maximal level”。返回项的类型为 `(StandardRepr, SplitInteger)`，按向下的、反转后的块顺序排列。^[deformation-drivers.md:115-119]\n\n结果还包含与 `accumulator` 平行的已消费项 flags，用于报告哪些累积项已经被消费。上游通过 `queue.erase` 原地修改队列；由于 Atlas 值不可变，移植实现改为显式返回这些标志。^[deformation-drivers.md:119-120]\n\n## 系数表示\n\n[[SplitInteger 分裂整数系数]]以 `SplitInteger { a, b }` 表示 \\(a+bs\\)，承载公式\n\\(F(z)=L(z)+(1-s)D(z)\\) 中的系数。其中 `Split(c, -c)` 表示 \\(c(1-s)\\)。两个字段均为 `i32`，算术采用 `wrapping_*`，沿用上游环绕语义；该类型不提供溢出防护。^[deformation-drivers.md:50-59]\n\n## KL 表的填充策略\n\n上游在高度界之上使用 `plug_hole` 为对偶块的 KL 表设置 holes，以跳过部分工作。由于多项式值不依赖这些 holes，Rust 移植选择填充整张表。因此，输出项受高度界限制，但 KL 表的填充并不按该界截断；相关表结构可参见 [[KLV 表的幂等逐列填充算法]]。^[deformation-drivers.md:115-122]\n\n## 调用前提与适用范围\n\n完整块路径要求关注积分根子系统的范围：`IntegralBlockScope::Full` 表示每个 simple coroot 都与 `gamma` 整配对，此时各驱动接受 `BlockGraph`。真积分子系统不能直接替换为完整块计算；来源明确要求，在不支持相应 common-block 路径的移植接口上显式失败。^[deformation-drivers.md:63-75]\n\n冻结契约还要求调用方一次性提供所有形变项共享的 `lambda_rho`。这个条件不能由“来自同一完整块”自动保证：来源给出的 SL(2,R) 例子中，在 \\(\\gamma=2\\rho\\) 时，compact-Cartan 元素的值为 `[1]`，split 元素的值为 `[0]`。这项约束与 [[形变驱动的冻结移植契约]]及 [[形变计算的父块抽象]]相关。^[deformation-drivers.md:27-37]\n\n## 证据边界\n\n本页依据的是 `deform.rs` 的结构性阅读来源包，其记录对应 dirty 工作区快照。该来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论；形变计算的正确性须由独立的 [[HPC 验收证据链]]支持。上游行号来自源码注释的转述，未独立重读上游，可能随版本变化。^[deformation-drivers.md:9-16, deformation-drivers.md:136-146]\n\n## Sources\n\n- [deformation-drivers.md](deformation-drivers.md) — 形变驱动：twisted 与 block 形变。\n",
+  "generatedAt": "2026-10-09T14:45:08.783Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "deformation-drivers.md": {
+      "hash": "7c850efb86bc06d6f74afdbcfa6f1d1abe45a3b98dba3909d6d1e0ab31bd3921",
+      "concepts": [
+        "形变驱动的冻结移植契约",
+        "splitinteger-分裂整数系数",
+        "积分块范围与奇异集",
+        "形变计算的父块抽象",
+        "twisted-kl-和的长度函数选择",
+        "twisted-与-common-block-形变项提取",
+        "高度受限的块形变",
+        "递归-twisted-deformation-与取消语义"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

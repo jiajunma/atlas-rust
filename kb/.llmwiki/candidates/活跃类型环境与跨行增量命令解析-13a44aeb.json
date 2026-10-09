@@ -1,0 +1,39 @@
+{
+  "id": "活跃类型环境与跨行增量命令解析-13a44aeb",
+  "title": "活跃类型环境与跨行增量命令解析",
+  "slug": "活跃类型环境与跨行增量命令解析",
+  "summary": "命令解析使用活跃 TypeTable；片段解析在 allow_more 且解析器持有未闭合虚拟类型分组时返回 Ok(None)，保留前缀跨行重试，完整前不求值 AST。",
+  "sources": [
+    "atlas-core-syntax.md"
+  ],
+  "body": "---\ntitle: 活跃类型环境与跨行增量命令解析\nsummary: 命令解析使用活跃 TypeTable；片段解析在 allow_more 且解析器持有未闭合虚拟类型分组时返回 Ok(None)，保留前缀跨行重试，完整前不求值 AST。\nsources:\n  - atlas-core-syntax.md\nkind: concept\ncreatedAt: \"2026-10-09T14:36:19.912Z\"\nupdatedAt: \"2026-10-09T14:36:19.912Z\"\ntags:\n  - 增量解析\n  - 类型作用域\n  - 会话管理\naliases: []\nconfidence: 1\nprovenanceState: extracted\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 活跃类型环境与跨行增量命令解析\n\nAtlas 的命令解析依赖活跃类型环境：先前的类型声明会影响后续输入的分类。解析器通过带活跃 `TypeTable` 的入口处理命令，并在特定的未闭合类型规格跨越物理换行时保留输入前缀，等待后续输入；完整解析前不求值任何 AST。^[atlas-core-syntax.md:77-86]\n\n## 活跃类型环境与命令边界\n\n`parse_command` / `parse_command_in` 使用活跃 `TypeTable`，使分类能看到此前的类型声明；惰性 token 流拥有命令局部词法作用域。相关全局声明包括 `SetType`，其中只有括号形式进入 tabled 类型表，以启用递归与 case 判别。可参见 [[命令抽象语法树与全局声明语义]]。^[atlas-core-syntax.md:68-82]\n\n命令边界仍由词法器掌握，适配层不预切分剩余源文本，因为会话状态可能在下一条命令前发生变化。`TokenStream` 将 token 序列惰性转换为 LALRPOP 所需的 `(offset, ParserToken, offset)` 流；独立适配层将有状态词法规则与文法动作分离。^[atlas-core-syntax.md:11-14, atlas-core-syntax.md:77-82, atlas-core-syntax.md:93-96]\n\n## 跨行增量解析\n\n会话使用 `parse_command_fragment_in`。当输入尚未完成、`allow_more` 为真，且 `scope.has_virtual_group()` 表示解析器持有的类型规格尚未闭合时，入口返回 `Ok(None)`。此时物理换行不终止该规格，下一行到来后使用保留的前缀重试；完整解析之前，不会对 AST 求值。这一机制与 [[多行命令的增量解析]] 相关。^[atlas-core-syntax.md:83-86]\n\n这里的跨行条件针对解析器持有的未闭合类型规格，并非所有未完成输入都可继续等待。EOF 与非 EOF 语法错误仍按通常路径诊断；适配层将 LALRPOP 的 `ParseError` 渲染为 Bison 风格的错误措辞。可参见 [[Bison 风格语法诊断兼容层]]。^[atlas-core-syntax.md:83-86, atlas-core-syntax.md:97-100]\n\n## 会话集成与职责边界\n\n重定向命令的正文也需要活跃类型环境。会话层通过 `parse_expression` / `parse_expression_in` 校验 `>file` 或 `>>file` 的表达式正文，使用与活环境相同的类型表，并在打开输出 sink 前完成解析。相关执行纪律见 [[单命令输出重定向的执行纪律]]。^[atlas-core-syntax.md:87-89]\n\n语法层负责 AST 与解析诊断；AST 的语义判定在 `typed.rs` 中完成，词法处理位于 `lex.rs`，逐命令驱动位于 `session.rs`，重定向与包含处理位于 `session_frame.rs`。因此，增量解析入口是 [[会话帧驱动的 CLI 执行模型]] 中的解析接口，而完整执行行为还涉及这些相邻层。^[atlas-core-syntax.md:106-108]\n\n## 证据范围\n\n源材料记录了 51 个覆盖表达式、命令与诊断形状的测试，但本次材料属于结构性阅读，不构成语言验收。文法与上游 `parser.y` 的逐条对应属于实现方移植陈述，语法兼容性仍以 HPC 语言语料门为准。^[atlas-core-syntax.md:9-14, atlas-core-syntax.md:104-110]\n\n## Sources\n\n- [atlas-core-syntax.md](atlas-core-syntax.md) — 语法前端（syntax.rs + grammar.lalrpop）——AST 面、LALRPOP 适配与 Bison 风格诊断\n",
+  "generatedAt": "2026-10-09T14:36:20.120Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-syntax.md": {
+      "hash": "1ece0a39afc4a96c8b8bc1e11640cc9a75941f903b5957f4874f118e5b40e835",
+      "concepts": [
+        "带源码跨度的表达式抽象语法树",
+        "模式函数参数与类型表达式",
+        "命令抽象语法树与全局声明语义",
+        "有状态词法流的-lalrpop-惰性适配",
+        "活跃类型环境与跨行增量命令解析",
+        "bison-风格语法诊断兼容层",
+        "重定向表达式的打开前解析",
+        "语法前端的测试覆盖与验收边界"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 1,
+  "contradicted": false
+}

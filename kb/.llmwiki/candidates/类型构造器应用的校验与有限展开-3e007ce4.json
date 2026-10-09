@@ -1,0 +1,39 @@
+{
+  "id": "类型构造器应用的校验与有限展开-3e007ce4",
+  "title": "类型构造器应用的校验与有限展开",
+  "slug": "类型构造器应用的校验与有限展开",
+  "summary": "Applied 保留构造器名称及全部实参；应用校验不展开定义，单层展开保留递归引用，展开次数受绑定数约束以避免残缺自环导致死循环。",
+  "sources": [
+    "atlas-core-types.md"
+  ],
+  "body": "---\ntitle: 类型构造器应用的校验与有限展开\nsummary: Applied 保留构造器名称及全部实参；应用校验不展开定义，单层展开保留递归引用，展开次数受绑定数约束以避免残缺自环导致死循环。\nsources:\n  - atlas-core-types.md\nkind: concept\ncreatedAt: \"2026-10-09T14:38:21.208Z\"\nupdatedAt: \"2026-10-09T14:38:21.208Z\"\ntags:\n  - 类型构造器\n  - 递归类型\n  - 校验\naliases: []\nconfidence: 0.99\nprovenanceState: merged\nmodelId: codex-cli-default\npromptVersion: v6\npromptModifiers:\n  - lang=zh-CN\n  - policy=c27066b97a40017b600b4a46bc3f8cbf26c795bc54fde472704cec6f888a58cb\n---\n\n# 类型构造器应用的校验与有限展开\n\n类型构造器应用由 `Type::Applied(TypeNumber, Vec<Type>)` 表示。即使结构展开中存在未使用的形式参数，应用仍保留构造器名称与实参；相应地，`TypeScheme::constructor` 保留声明的参数个数（arity）和参数编号，包括未使用的参数。^[atlas-core-types.md:24-29, atlas-core-types.md:63-65]\n\n## 应用校验\n\n`TypeTable::validate_applications` 在不展开定义的情况下校验类型应用，使递归名称保持有限。即使进入等值应用或变量绑定的处理路径，也仍须执行校验；这些快路径不能成为接受残缺构造器的理由。二阶类型机器的错误分类包括 `UnknownConstructor` 与 `Arity`。^[atlas-core-types.md:54-56, atlas-core-types.md:60-61]\n\n[[Type 类型表示与语义等值|语义等值比较]]同样依赖这一纪律：命名类型的头部可能先暴露不同的结构形状，因此 `equivalent` 先对两侧执行 `validate_applications`，再进行结构递归比较。递归名称构成比较的终止边界：两侧均为递归类型但名称不同，结果为假；同名且同槽位，结果为真。^[atlas-core-types.md:33-35]\n\n## 有限展开\n\n`expand_application` 只展开一层，定义体内的递归应用继续保留为引用。这样，展开操作不会沿递归应用持续展开整个定义。^[atlas-core-types.md:54-56]\n\n`Type::expanded` 使用 `Cow`：普通类型以借用方式返回，构造器替换仅拥有展开结果，子项继续保留名称，包括递归应用。其循环上界为绑定数，因此即使遇到直接自环的残缺占位，也能完成检查而不陷入死循环。^[atlas-core-types.md:30-32]\n\n这一展开方式与递归类型的身份模型相配合：`Tabled(TypeNumber)` 按名称进行名义比较；图级递归 typedef 安装优先保留命名右侧定义的槽位，环上的匿名后代也保留身份。相关背景见 [[Atlas 类型模型与递归类型图]]。^[atlas-core-types.md:24-29, atlas-core-types.md:79-82]\n\n## 与类型推断的关系\n\n在 [[TypeScheme 与类型变量作用域]] 中，`wrap` 为每个独立的 `Undetermined` 洞分配新变量，同时保留重复显式变量之间的共享关系。替换属于单次分析或重载试验，而不属于全局绑定；应用校验也覆盖变量绑定路径。相关推断接口见 [[TypeAssignment 与 InferredType 推断机器]]。^[atlas-core-types.md:54-55, atlas-core-types.md:63-77]\n\n## 证据边界\n\n来源包记录的是结构性阅读，不声称完成语言验收。其上游行号引用属于实现方的移植陈述，类型行为兼容性仍以 HPC 语言语料门为准。^[atlas-core-types.md:9-18, atlas-core-types.md:86-91]\n\n## Sources\n\n- [atlas-core-types.md](atlas-core-types.md)\n",
+  "generatedAt": "2026-10-09T14:38:21.449Z",
+  "reviewMode": "forced",
+  "heldReasons": [
+    {
+      "code": "manual-review-requested"
+    },
+    {
+      "code": "all"
+    }
+  ],
+  "sourceStates": {
+    "atlas-core-types.md": {
+      "hash": "edc0eb9616980c96a180f067edb08c5e48251f862b683469410863b9b5db50a7",
+      "concepts": [
+        "type-类型表示与语义等值",
+        "类型特化与失败回滚语义",
+        "typetable-的稳定身份与活跃绑定",
+        "typetable-修订身份与缓存失效",
+        "类型构造器应用的校验与有限展开",
+        "typescheme-与类型变量作用域",
+        "typeassignment-与-inferredtype-推断机器",
+        "递归类型定义的图级安装"
+      ],
+      "compiledAt": "2026-10-09T14:23:03.729Z"
+    }
+  },
+  "promptModifiers": "4a3996ef548a219477870c80089e64df2bd534b32458018a35eabfd325f12c2c",
+  "confidence": 0.99,
+  "contradicted": false
+}

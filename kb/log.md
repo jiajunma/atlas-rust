@@ -830,3 +830,17 @@ Weyl guard 先于 no-value gate、乘积保留左 owner、W_elt 强持有 datum�
 inner_class_value::build eager dual）、G2 预期与预热空转分析、arc 现状。
 新快照 `2026-10-09-weyl-owner-dual-landed.json` 绑定落地字节（与 after-gate
 冻结哈希前缀一致）；历史小节以追记/标记保留。索引条目同步；维护者直接撰写。
+
+## 2026年10月9日 wiki 编译首跑成功：真实阻碍是 strict schema，升级为 1.4.2
+
+10月6日记录的"codex 未登录"阻碍其实从未是认证问题：当日 `codex login status`
+即报已登录。今日用诊断 shim 捕获被 provider 扣留的子进程 stderr，真实错误是
+`invalid_json_schema`（strict 模式要求每个对象 `additionalProperties: false`），
+provider 的 stderr 正则误分类为认证失败。上游 1.4.2（2026-10-02）修复的正是
+此问题（#266），核心包含 `toStrictSchema`。按既定维护纪律升级
+llm-wiki-compiler 1.4.0-rc.2 → 1.4.2（读完 release notes；lockfile diff 仅
+三个 atomicstrata 包；安装用 `--ignore-scripts`；安装后确认修复在位）。
+`./kb/llmwiki compile --review --instructions AGENTS.md --verbose` 首跑成功：
+73 个来源包全部编译，0 跳过 0 删除，533 个候选页全部进入 hold-all 审查队列
+（63.7 分钟）。审查遵守既定纪律：逐候选对照来源字节核验后方可批准，不得
+批量盲批。诊断 shim 与检查用 /tmp 副本均已移除。

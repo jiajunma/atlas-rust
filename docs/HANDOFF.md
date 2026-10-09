@@ -287,6 +287,37 @@ the six harness suites re-run at `3385d433` under umask 022: 129 tests,
 `test_stager_pin_counts_predecessor_and_source_are_exact`, green on HPC
 by precedent — the rehearsal state is unchanged at HEAD.)
 
+### Wiki compile UNBLOCKED (2026-10-09) — llm-wiki-compiler 1.4.2
+
+The recorded blocker (kb/log.md 2026-10-06: "codex 未登录") was a
+MISDIAGNOSIS: `codex login status` always reported logged-in.  A diagnostic
+shim (temporary `codex` wrapper logging argv/env/stderr; removed after use)
+captured the child stderr the provider withholds: the real failure is a 400
+`invalid_json_schema` — Codex's strict response_format requires
+`additionalProperties: false` on every object, which the pinned rc.2
+provider never emits (zero occurrences in its bundle).  The provider's
+stderr classifier had misread it as auth.  Upstream fixed exactly this in
+llm-wiki-compiler 1.4.2 (2026-10-02, issue #266, `toStrictSchema` in
+`llmwiki-core` 1.4.2).  Upgrade executed as the explicit maintenance change
+kb/AGENTS.md prescribes: release notes read (1.4.0 review-approval
+lifecycle, 1.4.1 metadata, 1.4.2 the schema fix), `kb/package.json` pin
+bumped, `pnpm install --ignore-scripts` (no lifecycle scripts), lockfile
+diff reviewed (ONLY the three atomicstrata packages rc.2→1.4.2, nothing
+else), installed tree verified to contain `toStrictSchema`.
+`./kb/llmwiki compile --review --instructions AGENTS.md --verbose` then ran
+to completion exit 0 in 63.7 minutes: **73/73 packets compiled, 0 skipped,
+0 deleted; 533 candidates, all held by review.hold=["all"]**.
+`review list`/`review show` verified working; a first deep citation check
+(`余权坐标的投影出处绑定-d8190036` vs `kb/sources/adjoint-fiber.md`
+lines 17-23/41-44/66-77) passed on every cited claim.  NEXT: review the 533
+candidates per the hold-all discipline (inspect each against its exact
+source bytes and current destination before approval; no bulk approval;
+spot-verify deeply per packet plus mechanical citation checks).  Full
+record: kb/log.md 2026-10-09.  Toolchain note: node/pnpm live at
+`~/.cache/codex-runtimes/codex-primary-runtime/dependencies/...` (node
+v24.19.0, pnpm 11.19.0); the launcher finds node itself, and pnpm was
+invoked via that fallback path.
+
 ### Upstream HEAD moved (2026-10-09, read-only finding)
 
 A fresh `git ls-remote` at 2026-10-09T13:14:20Z resolves upstream
