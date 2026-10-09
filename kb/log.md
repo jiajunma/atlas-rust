@@ -1811,3 +1811,22 @@ build_real_form 的 internal(external) 翻译与 Illegal real form number、
 canonical_forms 父级弱缓存与 same_real_form_owner 指针规则配对、自定义
 构造即使数学相等也新建属主——全部忠实。7 页批准；wiki/concepts/ 现有
 481 页，剩余候选 52。
+
+## 2026年10月10日 第六十七批候选审查：atlas-core-domain-values.md 的 7 页
+
+对照 126 行来源包（维护者直接撰写，Weyl owner/dual 修复落点）逐页核验：
+WeylIdentityCell 只在成功时落定+失败不占单元+毒化/二次初始化报
+RepInvariantViolation、DatumWeylKernel/AbstractWeylGroup/DatumWeylIdentity
+三层与无所有权环、share_group_into_if_cold 只装冷目标且并发竞态只有一个
+发布、DATUM_WEYL_IDENTITIES 按完整内容弱驻留与 4096 才扫死槽、
+RootDatumHandle::interned 唯一入口与 PartialEq 刻意忽略身份缓存、
+WeylEltContext 的 kernel+抽象群（重编号固定 canonical-word 选择）与
+"兼容=Arc 身份永不是结构 handle"、WeylEltValue 构造时冻结 canonical word、
+SplitValue 的机器位宽回绕与 (e±|f|s) 打印、split_keeps 零因子筛选、
+DomainValue 13 变体结构等值分层（same_real_form 四要件 vs
+same_real_form_owner 指针）、weyl_elements_equal 的 Arc 同一性+外生成元
+词在左系统重放、require_weyl_compatible 在无值门之前、check_weyl_word 先
+unsigned 再 <半单秩、多项式系数契约（只替换精确 final 键不累加、触碰前
+拒绝不兼容属主的刻意偏离、dominant 化只改副本、loop_terms 借用 canonical
+序保留属主）——全部忠实。7 页批准；wiki/concepts/ 现有 488 页，剩余
+候选 45。
