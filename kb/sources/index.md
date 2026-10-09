@@ -597,6 +597,19 @@ do 树外、bool 检查用上游措辞、WhileMode 由所需上下文定、row �
 撰写（无 Kimi 调用）。内建注册表、TypedExpr impl 与 133 个测试各待分包。
 结构性阅读，不声称语言或数学验收。
 
+[内建注册表](atlas-core-builtin-registry.md)记录 `typed.rs` 5973–11565：
+`Builtin` 面（hunger 字节与 `HungryBuiltinCall` 配对、overload_visible）、
+`BuiltinImpl` 变体（`Domain` 的 `DomainNoValue` Skip/Validate/BuildAndDrop
+无值门策略——补全名清单≠无值策略清单；`DomainPrinter` 两个级别都写
+报告；`Completions` 按前缀过滤快照；四个变参数泛型 print/prints/
+to_string/error 的逐字边界）、求值辅助的上游契约（收窄逐字诊断、向量
+地板除 `[7]\-3==[-2]`、`nth_set_bit` 补码走、`flex_*` 修剪规则、
+`convolve`、ratvec LCD）、`builtin_registry()` 的 321 条目/170 名字
+（相对上游追踪清单不全，缺口由 REMAINING_BUILTINS 跟踪）。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-builtin-registry.json)；维护者
+直接撰写（无 Kimi 调用）。逐条目语义不在本包。结构性阅读，不声称语言或
+数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

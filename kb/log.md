@@ -746,3 +746,12 @@ convert_expr 的 in/out 类型模式、type_floor 调整、12 族 #[inline(never
 措辞、WhileMode、row_coercion 回退）、赋值助手群（共享简单赋值路径、
 分量赋值下标门控、保留定义做投影解析、永不丢参数优化）。维护者直接撰写
 （无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。
+
+新增 `sources/atlas-core-builtin-registry.md` 与快照
+`2026-10-09-atlas-core-builtin-registry.json`：typed.rs 5973–11565——Builtin
+面（hunger/overload_visible/implementation）、BuiltinImpl 变体（含
+DomainNoValue 的 Skip/Validate/BuildAndDrop 无值门策略：补全名清单≠无值
+策略清单）、求值辅助的上游契约（收窄逐字诊断、向量地板除、nth_set_bit
+补码走、flex 修剪、convolve、ratvec LCD）、321 条目/170 名字的启动清单
+（相对上游不全，缺口由 REMAINING_BUILTINS 跟踪）。维护者直接撰写
+（无 Kimi）；索引与 log 已同步。

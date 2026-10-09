@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of typed.rs lines 5973-11565 for the atlas-core-builtin-registry packet: the Builtin surface (name/arg_type/result/hunger/overload_visible/implementation), BuiltinImpl's variants (Scalar/Domain with the DomainNoValue Skip-Validate-BuildAndDrop policy, DomainPrinter's both-levels report, Completions, and the four variadic generics), the evaluation helpers' upstream contracts (narrowing with the exact typo text, vector floor-division semantics, nth_set_bit's complement walk, flex_*'s trimming rules, convolve, ratvec LCD arithmetic), and builtin_registry()'s 321 entries over 170 names (incomplete relative to the traced startup inventory — gaps tracked in REMAINING_BUILTINS).",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/typed.rs",
+   "sha256": "614975c5e2d49357b4d9ffff80145a6c69db2fd5aeef23f033faf03f594acc95",
+   "bytes": 770895,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  }
+ ]
+}
