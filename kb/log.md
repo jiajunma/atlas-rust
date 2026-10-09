@@ -1524,3 +1524,21 @@ StarOracle 实现的分工（ExtParamOracle 经 def_ext 重建默认扩展、
 PartialBlockOracle 服务 build_partial 之后的 tune_signs）、dirty 工作区
 快照与"正确性属自身 HPC 证据链"的边界声明——全部忠实。7 页批准；
 wiki/concepts/ 现有 356 页，剩余候选 177。
+
+## 2026年10月10日 第五十批候选审查：topology-form-name.md 的 7 页
+
+对照 95 行来源包逐页核验：连通性=最分裂 Cartan 的对偶分量群平凡、
+B 列序（简单余根+radical 基）与 i_sw=B^t·θ·B^{-t} 转运对应上游
+theta.transposed().on_basis(basis).transposed()、dualPi0 子商定义
+（ker_F2(θ+1) 模饱和 +1 特征格 mod-2 像）、B_z 清 radical 列与
+CorootRestriction 逐输出列奇偶、validate_induced_map_to 下降验证、
+核秩=源维数−像秩与两函数整段复制仅末行不同的同步漂移风险如实记录、
+integral_entry 逐项整性、θ 的对合性由调用方保证；命名侧的 pulled[k]=
+grading[perm[k]] 拉回方向、'C' 消费两因子两段切片而环面不消费位、
+split 弱递减（su(1,2)→su(2,1)）、m=最低置位+1、各型分派表（含不等秩 A
+奇秩+平凡双条件、C 的 m==rank 分派、D 的 so* rank%4 规则、D4 任何非零
+grading→so(5,3)、E8 的 0xCC 掩码与 {2,3,6,7} 位）、perm≥128 拒绝与
+u32 切片无防护、折叠 'f'/'g' 不覆盖、5+7 测试锚点与未覆盖清单——全部
+忠实。批准前按已记录的教训修正三个候选中的 5 处 `[[1]]`/`[[2]]` 矩阵
+字面量（pmatrix 化后复核批准）。7 页批准；wiki/concepts/ 现有 363 页，
+剩余候选 170。

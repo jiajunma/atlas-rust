@@ -651,6 +651,19 @@
         "扩展表示上下文-extrepcontext"
       ],
       "compiledAt": "2026-10-09T17:22:48.516Z"
+    },
+    "topology-form-name.md": {
+      "hash": "4502872aef3dbf7f8a6ac086ca47151e35bf649e71c3b2ad1fdef148cf082c85",
+      "concepts": [
+        "specialgrading-的-bourbaki-序拉回与因子切片",
+        "余根限制映射与对合的格基转运",
+        "复型因子对与环面的名称表示",
+        "实形式的李代数命名规则",
+        "对偶分量群与实形式连通性",
+        "拓扑计算与实形命名的实现及验证边界",
+        "环面对合的-dualpi0-子商构造"
+      ],
+      "compiledAt": "2026-10-09T17:24:47.185Z"
     }
   }
 }
