@@ -81,6 +81,35 @@ equal content shares one interned identity, so the prewarmed dual rejects
 (A1's prewarmed-incompatible finding), giving the contract's predicted
 6×mismatch + high + negative order.
 
+SUPERSEDED in part by upstream source reading (same day, later):
+`docs/slices/weyl_g2_preregistration_2026_10_09.md` reads the pinned oracle
+sources (`7e1b958c`) and settles what the paragraph above left open.  (a)
+RootDatum `=` is interned-POINTER equality on (roots, coroots, preference)
+content (atlas-types.w:1370); `dualise` swaps matrices and flips preference
+without renumbering (prerootdata.h:101), and the fresh RootDatum renumbers
+from the TRANSPOSED Cartan (rootdata.cpp:820 + the DualTag comment at
+867-873).  So the canonical dual of SC(G2,true) is a distinct interned
+object from BOTH adjoint numberings (its coroot matrix is Cᵀ, adjoint's is
+C; G2's C is not symmetric): the owner pins are expected **false in the
+original** — and equally in Rust, whose repair mirrors these semantics, so
+the engines should MATCH on false (the frozen contract's `true` predictions
+on `WG_DUAL_OWNER`/`WG_REVERSE_OWNER` are miscalibrated, which the
+capture-shaped contract records without failing).  (b) The prewarmed
+dual-side triplet is vacuous by construction: `adjoint(G2,false)` is not
+the canonical dual, so it cannot fill the cold-share slot; expect NO throws
+on `WGN_DUAL_PREWARM_*` in either engine (3 mismatches fire, not 6), with
+`wgn_dual=wgn_target` printing false.  A genuine G2 prewarmed-rejection
+gate needs a follow-up fixture prewarming the exact transposed content via
+explicit `root_datum(id_mat(2), mat:[[2,-3],[-1,2]], false)`.  (c) The
+B2/C2 drafts are unaffected and sharper: C2's fixed Cartan IS the transpose
+of B2's, so `dual(SC(B2,true))` has exactly `adjoint(C2,false)`'s content —
+predict `WB_DUAL_OWNER_FALSE`=true, `_TRUE`=false, and the B2/C2 prewarmed
+fixture is NOT vacuous.  (d) Also confirmed from source: the W_elt
+relation/product guards throw BEFORE the no-value gate (atlas-types.w:
+2576-2613), and the product carries the LEFT operand's owner.  Upstream
+files were fetched to `/tmp/atlas-upstream-check/` (removed after reading;
+not a registered transport).
+
 
 Design decisions for the capture stage (2026-10-09): the capture runs as a
 new `weyl-context-g2-v1` stage migrating the existing capture pair
