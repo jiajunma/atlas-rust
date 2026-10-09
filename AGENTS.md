@@ -73,6 +73,16 @@ python3 tools/kimi_subagent.py \
   Always parse `stdout.jsonl` for the finished assistant record before
   discarding a timed-out probe run; the answer may be fully usable, with the
   process-group cleanup evidence in `result.json`.
+  2026-10-09 lesson: the converse failure also occurs — a 16.5KB
+  single-shot probe prompt (reference files embedded verbatim) produced
+  ONLY the version banner in 180s (`stdout.jsonl` 58 bytes, nothing to
+  salvage). Treat a zero-output timeout as retryable once with a longer
+  deadline (the retry at 300s completed in 291s); budget >=300s for
+  single-shot probes of that size on `kimi-code/k3-256k`, and fall back to
+  a local review if the retry also yields nothing.  The probe profile is a
+  good fit for structural fixture reviews: findings were limited to one
+  dead binding and one non-ASCII header character, both independently
+  verified by grep before applying.
 - Do not SIGKILL the wrapper itself: no process can execute its cleanup after
   SIGKILL. The verified cleanup covers its process group, not independently
   detached daemons. Do not enable Shell/background delegation on this evidence.
