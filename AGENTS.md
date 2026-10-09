@@ -587,9 +587,14 @@ ceiling and default one focused job; do not trade correctness for speed.
   (`weyl_context_g2_reverse_operands.atlas` sha `83a98c87…`,
   `weyl_context_g2_reverse_prewarmed.atlas` sha `7768db8b…`), plus the
   G2 inner-class-dual routing draft
-  (`weyl_context_g2_inner_class_dual.atlas` sha `dffd7f44…`); all five are
-  NOT wired into any contract/stager/catalog, predictions wait for the G2
-  numbering-convention answer; see `docs/HANDOFF.md`.
+  (`weyl_context_g2_inner_class_dual.atlas` sha `dffd7f44…`), the G2
+  no-value-relations draft (`weyl_context_g2_novalue_relations.atlas` sha
+  `480c4be1…`) and the sole-WeylElt lifetime draft
+  (`weyl_context_sole_weylelt_lifetime.atlas` sha `5fb7e7a9…`) — all seven
+  witnesses from the 2026-10-03 design slice
+  `docs/slices/weyl_semantic_next_captures_2026_10_03.md` are now drafted;
+  none is wired into any contract/stager/catalog, predictions wait for the
+  G2 numbering-convention answer; see `docs/HANDOFF.md`.
 - Everything below the frontier entries is historical evidence carrying its
   own supersession markers. A historical "next target" or "reprofile" note
   never reactivates itself; only the latest unsuperseded state of a claim

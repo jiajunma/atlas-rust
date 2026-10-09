@@ -337,6 +337,38 @@ needs the void/no-value precedents (a discarded-position comparison that
 still must reject) designed against the void-boundary lessons, not a
 mechanical mirror.
 
+### No-value + sole-WeylElt-lifetime fixture drafts (2026-10-09, PROVISIONAL, unwired)
+
+The last two arc gates, designed against the 2026-10-03 slice
+`docs/slices/weyl_semantic_next_captures_2026_10_03.md` (which sketched all
+seven witnesses) and the void-boundary lessons:
+
+- `tests/math/generics/weyl_context_g2_novalue_relations.atlas` (1188 bytes,
+  sha `480c4be13ebc668980486eb1efb3317aea78bbc26ab62e05c82b7bc891be8705`):
+  the identity check is a validation that must fire BEFORE the no-value
+  gate.  Discarded-position vehicle: the non-final `begin …; 41 end`
+  sequence element (a no-value context proven by the global-batch4 probes).
+  Variants whose exact original behavior is part of the discovery: the
+  `void:(…)` cast and a `void:[…]` row element (coerce-to-void retains some
+  values — the boundary is what the capture records).  The compatible
+  cold-dual control `WV_NOVALUE_OK` must NOT error.  Expected rejections:
+  5x"Weyl group mismatch" if the original validates in every probed
+  context.  Recovery marker 736.
+- `tests/math/generics/weyl_context_sole_weylelt_lifetime.atlas` (1276
+  bytes, sha `5fb7e7a9a559bc96bfef4fdf428e74470d8f875989b3a2a9c43df56e356663ab`):
+  a datum referenced only through a live WeylElt must stay alive under weak
+  interning.  Owner temporaries are never separately bound; unrelated
+  constructions (B2, adjoint G2, C2) interleave between creation and use;
+  then word/length, self-product, `root_datum(w)` round-trip equality and a
+  cold dual through `dual(root_datum(wl_a1))` exercise the kept-alive
+  owner.  word/length only — no root_permutation (its values are not
+  reliably predictable, same rule as the G2 pair).  Recovery marker 731.
+
+Same status: NOT truth, NOT wired; prefixes `WV_`/`WL_` for `_parse_frame`
+at wiring time.  With these two, all seven witnesses from the 2026-10-03
+slice are now drafted: G2 (frozen in the g2-v1 payload), B2/C2, reverse
+operands, inner-class-dual, no-value, sole-WeylElt lifetime.
+
 ## V5 PREPARATION (completed; superseded by the CURRENT section) — 2026-10-06
 
 The classifier change is committed (`80eaf6d3`):

@@ -1,0 +1,21 @@
+{ Weyl sole-WeylElt lifetime witness: a datum referenced only through a
+  live WeylElt must stay alive under weak interning.  The owner temporaries
+  are never separately bound, interleaved unrelated constructions give the
+  weak registry every chance to drop them, and the saved elements are used
+  afterwards (word, product, root_datum round-trip, cold dual through the
+  element's owner).  A1 and G2 both covered; A1's word is the length-1
+  generator, G2's is the noncommuting [0,1].  Provisional until complete
+  original behavior is captured on HPC.  No atlas scripts. }
+set wl_a1=W_elt(simply_connected(Lie_type("A1"),true),[0])
+set wl_noise_b2=simply_connected(Lie_type("B2"),true)
+set wl_noise_g2=adjoint(Lie_type("G2"),false)
+prints("WL_A1|",word(wl_a1),"|",length(wl_a1))
+prints("WL_A1_ROOT|",root_datum(wl_a1)=simply_connected(Lie_type("A1"),true))
+prints("WL_A1_MUL|",word(wl_a1*wl_a1))
+set wl_g2=W_elt(simply_connected(Lie_type("G2"),true),[0,1])
+set wl_noise_c2=simply_connected(Lie_type("C2"),false)
+prints("WL_G2|",word(wl_g2),"|",length(wl_g2))
+prints("WL_G2_ROOT|",root_datum(wl_g2)=simply_connected(Lie_type("G2"),true))
+prints("WL_G2_MUL|",word(wl_g2*wl_g2))
+prints("WL_A1_DUAL|",word(wl_a1*W_elt(dual(root_datum(wl_a1)),[0])))
+prints("WL_RECOVERY|",731)

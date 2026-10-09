@@ -1,0 +1,26 @@
+{ G2 Weyl no-value relation witness: the WeylGroup-identity check is a
+  validation that must fire BEFORE the no-value gate, so an incompatible
+  relation rejects even when its value is discarded.  Discarded-position
+  contexts proven by earlier probes: the non-final begin/end sequence
+  element; void: cast and void row elements are probed as variants whose
+  exact original behavior is part of the discovery.  The compatible
+  cold-dual control WV_NOVALUE_OK must NOT error.  Provisional until
+  complete original behavior is captured on HPC.  No atlas scripts. }
+set wv_true=simply_connected(Lie_type("G2"),true)
+set wv_false=simply_connected(Lie_type("G2"),false)
+set wv_tw=W_elt(wv_true,[0])
+set wv_fw=W_elt(wv_false,[0])
+set wv_dual=dual(wv_true)
+set wv_dw=W_elt(wv_dual,[0])
+prints("WV_NOVALUE_OK|",begin wv_tw=wv_dw; 41 end)
+begin wv_tw=wv_fw; 41 end
+prints("WV_AFTER_DISCARD_EQ|",word(wv_tw))
+begin wv_tw!=wv_fw; 41 end
+prints("WV_AFTER_DISCARD_NEQ|",word(wv_tw))
+begin wv_tw*wv_fw; 41 end
+prints("WV_AFTER_DISCARD_MUL|",word(wv_tw))
+void:(wv_tw=wv_fw)
+prints("WV_AFTER_VOID_EQ|",word(wv_tw))
+void:[wv_tw=wv_fw]
+prints("WV_AFTER_ROW_EQ|",word(wv_tw))
+prints("WV_RECOVERY|",736)
