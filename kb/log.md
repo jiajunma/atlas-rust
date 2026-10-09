@@ -738,3 +738,11 @@ expand_final，canonical 项序）、build_real_form 的规范弱缓存。维护
 配对、原版逐字 Cartan 错误）、精确配对坐标的陪集树（正缩放不变性）、
 见证作用序（权右到左、余权左到右）、BuildAndDrop、4 个测试锚点。
 after-v3 教训涉事文件。维护者直接撰写（无 Kimi）；索引与 log 已同步。
+
+新增 `sources/atlas-core-convert-expr.md` 与快照
+`2026-10-09-atlas-core-convert-expr.json`：typed.rs 中部（2757–5973）——
+convert_expr 的 in/out 类型模式、type_floor 调整、12 族 #[inline(never)]
+划分（3839541 栈陷阱教训）、while 转换细节（循环层包住整棵 do 树、bool
+措辞、WhileMode、row_coercion 回退）、赋值助手群（共享简单赋值路径、
+分量赋值下标门控、保留定义做投影解析、永不丢参数优化）。维护者直接撰写
+（无 Kimi）；索引与 log 已同步；未运行编译/测试/compiler。

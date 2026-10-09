@@ -585,6 +585,18 @@ dominance **真用**给定生成元——原版 rootdata.h 转发时忽略 g）�
 溢出）。对应[阅读快照](snapshots/2026-10-09-atlas-core-weyl-subgroup.json)；
 维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
 
+[转换遍 convert_expr](atlas-core-convert-expr.md)记录 `typed.rs` 中部
+（2757–5973 行）：in/out 类型模式（只经 `specialise` 变异）、
+`convert_expr_context` 的 type_floor 调整（类型抽象内的 return 操作数按
+要求的实际下限解读）、12 个 `#[inline(never)]` 表达式族的机械划分
+（3839541 栈陷阱教训：分区保帧小、不改语义）、while 转换（循环层在整棵
+do 树外、bool 检查用上游措辞、WhileMode 由所需上下文定、row 回退
+`row_coercion`）、赋值助手群（共享简单赋值路径、分量赋值下标门控、
+**保留的类型定义**做投影解析、永不应用丢参数优化）。对应
+[阅读快照](snapshots/2026-10-09-atlas-core-convert-expr.json)；维护者直接
+撰写（无 Kimi 调用）。内建注册表、TypedExpr impl 与 133 个测试各待分包。
+结构性阅读，不声称语言或数学验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

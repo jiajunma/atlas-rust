@@ -1,0 +1,15 @@
+{
+ "schema": "atlas-kb-reading-snapshot-v1",
+ "date": "2026-10-09",
+ "git_base": "964f0033",
+ "working_tree": false,
+ "scope": "Reading of typed.rs lines 2757-5973 for the atlas-core-convert-expr packet: the convert_expr entry's ConversionType in/out pattern, convert_expr_context's type_floor adjustment (return operands under type abstractions read the requirement's actual floor), the 12-family #[inline(never)] partition (the original3839541 stack-trap lesson), the while conversion (loop layer around the whole do-tree, the bool check wording, WhileMode selection, row-coercion fallback), and the assignment helpers (shared simple-assignment path, lookup_assignable, component_type_for_assignment's subscriptability gate, resolve_projector using retained definitions, factor_transform_call never applying the upstream argument-dropping optimisation). The builtin registry, TypedExpr impl and the 133 tests are NOT covered.",
+ "files": [
+  {
+   "path": "crates/atlas-core/src/typed.rs",
+   "sha256": "614975c5e2d49357b4d9ffff80145a6c69db2fd5aeef23f033faf03f594acc95",
+   "bytes": 770895,
+   "note": "clean relative to the recorded git_base; identical to the accepted after-v5 manifest entry (84a3fbfd... tree)"
+  }
+ ]
+}
