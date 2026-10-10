@@ -3262,7 +3262,7 @@ G2_V1_PREDECESSOR_STATE = {
     "stage_device": 3431958692,
     "stage_inode": 162130670829726024,
     "stage_tree_sha256":
-        "e7ee384b8da7a63a10c0e375f359b6071ec2e8ec89eb1a385cee44e5b49e24bd",
+        "498358ceb030150424eef6cc7d6662b24736b92be6f68f42ea7638371042f5b0",
     "stage_tree_files": 150,
     "stage_tree_directories": 18,
     "stage_tree_bytes": 4981671,
@@ -3342,7 +3342,7 @@ G2_V1_PREDECESSOR = {
             "math_weyl_context_g2_v1_failure_2026_10_10.json"
         ),
         "sha256":
-            "3b4b1892537eb98f89b122efee1eb6eec4e109af5ec541915c39834c8adf4b72",
+            "c03088f615643e3703a39ee2cdaabd53db1d6291a9fee0dc8f912d35aba86e4b",
         "bytes": 3031,
     },
     "submission_evidence": {
@@ -3355,7 +3355,7 @@ G2_V1_PREDECESSOR = {
         "bytes": 14543,
     },
     "stage_tree_sha256":
-        "e7ee384b8da7a63a10c0e375f359b6071ec2e8ec89eb1a385cee44e5b49e24bd",
+        "498358ceb030150424eef6cc7d6662b24736b92be6f68f42ea7638371042f5b0",
     "stage_tree_files": 150,
     "stage_tree_directories": 18,
     "stage_tree_bytes": 4981671,
@@ -8071,7 +8071,7 @@ def validate_after_v5_result(root, inputs):
 G2_V1_FAILURE_EVIDENCE = {
     "file": G2_V1_FAILURE_EVIDENCE_PATH,
     "sha256":
-        "3b4b1892537eb98f89b122efee1eb6eec4e109af5ec541915c39834c8adf4b72",
+        "c03088f615643e3703a39ee2cdaabd53db1d6291a9fee0dc8f912d35aba86e4b",
 }
 
 

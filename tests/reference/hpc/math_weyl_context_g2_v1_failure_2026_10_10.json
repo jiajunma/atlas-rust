@@ -20,6 +20,7 @@
   "invocations": "[] (zero Atlas invocations)",
   "note": "the failure occurred in the checker phase before any Cargo build, Atlas process or capture; this is a harness/input failure, not a mathematical result, and grants no evidence about the G2 witness"
  },
+ "notes_tree_sha": "stage_tree_sha256 uses the validator's canonical _predecessor_tree_binding algorithm (double dirfd scan, sorted inventory JSON); an earlier draft recorded a different ad-hoc hash (e7ee384b) which was corrected before any submission used it",
  "report": {
   "bytes": 55477,
   "commands_note": "checker suites ran: test-campaign-stage-creation 32 OK (162.9s), test-progressive-submit 17 OK (0.8s), test-weyl-context-core-contract FAILED (errors=1) at test_exact_catalog_and_fixture_hashes",
@@ -43,7 +44,7 @@
   "stage_tree_bytes": 4981671,
   "stage_tree_directories": 18,
   "stage_tree_files": 150,
-  "stage_tree_sha256": "e7ee384b8da7a63a10c0e375f359b6071ec2e8ec89eb1a385cee44e5b49e24bd"
+  "stage_tree_sha256": "498358ceb030150424eef6cc7d6662b24736b92be6f68f42ea7638371042f5b0"
  },
  "status": "FINAL_FAILED_HARNESS_INPUT_GAP_MISSING_CORE_CATALOG_IN_STAGE_INPUTS",
  "submission_record": {
