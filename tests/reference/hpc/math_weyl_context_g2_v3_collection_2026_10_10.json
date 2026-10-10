@@ -1,0 +1,228 @@
+{
+ "campaign_ledger_after": {
+  "last": "weyl-context-g2-v3 3918882 SUBMITTED",
+  "records": 27,
+  "sha256": "bf9de72ce9627c1094b96578d98ba3be8ca0f7ec6e6a71e89bb6a933380afd1e"
+ },
+ "captures": [
+  {
+   "case_id": "weyl_context_g2_cold_dual",
+   "exit_status_both": 0,
+   "exit_status_equal": true,
+   "fresh_process_complete": true,
+   "full_stderr_equal": true,
+   "full_stdout_equal": true,
+   "intent": "accept",
+   "markers": {
+    "WG_ALIAS": "true|true",
+    "WG_BRAID": "true|6 (order-6 braid relation, longest length 6)",
+    "WG_DUAL_EQ": "true (cold canonical dual compatible)",
+    "WG_DUAL_MUL": "[] (product succeeds)",
+    "WG_DUAL_NEQ": "false",
+    "WG_DUAL_OWNER": "false (BOTH engines; the contract's provisional true prediction is the pre-registered miscalibration)",
+    "WG_EQUAL": "true|true",
+    "WG_NONCOMMUTE": "[0,1]|[1,0] (noncommuting words present)",
+    "WG_REBOUND": "false|true|false|[0]|[1]",
+    "WG_RECOVERY": "727",
+    "WG_REVERSE_EQ": "true",
+    "WG_REVERSE_MUL": "[]|true",
+    "WG_REVERSE_NEQ": "false",
+    "WG_REVERSE_OWNER": "false (BOTH engines; same recorded miscalibration)",
+    "WG_SAME": "[0]|1|1|[0,1]"
+   },
+   "metrics_complete": true,
+   "order": [
+    "oracle",
+    "rust"
+   ],
+   "resource_complete": true,
+   "stderr": "empty (0 bytes) in both engines",
+   "stdout_bytes": 898,
+   "stdout_sha256_both": "b2b173e0a2f517196e868a7eb666eef6073ddb65c3f5d3b631892b6cb8b44c80",
+   "stream_complete": true
+  },
+  {
+   "case_id": "weyl_context_g2_prewarmed_dual",
+   "exit_status_both": 1,
+   "exit_status_equal": true,
+   "fresh_process_complete": true,
+   "full_stderr_equal": true,
+   "full_stdout_equal": true,
+   "intent": "reject",
+   "markers": {
+    "WGN_AFTER_DUAL_EQ": "[1]|false",
+    "WGN_AFTER_DUAL_MUL": "[0]|[1]|false",
+    "WGN_AFTER_DUAL_NEQ": "[1]|false",
+    "WGN_AFTER_HIGH": "[0]",
+    "WGN_AFTER_NEGATIVE": "[0]",
+    "WGN_AFTER_OWNER_EQ": "[0]|1",
+    "WGN_AFTER_OWNER_MUL": "[0]|1",
+    "WGN_AFTER_OWNER_NEQ": "[0]|1",
+    "WGN_DUAL_PREWARM_EQ": "true (prints without throwing)",
+    "WGN_DUAL_PREWARM_NEQ": "false",
+    "WGN_RECOVERY": "733",
+    "vacuity_reading": "3 mismatch markers (not 6) \u2014 consistent with the pre-registered vacuity reading"
+   },
+   "metrics_complete": true,
+   "oracle_stderr_sha256": "88bd2fb8c8a9942b6be1d93519f7a5505274d77503b5429605f9963e95941e6a",
+   "order": [
+    "rust",
+    "oracle"
+   ],
+   "ordered_error_summaries_both": [
+    "Weyl group mismatch",
+    "Weyl group mismatch",
+    "Weyl group mismatch",
+    "Illegal Weyl word entry 2 (should be <2)",
+    "Negative integer where unsigned is required"
+   ],
+   "resource_complete": true,
+   "rust_stderr_sha256": "69df404054bb6ab0ca7a4a3d95cd57bfca2ba326733b4d574e413938305da846",
+   "stderr_equal_note": "reject-intent comparison is ordered error summaries (classifier _stderr_equal); raw envelopes differ (oracle 330B bare 'Runtime error:' blocks vs rust 654B 'Runtime error at <stdin>:line:col' with source excerpts) \u2014 the documented diagnostic-presentation boundary, not a mathematical difference",
+   "stdout_bytes": 612,
+   "stdout_sha256_both": "da4ba42b7add9af129ee1f51bc9e0f48bf3ec9117a002d19f2dec2d64e9b9c20",
+   "stream_complete": true
+  }
+ ],
+ "classifier_status_both_cases": "BOTH_SOURCE_PREDICTIONS_DIFFERED",
+ "classifier_status_note": "the provisional source-derived predictions were wrong for BOTH engines on both cases (capture completion tolerates prediction mismatch); the engines agree with each other on every marker, which is the witness question",
+ "commands": [
+  {
+   "exit": 0,
+   "maxrss_kb": 27336,
+   "name": "test-campaign-stage-creation",
+   "seconds": 177.51
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 24780,
+   "name": "test-progressive-submit",
+   "seconds": 1.94
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 20268,
+   "name": "test-weyl-context-core-contract",
+   "seconds": 1.25
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 19968,
+   "name": "test-weyl-context-core-regression-contract",
+   "seconds": 1.0
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 51876,
+   "name": "test-math-weyl-context-core-capture",
+   "seconds": 69.58
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 46708,
+   "name": "test-stager-allowlist",
+   "seconds": 14.84
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 31892,
+   "name": "rustc-version",
+   "seconds": 13.61
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 9580,
+   "name": "cargo-version",
+   "seconds": 0.21
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 19052,
+   "name": "source-reconstruction",
+   "seconds": 0.8
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 1112512,
+   "name": "release-build",
+   "seconds": 299.27
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 1333664,
+   "name": "atlas-core-test-inventory",
+   "note": "cargo test --list inventory; 632-test inventory per the contract's expected_inventory",
+   "seconds": 94.0
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 28560,
+   "name": "weyl-context-regressions",
+   "note": "2 passed (both A1 original-backed selector tests), 630 filtered of 632",
+   "seconds": 0.55
+  },
+  {
+   "exit": 0,
+   "maxrss_kb": 28552,
+   "name": "root-ladder-control",
+   "note": "1 passed (retained ladder control), 631 filtered of 632",
+   "seconds": 0.54
+  }
+ ],
+ "date": "2026-10-10",
+ "engine_equality_summary": "Rust matches the oracle on every G2 marker: cold dual byte-identical stdout/stderr/exit; prewarmed dual byte-identical stdout, identical exit 1, identical ordered error summaries; WG_DUAL_EQ=true/WG_DUAL_NEQ=false/WG_DUAL_MUL succeeds (cold canonical duals compatible in the SC->adjoint direction exercised here), owner pins print false in both engines as pre-registered, noncommute and order-6 braid witnesses present.",
+ "evidence_maturity": "capture_only_unreviewed",
+ "final_state": "COMPLETED 0:0 on cu001, elapsed 12m06s",
+ "integrity": {
+  "durable_inputs_0444_single_link": true,
+  "ephemeral_workspace_removed": true,
+  "incoming_empty": true,
+  "integrity_rechecked": true,
+  "legacy_path_open_attempts": [],
+  "source_integrity_rechecked": true,
+  "transport_payload_dir_removed": true
+ },
+ "job": "3918882",
+ "limitations": [
+  "capture resource metrics include one fixed bash exec wrapper; not accepted performance measurements",
+  "the Python audit hook covers only the driver process",
+  "capture completion with any prediction outcome is not mathematical acceptance; acceptance requires the independent review and ledger entry",
+  "one-shot math invocations; no speed ratio derivable"
+ ],
+ "next_gates": [
+  "independent review of this capture (distinct machine-readable review binding report hash + case ids + assertions), then an append-only math-acceptance-ledger entry if accepted",
+  "oracle streams become the goldens for the G2 regression pair",
+  "B2/C2 (non-vacuous prewarmed rejection), reverse operand orders, inner-class-dual, no-value stages follow the same shape, each with its own original-backed gate"
+ ],
+ "no_release": "no mathematical, cache, rank, operation, parallel, memory or performance gate released; report release flags all false",
+ "report": {
+  "bytes": 347127,
+  "node": "cu001",
+  "path": "results/3918882/report.json",
+  "schema": "atlas-weyl-context-g2-v3",
+  "sha256": "e1798ecfb7832e13c9898d14620faa1e93191b2416619fac8fefac1d56a97cc0",
+  "status_field": "WEYL_CONTEXT_G2_CAPTURE_COMPLETE"
+ },
+ "report_sha256_file": {
+  "bytes": 65,
+  "path": "results/3918882/report.sha256",
+  "sha256": "e1cf71f7fae8bce8fc5e25ce32aff635c68c1a2315cbc016d4638f053866491e"
+ },
+ "schema": "atlas-weyl-context-g2-collection-v1",
+ "slurm_out_sha256": "0bbc519d5bd406140d4a098dbfcd7b449f55429bd32a73cdab1fe87c4c79ce6f",
+ "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-g2-v3",
+ "stage_state_at_collection": {
+  "note": "canonical _predecessor_tree_binding algorithm computed with the stage's installed hpc/progressive_submit.py",
+  "stage_device": 3431958692,
+  "stage_inode": 162130670829752286,
+  "stage_tree_bytes": 5453892,
+  "stage_tree_directories": 18,
+  "stage_tree_files": 204,
+  "stage_tree_sha256": "0dde9b5671f9bff2c24a398170881932f1b9f9a1a9328caecc80158b97328a72"
+ },
+ "status": "FINAL_COMPLETED_CAPTURE_COMPLETE_ENGINES_EQUAL_ON_ALL_G2_MARKERS",
+ "submission_record": {
+  "file": "tests/reference/hpc/math_weyl_context_g2_v3_submission_2026_10_10.json",
+  "sha256": "e338a1e969e55d949aae8ddd4d8fe43787594e20a71b393314423382b87145a8"
+ }
+}

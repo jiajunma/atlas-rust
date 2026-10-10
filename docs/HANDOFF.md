@@ -2,8 +2,11 @@
 
 **2026-10-10 status pointer**: G2-v1 (3917366) and G2-v2 (3917866) are both
 FINAL FAILED on harness defects with zero Atlas executed (immutable evidence
-committed); the corrected **G2-v3 capture is SUBMITTED as job 3918882**
-(SUBMITTED_NOT_VERIFIED; §"G2-V2 FINAL FAILED + G2-V3 SUBMISSION").  The
+committed); **G2-v3 (3918882) is FINAL COMPLETED 0:0** — both G2 captures
+complete with Rust and the oracle equal on every G2 marker (cold dual fully
+byte-identical; prewarmed dual byte-identical stdout + equal ordered error
+summaries; maturity capture_only_unreviewed, no gate released;
+§"G2-V2 FINAL FAILED + G2-V3 SUBMISSION").  The
 wiki review sweep is complete (536 concept pages, Fresh, zero pending
 candidates, zero red links; §"Wiki review sweep COMPLETE").  The
 three-commit owner-content sweep incident is recorded below
@@ -423,9 +426,35 @@ local `/tmp` payload and transport tar were removed (durable copies: remote
 stage + embedded record).  Submission record
 `tests/reference/hpc/math_weyl_context_g2_v3_submission_2026_10_10.json`
 (sha `e338a1e9…`, embeds the durable submission.json `578db485…`).
-Status **SUBMITTED_NOT_VERIFIED**: no resubmit, no sibling stage, no
-acceptance claim before FINAL independent inspection (the G2-V1 section's
-pre-staged checklist applies; ledger count is now 27).
+
+**G2-v3 FINAL 2026-10-10: COMPLETED 0:0** on cu001 in 12m06s.  All
+integrity gates pass (ledger 27 records `bf9de72c…`, durable inputs
+0444/single-link, `.incoming` empty, ephemeral workspace removed, source and
+final integrity rechecked, zero legacy-path opens; transport payload dir
+removed).  All 13 commands exit 0: six checker suites (129 tests — the
+first run of the corrected v3 literals), toolchain, source reconstruction,
+release build (299s), 632-test inventory, both A1 weyl-context regressions
+and the retained ladder control.  **Both G2 captures are COMPLETE with the
+engines equal on every marker**: cold dual is byte-identical on stdout
+(`b2b173e0…`, 898B), stderr (empty) and exit 0 — cold canonical duals are
+compatible (WG_DUAL_EQ=true, NEQ=false, MUL succeeds), the WG_NONCOMMUTE and
+WG_BRAID|true|6 witnesses are present, and the owner pins print **false in
+both engines** (the contract's provisional `true` was the pre-registered
+miscalibration; classifier status BOTH_SOURCE_PREDICTIONS_DIFFERED means the
+predictions, not the engines, disagreed).  Prewarmed dual: byte-identical
+stdout (`da4ba42b…`, 612B), exit 1 both, identical five ordered error
+summaries (3× Weyl group mismatch, illegal word entry, negative integer);
+raw stderr envelopes differ (oracle 330B bare blocks vs Rust 654B
+`<stdin>:line:col` excerpts) — the documented diagnostic-presentation
+boundary, compared as ordered summaries per the reject-intent classifier.
+Report `e1798ecf…`/347127B; stage tree binding at collection `0dde9b56…`
+(204 files/18 dirs/5453892B).  Collection record
+`tests/reference/hpc/math_weyl_context_g2_v3_collection_2026_10_10.json`
+(sha `0a6b480c…`).  Maturity **capture_only_unreviewed**: no mathematical,
+cache, rank, performance or index gate released.  Next: independent review
+of the capture → append-only ledger entry if accepted → oracle streams
+become the G2 goldens → B2/C2, reverse-operand, inner-class-dual and
+no-value stages follow the same shape.
 
 ### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
 
