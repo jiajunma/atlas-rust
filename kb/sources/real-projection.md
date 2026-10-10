@@ -62,10 +62,16 @@ E6 involution-187 的分解只有带这个记录符号才成立；消元用 `div
   v$（involutions.h:211）；`lift(coordinates)`：`lift_mat * coordinates`，
   把坐标映回 $X^*$（involutions.cpp:346-356）。
 
-阅读观察（2026-10-06 重读）：`transported` 只校验反射矩阵的方阵性，**不**
-校验其阶 = n，也不重跑 `check_against`（入表侧由 `push_record` 对新鲜 θ
-对账，见 [Twisted involution 表](involution-table.md)）；`coordinates` 的
-zip 截断使短 `weight` 静默按零；`lift` 对过长坐标直接下标会 panic；
+阅读观察（2026-10-06 重读；2026-10-10 对照源码逐条核实并锐化）：
+`transported` 只校验反射矩阵的方阵性，**不**校验其阶 = n，也不重跑
+`check_against`（入表侧由 `push_record` 对新鲜 θ 对账，见
+[Twisted involution 表](involution-table.md)）；阶不符的输入不是干净
+报错而是**下标越界 panic**（`reflection[row][k]`/`reflection[k][j]` 在
+m<n 时越界）——当前唯一调用点 push_record 传的是同根系反射矩阵，故
+不可达，属未来调用方的潜在陷阱。`coordinates` 的 zip 截断是**双向**
+的：短 `weight` 静默按零补，长 `weight` 静默丢尾。`lift` 对过长坐标
+直接下标会 panic（`lift_mat[row][basis_index]` 越界），过短则静默
+部分求和。
 `invert_integer_matrix` 的消元用**非受检**普通算术，与文件其余的全 checked
 风格不对称；分配受检性也不对称（`try_reserve_exact` vs `vec!`/`to_vec`/
 `collect`）。

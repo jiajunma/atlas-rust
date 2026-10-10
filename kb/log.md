@@ -2228,3 +2228,16 @@ refresh 10 候选（含新页《矩阵复合形状错误的诊断字段失真》
   严格递增且有上界，必然终止；wrapping 算术风险保持为独立记录。
   包已补论证；refresh 7 候选（含新页《环境根反射字的有限轨道终止性
   论证》）核读批准。624 页 Fresh。
+## [2026-10-10T03:35:00Z] compile | 2 source(s) → 0 page(s)
+- Sources: real-projection.md, involution-table.md
+
+
+## 2026年10月10日 real-projection 边界观察逐条核实与锐化
+
+对照源码核实并锐化 real-projection 包的阅读观察：`transported` 只查
+反射矩阵方阵性、不查阶=n（阶不符 m<n 时 `reflection[row][k]` 下标
+越界 **panic** 而非干净报错；当前唯一调用点 push_record 传同根系矩阵，
+不可达，属未来调用方陷阱）；`coordinates` 的 zip 截断是**双向**的
+（短 weight 静默补零、长 weight 静默丢尾）；`lift` 过长坐标 panic、
+过短静默部分求和。另：matreduc 包的 diagonalise 簿记笔记复核无需
+更正（前一条）。refresh 12 候选核读批准。626 页 Fresh。

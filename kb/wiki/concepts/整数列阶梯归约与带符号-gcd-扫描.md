@@ -1,11 +1,11 @@
 ---
 title: 整数列阶梯归约与带符号 gcd 扫描
-summary: 归约自底向上扫描，以最小绝对值主元和 div_euclid 消元，记录负主元取正的列操作符号，并将核列逐列轮转至右端。
+summary: 自底向上扫描行，以最小绝对值主元和 div_euclid 消元，记录负主元取正的列操作符号，并将核列逐列轮转至右端。
 sources:
   - real-projection.md
 kind: concept
 createdAt: "2026-10-09T15:06:30.859Z"
-updatedAt: "2026-10-10T02:13:52.608Z"
+updatedAt: "2026-10-10T03:33:38.645Z"
 tags:
   - 整数线性代数
   - 阶梯归约
@@ -49,15 +49,17 @@ promptModifiers:
 
 ## 测试锚点
 
-带符号 gcd 扫描具有针对 original3840186 的逐字锚点：输入矩阵 $\begin{pmatrix}8&-12\\4&-6\end{pmatrix}$，预期 pivot 为 $2$，image 为 $\begin{pmatrix}0&4\\0&2\end{pmatrix}$，columns 为 $\begin{pmatrix}-3&2\\-2&1\end{pmatrix}$。该锚点固定了归约结果及列操作记录的具体形式。^[real-projection.md:73-75]
+带符号 gcd 扫描具有针对 original3840186 的逐字锚点：输入矩阵 $\begin{pmatrix}8&-12\\4&-6\end{pmatrix}$，预期 pivot 为 $2$，image 为 $\begin{pmatrix}0&4\\0&2\end{pmatrix}$，columns 为 $\begin{pmatrix}-3&2\\-2&1\end{pmatrix}$。该锚点固定了归约结果及列操作记录的具体形式。^[real-projection.md:79-81]
 
-其他锚点覆盖斜环面对合 $\theta=\begin{pmatrix}-7&12\\-4&7\end{pmatrix}$ 与斜乘积的像基字面量，包括 `lift_mat` 为 $\begin{pmatrix}4\\2\end{pmatrix}$、`m_real` 为 $\begin{pmatrix}2&-3\end{pmatrix}$；边界测试覆盖恒等对合的零秩像，以及 $-I$ 的满秩像，后者满足 `lift_mat = 2I`。来源记录 `transported` 没有测试，参见 [[图像基算法的测试锚点与证据范围]]。^[real-projection.md:75-77]
+其他锚点覆盖斜环面对合 $\theta=\begin{pmatrix}-7&12\\-4&7\end{pmatrix}$ 与斜乘积的像基字面量，包括 `lift_mat` 为 $\begin{pmatrix}4\\2\end{pmatrix}$、`m_real` 为 $\begin{pmatrix}2&-3\end{pmatrix}$；边界测试覆盖恒等对合的零秩像，以及 $-I$ 的满秩像，后者满足 `lift_mat = 2I`。来源记录 `transported` 没有测试，参见 [[图像基算法的测试锚点与证据范围]]。^[real-projection.md:81-83]
 
 ## 实现限制与证据边界
 
-算术与分配检查存在不一致：`invert_integer_matrix` 的消元使用非受检普通算术，与文件其余部分的 checked 风格不同；分配同时使用 `try_reserve_exact` 和 `vec!`、`to_vec`、`collect`。相关限制见 [[图像基接口的维度与算术安全边界]]。^[real-projection.md:69-71]
+算术与分配检查存在不一致：`invert_integer_matrix` 的消元使用非受检普通算术，与文件其余部分的 checked 风格不同；分配同时使用 `try_reserve_exact` 和 `vec!`、`to_vec`、`collect`。相关限制见 [[图像基接口的维度与算术安全边界]]。^[real-projection.md:75-77]
 
-来源属于结构性阅读，未执行构建、测试或原版运行，不提供新的数学验收、性能或并行结论。上游行号转述自源码注释，未独立重读上游，可能随版本演进漂移；本说明不扩展该实现已有的 signed-projection、fundamental-lattice gate 等 HPC 证据链。^[real-projection.md:9-17, real-projection.md:87-92]
+来源属于结构性阅读，本说明不扩展该实现已有的 signed-projection、fundamental-lattice gate 等 HPC 证据链。^[real-projection.md:9-17]
+
+来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。上游行号转述自源码注释，未独立重读上游，可能随版本演进漂移。^[real-projection.md:93-98]
 
 ## Sources
 
