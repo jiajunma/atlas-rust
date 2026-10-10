@@ -1,14 +1,15 @@
 ---
 title: TypeAssignment 与 InferredType 推断机器
-summary: TypeAssignment 管理局部无环替换、实例化和合一，导入时保留待决约束；InferredType 将类型体与赋值配对以支持作用域调整和类型匹配。
+summary: TypeAssignment 管理局部无环替换、新鲜实例化和合一，导入时保留待决约束；InferredType 将类型体与赋值配对以支持作用域调整及类型匹配。
 sources:
   - atlas-core-types.md
 kind: concept
 createdAt: "2026-10-09T14:38:33.600Z"
-updatedAt: "2026-10-09T22:22:34.433Z"
+updatedAt: "2026-10-10T00:25:27.064Z"
 tags:
   - 类型推断
   - 多态
+  - 合一
 aliases:
   - typeassignment-与-inferredtype-推断机器
   - T与I推
@@ -18,12 +19,12 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: TypeAssignment 与 InferredType 推断机器
-summary: TypeAssignment 管理局部无环替换、实例化与合一，导入赋值时保留待决替换；InferredType 将类型体与赋值配对，提供作用域调整、合一和匹配接口。
+summary: TypeAssignment 管理局部无环替换、实例化与合一，导入赋值时保留待决约束；InferredType 将类型体与赋值配对，提供作用域调整、合一和匹配接口。
 sources:
   - atlas-core-types.md
 kind: concept
@@ -55,15 +56,15 @@ scheme 不含独立的 `Undetermined` 洞：`wrap` 按遍历和首次出现顺�
 
 ## InferredType 接口
 
-`InferredType` 将类型体与赋值组合为一对。其构造与整理接口包括 `from_scheme`、`wrap`、`bottom`、`wrap_tuple`、`bake` 和 `wring_out`，并提供 `raise_floor` 与 `lower_floor`。^[atlas-core-types.md:71-73]
+`InferredType` 将类型体与赋值组合为一对。其接口包括 `from_scheme`、`wrap`、`bottom`、`wrap_tuple`、`bake` 和 `wring_out`，以及用于作用域下限调整的 `raise_floor` 与 `lower_floor`。^[atlas-core-types.md:71-73]
 
 合一相关接口包括 `unify_to`、`try_unify_to`、`unify` 与 `has_unifier`；函数类型相关接口包括 `function_parts`、`matches_argument` 与 `matches_result`。此外还有 `unify_specialise`、`try_unify_specialise`，以及用于构造器形式匹配的 `matches`。源材料仅列出这些接口，未逐项展开内部算法或失败行为。^[atlas-core-types.md:71-75]
 
 ## 错误与证据边界
 
-二阶机器的 `TypeError` 包括 `IndexOverflow`、`ScopeCapture`、`VariableOutOfRange`、`UndeterminedInAssignment`、`UnknownConstructor` 和 `Arity` 等，涉及索引、作用域、变量范围及构造器参数个数等边界。^[atlas-core-types.md:58-61]
+二阶机器的 `TypeError` 包括 `IndexOverflow`、`ScopeCapture`、`VariableOutOfRange`、`UndeterminedInAssignment`、`UnknownConstructor` 和 `Arity` 等，涵盖索引、作用域、变量范围及构造器参数个数等错误类别。^[atlas-core-types.md:58-61]
 
-源包记录类型模块共 59 个测试，其中 `polymorphic` 部分有 37 个。材料属于结构性阅读，不声称完成语言验收；上游行号属于实现方的移植陈述，类型行为兼容仍以 HPC 语言语料门为准。^[atlas-core-types.md:9-18, atlas-core-types.md:84-91]
+源包记录类型模块共 59 个测试，其中 `polymorphic` 部分有 37 个。这是结构性阅读材料，不声称完成语言验收；上游行号属于实现方的移植陈述，类型行为兼容仍以 HPC 语言语料门为准。^[atlas-core-types.md:9-18, atlas-core-types.md:84-91]
 
 ## Sources
 

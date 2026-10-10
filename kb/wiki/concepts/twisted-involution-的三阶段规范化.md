@@ -5,9 +5,9 @@ sources:
   - inner-class.md
 kind: concept
 createdAt: "2026-10-09T14:50:46.121Z"
-updatedAt: "2026-10-09T22:31:56.613Z"
+updatedAt: "2026-10-10T00:35:16.549Z"
 tags:
-  - 扭曲对合
+  - 对合
   - 规范化
   - 算法
 aliases:
@@ -19,44 +19,44 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: Twisted involution 的三阶段规范化
-summary: canonicalize 依次将正实根和与正虚根和优势化、限制到共同正交的简单生成元，并使实际对合在残余复子系统中保持正性；受限版本同时遵守 active 集合。
+summary: canonicalize 将正实根和与正虚根和优势化，限制到共同正交的简单生成元，再使实际对合在残余复子系统中保持正性；受限版本同时遵守 active 集合。
 sources:
   - inner-class.md
 kind: concept
 tags:
   - 扭曲对合
   - 规范化
-  - 根系算法
+  - 算法
 aliases:
   - twisted-involution-的三阶段规范化
 ---
 
 # Twisted involution 的三阶段规范化
 
-`InnerClass::canonicalize` 采用三阶段 Atlas 算法，将 twisted involution 搬运到规范代表元，并返回按执行顺序排列的生成元序列。来源将该实现对应到上游 `InnerClass::canonicalize`（`innerclass.cpp:740-832`）。^[inner-class.md:63-68]
+`InnerClass::canonicalize` 采用三阶段 Atlas 算法，将 twisted involution 搬运到规范代表元，并返回按执行顺序排列的生成元序列。来源将其对应到上游 `InnerClass::canonicalize`（`innerclass.cpp:740-832`）。^[inner-class.md:63-68]
 
 ## 三阶段算法
 
-第一阶段，使正实根之和与正虚根之和均成为优势的（dominant）。第二阶段，将操作范围限制到同时与这两个和正交的简单生成元。第三阶段，使实际对合在残余复子系统中保持正性（positivity）。^[inner-class.md:63-66]
+第一阶段，使正实根之和与正虚根之和均成为优势的（dominant）。第二阶段，将操作范围限制到同时与这两个和正交的简单生成元。第三阶段，使实际对合在残余复子系统中保持正性（positivity）。第二阶段使用的是优势化后的两个根和。^[inner-class.md:63-72]
 
 ## 返回序列与作用方向
 
-记 distinguished involution 为 $\delta$，输入的 Weyl 部分为 $\sigma$。对返回序列中的每个生成元 $s$，按执行顺序更新 $\sigma \leftarrow s\cdot\sigma\cdot\delta(s)$；依次执行这些扭曲共轭操作，即把输入搬运到规范代表元。这里的 $\delta(s)$ 是 distinguished involution 在简单生成元上诱导的置换像，参见 [[Based involution 验证与生成元 twist]]。^[inner-class.md:49-51, inner-class.md:55-57, inner-class.md:63-68]
+记 distinguished involution 为 $\delta$，输入的 Weyl 部分为 $\sigma$。对返回序列中的每个生成元 $s$，按执行顺序更新 $\sigma \leftarrow s\cdot\sigma\cdot\delta(s)$；依次执行这些扭曲共轭操作，即把输入搬运到规范代表元。$\delta(s)$ 表示 distinguished involution 在简单生成元上诱导的置换像，参见 [[Based involution 验证与生成元 twist]]。^[inner-class.md:49-51, inner-class.md:55-57, inner-class.md:63-68]
 
 ## 限定生成元的规范化
 
-`canonicalize_with_generators` 将算法限制在 `active` 指定的简单生成元内。第二阶段的残余子系统由 `active` 与“同时正交于两个优势根和的生成元”取交集得到。上游 `Rep_context::to_singular_canonical` 使用 singular generators 调用这一变体，来源标注的位置为 `repr.cpp:613-620`。^[inner-class.md:69-72]
+`canonicalize_with_generators` 将算法限制在 `active` 指定的简单生成元内。其第二阶段的残余子系统由 `active` 与“同时正交于两个优势根和的生成元”取交集得到。上游 `Rep_context::to_singular_canonical` 使用 singular generators 调用这一变体，来源标注的位置为 `repr.cpp:613-620`。^[inner-class.md:69-72]
 
 ## 与相关操作的区别
 
-[[Twisted involution 的规范约化表达式]]描述另一种输出：`canonical_involution_expr` 给出 twisted involution 的 Weyl 部分的约化 twisted-involution 表达式，并在外部生成元编号下取字典序最小。`canonicalize` 则返回将输入搬运到规范代表元的生成元序列，两种输出的含义不同。^[inner-class.md:63-68, inner-class.md:76-85]
+[[Twisted involution 的规范约化表达式]]描述另一种输出：`canonical_involution_expr` 给出 twisted involution 的 Weyl 部分的约化 twisted-involution 表达式，并在外部生成元编号下取字典序最小。`canonicalize` 返回的则是将输入搬运到规范代表元的生成元序列；两者的输出含义不同。^[inner-class.md:63-68, inner-class.md:76-85]
 
-[[Twisted involution 枚举与共轭轨道分区]]中的 `twisted_conjugacy_classes` 给出确定性的 Weyl twisted-conjugacy 轨道，但其代表元并非 Atlas-canonical；该接口也不构造 Cartan fibers、实形式或 Cartan 偏序。^[inner-class.md:89-96]
+[[Twisted involution 枚举与共轭轨道分区]]中的 `twisted_conjugacy_classes` 给出确定性的 Weyl twisted-conjugacy 轨道，但其代表元并非 Atlas-canonical；该接口也不构造 Cartan fibers、实形式或 Cartan 偏序。因此，轨道枚举接口的代表元不能直接视为上述规范化算法的结果。^[inner-class.md:63-68, inner-class.md:89-96]
 
 ## 证据边界
 

@@ -5,9 +5,8 @@ sources:
   - rep-table.md
 kind: concept
 createdAt: "2026-10-09T15:09:28.211Z"
-updatedAt: "2026-10-09T22:46:48.068Z"
+updatedAt: "2026-10-10T00:49:48.274Z"
 tags:
-  - 实形式
   - 资源所有权
   - 块存储
 aliases:
@@ -18,20 +17,18 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: RepTableOwner 实形式资源所有者
-summary: 为单个实形式绑定 involution 表与 KGB 图，提供临时 RepContext、共享公共块查找及记忆化 K 型公式，并保留姿态适配与并发约定。
+summary: RepTableOwner 为单个实形式绑定 involution 表与 KGB 图，提供临时上下文、共享公共块查找和记忆化 K 型公式，并规定姿态适配与并发访问边界。
 sources:
   - rep-table.md
 kind: concept
-createdAt: "2026-10-09T15:09:28.211Z"
-updatedAt: "2026-10-10"
 tags:
-  - 资源所有权
   - 实形式
+  - 资源所有权
   - 块存储
 aliases:
   - reptableowner-实形式资源所有者
@@ -40,7 +37,7 @@ provenanceState: extracted
 
 # RepTableOwner 实形式资源所有者
 
-`RepTableOwner` 为单个实形式绑定 involution 表与 KGB 图，提供共享的部分与完整公共块存储、临时表示上下文，以及记忆化的 K 型公式接口。该实现对应上游 `gkmod/repr.cpp` 中 `Rep_table` 的相关切片。^[rep-table.md:19-27, rep-table.md:56-68]
+`RepTableOwner` 为**单个实形式**绑定 involution 表与 KGB 图，提供共享的部分与完整公共块存储、临时表示上下文和记忆化 K 型公式接口。该实现对应上游 `gkmod/repr.cpp` 中 `Rep_table` 的相关切片。^[rep-table.md:19-27, rep-table.md:56-68]
 
 ## 资源绑定与上下文
 
@@ -60,7 +57,7 @@ provenanceState: extracted
 
 `with_kl_table(operation)` 使用记录中惰性构造的共享 KL 表执行回调。记录局部互斥锁在整个回调期间保持持有，因此同一块上的调用会串行化。^[rep-table.md:48-54]
 
-KL 回调不得对任何块再次调用 `with_kl_table`。同线程嵌套会由 `ActiveKlCallback::enter()` 在获取另一记录锁之前返回稳定的不变量错误 `RepInvariantViolation`。详见 [[共享 KL 表的惰性构造与回调并发约定]]。^[rep-table.md:50-54]
+KL 回调不得对**任何块**再次调用 `with_kl_table`。同线程嵌套会由 `ActiveKlCallback::enter()` 在获取另一记录锁之前返回稳定的不变量错误 `RepInvariantViolation`。详见 [[共享 KL 表的惰性构造与回调并发约定]]。^[rep-table.md:50-54]
 
 ## K 型公式缓存
 

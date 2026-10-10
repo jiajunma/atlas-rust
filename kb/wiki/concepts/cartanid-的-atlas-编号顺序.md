@@ -1,14 +1,14 @@
 ---
 title: CartanId 的 Atlas 编号顺序
-summary: fundamental 类编号为 0，其余按父类编号和正虚根的上游 RootNbr 顺序进行 BFS 发现，Cayley 后继在比较和存储前先规范化。
+summary: fundamental 类编号为零，其余按父类编号及正虚根的上游 RootNbr 顺序进行 BFS 发现，Cayley 后继在比较和存储前先规范化。
 sources:
   - cartan-classification.md
 kind: concept
 createdAt: "2026-10-09T14:41:59.420Z"
-updatedAt: "2026-10-09T22:25:22.380Z"
+updatedAt: "2026-10-10T00:28:13.643Z"
 tags:
   - Cartan分类
-  - 确定性编号
+  - 编号约定
 aliases:
   - cartanid-的-atlas-编号顺序
   - C的A编
@@ -18,12 +18,12 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: CartanId 的 Atlas 编号顺序
-summary: fundamental 类编号为 0，其余类按父类编号和上游正虚根顺序进行 BFS 发现，Cayley 后继在比较与存储前先规范化。
+summary: 基本类编号为 0，其余类按父类编号与正虚根的上游 RootNbr 顺序进行 BFS 发现；Cayley 后继在比较和存储前先规范化。
 sources:
   - cartan-classification.md
 kind: concept
@@ -36,17 +36,17 @@ aliases:
 
 # CartanId 的 Atlas 编号顺序
 
-`CartanId(usize)` 是 Cartan 分类中的类编号，遵循 Atlas Cartan 顺序：基本类（fundamental class）为 `CartanId(0)`，其余类按广度优先搜索（BFS）的发现顺序编号。编号规则同时规定父类与正虚根的遍历顺序，以及 Cayley 后继的规范化时机。^[cartan-classification.md:25-31]
+`CartanId(usize)` 是 Cartan 分类中的类编号，遵循 Atlas Cartan 顺序：基本类（fundamental class）为 `CartanId(0)`，其余类按广度优先搜索（BFS）的发现顺序编号。该规则规定了父类与正虚根的遍历顺序，以及 Cayley 后继的规范化时机。^[cartan-classification.md:25-31]
 
 ## 编号规则
 
 BFS 按编号升序处理父类。对每个父类，其正虚根按上游 `RootNbr` 顺序遍历：先按高度（height），再按单根坐标的逆字典序（reverse-lexicographic）排列。相关编号概念见 [[RootNumbering 根编号与 RootNbr 顺序]]。^[cartan-classification.md:25-28]
 
-生成的 Cayley 后继在参与比较与存储之前，先经过 `InnerClass::canonicalize` 规范化。源码注释将整体编号流程对应到 `innerclass.cpp:218-291` 的 task 1，将后继规范化对应到 `innerclass.cpp:252-263`。^[cartan-classification.md:25-29]
+每个 Cayley 后继在参与比较与存储之前，先经过 `InnerClass::canonicalize` 规范化。来源将整体编号流程对应到上游 `innerclass.cpp:218-291` 的 task 1，将后继规范化对应到 `innerclass.cpp:252-263`；这些上游位置均转述自源码注释。^[cartan-classification.md:25-29, cartan-classification.md:98-99]
 
 ## 与轨道代表元的关系
 
-`TwistedConjugacyPartition` 产生的类，以本 crate 确定性 Weyl 枚举中遇到的第一个 action 为代表元；`CartanClassification` 消费这些类时，使用 Atlas-canonical 代表元重建，其中 Cayley 后继在编号前执行规范化。因此，两种构造路径的代表元选择规则应分别理解。^[cartan-classification.md:80-85]
+`TwistedConjugacyPartition` 产生的类，以本 crate 确定性 Weyl 枚举中遇到的第一个 action 为代表元；`CartanClassification` 消费这些类时，使用 Atlas-canonical 代表元重建，其中 Cayley 后继在编号前完成规范化。两种构造路径因此采用不同的代表元选择规则。^[cartan-classification.md:80-85]
 
 无论采用哪种代表元，类都经 `CayleyCrossDecomposition` 分解，实形式标签通过 `RealFormLabels` 在同一代表元处关联。`CartanClass` 拥有一个 `TwistedConjugacyClass` 值，并承载 fiber groups、实形式归属与实 Cartan 分量数据，详见 [[TwistedConjugacyClass 与 CartanClass 的职责划分]]。^[cartan-classification.md:85-90]
 
@@ -58,9 +58,9 @@ BFS 按编号升序处理父类。对每个父类，其正虚根按上游 `RootN
 
 ## 证据范围
 
-本页依据来源包对 `cartan_classification.rs` 与 `cartan_class.rs` 的结构性阅读，快照记录的是两个文件的 dirty 工作区字节。上游行号转述自源码注释，未独立重读上游文件，可能随版本演进而漂移。^[cartan-classification.md:9-14, cartan-classification.md:94-99]
+本页依据来源包对 `cartan_classification.rs` 与 `cartan_class.rs` 的结构性阅读，所读快照记录的是两个文件的 dirty 工作区字节。上游行号转述自源码注释，未独立重读上游文件，可能随版本演进而漂移。^[cartan-classification.md:9-14, cartan-classification.md:94-99]
 
-来源包未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。Cartan 分类正确性属于其独立的 HPC 证据链；来源提及 Cartan3868252 与 rank1 class/dual-incidence 覆盖，但不重述或扩展这些证据。^[cartan-classification.md:10-12, cartan-classification.md:105-105]
+来源包未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。Cartan 分类正确性属于独立的 HPC 证据链；来源提及 Cartan3868252 与 rank1 class/dual-incidence 覆盖，但不重述或扩展这些证据。^[cartan-classification.md:10-12, cartan-classification.md:105-105]
 
 ## Sources
 

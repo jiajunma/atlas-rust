@@ -1,14 +1,14 @@
 ---
 title: 扩展参数的 star 运算
-summary: star(ctx, e, length, n_alpha) 返回根的 delta 轨道类型 DescValue 与邻接扩展参数列表，供参数层下降计算使用。
+summary: star(ctx, e, length, n_alpha) 返回根的 delta 轨道类型 DescValue 与邻接扩展参数列表。
 sources:
   - ext-param.md
 kind: concept
 createdAt: "2026-10-09T14:47:11.450Z"
-updatedAt: "2026-10-09T22:28:55.735Z"
+updatedAt: "2026-10-10T00:31:55.870Z"
 tags:
   - 扩展参数
-  - 下降算法
+  - 算法
 aliases:
   - 扩展参数的-star-运算
   - 扩S运
@@ -18,7 +18,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -29,7 +29,7 @@ sources:
 kind: concept
 tags:
   - 扩展参数
-  - 下降运算
+  - 下降算法
 aliases:
   - 扩展参数的-star-运算
 provenanceState: extracted
@@ -41,19 +41,19 @@ provenanceState: extracted
 
 ## 上下文与参数
 
-[[扩展表示上下文 ExtRepContext]] 以 twisting involution `delta` 扩展 `RepContext`。其中 `delta` 由根系置换表示，上下文还保存不动根集与诱导的单生成元 twist，并提供 `delta_of`、`is_delta_fixed_root`、`twisted` 等访问器，以及 `to_simple_shift`、`is_very_complex`、`shift_flip` 等高级判定。^[ext-param.md:33-38]
+[[扩展表示上下文 ExtRepContext]] 以 twisting involution `delta` 扩展 `RepContext`。`delta` 由根系置换表示，上下文还保存不动根集与诱导的单生成元 twist，提供 `delta_of`、`is_delta_fixed_root`、`twisted` 等访问器，以及 `to_simple_shift`、`is_very_complex`、`shift_flip` 等高级判定。^[ext-param.md:35-38]
 
-[[扩展参数值类型 ExtParam]] 包含 Weyl 元素 `tw`、余权 `l`、有理权 `gamma_lambda`、权 `tau`、余权 `t` 与翻转位。其派生计算包括 `theta(ctx)`、`theta_id(ctx)`，以及由 `(tw, l mod 2)` 重建 KGB 元素的 `x(ctx)`。^[ext-param.md:40-47]
+[[扩展参数值类型 ExtParam]] 包含 Weyl 元素 `tw`、余权 `l`、有理权 `gamma_lambda`、权 `tau`、余权 `t` 与翻转位。派生计算包括 `theta(ctx)`、`theta_id(ctx)`，以及由 `(tw, l mod 2)` 重建 KGB 元素的 `x(ctx)`。^[ext-param.md:42-47]
 
 ## 返回值与下降驱动
 
-`star` 同时返回类型判定和邻接参数，将 [[DescValue 扩展下降分类]] 与后续参数处理衔接起来。三个[[扩展参数的 finalisation 驱动]]——`extended_restrict_to_k`、`extended_finalise` 和 `scaled_extended_finalise`——在队列循环中重放 folded-orbit 反射与 `star` 下降，并跟踪相对[[扩展参数的默认扩展]]的净翻转。^[ext-param.md:25-26, ext-param.md:56-59]
+`star` 返回的类型由 [[DescValue 扩展下降分类|DescValue]] 表示，邻接参数以 `Vec<ExtParam>` 返回。三个[[扩展参数的 finalisation 驱动]]——`extended_restrict_to_k`、`extended_finalise` 和 `scaled_extended_finalise`——在队列循环中重放 folded-orbit 反射与 `star` 下降，并跟踪相对[[扩展参数的默认扩展]]的净翻转。^[ext-param.md:25-26, ext-param.md:56-59]
 
-`extended_finalise(ctx, sr)` 返回 `Vec<(StandardRepr, bool)>`，输入须满足 standard 且 delta-fixed，前置条件通过 `debug_assert` 检查。`scaled_extended_finalise(ctx, sr, factor_num, factor_den)` 返回 `(StandardRepr, bool)`，缩放 $\nu$ 并保持 $\lambda$ 固定。^[ext-param.md:59-62]
+`extended_finalise(ctx, sr)` 返回 `Vec<(StandardRepr, bool)>`；输入须满足 standard 且 delta-fixed，前置条件通过 `debug_assert` 检查。`scaled_extended_finalise(ctx, sr, factor_num, factor_den)` 返回 `(StandardRepr, bool)`，缩放 $\nu$ 并保持 $\lambda$ 固定。^[ext-param.md:59-62]
 
 ## 与扩展块符号调校的衔接
 
-参数层提供两个[[扩展块符号调校的 StarOracle 实现|StarOracle 实现]]。`ExtParamOracle` 服务于 `ExtBlock::tune_signs`，通过 `ext_param::def_ext` 重建每个父块元素的默认扩展；`PartialBlockOracle` 以 `PartialBlock` 为父块后端，用于 `ExtBlock::build_partial` 之后的 `tune_signs`。^[ext-param.md:64-68]
+同一参数层提供两个[[扩展块符号调校的 StarOracle 实现|StarOracle 实现]]。`ExtParamOracle` 服务于 `ExtBlock::tune_signs`，通过 `ext_param::def_ext` 重建每个父块元素的默认扩展；`PartialBlockOracle` 以 `PartialBlock` 为父块后端，用于 `ExtBlock::build_partial` 之后的 `tune_signs`。^[ext-param.md:64-68]
 
 ## 算术与错误约定
 

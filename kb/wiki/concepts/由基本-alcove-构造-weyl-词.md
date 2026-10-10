@@ -1,11 +1,11 @@
 ---
 title: 由基本 Alcove 构造 Weyl 词
-summary: from_fundamental_alcove 在每个墙分量留出一个单位标签墙，将其余墙移到单根系，再逆序处理步骤并通过最终单值索引构造 Weyl 词。
+summary: 每个墙分量留出一个单位标签墙，将其余墙移到单根系，再逆序处理步骤并通过最终单值索引构造 Weyl 词。
 sources:
   - atlas-core-root-numbering-alcove.md
 kind: concept
 createdAt: "2026-10-09T14:32:46.555Z"
-updatedAt: "2026-10-09T22:18:21.264Z"
+updatedAt: "2026-10-10T00:21:19.738Z"
 tags:
   - alcove
   - Weyl群
@@ -18,7 +18,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -38,19 +38,19 @@ provenanceState: extracted
 
 # 由基本 Alcove 构造 Weyl 词
 
-`from_fundamental_alcove` 根据给定墙集构造 Weyl 词，使其对应的 alcove 具有该墙集。其核心过程是在每个墙分量中留出一个单位标签墙，将其余墙移到单根系，再逆序处理步骤并通过最终单值索引得到词。源材料将该实现对应到上游 `alcoves.cpp:186–236`。^[atlas-core-root-numbering-alcove.md:42-44]
+`from_fundamental_alcove` 根据给定墙集构造 Weyl 词，使其对应的 alcove 具有该墙集。核心过程是在每个墙分量中留出一个单位标签墙，将其余墙移到单根系，再逆序处理步骤并通过最终单值索引得到词。源材料将该实现对应到上游 `alcoves.cpp:186–236`。^[atlas-core-root-numbering-alcove.md:42-44]
 
 ## 墙分量与标签
 
 `root_components` 按根之间的非正交关系划分连通分量，每个分量内部按 RootNbr 升序排列。原版在新根触及分量时追加该根，最终分量之间按最大 RootNbr 排序，而非最小 RootNbr；这一顺序在 FPP 乘积向量及其 Weyl 见证中可观察。编号背景见 [[RootNumbering 根编号与 RootNbr 顺序]]。^[atlas-core-root-numbering-alcove.md:33-36]
 
-`labels_for_component` 计算一个墙分量内余根之间唯一的本原整数关系，并取正，作为墙的标签。环境余根坐标与上游单余根坐标携带相同的线性关系，因此实现可由环境余根表求核，并使用 `gcd`、`lcm` 辅助计算。详见 [[墙分量的本原 Coroot 关系]]。^[atlas-core-root-numbering-alcove.md:37-39]
+`labels_for_component` 计算一个墙分量内余根之间唯一的本原整数关系，并取正，作为墙的标签。环境余根坐标与上游单余根坐标携带相同的线性关系，因此实现可由环境余根表求核，并使用 `gcd`、`lcm` 辅助计算。详见 [[Alcove 墙标签与标签排序]]。^[atlas-core-root-numbering-alcove.md:37-39]
 
-## 构造过程
+## 构造过程与顺序
 
 构造首先在每个墙分量中留出一面标签为 1 的墙，其余墙经 `to_positive_system` 移到单根系。源材料将这一辅助过程对应到上游 `rootdata.cpp:1329–1347`。随后将步骤逆序，通过最终单值索引得到 Weyl 词；逆序处理是该构造明确规定的顺序。^[atlas-core-root-numbering-alcove.md:42-44]
 
-同一 alcove 机器还提供 `sorted_by_label`，将全部墙按分量标签降序排列，标签相同时按 RootNbr 序排列。这一排序约定见 [[Alcove 墙标签与标签排序]]。^[atlas-core-root-numbering-alcove.md:40-41]
+同一 alcove 机器中的 `sorted_by_label` 将全部墙按分量标签降序排列，标签相同时按 RootNbr 序排列。这是墙的标签排序约定，与按最大 RootNbr 确定的分量顺序分别描述不同层次的排序。^[atlas-core-root-numbering-alcove.md:33-41]
 
 ## [[基本-alcove-的墙数|基本 Alcove 的墙数]]
 

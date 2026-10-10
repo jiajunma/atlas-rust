@@ -5,10 +5,10 @@ sources:
   - ext-param.md
 kind: concept
 createdAt: "2026-10-09T14:46:56.920Z"
-updatedAt: "2026-10-09T22:28:43.224Z"
+updatedAt: "2026-10-10T00:31:46.832Z"
 tags:
   - 表示论
-  - 值类型
+  - 扩展参数
 aliases:
   - 扩展参数值类型-extparam
 confidence: 1
@@ -17,7 +17,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -28,7 +28,7 @@ sources:
 kind: concept
 tags:
   - 表示论
-  - 参数表示
+  - 值类型
 aliases:
   - 扩展参数值类型-extparam
 provenanceState: extracted
@@ -36,7 +36,7 @@ provenanceState: extracted
 
 # 扩展参数值类型 ExtParam
 
-`ExtParam` 是扩展块参数层的值类型，移植自上游 `ext_block.h:293-364` 与 `ext_block.cpp:2283-2420`。它保存扩展参数，提供默认扩展构造、KGB 元素重建与限制操作，也是 `star` 运算返回的邻接参数类型。^[ext-param.md:19-24, ext-param.md:42-58]
+`ExtParam` 是扩展块参数层的值类型，对应上游 `ext_block.h:293-364` 与 `ext_block.cpp:2283-2420`。它保存扩展参数，提供默认扩展构造、KGB 元素重建与限制操作，也是 `star` 运算返回的邻接参数类型。^[ext-param.md:19-24, ext-param.md:42-58]
 
 ## 数据与派生操作
 
@@ -44,7 +44,7 @@ provenanceState: extracted
 
 派生操作包括 `theta(ctx)`、`theta_id(ctx)`、`x(ctx)`、`restrict_mod` 与 `restrict`。其中，`x(ctx)` 由 `(tw, l mod 2)` 重建 KGB 元素。^[ext-param.md:45-47]
 
-相关的[[扩展表示上下文 ExtRepContext]] 由 twisting involution `delta` 扩展 `RepContext`；`delta` 以根系置换表示，并附有不动根集与诱导的单生成元 twist。^[ext-param.md:35-38]
+相关的 [[扩展表示上下文 ExtRepContext]] 由 twisting involution `delta` 扩展 `RepContext`；`delta` 以根系置换表示，并附有不动根集与诱导的单生成元 twist。^[ext-param.md:35-38]
 
 ## 默认扩展
 

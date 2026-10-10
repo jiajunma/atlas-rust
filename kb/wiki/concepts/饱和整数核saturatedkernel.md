@@ -1,14 +1,14 @@
 ---
 title: 饱和整数核（saturated_kernel）
-summary: 预算检查后进行跟踪幺模右因子 V 的行列混合约化，以零对角元对应的 V 列构造完整整数核。
+summary: 预算检查后以行列混合约化跟踪幺模右因子 V，取零对角元对应的 V 列构造完整整数核，不采用有理行约化后通分的方法。
 sources:
   - integer-lattice.md
 kind: concept
 createdAt: "2026-10-09T14:51:31.058Z"
-updatedAt: "2026-10-09T22:32:19.540Z"
+updatedAt: "2026-10-10T00:35:35.246Z"
 tags:
   - 整数格
-  - 饱和核
+  - 线性代数
 aliases:
   - 饱和整数核saturatedkernel
 confidence: 1
@@ -17,17 +17,15 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: 饱和整数核（saturated_kernel）
-summary: 在计算预算检查后，通过保持幺模右因子 V 的行列混合约化，以 V 中对应零对角元的列构成完整整数核的基。
+summary: 通过预算检查后，进行跟踪幺模右因子 V 的行列混合约化，以零对角元对应的 V 列构成完整整数核的基。
 sources:
   - integer-lattice.md
 kind: concept
-createdAt: "2026-10-09T14:51:31.058Z"
-updatedAt: "2026-10-10"
 tags:
   - 整数格
   - 饱和核
@@ -39,7 +37,7 @@ provenanceState: extracted
 
 # 饱和整数核（saturated_kernel）
 
-`saturated_kernel(matrix, budget)` 计算饱和整数核的基，属于 `integer_lattice.rs` 中基于 Malachite 大整数 `Integer` 的精确格线性代数基础设施。函数先检查计算预算，再通过保持幺模右因子的行列混合约化求出完整整数核。^[integer-lattice.md:19-20, integer-lattice.md:39-41]
+`saturated_kernel(matrix, budget)` 计算饱和整数核的基，属于 `integer_lattice.rs` 中基于 Malachite 大整数 `Integer` 的精确格线性代数基础设施。函数先通过预算检查，再进行保持幺模右因子 \(V\) 的行列混合约化。^[integer-lattice.md:19-20, integer-lattice.md:39-41]
 
 ## 约化方法
 
@@ -49,7 +47,7 @@ provenanceState: extracted
 
 底层 `IntegerMatrix` 是 Malachite 整数上的行主序精确矩阵，`rows`、`columns` 和 `entries` 均公开。其 `from_i32_entries` 构造器先通过 `checked_shape` 校验形状，再分配存储并逐元素转换；形状不符时返回 `InvalidIntegerMatrixShape`。^[integer-lattice.md:31-35]
 
-`IntegerLatticeBudget` 约束单次计算的每个矩阵维数（`max_rank`）、存活工作条目总量（`max_entries`）、初等操作次数（`max_steps`）和中间系数位长（`max_coefficient_bits`）。这些约束是计算预算，而非数学秩限制；`saturated_kernel` 在开始约化前先通过预算检查。^[integer-lattice.md:24-27, integer-lattice.md:39-41]
+`IntegerLatticeBudget` 约束单次计算的每个矩阵维数（`max_rank`）、存活工作条目总量（`max_entries`）、初等操作次数（`max_steps`）和中间系数位长（`max_coefficient_bits`）。这些约束是**计算预算，而非数学秩限制**；`saturated_kernel` 在开始约化前先检查预算。^[integer-lattice.md:24-27, integer-lattice.md:39-41]
 
 ## 相关格运算
 
@@ -59,9 +57,9 @@ provenanceState: extracted
 
 ## 证据范围
 
-来源属于结构性源码阅读，记录的 `integer_lattice.rs` 字节来自 dirty 工作区，阅读快照为 `snapshots/2026-10-03-integer-lattice.json`。关于 `saturated_kernel` 幺模右因子的描述已经维护者对照源码核实。^[integer-lattice.md:9-15, integer-lattice.md:81-85]
+来源属于结构性源码阅读，所读 `integer_lattice.rs` 字节来自 dirty 工作区，记录于 `snapshots/2026-10-03-integer-lattice.json`。关于 `saturated_kernel` 幺模右因子的描述已经维护者对照源码核实。^[integer-lattice.md:9-15, integer-lattice.md:81-85]
 
-来源包未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。该基础设施的正确性属于独立的 [[HPC 验收证据链]]，包括 fundamental-lattice 与 torus gate 等；本来源包未重述或扩展这些证据。^[integer-lattice.md:10-12, integer-lattice.md:80-80]
+来源包未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。该基础设施的正确性属于独立的 [[HPC 验收证据链]]，包括 fundamental-lattice 与 torus gate 等；本来源包不重述或扩展这些证据。^[integer-lattice.md:10-12, integer-lattice.md:80-80]
 
 ## Sources
 

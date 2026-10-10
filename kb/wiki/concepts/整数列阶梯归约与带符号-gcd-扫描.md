@@ -1,14 +1,14 @@
 ---
 title: 整数列阶梯归约与带符号 gcd 扫描
-summary: 归约自底向上扫描，记录负主元取正的符号并用 div_euclid 消元，零列擦除时将核列逐列轮转至右端。
+summary: 归约自底向上扫描，记录负主元取正的列操作符号，以 div_euclid 消元，并将擦除的核列逐列轮转至右端。
 sources:
   - real-projection.md
 kind: concept
 createdAt: "2026-10-09T15:06:30.859Z"
-updatedAt: "2026-10-09T22:44:01.303Z"
+updatedAt: "2026-10-10T00:47:25.869Z"
 tags:
   - 整数矩阵
-  - 消元算法
+  - 算法
 aliases:
   - 整数列阶梯归约与带符号-gcd-扫描
   - 整G扫
@@ -18,7 +18,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -38,13 +38,13 @@ provenanceState: extracted
 
 # 整数列阶梯归约与带符号 gcd 扫描
 
-整数列阶梯归约用于构造对合 $\theta$ 的 $(1-\theta)X^*$ 图像基对。`lift_mat` 是大小为 $n\times r$ 的像的列阶梯基，`m_real` 是大小为 $r\times n$ 的坐标矩阵，二者满足 $\mathrm{lift\_mat}\,\mathrm{m\_real}=1-\theta$。相关定义见 [[对合的 (1−θ)X* 图像基对]]。^[real-projection.md:21-25]
+整数列阶梯归约用于构造对合 $\theta$ 的 $(1-\theta)X^*$ 图像基对：`lift_mat` 是大小为 $n\times r$ 的像的列阶梯基，`m_real` 是大小为 $r\times n$ 的坐标矩阵，满足 $\mathrm{lift\_mat}\,\mathrm{m\_real}=1-\theta$。相关定义见 [[对合的 (1−θ)X* 图像基对]]。^[real-projection.md:21-25]
 
 ## 归约流程与基选择
 
-`build(theta)` 将 `column_echelon` 应用于 $1-\theta$，增量跟踪列操作矩阵及其逆。算法自底向上扫描各行，每行执行 `gcd_sweep(row, limit)` 后，主元落在第 `limit-1` 列。擦除零列时，核列逐列向右端轮转，已经停放的列不再移动；上游随后取列操作矩阵之逆的前 $r$ 行作为 `M_real`。^[real-projection.md:36-39]
+图像基并非由 $\theta$ 唯一决定。选出的 `lambda-rho` 代表元与 `y_lift` 的符号依赖精确的图像基，因此播种端逐操作复现上游 `matreduc::column_echelon` 及其 gcd 扫描，保留具体的基选择与符号约定。^[real-projection.md:29-34]
 
-图像基并非由 $\theta$ 唯一决定，而选出的 `lambda-rho` 代表元与 `y_lift` 的符号依赖精确的图像基。因此，播种端逐操作复现上游 `matreduc::column_echelon` 及其 gcd 扫描，以保留具体的基选择。^[real-projection.md:29-34]
+`build(theta)` 将 `column_echelon` 应用于 $1-\theta$，增量跟踪列操作矩阵及其逆。算法**自底向上**扫描各行，每行执行 `gcd_sweep(row, limit)` 后，主元落在第 `limit-1` 列。擦除零列时，核列逐列向右端轮转，已经停放的列不再移动；上游随后取列操作矩阵之逆的前 $r$ 行作为 `M_real`。^[real-projection.md:36-39]
 
 ## 带符号 gcd 扫描
 
@@ -58,11 +58,11 @@ provenanceState: extracted
 
 ## 播种与轨道传送
 
-列阶梯归约在 Cartan 轨道的 canonical involution 处用于播种，随后沿 cross-action BFS 传送基对。对单反射 $s$，传送采用 $L'=sL$、$M'=Ms$，保持分解不变式 $(sL)(Ms)=s(1-\theta)s=1-\theta'$。传送所得基与对 $1-\theta'$ 重新归约所得的基可能存在列符号或列次序差异，因此上游将基保存在记录中携带。参见 [[图像基的典范播种与轨道传送纪律]]、[[单反射下的图像基传送]]。^[real-projection.md:29-34, real-projection.md:53-58]
+列阶梯归约在 Cartan 轨道的 canonical involution 处用于播种，随后沿 cross-action BFS 传送基对。对单反射 $s$，传送采用 $L'=sL$、$M'=Ms$，保持分解不变式 $(sL)(Ms)=s(1-\theta)s=1-\theta'$。传送所得基与对 $1-\theta'$ 重新归约所得的基可能存在列符号或列次序差异，因此上游将基保存在记录中携带，而非重新计算。参见 [[图像基的典范播种与轨道传送纪律]]、[[单反射下的图像基传送]]。^[real-projection.md:29-34, real-projection.md:53-58]
 
 ## 测试锚点与实现边界
 
-带符号 gcd 扫描具有针对 original3840186 的逐字锚点：输入矩阵 $\begin{pmatrix}8&-12\\4&-6\end{pmatrix}$，预期 pivot 为 $2$，image 为 $\begin{pmatrix}0&4\\0&2\end{pmatrix}$，columns 为 $\begin{pmatrix}-3&2\\-2&1\end{pmatrix}$。这一锚点保留了归约结果的具体矩阵形式。^[real-projection.md:73-75]
+带符号 gcd 扫描具有针对 original3840186 的逐字锚点：输入矩阵 $\begin{pmatrix}8&-12\\4&-6\end{pmatrix}$，预期 pivot 为 $2$，image 为 $\begin{pmatrix}0&4\\0&2\end{pmatrix}$，columns 为 $\begin{pmatrix}-3&2\\-2&1\end{pmatrix}$。该锚点固定了归约结果的具体矩阵形式。^[real-projection.md:73-75]
 
 其他锚点覆盖斜环面对合 $\theta=\begin{pmatrix}-7&12\\-4&7\end{pmatrix}$ 与斜乘积的像基字面量，包括 `lift_mat` 为 $\begin{pmatrix}4\\2\end{pmatrix}$、`m_real` 为 $\begin{pmatrix}2&-3\end{pmatrix}$；边界测试覆盖恒等对合的零秩像，以及 $-I$ 的满秩像，后者满足 `lift_mat = 2I`。来源记录 `transported` 没有测试。^[real-projection.md:75-77]
 

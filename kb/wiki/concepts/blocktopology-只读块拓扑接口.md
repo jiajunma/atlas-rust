@@ -1,15 +1,15 @@
 ---
 title: BlockTopology 只读块拓扑接口
-summary: 密封 trait 为 KL 提供最小只读块接口，支持 &T 与 Arc<T> 包装，并依赖秩容量、长度排序和链接合法性等构造不变量。
+summary: 密封 trait 为 KL 提供最小只读块接口，支持 &T 与 Arc<T>，并依赖秩容量、长度排序和链接合法性等构造不变量。
 sources:
   - block-access-modifier.md
 kind: concept
 createdAt: "2026-10-09T14:40:10.750Z"
-updatedAt: "2026-10-09T22:24:02.220Z"
+updatedAt: "2026-10-10T00:26:54.850Z"
 tags:
-  - Rust设计
+  - rust
+  - KL
   - 块拓扑
-  - KL算法
 aliases:
   - blocktopology-只读块拓扑接口
 confidence: 1
@@ -18,12 +18,12 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: BlockTopology 只读块拓扑接口
-summary: 密封 trait 提供 KL 所需的最小只读块接口，区分无效查询与未定义的 Cayley 链，并依赖递归前校验的结构不变量。
+summary: 密封 trait 为 KL 提供最小只读块接口，区分无效查询与未定义的 Cayley 链，并依赖递归前校验的结构不变量。
 sources:
   - block-access-modifier.md
 kind: concept
@@ -42,7 +42,7 @@ provenanceState: extracted
 
 ## 密封边界与结构不变量
 
-接口通过 `pub(crate) mod sealed` 与 `BlockTopology: sealed::Sealed` 实施密封：允许 crate 内的不变量测试实现该 trait，禁止下游 crate 自行实现。原因是 KL 算法依赖方法签名之外的结构不变量：`rank ≤ 32`、元素按非降长度排序、格子存在，以及链接目标索引小于 `size`。KL 构造在递归前校验这些条件，相关主题见 [[KlSupport 的拓扑构造门控]]。^[block-access-modifier.md:17-25]
+接口通过 `pub(crate) mod sealed` 与 `BlockTopology: sealed::Sealed` 实施密封：允许 crate 内的不变量测试实现该 trait，禁止下游 crate 自行实现。KL 算法依赖方法签名之外的结构不变量，包括 `rank ≤ 32`、元素按非降长度排序、格子存在，以及链接目标索引小于 `size`。KL 构造在递归前校验这些条件，相关主题见 [[KlSupport 的拓扑构造门控]]。^[block-access-modifier.md:17-25]
 
 `&T` 与 `Arc<T>` 的 blanket impl 均带有 `?Sized` 约束，因此 `&dyn BlockTopology` 与 `Arc<dyn BlockTopology>` 也满足接口约束。^[block-access-modifier.md:24-25]
 

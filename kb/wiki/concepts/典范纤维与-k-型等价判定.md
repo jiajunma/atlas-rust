@@ -1,14 +1,14 @@
 ---
 title: 典范纤维与 K 型等价判定
-summary: equivalent 先检查 Cartan 类，再比较运输至典范纤维后的值；to_canonical_fiber 要求运输词的每个生成元对应复单根。
+summary: equivalent 先检查 Cartan 类，再比较运输到典范纤维后的值；to_canonical_fiber 要求运输词的每个生成元对应复单根。
 sources:
   - ktype.md
 kind: concept
 createdAt: "2026-10-09T14:56:35.142Z"
-updatedAt: "2026-10-09T22:36:10.658Z"
+updatedAt: "2026-10-10T00:40:06.162Z"
 tags:
   - K型
-  - 典范纤维
+  - Cartan
   - 等价判定
 aliases:
   - 典范纤维与-k-型等价判定
@@ -19,7 +19,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---

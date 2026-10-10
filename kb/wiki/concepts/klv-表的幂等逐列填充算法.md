@@ -1,14 +1,15 @@
 ---
 title: KLV 表的幂等逐列填充算法
-summary: fill 跳过已完成列，先准备 primitive 索引，再依据直接递归条件选择专用路径或包含 nice and real 与 endgame 的一般路径。
+summary: fill 跳过已完成列，准备 primitive 索引后按直接递归条件分派，否则进入包含 nice and real 与 endgame 的一般路径。
 sources:
   - kl-polynomial-table.md
 kind: concept
 createdAt: "2026-10-09T14:55:25.082Z"
-updatedAt: "2026-10-09T22:35:24.482Z"
+updatedAt: "2026-10-10T00:38:33.992Z"
 tags:
-  - KLV表
+  - KLV
   - 递归算法
+  - 逐列计算
 aliases:
   - klv-表的幂等逐列填充算法
 confidence: 1
@@ -17,7 +18,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -46,9 +47,11 @@ KLV 表通过 `fill(limit)` 按列计算块中的多项式 $P_{x,y}$。填充范
 
 每个待填充列由 `fill_kl_column` 处理：先为该列的下降集准备 primitive 索引，再根据是否存在直接递归选择计算路径。索引的查询规则见[[KLV 表的 primitive 投影与访问语义]]。^[kl-polynomial-table.md:89-93, kl-polynomial-table.md:101-110]
 
-`first_direct_recursion` 寻找第一个使 $y$ 具有 complex descent 或 real type-I descent 的生成元 $s$。若找到，算法先调用 `recursion_column`，再调用 `complete_primitives`。“第一个满足条件”的生成元选择顺序是该分派规则的一部分。^[kl-polynomial-table.md:106-108]
+`first_direct_recursion` 寻找第一个使 $y$ 具有 complex descent 或 real type-I descent 的生成元 $s$。若找到，算法先调用 `recursion_column`，再调用 `complete_primitives`。来源明确采用“第一个满足条件”的生成元，但未展开具体遍历顺序。^[kl-polynomial-table.md:106-108]
 
-若找不到这样的生成元，则调用 `new_recursion_column`，按 $x$ 区分 `recursion.pdf` 中的 “nice and real” 与 “endgame” 两种情形；μ-修正由此进入一般路径。相关运算见[[KLV 递归与 μ-修正的多项式运算]]。^[kl-polynomial-table.md:109-110]
+若找不到这样的生成元，则调用 `new_recursion_column`，按 $x$ 区分 `recursion.pdf` 中的 “nice and real” 与 “endgame” 两种情形；μ-修正由此进入一般路径。^[kl-polynomial-table.md:109-110]
+
+多项式引擎提供相应的移位运算：`add_shifted(other, d)` 计算 $P+q^d\,other$，用于 complex descent 递归项；`sub_shifted(other, d, mu)` 计算 $P-\mu q^d\,other$，用于 μ-修正。这些运算说明了递归项的表达方式，但不构成完整递归公式。^[kl-polynomial-table.md:35-38, kl-polynomial-table.md:112-114]
 
 ## 查询与填充状态的区别
 

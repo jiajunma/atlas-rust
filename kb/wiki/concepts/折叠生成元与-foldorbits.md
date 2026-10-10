@@ -1,14 +1,14 @@
 ---
 title: 折叠生成元与 fold_orbits
-summary: fold_orbits 根据 Cartan 矩阵和 δ 诱导的简单生成元置换构造 ExtGen，按 s0 递增输出，并拒绝非对合 twist。
+summary: fold_orbits 根据 Cartan 矩阵与 δ 诱导的简单生成元置换构造 ExtGen，按 s0 递增输出，并拒绝非对合 twist。
 sources:
   - extended-block.md
 kind: concept
 createdAt: "2026-10-09T14:47:43.718Z"
-updatedAt: "2026-10-09T22:29:23.454Z"
+updatedAt: "2026-10-10T00:32:23.347Z"
 tags:
+  - 扩展块
   - 生成元折叠
-  - 根系
 aliases:
   - 折叠生成元与-foldorbits
 confidence: 1
@@ -17,12 +17,12 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: 折叠生成元与 fold_orbits
-summary: fold_orbits 根据 Cartan 矩阵与 δ 诱导的简单根对合置换构造折叠生成元，按 s0 递增输出；部分公共块使用子系统数据，当前仅支持恒等生成元姿态。
+summary: fold_orbits 根据 Cartan 矩阵与 δ 诱导的简单根置换构造折叠生成元，按 s0 递增输出；部分公共块使用子系统数据，当前仅支持恒等生成元姿态。
 sources:
   - extended-block.md
 kind: concept
@@ -51,9 +51,7 @@ aliases:
 
 ## cofold 与生成元姿态
 
-部分块路径在 `complete_construction` 之后执行生成元姿态的 cofold：diagram、轨道和链接表通过 `induced(orbits, bm.simple_pi)` 置换，各轨道成员编号经 `bm.simple_pi` 重写。^[extended-block.md:58-60]
-
-当前移植仅支持恒等生成元姿态。恒等姿态对应恒等置换，因此 cofold 在既有路径上不产生变化；非恒等的 `bm.simple_pi` 会显式失败。^[extended-block.md:60-61]
+部分块路径在 `complete_construction` 之后执行生成元姿态的 cofold：diagram、轨道和链接表通过 `induced(orbits, bm.simple_pi)` 置换，各轨道成员编号经 `bm.simple_pi` 重写。恒等姿态对应恒等置换，因此在既有路径上不产生变化。当前移植仅支持恒等生成元姿态；非恒等的 `bm.simple_pi` 会显式失败。^[extended-block.md:58-61]
 
 ## 查询接口与下降分类
 

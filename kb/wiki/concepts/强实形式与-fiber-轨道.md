@@ -1,15 +1,14 @@
 ---
 title: 强实形式与 fiber 轨道
-summary: StrongRealFormRep 由平方类及其中的 W_im 轨道确定；轨道编号依赖消元选解，但 ker(toAdjoint) 平移与作用交换使轨道大小不依赖该选择。
+summary: StrongRealFormRep 以平方类和其中的 W_im 轨道表示强实代表；轨道编号依赖消元选解，而轨道大小因 ker(toAdjoint) 平移与作用交换而不依赖该选择。
 sources:
   - strong-real.md
 kind: concept
 createdAt: "2026-10-09T15:12:26.826Z"
-updatedAt: "2026-10-09T22:49:15.196Z"
+updatedAt: "2026-10-10T00:52:07.480Z"
 tags:
   - 强实形式
   - 群作用
-  - 纤维轨道
 aliases:
   - 强实形式与-fiber-轨道
   - 强F轨
@@ -19,7 +18,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -30,6 +29,7 @@ sources:
 kind: concept
 tags:
   - 强实形式
+  - 群作用
   - 纤维轨道
 aliases:
   - 强实形式与-fiber-轨道
@@ -49,11 +49,11 @@ provenanceState: extracted
 
 ## 与弱实形式的对应
 
-每个 Cartan 类的强实层由 [[Cartan 类的强实层 StrongRealData|StrongRealData]] 保存，包含平方类集合、逐平方类的 fiber 轨道大小及强代表元。`square_class_count()` 查询平方类数，`square_classes()` 按升序提供平方类，`fiber_orbit_count(square)` 查询指定平方类的轨道数。`square_class_representative(square)` 选取该类中编号最小的局部弱实类；上游 `makeRealFormPartition` 选取遍历时遇到的第一个 form。^[strong-real.md:39-43]
+每个 Cartan 类的强实层由 [[Cartan 类的强实层 StrongRealData|StrongRealData]] 保存，包含平方类集合、逐平方类的 fiber 轨道大小及强代表元。`square_class_count` 查询平方类数，`square_classes` 按升序提供平方类，`fiber_orbit_count(square)` 查询指定平方类的轨道数。`square_class_representative(square)` 选取该类中编号最小的局部弱实类；上游 `makeRealFormPartition` 选取遍历时遇到的第一个 form。^[strong-real.md:39-43]
 
 `central_square_class(local)` 和 `strong_real_form(local)` 提供局部弱实形式对应的平方类与强代表元，`fiber_size(local)` 查询 fiber 大小。`orbit_elements(square, orbit)` 提供指定轨道的元素，`weak_real_of_orbit` 给出轨道所属的弱实形式，对应上游 `Fiber::toWeakReal`。^[strong-real.md:43-47]
 
-`wrf_preimage_mask(local)` 给出满足 $\mathrm{toAdjoint}(y)=\mathrm{wrf\_rep}-\mathrm{class\_base}$ 的 fiber 元素 $y$，将局部弱实形式代表元与相应平方类的基点联系起来。^[strong-real.md:44-45]
+`wrf_preimage_mask(local)` 给出满足 $\mathrm{toAdjoint}(y)=\mathrm{wrf\_rep}-\mathrm{class\_base}$ 的 fiber 元素 $y$。^[strong-real.md:44-45]
 
 ## 分类构造与大小汇总
 

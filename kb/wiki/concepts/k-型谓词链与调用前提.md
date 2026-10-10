@@ -1,14 +1,14 @@
 ---
 title: K 型谓词链与调用前提
-summary: 标准性、支配性、非零性、半终结性、正规性和终结性通过根配对与 KGB 状态判定，部分调用前提不在谓词内部检查。
+summary: 标准性、支配性、非零性、半终结性、正规性和终结性由根配对及 KGB 状态判定，部分前提依赖调用方而不在谓词内检查。
 sources:
   - ktype.md
 kind: concept
 createdAt: "2026-10-09T14:56:26.038Z"
-updatedAt: "2026-10-09T22:36:13.710Z"
+updatedAt: "2026-10-10T00:39:46.825Z"
 tags:
   - K型
-  - 根系
+  - 谓词
   - 调用契约
 aliases:
   - k-型谓词链与调用前提
@@ -18,7 +18,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -29,7 +29,7 @@ sources:
 kind: concept
 tags:
   - K型
-  - 谓词
+  - 根系
   - 调用契约
 aliases:
   - k-型谓词链与调用前提
@@ -37,30 +37,19 @@ aliases:
 
 # K 型谓词链与调用前提
 
-K 型是[[StandardRepr 标准表示参数]]去掉 ν 后的 K-限制，表示为 `KType { x: KgbId, lam_rho: Weight, height: u32 }`。`lam_rho` 存储其 `(1−θ_x)X*` 陪集中由 `lambda_unique` 选出的规范代表，`height` 在构造时预计算。六个谓词检查不同性质，其中部分调用前提不在谓词内部验证。^[ktype.md:11-14, ktype.md:24-30]
+K 型是[[StandardRepr 标准表示参数]]去掉 ν 后的 K-限制，表示为 `KType { x: KgbId, lam_rho: Weight, height: u32 }`。`lam_rho` 存储其 \((1-\theta_x)X^*\) 陪集中由 `lambda_unique` 选出的规范代表，`height` 在构造时预计算。六个谓词检查不同性质，其中部分调用前提不在谓词内部验证。^[ktype.md:11-14, ktype.md:24-30]
 
 ## 构造与共同求值核
 
-crate 外只能通过 `sr_k(rc, x, λ−ρ)` 构造 K 型。该入口执行 `lambda_unique` 规范化，并预存 `(1+θ)λ` 的 height，其中 `(1+θ)λ = λ_ρ + θ·λ_ρ + (1+θ)ρ`。crate 内的原始构造器 `new` 不校验不变量，可以装入任意 height，构造纪律依赖调用方。参见[[KType 表示参数与规范化构造]]。^[ktype.md:18-21]
+crate 外只能通过 `sr_k(rc, x, λ−ρ)` 构造 K 型。该入口执行 `lambda_unique` 规范化，并预存 \((1+\theta)\lambda\) 的 height，其中 \((1+\theta)\lambda=\lambda_\rho+\theta\lambda_\rho+(1+\theta)\rho\)。crate 内的原始构造器 `new` 不校验不变量，可以装入任意 height，构造纪律依赖调用方。参见[[KType 表示参数与规范化构造]]。^[ktype.md:18-21]
 
-私有核 `theta_plus_1_eval(α)` 的求值公式为：
-
-\[
-\operatorname{eval}(\alpha)
-=
-\langle\lambda_\rho,\alpha^\vee\rangle
-+\operatorname{colevel}(\alpha)
-+\langle\lambda_\rho,(\theta\alpha)^\vee\rangle
-+\operatorname{colevel}(\theta\alpha).
-\]
-
-谓词集对这一求值只使用符号或零测试。^[ktype.md:22-23]
+私有求值核 `theta_plus_1_eval(α)` 计算 \(\langle\lambda_\rho,\alpha^\vee\rangle+\operatorname{colevel}(\alpha)+\langle\lambda_\rho,(\theta\alpha)^\vee\rangle+\operatorname{colevel}(\theta\alpha)\)。谓词集对这一求值只使用符号或零测试。^[ktype.md:22-23]
 
 ## 六个谓词及其前提
 
 `is_standard` 要求单虚余根上的求值非负；`is_dominant` 要求所有单根的 `theta_plus_1_eval` 非负。两者的检查范围不同。^[ktype.md:24-25]
 
-`is_nonzero` 检查不存在奇异紧单虚根。它**假设 `is_standard` 成立，但不自行检查**，调用方需要保证标准性。^[ktype.md:25-26]
+`is_nonzero` 检查不存在奇异紧单虚根。它**假设 `is_standard` 成立，但不自行检查**，标准性由调用方保证。^[ktype.md:25-26]
 
 `is_semifinal` 检查权重 \(2\lambda_\rho+2\rho-2\rho_R\) 在实单根上的配对是否同余于 \(0\pmod 4\)。^[ktype.md:26-27]
 
@@ -80,7 +69,7 @@ split A1 的冻结契约锚点包含 `x=2`、参数 `[0]` 的 K 型，六个谓�
 
 现有测试未覆盖 `kgp_set` 整体、全部终止预算错误、`equivalent` 的异 Cartan 分支、`to_canonical_fiber` 的错误分支，以及各溢出和分配分支。参见[[K 型实现的测试锚点与证据边界]]。^[ktype.md:72-74]
 
-本页依据结构性源码阅读，不声称数学验收。源包经过维护者对照源码逐条核对改写；该次知识维护未执行 Atlas、Cargo、测试或 benchmark。^[ktype.md:9-14, ktype.md:83-87]
+本页依据结构性源码阅读，不声称数学验收。源包经过维护者对照源码逐条核对改写；该次知识维护未执行 Atlas、Cargo、测试或 benchmark，上述测试描述不代表本次执行结果。^[ktype.md:9-14, ktype.md:83-87]
 
 ## Sources
 

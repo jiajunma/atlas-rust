@@ -1,11 +1,11 @@
 ---
 title: SessionFrame 会话帧与文件包含语义
-summary: SessionFrame 通过完成集与活动栈实现 include-once、强制重读、循环静默跳过、64 层深度限制及包含内 quit 的全会话传播。
+summary: 会话帧通过完成集和活动栈实现 include-once、强制重读、循环静默跳过及 64 层深度限制，包含内 quit 终止整个会话。
 sources:
   - atlas-core-session-frame.md
 kind: concept
 createdAt: "2026-10-09T14:34:07.962Z"
-updatedAt: "2026-10-09T22:19:11.501Z"
+updatedAt: "2026-10-10T00:22:01.629Z"
 tags:
   - 会话管理
   - 文件包含
@@ -17,12 +17,12 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: SessionFrame 会话帧与文件包含语义
-summary: SessionFrame 管理文件搜索、include-once 簿记和包含栈，支持强制重读、循环静默跳过、64 层深度限制及包含内 quit 的全会话传播，并区分包含中止与 clean 状态。
+summary: SessionFrame 通过完成集与活动栈管理文件包含，支持 include-once、强制重读、循环静默跳过、64 层深度限制，以及包含中止和 quit 的传播。
 sources:
   - atlas-core-session-frame.md
 kind: concept
@@ -37,25 +37,25 @@ provenanceState: extracted
 
 # SessionFrame 会话帧与文件包含语义
 
-`SessionFrame` 是文件包含、单命令输出重定向和顶层输出的管理层，移植上游 `buffer.w` / `main.w` 输入机器的相关行为。它支持 `<file` 的 include-once 簿记、`<<file` 强制重读、包含开始与完成提示、出错后的 abandon 级联，以及影响会话退出状态的 `clean` 标志。^[atlas-core-session-frame.md:9-16]
+`SessionFrame` 管理文件包含、单命令输出重定向与顶层输出，移植上游 `buffer.w` / `main.w` 输入机器的相关行为。它支持 `<file` 的 include-once 簿记、`<<file` 强制重读、包含开始与完成提示、出错后的 abandon 级联，以及影响会话退出状态的 `clean` 标志。^[atlas-core-session-frame.md:9-16]
 
 ## 状态与读取接口
 
-会话帧通过 `completed` 和 `active` 分别记录已完成的包含与当前包含栈。`completed` 是用于 include-once 的 `BTreeSet`；`active` 用于循环守卫、深度记录和回溯命名。其他状态包括 `provider`、`sink`、`search_path`、`TypedContext`、`clean`、`quitting`、`next_source_id`，以及将 `SourceId` 映射到来源、预处理文本和 `line_map` 的注册表。^[atlas-core-session-frame.md:29-33]
+`completed` 是记录已完成包含的 `BTreeSet`，用于 include-once；`active` 是当前包含栈，用于循环守卫、深度检查和回溯命名。会话帧还持有 provider、sink、搜索路径、`TypedContext`、`clean`、`quitting`、`next_source_id`，以及将 `SourceId` 映射到来源、预处理文本和 `line_map` 的注册表。^[atlas-core-session-frame.md:29-33]
 
-`FileProvider::read(path) -> Option<String>` 以 `None` 表示打开失败。CLI 的文件系统实现采用有损 UTF-8 解码，避免将游离字节变成打开失败；测试使用内存映射实现。^[atlas-core-session-frame.md:20-22]
+`FileProvider::read(path) -> Option<String>` 以 `None` 表示打开失败。CLI 的文件系统实现采用有损 UTF-8 解码，避免将游离字节误当作打开失败；测试使用内存映射实现。^[atlas-core-session-frame.md:20-22]
 
-## 文件搜索与包含判定
+## 文件搜索与包含顺序
 
-搜索路径的非空前缀以 `/` 结尾，代表当前工作目录的空前缀最后尝试。`resolve` 按搜索路径顺序查找，每条路径下先试原名；名称不带 `.at` 时，再试追加 `.at` 的名称。详见 [[包含文件的搜索路径解析]]。^[atlas-core-session-frame.md:29-30, atlas-core-session-frame.md:41-42]
+搜索路径的非空前缀以 `/` 结尾，代表当前工作目录的空前缀最后尝试。`resolve` 按搜索路径顺序查找，每条路径下先试原名；名称不带 `.at` 时，再试追加 `.at` 的名称。参见 [[包含文件的搜索路径解析]]。^[atlas-core-session-frame.md:29-30, atlas-core-session-frame.md:41-42]
 
-普通包含首先检查输入的文件名是否已在 `completed` 中；若已完成，则静默跳过，不打开文件，也不打印提示。否则调用 `resolve`：解析失败产生 `failed to open input file …` 的 Io 诊断并返回 Abort；解析成功后，再检查解析所得路径是否已经完成。`<<file` 则提供强制重读入口。^[atlas-core-session-frame.md:12-13, atlas-core-session-frame.md:36-40]
+普通包含首先检查输入名称是否已在 `completed` 中；若已完成，则静默跳过，不打开文件，也不打印提示。否则调用 `resolve`：路径解析失败产生 `failed to open input file …` 的 Io 诊断并返回 Abort；成功后，再检查解析所得路径是否已经完成。`<<file` 提供强制重读入口。^[atlas-core-session-frame.md:12-13, atlas-core-session-frame.md:36-40]
 
-通过完成状态检查后，若文件已在 `active` 栈中，则静默跳过并视为成功。随后检查 `MAX_INCLUDE_DEPTH = 64` 的深度限制；超限产生 Io 诊断并返回 Abort。循环守卫处理真实递归，深度上限约束病态 provider。^[atlas-core-session-frame.md:34-40]
+通过完成状态检查后，若文件已在 `active` 栈中，则静默跳过并视为成功。随后检查 `MAX_INCLUDE_DEPTH = 64`：超深产生 Io 诊断并返回 Abort。循环守卫处理真实递归，深度上限约束病态 provider。^[atlas-core-session-frame.md:34-40]
 
 实际进入文件时，会话帧打印 `Starting to read from file …`，压入包含栈，并递归调用 `run_stream`。返回 Finished 时，才将文件记入 `completed` 并打印 `Completely read file …`。^[atlas-core-session-frame.md:13-14, atlas-core-session-frame.md:39-40]
 
-## 包含中止、clean 与退出
+## 包含中止与会话退出
 
 包含中止与会话是否保持 `clean` 是不同状态。语法、类型和求值错误会将 `clean` 置为 `false`；打开失败与 abandon 级联本身不弄脏会话。测试 `missing_file_aborts_the_include_stack_but_not_the_session` 明确断言，缺失文件导致包含栈中止后，`is_clean()` 仍为真。参见 [[会话 clean 标志与诊断分流]]。^[atlas-core-session-frame.md:43-46]
 
@@ -75,7 +75,7 @@ abandon 使用 `lexer.offset()-1` 回退到正在读取的行，通过 `line_map
 
 非 void 的 `SessionEvent::Value` 打印为 `Value: <display>`；void（空元组）不打印。`ReportLine` 和 `ReportBytes` 按当前包含深度缩进，每层两空格；`ReportBytes` 经 `SessionEvent::output` 保留字节。参见 [[SessionEvent 与字节保留输出]]。^[atlas-core-session-frame.md:52-58]
 
-[[单命令输出重定向的执行纪律]] 要求 `>file EXPR` 和 `>>file EXPR` 的命令体先按表达式解析，解析成功后、求值之前才打开 sink。语法错误不会创建文件，求值失败仍会留下文件，其中可能已有部分输出。^[atlas-core-session-frame.md:23-25, atlas-core-session-frame.md:59-62]
+`>file EXPR` 和 `>>file EXPR` 的命令体先按表达式解析，解析成功后、求值之前才打开 sink。语法错误不会创建文件，求值失败仍会留下文件，其中可能已有部分输出。重定向体不能按任意顶层命令解析，例如 `> "x" set qfc = 10` 会在 `=` 处报语法错误。参见 [[单命令输出重定向的执行纪律]]。^[atlas-core-session-frame.md:23-25, atlas-core-session-frame.md:59-62]
 
 重定向打开失败只输出一行裸 stderr：`Failed to open {name}`，会话保持 clean。命令的 `Output` / `OutputBytes` 事件写入 sink，其余事件照常上行；`sink.close()` 无条件执行。^[atlas-core-session-frame.md:63-65]
 

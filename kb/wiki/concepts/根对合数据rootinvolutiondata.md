@@ -1,15 +1,15 @@
 ---
 title: 根对合数据（RootInvolutionData）
-summary: 在格对合之上验证根置换及逐根余根运输，排除固定根却错误移动余根中心环面坐标的作用。
+summary: 在格对合上验证根置换及逐根余根运输，排除固定根却错误移动余根中心环面坐标的作用。
 sources:
   - involution-types.md
 kind: concept
 createdAt: "2026-10-09T14:53:23.183Z"
-updatedAt: "2026-10-09T22:33:37.862Z"
+updatedAt: "2026-10-10T00:36:54.163Z"
 tags:
-  - 根数据
   - 对合
-  - 构造校验
+  - 根数据
+  - rust
 aliases:
   - 根对合数据rootinvolutiondata
 confidence: 1
@@ -18,7 +18,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -29,8 +29,8 @@ sources:
 kind: concept
 tags:
   - 根数据
-  - 构造不变量
-  - Rust设计
+  - 对合
+  - 构造校验
 aliases:
   - 根对合数据rootinvolutiondata
 provenanceState: extracted
@@ -50,12 +50,12 @@ provenanceState: extracted
 
 构造入口为 `RootInvolutionData::new(&RootSystem, LatticeInvolution) -> Result<Self, _>`。字段全部私有，实例必须经过构造验证。^[involution-types.md:34-39, involution-types.md:142-143]
 
-构造先检查 datum 一致性，再检查秩，分别可能返回 `DatumMismatch` 与 `RankMismatch`。随后执行 `validate_simple_root_images`，最后进入逐根主循环；单根级错误优先于主循环中的泛型错误。各阶段的错误如下表所示。^[involution-types.md:86-91]
+构造先检查 datum 一致性，再检查秩，分别可能返回 `DatumMismatch` 与 `RankMismatch`。随后执行 `validate_simple_root_images`，最后进入逐根主循环；单根级错误优先于主循环中的泛型错误。具体错误对应关系如下。^[involution-types.md:86-91]
 
 | 验证阶段 | 失败情形 | 错误 |
 | --- | --- | --- |
 | 单根验证 | 单根的像不是根 | `SimpleRootImageNotRoot { simple_root }` |
-| 单根验证 | 单余根的运输与像根余根不符 | `SimpleCorootImageMismatch { simple_root, image_root }` |
+| 单根验证 | 单余根运输与像根余根不符 | `SimpleCorootImageMismatch { simple_root, image_root }` |
 | 逐根主循环 | 根的像不是根 | `InvalidRootAutomorphism` |
 | 逐根主循环 | 余根运输不符 | `InvalidRootDatumAutomorphism` |
 
@@ -71,7 +71,9 @@ provenanceState: extracted
 
 ## 与扭曲对合的关系
 
-[[扭曲对合（TwistedInvolution）]] 构造 \(w\theta\) 时，先在两个格上以 \(w\) 左乘 \(\theta\) 合成矩阵，再通过 `LatticeInvolution::new` 重新验证对合与配对保持，最后通过 `RootInvolutionData::new` 验证根置换和余根运输。Cayley/cross 分解与规范化分别由 `CayleyCrossDecomposition` 和 `InnerClass::canonicalize` 负责，不属于这一验证层。^[involution-types.md:104-112]
+`TwistedInvolution` 构造 \(w\theta\) 时，先在两个格上以 \(w\) 左乘 \(\theta\) 合成矩阵，再通过 `LatticeInvolution::new` 重新验证对合与配对保持，最后通过 `RootInvolutionData::new` 验证根置换和余根运输。相关主题见 [[扭对合与 Weyl 平移]]。^[involution-types.md:108-112]
+
+这一构造层只建立 \((w\theta)^2=1\) 的根论条件。Cayley/cross 分解由 `CayleyCrossDecomposition` 负责，规范化由 `InnerClass::canonicalize` 负责，不属于本层。^[involution-types.md:104-106]
 
 ## 测试锚点与证据边界
 
@@ -79,7 +81,9 @@ A2 上的负反对角对合得到 2 个实根、4 个复根、0 个虚根，实�
 
 配对保持但不置换根的测试使用矩阵 \(W=\begin{pmatrix}-1&0\\1&1\end{pmatrix}\)、\(C=\begin{pmatrix}-1&1\\0&1\end{pmatrix}\)。它们能通过 `LatticeInvolution::new`，却在根对合构造中返回 `SimpleRootImageNotRoot { simple_root: 0 }`；余根运输错误也分别以正、负单根案例锚定 `SimpleCorootImageMismatch`。^[involution-types.md:126-129]
 
-本页依据结构性源码阅读，不构成数学正确性验收。来源中的上游引用转录自代码文档注释，未核对上游字节；`image()`、`kind()` 的越界 `None` 行为尚无测试覆盖。私有辅助函数的潜在 panic 路径仅属阅读推断，其裸下标索引依赖调用点的前置方阵及秩检查。该次知识维护未执行 Atlas、Cargo、测试或 benchmark。^[involution-types.md:10-15, involution-types.md:138-143, involution-types.md:155-156]
+`image()`、`kind()` 的越界 `None` 行为尚无测试覆盖。私有辅助函数的潜在 panic 路径仅属阅读推断，其裸下标索引依赖调用点的前置方阵及秩检查。^[involution-types.md:138-143]
+
+本页依据结构性源码阅读，不构成数学正确性验收。来源中的上游引用转录自代码文档注释，未核对上游字节；该次知识维护未执行 Atlas、Cargo、测试或 benchmark。^[involution-types.md:9-15, involution-types.md:149-156]
 
 ## Sources
 

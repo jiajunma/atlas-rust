@@ -1,15 +1,15 @@
 ---
 title: Twisted involution 表与 Cartan 轨道存储
-summary: KGB stage b 按调用方添加 Cartan 类的顺序连续存储轨道，轨道内采用外部生成元顺序的 BFS，InvolutionId 跨轨道连续编号。
+summary: KGB stage b 按调用方添加 Cartan 类的顺序连续存储轨道，轨道内部按外部生成元顺序执行 BFS，InvolutionId 跨轨道连续编号。
 sources:
   - involution-table.md
 kind: concept
 createdAt: "2026-10-09T14:52:18.743Z"
-updatedAt: "2026-10-09T22:33:02.934Z"
+updatedAt: "2026-10-10T00:36:15.858Z"
 tags:
   - KGB
-  - 扭曲对合
-  - 数据结构
+  - 对合
+  - 存储布局
 aliases:
   - twisted-involution-表与-cartan-轨道存储
   - TI表C轨
@@ -19,7 +19,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -44,7 +44,7 @@ Twisted involution 表位于 KGB 构建流水线的 stage b，按 Cartan 类连�
 
 ## 编号与存储布局
 
-轨道编号由调用方添加 Cartan 类的顺序决定，文档纪律要求按 `CartanId` 升序添加。每条轨道内部按外序广度优先搜索（BFS）排列，`InvolutionId` 跨 Cartan 类全局连续递增。`orbit_slice(cartan)` 返回对应的连续轨道切片及其起始编号。^[involution-table.md:33-35]
+轨道的排列由调用方添加 Cartan 类的顺序决定，文档纪律要求按 `CartanId` 升序添加。每条轨道内部按外部生成元顺序进行广度优先搜索（BFS），`InvolutionId` 跨 Cartan 类全局连续递增。`orbit_slice(cartan)` 返回对应的连续轨道切片及其起始编号。^[involution-table.md:33-35]
 
 ## 初始化与轨道添加
 
@@ -52,7 +52,7 @@ Twisted involution 表位于 KGB 构建流水线的 stage b，按 Cartan 类连�
 
 `add_cartan(classification, cartan)` 将一个 Cartan 类的轨道生成为连续切片，重复添加则返回已有切片。种子与期望大小均来自 classification，生成轨道必须恰好达到期望大小，否则报告 `InvolutionTableInvariantViolation { invariant: "orbit size" }`。种子通过 `WeylElement::from_action` 从矩阵级代表元转换一次，再按 $(W_{\mathrm{length}}+\#\mathrm{Cayley})/2$ 计算对合长度；分子为奇数时报 `"length parity"`。`CayleyCrossDecomposition` 按类使用，不为每条记录重建。^[involution-table.md:44-49]
 
-当已有记录数达到 `max_involutions` 时，继续插入会被拒绝，返回 `InvolutionTableResourceLimit { resource: "involutions" }`。相关主题见 [[Cartan 轨道的幂等添加与容量约束]]。^[involution-table.md:62-63]
+记录总数允许达到 `max_involutions`，但达到上限后继续插入会被拒绝，返回 `InvolutionTableResourceLimit { resource: "involutions" }`。参见 [[Cartan 轨道的幂等添加与容量约束]]。^[involution-table.md:62-63]
 
 ## BFS、去重与 cross 链接
 
@@ -64,7 +64,7 @@ BFS 邻居为 $s_g\cdot w\cdot s_{\mathrm{twist}(g)}$，词级通过两次 `mult
 
 ## 记录字段与图像基传送
 
-除图像基对外，所有记录字段均在入表时由 $\theta$ 典范导出。图像基对在轨道典范 involution 处通过 $1-\theta$ 的阶梯归约播种，随后沿 cross-action BFS 传送。该基具有路径依赖性，`y_lift` 的符号也依赖于它；参见 [[实投影像基的播种与路径依赖传送]]。^[involution-table.md:26-29]
+除图像基对外，所有记录字段均在入表时由 $\theta$ 典范导出。图像基对在轨道典范 involution 处通过 $1-\theta$ 的阶梯归约播种，随后沿 cross-action BFS 传送。该基具有路径依赖性，`y_lift` 的符号也依赖于它；相关主题见 [[图像基的典范播种与轨道传送纪律]]。^[involution-table.md:26-29]
 
 投影使用普通生成元 $s$ 的矩阵传送，而非 $\mathrm{twist}(s)$，因为 $\delta$ 已并入 $\theta$。传送后的投影先通过 `check_against` 与新记录重新推导的 $\theta$ 核对，再被采用；种子处使用 `RealProjection::build`。`push_record` 按 $(2\rho+\theta\cdot2\rho)/2$ 计算 $(1+\theta)\rho$，若出现奇坐标则报告 `"theta rho parity"`。^[involution-table.md:55-59]
 

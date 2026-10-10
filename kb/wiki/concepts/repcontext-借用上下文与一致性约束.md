@@ -1,13 +1,13 @@
 ---
 title: RepContext 借用上下文与一致性约束
-summary: RepContext 借用 inner class、involution 表和 KGB 图，共享根数据派生常量，并通过 inner class 与 Arc 指针一致性检查约束资源来源。
+summary: RepContext 借用 inner class、对合表与 KGB 图，共享根数据派生常量，并检查 inner class 与表图 Arc 身份的一致性。
 sources:
   - rep-context.md
 kind: concept
 createdAt: "2026-10-09T15:08:21.834Z"
-updatedAt: "2026-10-09T22:45:39.923Z"
+updatedAt: "2026-10-10T00:48:51.348Z"
 tags:
-  - Rust设计
+  - 表示参数
   - 上下文管理
 aliases:
   - repcontext-借用上下文与一致性约束
@@ -17,12 +17,12 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: RepContext 借用上下文与一致性约束
-summary: RepContext 借用 inner class、involution 表与 KGB 图，共享根数据派生常量，并通过 inner class 与 Arc 指针一致性检查约束资源来源。
+summary: RepContext 借用 inner class、involution 表与 KGB 图，共享根数据派生常量，并通过来源与 Arc 指针一致性检查约束上下文构造。
 sources:
   - rep-context.md
 kind: concept
@@ -36,13 +36,13 @@ provenanceState: extracted
 
 # RepContext 借用上下文与一致性约束
 
-`RepContext<'a>` 是表示参数层的借用视图，借用 inner class、involution 表与对应实形式的 KGB 图，三者须与图构建时使用的底层结构一致。它同时持有 `Arc<RepContextDerived>`，共享根数据派生常量 $2\rho$、$2\rho^\vee$ 和 $\rho$。^[rep-context.md:40-47]
+`RepContext<'a>` 是表示参数层的借用视图，借用 inner class、involution 表与对应实形式的 KGB 图；三者须与图构建时使用的底层结构一致。它同时持有 `Arc<RepContextDerived>`，共享根数据派生常量 $2\rho$、$2\rho^\vee$ 和 $\rho$。^[rep-context.md:40-47]
 
 ## 构造时的一致性检查
 
-`RepContext::new` 设置两道一致性检查：若 involution 表所属的 inner class 不同，返回 `DatumMismatch`；若表与图的 `Arc` 指针不同，同样返回 `DatumMismatch`。这些约束包含共享对象的指针身份。^[rep-context.md:42-47]
+`RepContext::new` 设置两道检查：若 involution 表所属的 inner class 不同，返回 `DatumMismatch`；若表与图的 `Arc` 指针不同，同样返回 `DatumMismatch`。这些检查将共享对象的指针身份纳入一致性约束。^[rep-context.md:42-47]
 
-crate 内可见的 `from_derived` 使用 `debug_assert!` 复核三方 `Arc` 指针一致。应区分两种检查机制：`new` 对上述不一致返回错误，`from_derived` 则使用调试断言。^[rep-context.md:44-47]
+crate 内可见的 `from_derived` 使用 `debug_assert!` 复核三方 `Arc` 指针一致。两种构造入口的检查机制应明确区分：`new` 对上述不一致返回错误，`from_derived` 使用调试断言。^[rep-context.md:44-47]
 
 ## 对 involution 图像基的只读依赖
 
@@ -56,7 +56,7 @@ crate 内可见的 `from_derived` 使用 `debug_assert!` 复核三方 `Arc` 指�
 
 上下文还提供与 [[KType 表示参数与规范化构造]] 之间的转换：`sr_of_ktype` 以 $\nu=0$ 将 K-type 扩张为标准参数，`sr_k_of_standard` 则由标准参数得到 `KType`。^[rep-context.md:53-55]
 
-恢复 `lambda_rho(z)` 时，上下文将 `gamma - rho` 与其 $\theta$ 像相加，取整坐标后，与 `y_lift` 的挠提升逐坐标相加并减半。若坐标和为奇数，则返回 `RepInvariantViolation`，错误标识为 `"lambda-rho halving"`。随后可恢复 $\lambda=\rho+\lambda_\rho$，以及 $\nu=(\gamma-\theta\gamma)/2$。^[rep-context.md:56-63]
+恢复 `lambda_rho(z)` 时，上下文将 `gamma - rho` 与其 $\theta$ 像相加，取整坐标后，与 `y_lift` 的挠提升逐坐标相加并减半。若坐标和为奇数，则返回 `RepInvariantViolation`，错误标识为 `"lambda-rho halving"`。随后可恢复 $\lambda=\rho+\lambda_\rho$，以及 $\nu=(\gamma-\theta\gamma)/2$，后者是 $-\theta$-不动投影。^[rep-context.md:56-63]
 
 `lambda_unique`、`real_unique` 和 `gamma_lambda` 用于代表元归一化。其中 `lambda_unique` 使用欧几里得除法 `div_euclid(2)` 取半；若对负奇数采用向零截断，会选出同一陪集中的不同代表元，使公式项无法合并。^[rep-context.md:64-67]
 

@@ -5,11 +5,11 @@ sources:
   - deformation-drivers.md
 kind: concept
 createdAt: "2026-10-09T14:45:09.699Z"
-updatedAt: "2026-10-09T22:27:32.948Z"
+updatedAt: "2026-10-10T00:30:30.469Z"
 tags:
-  - 扭曲形变
-  - 递归算法
-  - 协作式取消
+  - 形变
+  - 递归
+  - 取消语义
 aliases:
   - 递归-twisted-deformation-与取消语义
   - 递TD与
@@ -19,7 +19,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -30,8 +30,8 @@ sources:
 kind: concept
 tags:
   - 扭曲形变
-  - 递归计算
-  - 取消语义
+  - 递归算法
+  - 协作式取消
 ---
 
 # 递归 twisted deformation 与取消语义
@@ -42,13 +42,13 @@ tags:
 
 来源采用数学记号 $D(z)=\sum c\,(L(t)+2D(t))$ 与 $F(z)=L(z)+(1-s)D(z)$。输出中的 [[SplitInteger 分裂整数系数]] 表示 $a+bs$，其中 `Split(c, -c)` 表示 $c(1-s)$。其字段为 `i32`，算术使用 `wrapping_*`，沿用上游环绕语义；溢出防护不属于该类型。^[deformation-drivers.md:16-16, deformation-drivers.md:50-59]
 
-净翻转记录 shrink-wrap 到最后一个可约点的效果；没有 shrink-wrap 时，`flip == false`。冻结移植契约还规定，当 `gamma.denominator() > 2^rank` 时，先应用 `weyl::alcove_center` 收缩，再进入递归 twisted deformation，相关概念见 [[Alcove 分母界守卫]]。^[deformation-drivers.md:44-45, deformation-drivers.md:126-130]
+净翻转记录 shrink-wrap 到最后一个可约点的效果；没有 shrink-wrap 时，`flip == false`。冻结移植契约还规定，当 `gamma.denominator() > 2^rank` 时，先应用 `weyl::alcove_center` 收缩，再进入递归 twisted deformation。^[deformation-drivers.md:44-45, deformation-drivers.md:126-130]
 
 ## 可约点查找与父块生命周期
 
 在 INTEGRAL `gamma` 的可约点参数处，`lookup` 承担上游 `rt.lookup(zi, index, bm)` 与 `block.extended_block(bm, ...)` 的职责。rank-0 integral 子系统对应长度为零的单例 common block `{p}`；它不贡献形变项，也不调用 `lookup`。^[deformation-drivers.md:68-70, deformation-drivers.md:130-132]
 
-可约点查找返回拥有所有权的 `DeformParent`：完整块分支保存 `Box<BlockGraph>` 与 `Weight`，部分块分支保存 `Arc<PartialBlock>` 与 `BlockModifier`。递归驱动通过 `as_kl_sum_parent` 获取借用视图，并必须在 `twisted_deformation_terms` 借用该视图期间保持所选父块存活，详见 [[形变计算的父块抽象]]。^[deformation-drivers.md:85-93]
+可约点查找返回拥有所有权的 `DeformParent`：完整块分支保存 `Box<BlockGraph>` 与 `Weight`，部分块分支保存 `Arc<PartialBlock>` 与 `BlockModifier`。递归驱动通过 `as_kl_sum_parent` 获取借用视图，并必须在 `twisted_deformation_terms` 借用该块视图期间保持所选父块存活，详见 [[形变计算的父块抽象]]。^[deformation-drivers.md:85-93]
 
 完整块视图使用调用方提供的常量 `lambda_rho`。由于完整块不同元素的该值实际可能变化，调用方必须确保相关形变项共享所传值。部分块视图则逐行重构各自的 `lambda_rho`：对于 PROPER integral 子系统，每行使用自己的 stored `gamma_lambda` 与查找所得的 block modifier 重构参数。^[deformation-drivers.md:29-37, deformation-drivers.md:85-89]
 
@@ -58,7 +58,7 @@ tags:
 
 ## 取消语义与响应边界
 
-`twisted_deformation_with_cancel` 的检查点位于每次递归或块级操作之间。取消通过 `Ok(None)` 返回，不发布部分多项式；因此，调用方收到的取消结果不包含可作为完整形变结果使用的部分输出。^[deformation-drivers.md:132-134]
+`twisted_deformation_with_cancel` 的检查点位于每次递归或块级操作之间。取消通过 `Ok(None)` 返回，不发布部分多项式；调用方不会从该取消返回值取得部分多项式结果。^[deformation-drivers.md:132-134]
 
 操作之间的检查约定不能证明单个块级操作可以即时中断，也不能据此确定取消响应时延的上限。
 

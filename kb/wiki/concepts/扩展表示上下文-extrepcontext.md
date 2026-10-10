@@ -1,11 +1,11 @@
 ---
 title: 扩展表示上下文 ExtRepContext
-summary: 以 twisting involution delta 扩展 RepContext，保存根置换、不动根集及生成元 twist，并提供移位与翻转判定。
+summary: 以 twisting involution delta 扩展 RepContext，保存根置换、不动根集与生成元 twist，并提供移位和翻转判定。
 sources:
   - ext-param.md
 kind: concept
 createdAt: "2026-10-09T14:46:46.972Z"
-updatedAt: "2026-10-09T22:28:34.072Z"
+updatedAt: "2026-10-10T00:31:43.028Z"
 tags:
   - 表示论
   - 扩展参数
@@ -17,7 +17,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -43,7 +43,7 @@ provenanceState: extracted
 
 `delta` 以根系置换表示；上下文还附带不动根集，以及由该对合诱导的单生成元 twist。访问器包括 `rc()`、`delta()`、`delta_of`、`is_delta_fixed_root` 和 `twisted`，用于访问基础上下文及扩展结构。^[ext-param.md:35-38]
 
-高级判定接口包括 `to_simple_shift`、`is_very_complex` 和 `shift_flip`。来源分别将其对应到上游 `repr.h:706-708`、`repr.cpp:2804-2813` 和 `repr.cpp:2824-2836`，但未展开判定公式或算法步骤。^[ext-param.md:35-38]
+高级判定接口包括 `to_simple_shift`、`is_very_complex` 和 `shift_flip`。来源分别将其对应到上游 `repr.h:706-708`、`repr.cpp:2804-2813` 和 `repr.cpp:2824-2836`，未展开具体判定公式或算法步骤。^[ext-param.md:35-38]
 
 ## 在扩展参数计算中的作用
 
@@ -59,7 +59,7 @@ provenanceState: extracted
 
 ## 证据边界
 
-来源属于结构性源码阅读，记录的是 dirty 工作区中的源码字节，具体阅读快照为 `snapshots/2026-10-03-ext-param.json`。参数层的正确性归于其自身的 HPC 证据链（如 unitarity gate），本来源不重述或扩展该证据链。^[ext-param.md:9-15]
+来源属于结构性源码阅读，记录的是 dirty 工作区中的源码字节，阅读快照为 `snapshots/2026-10-03-ext-param.json`。参数层的正确性归于其自身的 HPC 证据链（如 unitarity gate），本来源不重述或扩展该证据链。^[ext-param.md:9-15]
 
 所列上游位置均转述自源码注释，未独立重读上游，行号可能随版本演进而漂移。来源未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。^[ext-param.md:70-78]
 

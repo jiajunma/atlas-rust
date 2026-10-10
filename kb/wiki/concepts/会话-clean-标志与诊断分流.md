@@ -1,14 +1,14 @@
 ---
 title: 会话 clean 标志与诊断分流
-summary: 语法、类型、求值及真正的词法错误使会话变脏，而文件打开失败、Io 诊断、词法警告与 abandon 级联本身不改变 clean。
+summary: 语法、类型、求值及真正的词法错误使会话变脏，文件打开失败、Io 诊断、词法警告与 abandon 级联本身不改变 clean。
 sources:
   - atlas-core-session-frame.md
 kind: concept
 createdAt: "2026-10-09T14:34:26.450Z"
-updatedAt: "2026-10-09T22:19:06.513Z"
+updatedAt: "2026-10-10T00:22:08.976Z"
 tags:
-  - 错误处理
   - 会话管理
+  - 错误处理
 aliases:
   - 会话-clean-标志与诊断分流
   - 会C标
@@ -18,7 +18,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -32,7 +32,6 @@ tags:
   - 错误处理
 aliases:
   - 会话-clean-标志与诊断分流
-  - 会C标
 provenanceState: extracted
 ---
 
@@ -42,19 +41,19 @@ provenanceState: extracted
 
 ## 诊断分流规则
 
-命令执行层根据 `Diagnostic` 的种类处理错误：当 `kind != Io` 时，设置 `clean=false`，并使本命令返回 Abort；`Io` 诊断不弄脏会话。诊断是否影响 `clean`，不能仅由是否出现错误报告判断。^[atlas-core-session-frame.md:50-58]
+命令执行层根据 `Diagnostic` 的种类处理错误：当 `kind != Io` 时，设置 `clean=false`，并使本命令返回 `Abort`；`Io` 诊断不弄脏会话。是否出现错误报告，并不足以判断 `clean` 是否改变。^[atlas-core-session-frame.md:50-58]
 
-词法层区分 warning 与真正的词法错误。warning（例如未闭合字符串提示）只报告，不弄脏会话，也不触发 Abort；真正的词法错误会将会话置为 dirty，并在包含深度大于零时触发 [[嵌套包含的 abandon 级联]]。^[atlas-core-session-frame.md:69-70]
+词法层区分 warning 与真正的词法错误。warning（例如未闭合字符串提示）只报告，不弄脏会话，也不触发 `Abort`；真正的词法错误会将会话置为 dirty，并在包含深度大于零时触发 [[嵌套包含的 abandon 级联]]。^[atlas-core-session-frame.md:69-70]
 
 ## 文件包含失败与 abandon
 
-包含文件的 `resolve` 失败时，会产生 `Io` 诊断 `failed to open input file …` 并返回 Abort。由此导致的包含栈中止不弄脏会话；测试 `missing_file_aborts_the_include_stack_but_not_the_session` 明确断言，该场景下 `is_clean()` 仍为真。包含判定的完整流程见 [[SessionFrame 会话帧与文件包含语义]]。^[atlas-core-session-frame.md:36-46]
+包含文件的 `resolve` 失败时，会产生 `Io` 诊断 `failed to open input file …` 并返回 `Abort`。由此导致的包含栈中止不弄脏会话；测试 `missing_file_aborts_the_include_stack_but_not_the_session` 明确断言，该场景下 `is_clean()` 仍为真。包含判定的完整流程见 [[SessionFrame 会话帧与文件包含语义]]。^[atlas-core-session-frame.md:36-46]
 
-abandon 使用 `lexer.offset()-1` 定位正在读取的行，再经 `line_map` 换算物理行号，输出 `Abandoning reading of file '{origin}' at line {physical}`。各外层包含随后补发自己的报告，形成最内层优先的级联顺序。级联本身不改变 `clean`；触发它的错误按各自规则处理。^[atlas-core-session-frame.md:43-46, atlas-core-session-frame.md:66-70]
+`abandon` 使用 `lexer.offset()-1` 定位正在读取的行，再经 `line_map` 换算物理行号，输出 `Abandoning reading of file '{origin}' at line {physical}`。各外层包含随后补发自己的报告，形成最内层优先的级联顺序。级联本身不改变 `clean`；触发它的错误按各自规则处理。^[atlas-core-session-frame.md:43-46, atlas-core-session-frame.md:66-70]
 
 ## 输出重定向的失败路径
 
-[[单命令输出重定向的执行纪律]]要求先将 `>file EXPR` 或 `>>file EXPR` 的命令体按表达式解析，再打开输出 sink。解析失败不创建文件，语法错误则使会话变脏；解析成功后若 sink 打开失败，只向 stderr 输出一行 `Failed to open {name}`，不弄脏会话。^[atlas-core-session-frame.md:43-46, atlas-core-session-frame.md:59-65]
+[[单命令输出重定向的执行纪律]]要求先将 `>file EXPR` 或 `>>file EXPR` 的命令体按表达式解析，再打开输出 sink。解析失败不创建文件，语法错误使会话变脏；解析成功后若 sink 打开失败，只向 stderr 输出一行 `Failed to open {name}`，会话保持 clean。^[atlas-core-session-frame.md:43-46, atlas-core-session-frame.md:59-65]
 
 sink 在求值之前打开，因此求值失败仍会留下文件，其中可能包含部分输出，并按求值错误规则将 `clean` 置为 `false`。重定向把 `Output`／`OutputBytes` 事件写入 sink，其余事件照常向上传递，且 `sink.close()` 无条件执行。^[atlas-core-session-frame.md:23-25, atlas-core-session-frame.md:43-46, atlas-core-session-frame.md:63-65]
 
@@ -62,13 +61,13 @@ sink 在求值之前打开，因此求值失败仍会留下文件，其中可能
 
 预处理先剥除每行尾部空白，再将以反斜杠结尾的行与下一行直接拼接，不插入额外内容；同时生成“重写行→首个物理行”的 `line_map`。`describe` 与 `abandon` 使用该映射，将诊断和放弃读取的位置还原为物理行号。^[atlas-core-session-frame.md:72-76]
 
-带 span 的诊断显示 `{Kind} error at {origin}:{physical}:{column}: {msg}`，随后附源行和 caret；无 span 的诊断只有裸 `{Kind} error:` 头。^[atlas-core-session-frame.md:77-79]
+`describe_bytes` 的带位置输出形如 `{Kind} error at {origin}:{physical}:{column}: {msg}`，随后附源行和 caret；无 span 的诊断只有裸 `{Kind} error:` 头。^[atlas-core-session-frame.md:77-79]
 
 ## 测试与证据边界
 
 来源列出的单元测试锚点包括缺失文件中止、包含级联顺序、重定向打开失败后仍 clean、求值失败关闭 sink，以及物理行报告。这些是单元级行为锚点，端到端文件命令兼容性仍以 HPC 差分语料为准。^[atlas-core-session-frame.md:81-90]
 
-本页依据 `session_frame.rs` 的结构性阅读材料，不构成语言或数学验收。来源中的上游 `buffer.w`、`main.w` 和 `parser.y` 行号属于实现方的移植陈述，端到端可见行为仍须由差分语料确认。^[atlas-core-session-frame.md:9-16, atlas-core-session-frame.md:94-99]
+本页依据 `session_frame.rs` 的结构性阅读材料，不构成语言或数学验收。来源中的上游 `buffer.w`、`main.w` 和 `parser.y` 行号属于实现方的移植陈述，不能替代端到端可见行为的差分证据。^[atlas-core-session-frame.md:9-16, atlas-core-session-frame.md:94-97]
 
 ## Sources
 

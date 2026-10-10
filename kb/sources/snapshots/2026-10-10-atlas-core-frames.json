@@ -1,0 +1,15 @@
+{
+    "schema": "atlas-kb-reading-snapshot-v1",
+    "date": "2026-10-10",
+    "git_base": "1c880415",
+    "working_tree": false,
+    "scope": "Reading of crates/atlas-core/src/frames.rs (all 310 lines) for the atlas-core-frames packet: the Rc-linked evaluation frame chain with shared tails, (depth, offset) local addressing with empty layers getting no frame, the borrow discipline (reads clone under short borrow, writes after full RHS evaluation, no borrow across nested evaluation), with_frame/with_frame_traced/with_context restoration on every non-panicking exit including ? propagation, slot_snapshot after unwinding (current values in the back-trace), take_local as the safe counterpart of upstream pilfering, GlobalCell fresh-cell-per-definition semantics, the printed buffer for mid-evaluation printer output (incl. print-then-throw domain builtins), and the source_names trace table. The five unit tests were read as anchors.",
+    "files": [
+        {
+            "path": "crates/atlas-core/src/frames.rs",
+            "sha256": "8c4f4c5672b9dbb72fbd459d2c8321f07c06f4ccd529087234ab7077e5674150",
+            "bytes": 12004,
+            "note": "clean relative to the recorded git_base; the hash identifies the committed bytes"
+        }
+    ]
+}

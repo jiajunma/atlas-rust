@@ -1,15 +1,14 @@
 ---
 title: 基于 Cartan 矩阵识别的 Weyl 群阶计算
-summary: weyl_order_of_cartan 检查方形后以 BFS 拆分连通分量，用精确 Integer 累乘各分量群阶，环面因子与空系统贡献 1。
+summary: weyl_order_of_cartan 检查方形后以 BFS 拆分连通分量，使用精确 Integer 累乘各分量群阶，环面因子与空系统贡献 1。
 sources:
   - weyl-size-presentation.md
 kind: concept
 createdAt: "2026-10-09T15:18:27.616Z"
-updatedAt: "2026-10-09T22:54:37.039Z"
+updatedAt: "2026-10-10T00:56:52.426Z"
 tags:
   - Weyl群
   - 精确算术
-  - 图算法
 aliases:
   - 基于-cartan-矩阵识别的-weyl-群阶计算
   - 基C矩W群
@@ -19,12 +18,12 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: 基于 Cartan 矩阵识别的 Weyl 群阶计算
-summary: weyl_order_of_cartan 通过连通分量拆分与 Dynkin 分支形状识别计算 Weyl 群阶，使用精确 Integer 算术；其输入检查不构成完整的 Cartan 矩阵合法性验证。
+summary: weyl_order_of_cartan 通过连通分量拆分与 Dynkin 分支形状识别计算 Weyl 群阶，使用精确 Integer 算术；输入检查不构成完整的 Cartan 矩阵合法性验证。
 sources:
   - weyl-size-presentation.md
 kind: concept
@@ -38,19 +37,19 @@ aliases:
 
 # 基于 Cartan 矩阵识别的 Weyl 群阶计算
 
-`weyl_size.rs` 的 crate 内入口 `weyl_order_of_cartan` 通过拆分 Cartan 矩阵的连通分量、识别各分量的 Dynkin 分支形状并相乘分量阶，计算 Weyl 群阶。由于只需要群阶，B/C 的取向不影响结果：两者均使用 \(2^n n!\)。^[weyl-size-presentation.md:17-25]
+`weyl_size.rs` 的 crate 内入口 `weyl_order_of_cartan` 通过拆分 Cartan 矩阵的连通分量、识别各分量的 Dynkin 分支形状，再将分量阶相乘，计算 Weyl 群阶。由于只需要群阶，B/C 的取向不影响结果：两者均使用 \(2^n n!\)。^[weyl-size-presentation.md:17-25]
 
-模块注释将这一计算关联到按需 twisted 共轭划分的轨道大小核对，使用阶商公式 \(|W|/(|W_{\mathrm{im}}|\times|W_{\mathrm{re}}|\times|W_{\mathrm{cx}}|)\)。不过，所覆盖文件未显示 `CartanClassification` 内部是否调用该函数；用途说明不能视为已核实的调用关系。^[weyl-size-presentation.md:17-20, weyl-size-presentation.md:64-68]
+模块注释将这一计算关联到按需 twisted 共轭划分的轨道大小核对，使用阶商公式 \(|W|/(|W_{\mathrm{im}}|\times|W_{\mathrm{re}}|\times|W_{\mathrm{cx}}|)\)。但来源覆盖的两个文件未显示 `CartanClassification` 内部是否调用该函数，因此这一用途说明不能视为已核实的调用关系。^[weyl-size-presentation.md:17-20, weyl-size-presentation.md:64-68]
 
 ## 分量拆分与精确算术
 
-算法先逐行检查矩阵是否为方阵，不满足时返回 `NonSquareCartan`；随后沿非零非对角链接执行 BFS，拆分连通分量，再将各分量的 `component_order` 相乘。零对角行、列作为环面因子，贡献阶 1，既不作为 BFS 种子，也不满足邻居条件。^[weyl-size-presentation.md:23-25]
+算法先逐行检查矩阵是否为方阵，不满足时返回 `NonSquareCartan`；随后沿非零非对角链接执行广度优先搜索（BFS），拆分连通分量，再将各分量的 `component_order` 相乘。零对角行、列作为环面因子，贡献阶 1，既不作为 BFS 种子，也不满足邻居条件。^[weyl-size-presentation.md:23-25]
 
-群阶及分量乘积使用精确 `Integer` 算术，因为 crate 的动态秩范围内，分量乘积可能超出 `u128`。边重数 \(C_{ij}C_{ji}\) 则通过 `checked_mul` 计算，溢出时返回 `ArithmeticOverflow`。^[weyl-size-presentation.md:21-28]
+群阶及分量乘积使用精确 `Integer` 算术，因为 crate 的动态秩范围内，分量乘积可能超出 `u128`。边重数 \(C_{ij}C_{ji}\) 则使用 `checked_mul` 计算，溢出时返回 `ArithmeticOverflow`。^[weyl-size-presentation.md:21-28]
 
 ## Dynkin 分支识别
 
-`component_order` 根据最大边重数 \(m\)、分量秩 \(n\)、节点度数和分支长度分派。下表概括来源记载的规则；其中 `max_multiplicity` 初值为 1，因此不能将它理解为对任意输入直接取边乘积的数学最大值。相关主题见 [[Dynkin 图分支形状与 Weyl 群阶识别]]。^[weyl-size-presentation.md:27-38]
+`component_order` 根据最大边重数 \(m\)、分量秩 \(n\)、节点度数和排序后的分支长度分派。下表概括其识别规则；`max_multiplicity` 初值为 1，因此对于任意输入，它不一定等于所有边乘积的数学最大值。相关主题见 [[Dynkin 图分支形状与 Weyl 群阶识别]]。^[weyl-size-presentation.md:27-38]
 
 | 最大边重数 | 条件与识别结果 | 分量阶 |
 |---|---|---|
@@ -63,7 +62,7 @@ aliases:
 | \(m=1\) | 单分叉，排序分支长度为 \([1,2,3]\)，按 E₇ 处理 | \(2903040\) |
 | \(m=1\) | 单分叉，排序分支长度为 \([1,2,4]\)，按 E₈ 处理 | \(696729600\) |
 
-上述分派中的单分叉情形由 `branch_lengths` 从唯一的度 3 节点向外遍历，取得排序后的分支长度；其他分支长度组合会被拒绝。^[weyl-size-presentation.md:27-34]
+上述单分叉情形由 `branch_lengths` 从唯一的度 3 节点向外遍历，取得分支长度后按排序结果匹配；其他分支长度组合会被拒绝。^[weyl-size-presentation.md:27-34]
 
 ## 输入校验边界
 
@@ -77,7 +76,7 @@ aliases:
 
 所有错误分支、E₇/E₈ 分支以及秩 4 的非 F₄ 分支 B₄/C₄ 均无测试。`factorial` 虽返回 `Result`，内部没有可失败操作，该签名属于预留。相关内容见 [[Dynkin 分类器的测试覆盖与证据边界]]。^[weyl-size-presentation.md:72-74]
 
-来源属于结构性源码阅读，不构成数学或正确性验收；上游引用转录自代码注释，未核对上游字节。维护者对照源码核对并改写了草案，但本次知识维护未执行 Atlas、Cargo、测试或 benchmark。^[weyl-size-presentation.md:9-13, weyl-size-presentation.md:72-74, weyl-size-presentation.md:80-84]
+来源属于结构性源码阅读，不构成数学或正确性验收；阶数字面量与上游行号来自实现及其注释，上游字节未独立核对。维护者对照源码核对并改写了草案，但本次知识维护未执行 Atlas、Cargo、测试或 benchmark，上述测试锚点不代表本次执行结果。^[weyl-size-presentation.md:9-13, weyl-size-presentation.md:72-74, weyl-size-presentation.md:80-84]
 
 ## Sources
 

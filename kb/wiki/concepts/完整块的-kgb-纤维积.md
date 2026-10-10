@@ -5,11 +5,11 @@ sources:
   - block-graph.md
 kind: concept
 createdAt: "2026-10-09T14:41:08.924Z"
-updatedAt: "2026-10-09T22:24:46.319Z"
+updatedAt: "2026-10-10T00:27:42.688Z"
 tags:
   - 块图
   - KGB
-  - 构造算法
+  - 纤维积
 aliases:
   - 完整块的-kgb-纤维积
   - 完K纤
@@ -19,7 +19,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -29,9 +29,9 @@ sources:
   - block-graph.md
 kind: concept
 tags:
-  - 表示论
   - 块图
   - KGB
+  - 构造算法
 aliases:
   - 完整块的-kgb-纤维积
   - 完K纤
@@ -50,7 +50,7 @@ provenanceState: extracted
 
 解释器从两个形式的**完整 KGB 集**构建块，以保持各自的 KGB 坐标编号。显式使用 `common_Cartans` 受限重载会改变编号，因此公共 Cartan 的限制通过配对隐式实现：若某个原侧对合的对偶不在对偶包索引中，该原侧包便不贡献任何坐标对，对应上游 `tauPacket` 返回空区间 `(0,0)` 的行为。^[block-graph.md:26-33]
 
-对偶包通过 `HashMap<WeylElement, usize>` 索引。来源中的源码阅读指出，重复键会静默覆盖，当前没有重复键防护。^[block-graph.md:30-33]
+对偶包通过 `HashMap<WeylElement, usize>` 索引。来源的源码阅读指出，重复键会静默覆盖，没有重复键防护。^[block-graph.md:30-33]
 
 ## 构造与元素编号
 
@@ -70,9 +70,9 @@ provenanceState: extracted
 
 来源记录的秩一测试中，\(\operatorname{block}(\mathrm{SL}(2,\mathbb R),\mathrm{PGL}(2,\mathbb R))\) 有三个元素，坐标依次为 \((0,1),(1,1),(2,0)\)，与冻结 fixture capture `3501519` 对齐。测试还检查了数据变换所得对偶块与原生对偶块经 `element` 换编号后的一致性，以及覆盖全 KGB 范围时 `dual().dual()` 恢复原块及其定位表。^[block-graph.md:117-124]
 
-七个测试全部限于 A1，未覆盖多生成元、空对偶包或空块、`element` 失败分支等情形。相关覆盖范围见 [[完整块图的测试覆盖与证据边界]]。^[block-graph.md:117-126]
+七个测试全部限于 A1，未覆盖多生成元、C±/rn/ic 块级状态、全部 20 个 `BlockInvariantViolation` 字面量分支、空对偶包或空块、`element` 失败分支及 `n_bruhat_comparable`。相关说明见 [[完整块图的测试覆盖与证据边界]]。^[block-graph.md:117-126]
 
-来源属于结构性源码阅读，本包未执行构建、测试或原版运行，不含数学验收、性能或并行结论。块枚举的正确性属于独立的 HPC 证据链，本包不重述或扩展其结论；其中上游行号转述自源码注释，未独立重读上游。^[block-graph.md:9-13, block-graph.md:139-143]
+来源属于结构性源码阅读，未执行构建、测试或原版运行，不含数学验收、性能或并行结论。块枚举的正确性属于独立的 HPC 证据链，本包不重述或扩展其结论；上游行号转述自源码注释，未独立重读上游，可能随版本演进而漂移。^[block-graph.md:9-13, block-graph.md:139-143]
 
 ## Sources
 

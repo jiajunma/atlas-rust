@@ -1,11 +1,11 @@
 ---
 title: 扩展 KLV 多项式表的逐列存储
-summary: ExtKlTable 按 y 保存以 primitive 位置寻址的池索引列，支持带符号多项式查询、递减非零列枚举和指定次数系数访问。
+summary: ExtKlTable 按块元素 y 存储由 primitive 位置寻址的池索引列，提供带符号多项式查询、递减非零列枚举及指定次数系数访问。
 sources:
   - extended-kl.md
 kind: concept
 createdAt: "2026-10-09T14:48:15.069Z"
-updatedAt: "2026-10-09T22:30:04.477Z"
+updatedAt: "2026-10-10T00:33:00.273Z"
 tags:
   - 扩展KLV
   - 列式存储
@@ -19,19 +19,19 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: 扩展 KLV 多项式表的逐列存储
-summary: ExtKlTable 为每个块元素 y 保存按 primitive 位置寻址的多项式池索引列，独立记录符号翻转，并在填充失败时保持列为空或完整的不变式。
+summary: ExtKlTable 按块元素保存以 primitive 位置寻址的多项式池索引列，独立记录符号翻转，并在填充失败时保持列为空或完整的不变式。
 sources:
   - extended-kl.md
 kind: concept
 tags:
   - 扩展KLV
-  - 数据结构
-  - 多项式查询
+  - 列式存储
+  - 查询接口
 aliases:
   - 扩展-klv-多项式表的逐列存储
   - 扩K多
@@ -43,21 +43,21 @@ aliases:
 
 ## 列布局与 primitive 寻址
 
-每列对应一个 `y`，列内按 `x` 相对于 `y` 的下降集进行 primitivisation 后的位置寻址。`DescentTable` 持有 `block: &ExtBlock`，并保存每个元素的 `descents`、`good_ascents`、`prim_index` 和 `prim_flip`；其中 `prim_index[mask][x]` 表示 `x` 对下降集 `mask` 进行 primitivisation 后的位置。相关预计算见 [[DescentTable 的下降集与 good ascent 预计算]]。^[extended-kl.md:39-48, extended-kl.md:72-74]
+每列对应一个 `y`，列内位置由 `x` 相对于 `y` 的下降集进行 primitivisation 后的位置确定。`DescentTable` 持有 `block: &ExtBlock`，保存每个元素的 `descents`、`good_ascents`，以及 `prim_index` 和 `prim_flip`；其中 `prim_index[mask][x]` 表示 `x` 对下降集 `mask` 进行 primitivisation 后的位置。参见 [[DescentTable 的下降集与 good ascent 预计算]]。^[extended-kl.md:39-48, extended-kl.md:72-74]
 
 索引构造针对每个 `mask` 按 `x` 递减遍历，选择 `mask` 内的第一个 good ascent。遇到 like-nonparity 或跨越 partial-block 边界（`some_scent` 为 `None`）时记为 `DEAD_END`；否则沿 cross 链接继承索引，并按 `epsilon` 与已有 flip 位的差异更新符号。最后将索引反转为递增存储；整行没有 primitive 元素时保持 `DEAD_END`。^[extended-kl.md:46-52]
 
 ## 多项式池与符号分离
 
-表复用 `kl_polynomial.rs` 的 `KlHashTable` 类型，池条目为系数属于 `i32` 的 `KlPol`，而 `ExtKlTable::new` 始终使用自有池。池索引不打包符号位；primitivisation 的符号保存在独立的 `prim_flip` bitmap 中，查询时另行读取。详见 [[多项式池与 primitivisation 符号分离]]。^[extended-kl.md:28-35, extended-kl.md:72-74]
+表复用 `kl_polynomial.rs` 中的 `KlHashTable` 类型，池条目为系数属于 `i32` 的 `KlPol`，但每个 `ExtKlTable` 始终拥有自己的池。池索引不打包符号位；primitivisation 符号存于独立的 `prim_flip` bitmap，查询时另行读取。详见 [[多项式池与 primitivisation 符号分离]]。^[extended-kl.md:28-35, extended-kl.md:72-74]
 
-`kl_pol_index(x,y)` 返回 `(KLIndex, bool)`，分别表示池索引与符号翻转标志。`p(x,y)` 返回 twisted KLV 多项式 \(P_{x,y}\)，需要翻转时通过 `scaled(-1)` 应用符号；`raw_ext_KL` 包装层则将索引与标志渲染为 `inx.second ? -inx.first : inx.first`。^[extended-kl.md:33-35, extended-kl.md:76-77]
+`kl_pol_index(x,y)` 返回 `(KLIndex, bool)`，分别表示池索引与符号翻转标志。`p(x,y)` 返回 twisted KLV 多项式 \(P_{x,y}\)，需要翻转时通过 `scaled(-1)` 应用符号；`raw_ext_KL` 包装层则将返回对渲染为 `inx.second ? -inx.first : inx.first`。^[extended-kl.md:33-35, extended-kl.md:76-77]
 
 ## 查询接口
 
 表提供 `rank`、`size`、`descent_set`、`descent_type`、`l` 和 `polys` 等访问器，其中 `descent_type` 返回 `DescValue`。`nonzero_column(y)` 从 `y` 开始递减列出非零条目对应的 `x`；`mu(i,x,y)` 提取 \(q^{(\ell(y/x)-i)/2}\) 的系数，其中 \(i=1,2,3\)。^[extended-kl.md:74-80]
 
-`is_extremal` 判断 `descent_set(x)` 是否包含 `descents(y)`；`is_primitive` 判断 `good_ascent_set(x)` 与 `descents(y)` 的交集是否为空。二者是不同的判定条件，分别对应 extremal 与 primitive 查询。^[extended-kl.md:59-60, extended-kl.md:78-78]
+`is_extremal` 判断 `descent_set(x)` 是否包含 `descents(y)`；`is_primitive` 判断 `good_ascent_set(x)` 与 `descents(y)` 的交集是否为空。二者分别对应 extremal 与 primitive 判定。^[extended-kl.md:59-60, extended-kl.md:78-80]
 
 ## 列填充与失败语义
 
@@ -65,7 +65,7 @@ aliases:
 
 ## 实现与证据边界
 
-当前实现始终拥有自己的多项式池。共享池指针模式与用于 partial-block 迁移的 `swallow` 被推迟到需要它们的 common-block 切片；这些能力不属于当前已移植范围。相关说明见 [[扩展 KLV 的 Rust 移植边界与有意偏离]]。^[extended-kl.md:93-95]
+共享池指针模式与用于 partial-block 迁移的 `swallow` 被推迟到需要它们的 common-block 切片，不属于当前已移植范围。相关说明见 [[扩展 KLV 的 Rust 移植边界与有意偏离]]。^[extended-kl.md:93-95]
 
 本页依据对 `ext_kl.rs` 的结构性阅读，所读字节来自 dirty 工作区快照。材料中的上游行号转述自源码注释，未独立重读上游；材料也未执行构建、测试或原版运行，不提供数学验收、性能或并行结论。扩展 KL 的正确性属于独立的 HPC 证据链，本材料不重述或扩展其结论。^[extended-kl.md:9-15, extended-kl.md:108-114]
 

@@ -740,6 +740,13 @@ Program 诊断、局部名永不接受显式参数、`forward_formals` 把组内
 三个文件带 owner 未提交修改、rank6 目录清单未跟踪，快照已如实标注；
 维护者直接撰写（无 Kimi 调用）。结构性阅读，不声称数学验收。
 
+[求值帧链与共享槽](atlas-core-frames.md)记录 `frames.rs`（310 行，全部）：
+Rc 链接帧链与 shared-tail 捕获、(depth,offset) 寻址与空层无帧、借用纪律
+（读克隆/写后求值/不跨嵌套持有）、with_frame/with_context 在每个非
+panic 出口恢复、`take_local` 对应上游 pilfering、全局 cell 每定义新配。
+对应[阅读快照](snapshots/2026-10-10-atlas-core-frames.json)；维护者直接
+撰写（无 Kimi 调用）。结构性阅读，不声称语言验收。
+
 ## 权威记录的位置
 
 | 记录 | 用途 |

@@ -1,14 +1,14 @@
 ---
 title: 基于 alcove 的整数据定位流程
-summary: int_item 依次执行根格顶点平移、dominant 化、墙检测、逆序处理非整反射、余根加法闭包驻留及单根像置换构造。
+summary: int_item 依次执行根格顶点平移、dominant 化、墙检测、逆序消去非整反射、余根闭包驻留及单根像置换构造。
 sources:
   - locator.md
 kind: concept
 createdAt: "2026-10-09T14:59:38.938Z"
-updatedAt: "2026-10-09T22:38:39.013Z"
+updatedAt: "2026-10-10T00:42:28.407Z"
 tags:
   - alcove
-  - 整根系
+  - 整子系统
   - 算法
 aliases:
   - 基于-alcove-的整数据定位流程
@@ -19,19 +19,19 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: 基于 alcove 的整数据定位流程
-summary: int_item 通过根格顶点平移、优势化、基本 alcove 墙检测、逆序处理非整反射、余根闭包驻留及单根像排序，构造典范整数据与查询姿态定位器。
+summary: int_item 通过根格顶点平移、优势化、墙检测、非整反射逆序处理、余根闭包驻留及单根像排序，构造典范整数据与查询姿态定位器。
 sources:
   - locator.md
 kind: concept
 tags:
-  - Alcove
+  - alcove
   - 整根系
-  - 定位算法
+  - 算法
 aliases:
   - 基于-alcove-的整数据定位流程
 provenanceState: extracted
@@ -39,11 +39,11 @@ provenanceState: extracted
 
 # 基于 alcove 的整数据定位流程
 
-基于 alcove 的整数据定位由 `locator.rs` 中的 `IntegralDatumTable::int_item` 实现。它从查询权 `gamma` 出发，驻留典范整子系统，并构造将典范基本 alcove 整子系统映到查询实际姿态、保持整正性的 Weyl 定位器。来源所述版本属于纯、未接线的移植，`RepTable::lookup` 尚未调用该模块。^[locator.md:16-25, locator.md:48-66]
+`locator.rs` 中的 `IntegralDatumTable::int_item` 从查询权 `gamma` 出发，驻留典范整子系统，并构造将典范基本 alcove 整子系统映到查询实际姿态、保持整正性的 Weyl 定位器。来源所述版本属于纯、未接线的移植，`RepTable::lookup` 尚未调用该模块。^[locator.md:16-25, locator.md:48-66]
 
 ## 数据与排序约定
 
-`IntegralDatumTable` 负责[[典范整数据驻留]]，以追加式序号标识条目；`IntegralDatumItem` 保存作为驻留键的正根表、子系统单根及其余根坐标缓存。`BlockLocator` 保存典范数据编号 `int_sys`、Weyl 元素 `w`、排序后的整单根像 `simp_int`，以及将典范单生成元下标映到 `simp_int` 位置的置换 `simple_pi`。^[locator.md:19-25]
+`IntegralDatumTable` 负责[[典范整数据驻留]]，以追加式序号标识条目；`IntegralDatumItem` 保存作为驻留键的正根表、子系统单根及其余根坐标缓存。`BlockLocator` 保存典范数据编号 `int_sys`、Weyl 元素 `w`、排序后的整单根像 `simp_int`，以及将典范单生成元下标映到 `simp_int` 中位置的置换 `simple_pi`。^[locator.md:19-25]
 
 所有面向 locator 的根列表均按上游正根顺序排列，即先按高度、再按简单坐标反字典序排序。这与 crate 内 `RootId` 的环境字典序不同，使 `simple_pi` 能直接与 oracle 比较。^[locator.md:27-29]
 
@@ -59,19 +59,19 @@ provenanceState: extracted
 
 ### 3. 检测基本 alcove 的墙
 
-`fundamental_alcove_walls` 取所有单根的 `min_coroots_for` 梯子底表之交中的负根，再并入全部单根，即得到逐 Dynkin 分量的最高余根之负所对应的墙及全部单根墙。检测时，正墙上的求值与 `0` 比较，负墙上的求值与 `-denominator` 比较，命中的墙加入 `on_wall`。^[locator.md:55-57, locator.md:68-69]
+`fundamental_alcove_walls` 取所有单根的 `min_coroots_for` 梯子底表之交中的负根，再并入全部单根，得到逐 Dynkin 分量的最高余根之负所对应的墙及全部单根墙。检测时，正墙上的求值与 `0` 比较，负墙上的求值与 `-denominator` 比较，命中的墙加入 `on_wall`。^[locator.md:55-57, locator.md:68-69]
 
-### 4. 逆序恢复查询姿态
+### 4. 逆序处理非整反射
 
 按 `word.iter().rev()` 逆序遍历反射词。当当前求值满足 `rem_euclid(denominator) != 0`，即对应配对非整时，将该字母左乘进 `w`，同时从分子中消去该反射。最终 `w(dominant gamma)` 给出所需姿态。^[locator.md:58-60]
 
 ### 5. 构造余根闭包并驻留
 
-对 `on_wall` 的加法闭包计算使用**余根坐标**：以余根坐标为键建立映射，纳入生成元及其负根，再反复求两两余根坐标和，直至不动点。取闭包正部并按上游正根序排序，得到典范驻留键；命中已有键时复用原条目，驻留具有幂等性。详见[[整子系统的余根加法闭包]]。^[locator.md:61-62, locator.md:70-71]
+对 `on_wall` 求加法闭包时使用**余根坐标**：以余根坐标为键建立映射，纳入生成元及其负根，再反复求两两余根坐标和，直至不动点。取闭包正部并按上游正根序排序，得到典范驻留键；命中已有键时复用原条目，驻留具有幂等性。详见[[整子系统的余根加法闭包]]。^[locator.md:61-62, locator.md:70-71]
 
-余根坐标的选择不能替换为根坐标加法。来源明确指出，整余根在根加法下不必封闭；B2 回归锚点中，根加法错误地只产生 4 个长根，而余根加法得到全部 8 个根。^[locator.md:61-62, locator.md:82-83]
+这一闭包不能直接替换为根坐标加法。来源指出，整余根在根加法下不必封闭；B2 回归锚点中，根加法错误地只产生 4 个长根，而余根加法得到全部 8 个根。^[locator.md:61-62, locator.md:82-83]
 
-`pos_simples` 从已按上游顺序排列的正根中提取子系统单根。对每个根 α 扫描其后的 β，当 `bracket(β, α) > 0` 时考察反射像：像为正则 β 非单根，像为负则 α 非单根，并通过 `continue 'outer` 转入下一轮外层扫描。^[locator.md:71-73]
+`pos_simples` 从已按上游顺序排列的正根中提取子系统单根。对每个根 α 扫描其后的 β，当 `bracket(β, α) > 0` 时考察反射像：像为正则 β 非单根，像为负则 α 非单根，后一种情况通过 `continue 'outer` 转入下一轮外层扫描。^[locator.md:71-73]
 
 ### 6. 构造单根像与生成元置换
 
@@ -81,15 +81,15 @@ provenanceState: extracted
 
 典范数据依赖 `gamma` 所在的 alcove，不能仅由其整根系确定。A2 测试记录了两个切片的 `gamma` 驻留不同 A1 条目的行为，来源明确保留了这一与设计简报草图不同的实现行为。另有测试检查 Weyl 共轭查询共享同一条目，以及 `gamma = 0` 驻留全系统并得到恒等姿态；B2 测试区分长根与短根 A1 条目，并检查重复查询复用。^[locator.md:86-90]
 
-定位器还支持[[定位器的相对姿态变换]]：`make_relative_to` 要求两者具有相同 `int_sys`，然后将 `w` 右乘基姿态之逆，将 `simple_pi` 与基置换的逆右复合，即 `simple_pi[j] = old[inv[j]]`。不同 `int_sys` 会触发不变量错误；逆置换构造以 `usize::MAX` 哨兵检测越界或重复像。^[locator.md:75-78]
+定位器支持[[定位器的相对姿态变换]]：`make_relative_to` 要求两者具有相同 `int_sys`，然后将 `w` 右乘基姿态之逆，将 `simple_pi` 与基置换的逆右复合，即 `simple_pi[j] = old[inv[j]]`。不同 `int_sys` 会触发不变量错误；逆置换构造以 `usize::MAX` 哨兵检测越界或重复像。^[locator.md:75-78]
 
-## 测试与证据边界
+## 测试与实现边界
 
 来源列出的测试覆盖 A2、B2、F4。其中 F4 半积分案例检查 `w.image` 作用于条目全部正根后，所得集合是否等于独立过滤的期望集；此外还有根格顶点的跨模块锚点、相对姿态的置换合成与右乘逆测试，以及错秩 `gamma` 返回 `RankMismatch` 的测试。可约根系、rank-0 边角及多条错误路径尚未覆盖。^[locator.md:80-94, locator.md:105-105]
 
 `IntegralDatumTable` 不持有 `RootSystem`，每次调用都须重传；跨调用更换根系不会产生错误信号，但结果无定义。`factor_dominant` 与 `additive_closure` 没有迭代或规模预算，多处 `zip` 隐含长度一致假设；分母非零且不为 `i64::MIN` 依赖 `RationalWeight` 的构造不变量，像互异的 `debug_assert_eq!` 检查仅在 debug 构建中生效。^[locator.md:99-104]
 
-本页依据结构性源码阅读，不构成 locator 层的数学验收。来源中的上游行号仅转录自代码注释，未核对上游字节；该次知识维护也未执行 Atlas、Cargo、测试或 benchmark。^[locator.md:9-12, locator.md:109-113]
+本页依据结构性源码阅读，不构成 locator 层的数学验收。来源中的上游行号仅转录自代码注释，未核对上游字节；该次知识维护也未执行 Atlas、Cargo、测试或 benchmark。因此，测试锚点描述不代表该次维护取得了新的执行结果。^[locator.md:9-12, locator.md:109-113]
 
 ## Sources
 

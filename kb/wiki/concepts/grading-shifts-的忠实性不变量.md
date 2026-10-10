@@ -1,13 +1,13 @@
 ---
 title: Grading shifts 的忠实性不变量
-summary: 构造期无条件拒绝线性相关或为零的 grading shift 列，确保每个可实现 grading 对应唯一伴随纤维元素。
+summary: 构造期无条件拒绝相关或为零的 grading shift 列，保证每个可实现 grading 对应唯一伴随纤维元素。
 sources:
   - grading.md
 kind: concept
 createdAt: "2026-10-09T14:50:18.916Z"
-updatedAt: "2026-10-09T22:31:16.925Z"
+updatedAt: "2026-10-10T00:34:32.542Z"
 tags:
-  - 紧致分级
+  - grading
   - 不变量
 aliases:
   - grading-shifts-的忠实性不变量
@@ -18,26 +18,25 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: Grading shifts 的忠实性不变量
-summary: 构造期无条件拒绝线性相关的 grading shift 列，保证每个可实现的 grading 对应唯一的伴随纤维元素，但不保证所有 grading 均可实现。
+summary: 构造期无条件拒绝线性相关的 grading shift 列，保证每个可实现的 grading 对应唯一伴随纤维元素，但不保证所有 grading 均可实现。
 sources:
   - grading.md
 kind: concept
 tags:
-  - grading
-  - 线性无关
-  - 构造不变量
+  - 紧致分级
+  - 不变量
 aliases:
   - grading-shifts-的忠实性不变量
 ---
 
 # Grading shifts 的忠实性不变量
 
-Grading shifts 的忠实性不变量要求 `CartanGradingData` 的 shift 列在 F₂ 上线性无关。构造期的 `ensure_faithful_shifts` 无条件拒绝相关列，返回 `GradingShiftsNotFaithful`；该不变量保证每个可实现的 grading 对应唯一的伴随纤维（adjoint fiber）元素。^[grading.md:47-55, grading.md:61-67]
+Grading shifts 的忠实性不变量要求 `CartanGradingData` 的 shift 列在 F₂ 上线性无关。构造期的 `ensure_faithful_shifts` 无条件拒绝相关列，返回 `GradingShiftsNotFaithful`；这一不变量保证每个可实现的 grading 对应唯一的伴随纤维（adjoint fiber）元素。^[grading.md:47-55, grading.md:61-67]
 
 ## Shift 的含义
 
@@ -45,13 +44,13 @@ Grading shifts 的忠实性不变量要求 `CartanGradingData` 的 shift 列在 
 
 `grading_shifts[i]` 记录第 `i` 个伴随基代表与各 simple-imaginary 根的坐标奇性向量之间的 F₂ 配对。坐标奇性通过 `*coordinate % 2 != 0` 提取，包含负奇数。访问器 `grading_shift(adjoint_basis_index)` 以 `adjoint_fiber().dimension()` 为索引上界。^[grading.md:47-51, grading.md:68-69]
 
-在 [[Quasisplit 规范化与 grading 的仿射线性求值|quasisplit 规范化]] 下，零伴随纤维元素的 `base_grading` 为全一，表示所有 simple-imaginary 根均为 noncompact。其他元素的 grading 对其 canonical ambient representative 作仿射线性求值：逐根计算 `!dot`，即将配对值与全一基点作 XOR。^[grading.md:35-38]
+在 [[Quasisplit 规范化与 grading 的仿射线性求值|quasisplit 规范化]] 下，零伴随纤维元素的 `base_grading` 为全一，表示所有 simple-imaginary 根均为 noncompact。其他元素的 grading 通过其 canonical ambient representative 作仿射线性求值：逐根计算 `!dot`，即将配对值与全一基点作 XOR。^[grading.md:35-38]
 
 ## 构造期检查
 
 `ensure_faithful_shifts` 检查 shift 列的线性独立性；若插入某列时 `insert` 返回 `false`，便以 `GradingShiftsNotFaithful` 拒绝构造。重复列和零列均由注入测试直接覆盖。源码注释将此要求对应到上游 `cartanclass.cpp:172` 的断言，Rust 实现则将其改为无条件拒绝。^[grading.md:52-55]
 
-源码注释说明，没有已知公共构造路径能够产生相关 shift 列，因此这是一项防御性检查；来源没有记录正常公共构造触发该错误的实例。^[grading.md:52-55]
+源码注释说明，没有已知公共构造路径能够产生相关 shift 列，因此该检查属于防御性措施；注入测试不代表正常公共构造能够触发这一错误。^[grading.md:52-55]
 
 ## 逆向求解与唯一性
 

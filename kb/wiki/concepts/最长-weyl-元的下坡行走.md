@@ -1,13 +1,13 @@
 ---
 title: 最长 Weyl 元的下坡行走
-summary: 从源码计算的 2ρ 出发，反复选择首个正余根配对的生成元并左合成反射，目标为 −2ρ，超预算或无法推进均报不变量错误。
+summary: 从源码计算的 2ρ 出发，反复选择首个正余根配对的生成元并左合成反射，达到 −2ρ；超预算或无法推进均报不变量错误。
 sources:
   - root-datum-dual.md
 kind: concept
 createdAt: "2026-10-09T15:10:08.133Z"
-updatedAt: "2026-10-09T22:47:25.768Z"
+updatedAt: "2026-10-10T00:50:16.371Z"
 tags:
-  - Weyl群
+  - weyl
   - 算法
   - 资源预算
 aliases:
@@ -19,7 +19,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -30,7 +30,7 @@ sources:
 kind: concept
 tags:
   - Weyl群
-  - 最长元
+  - 算法
   - 资源预算
 aliases:
   - 最长-weyl-元的下坡行走
@@ -40,19 +40,19 @@ provenanceState: extracted
 
 # 最长 Weyl 元的下坡行走
 
-`longest_action` 是 `dual.rs` 中定位最长 Weyl 元的自由函数，通过逐步反射返回将 $2\rho$ 送到 $-2\rho$ 的 `WeylAction`，无需枚举整个 Weyl 群。代码文档将其对应到上游 `rd.to_dominant(-rd.twoRho())`；来源仅转录这一对应关系，未核对上游源码字节。^[root-datum-dual.md:10-14, root-datum-dual.md:103-125]
+`longest_action` 是 `dual.rs` 中定位最长 Weyl 元的公开自由函数。它通过逐步反射构造将 $2\rho$ 送到 $-2\rho$ 的 `WeylAction`，无需枚举整个 Weyl 群。代码文档将其对应到上游 `rd.to_dominant(-rd.twoRho())`；来源仅转录这一对应关系，未核对上游源码字节。^[root-datum-dual.md:10-14, root-datum-dual.md:103-125]
 
 ## 初始权与反射选择
 
-辅助函数 `two_rho` 使用长度为 `lattice_rank` 的 `i64` 累加器，只累加满足 `is_positive(id) == Some(true)` 的根，其他条目（包括 `None`）均跳过。累加采用 `checked_add`，最后逐分量通过 `i32::try_from` 转换。将所得权认作 $2\rho$ 是代码意图，来源未独立验收这一恒等关系。^[root-datum-dual.md:116-119, root-datum-dual.md:213-215]
+辅助函数 `two_rho` 使用长度为 `lattice_rank` 的 `i64` 累加器，只累加满足 `is_positive(id) == Some(true)` 的根，包括 `None` 在内的其他条目均跳过。累加采用 `checked_add`，最后逐分量通过 `i32::try_from` 转换。将所得权认作 $2\rho$ 是代码意图，来源未独立验收这一恒等关系。^[root-datum-dual.md:116-119, root-datum-dual.md:213-215]
 
-行走以该权为起点，以其负值为目标。每轮按生成元编号升序扫描，选择第一个与当前权具有正余根配对的简单反射，将其左合成到累计作用，并作用于当前权。生成元选择顺序和左合成方向均属于实现约定。^[root-datum-dual.md:116-123]
+行走以该权为起点，以其负值为目标。每轮按生成元编号升序扫描，选择第一个与当前权具有正余根配对的简单反射，将其左合成到累计作用，并作用于当前权。生成元选择顺序与左合成方向是该实现的重要约定。^[root-datum-dual.md:116-123]
 
 实现读取 `semisimple_rank` 与 `simple_coroots`，通过 `WeylGroup`／`WeylAction` 完成反射，不调用 `BasedRootDatum::reflect_weight`。相关作用表示见 [[WeylAction 的对偶全格作用]]。^[root-datum-dual.md:186-188]
 
 ## 步数预算与失败行为
 
-每轮执行 `steps += 1`，随后检查 `steps > weyl_budget || !advanced`。预算允许恰好 `weyl_budget` 步；超过预算或本轮无法推进时，均返回 `StructureError::LayoutInvariantViolation { invariant: "longest Weyl element" }`。这两种失败使用同一个不变量错误。^[root-datum-dual.md:119-124]
+每轮执行 `steps += 1`，随后检查 `steps > weyl_budget || !advanced`。预算允许恰好 `weyl_budget` 步；超过预算或本轮无法推进时，均返回 `StructureError::LayoutInvariantViolation { invariant: "longest Weyl element" }`。这两种失败使用相同的不变量错误。^[root-datum-dual.md:119-124]
 
 算术保护并不统一：`two_rho` 使用带检查的 `i64` 加法，但行走内层的余根配对采用未检查的 `i64` 累加。来源未确认这种差异是否有意，因此不能将整个行走描述为所有整数运算均经过溢出检查。^[root-datum-dual.md:117-127]
 

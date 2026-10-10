@@ -1,13 +1,13 @@
 ---
 title: KlSupport：逐块 KL 支撑数据
-summary: KlSupport 预计算下降集、good-ascent 集和长度边界，并以本原索引定位 KLV 多项式的列内存储位置。
+summary: KlSupport 预计算下降集、good-ascent 集及长度边界，并用本原索引定位 KLV 多项式的列内存储位置。
 sources:
   - kl-support.md
 kind: concept
 createdAt: "2026-10-09T14:55:42.771Z"
-updatedAt: "2026-10-09T22:35:34.135Z"
+updatedAt: "2026-10-10T00:38:45.397Z"
 tags:
-  - KL算法
+  - KL
   - 数据结构
 aliases:
   - klsupport逐块-kl-支撑数据
@@ -18,30 +18,21 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: KlSupport：逐块 KL 支撑数据
-summary: KlSupport 预计算块元素的下降集、good-ascent 集和长度边界，并通过懒填充的本原索引定位 KLV 多项式列内位置；来源仅构成结构性阅读证据。
+summary: KlSupport 预计算块元素的下降集、good-ascent 集与长度边界，并通过懒填充的本原索引定位 KLV 多项式列内位置；来源仅构成结构性阅读证据。
 sources:
   - kl-support.md
 kind: concept
-createdAt: "2026-10-09T14:55:42.771Z"
-updatedAt: "2026-10-09T20:58:21.750Z"
 tags:
-  - KL支撑
-  - Rust设计
+  - KL算法
   - 数据结构
 aliases:
   - klsupport逐块-kl-支撑数据
-confidence: 1
 provenanceState: extracted
-modelId: codex-cli-default
-promptVersion: v6
-promptModifiers:
-  - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
 ---
 
 # KlSupport：逐块 KL 支撑数据

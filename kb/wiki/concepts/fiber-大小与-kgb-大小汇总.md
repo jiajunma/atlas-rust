@@ -1,15 +1,14 @@
 ---
 title: fiber 大小与 KGB 大小汇总
-summary: 分类预计算各实形式的 KGB 大小及全局总量；实形式不属于指定 Cartan 类时 fiber_size 返回 Some(0)，支持跨 Cartan 求和。
+summary: 分类预计算各实形式的 KGB 大小及全局总量，实形式不属于指定 Cartan 类时 fiber_size 返回 Some(0) 以支持跨类求和。
 sources:
   - strong-real.md
 kind: concept
 createdAt: "2026-10-09T15:12:44.597Z"
-updatedAt: "2026-10-09T22:49:43.121Z"
+updatedAt: "2026-10-10T00:52:17.445Z"
 tags:
+  - 强实形式
   - KGB
-  - Cartan分类
-  - 计数
 aliases:
   - fiber-大小与-kgb-大小汇总
   - F大K大
@@ -19,7 +18,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -30,8 +29,8 @@ sources:
 kind: concept
 tags:
   - KGB
-  - 纤维计数
-  - 接口语义
+  - Cartan分类
+  - 计数
 ---
 
 # fiber 大小与 KGB 大小汇总
@@ -40,7 +39,7 @@ tags:
 
 ## 大小查询与汇总语义
 
-`fiber_size(form, cartan)` 查询指定实形式在指定 Cartan 类上的 fiber 大小。当该实形式不属于该 Cartan 类时，返回 `Some(0)`，因此对全部 Cartan 类求和时，这些类贡献零，汇总仍保持正确。^[strong-real.md:56-58]
+`fiber_size(form, cartan)` 查询指定实形式在指定 Cartan 类上的 fiber 大小。当该实形式不属于该 Cartan 类时，返回 **`Some(0)`**，因此对全部 Cartan 类求和时，这些类贡献零，汇总仍保持正确。^[strong-real.md:56-58]
 
 `kgb_size(form)` 返回预计算的指定实形式 KGB 大小；`global_kgb_size()` 返回全局大小，来源将其描述为“所有强实形式的总和”。逐 Cartan 的强实数据通过 `strong_real_data(cartan)` 访问。^[strong-real.md:56-58]
 

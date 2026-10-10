@@ -1,14 +1,14 @@
 ---
 title: Quasisplit 规范化与 grading 的仿射线性求值
-summary: 伴随纤维零元的基 grading 为全一，其余元素先取规范环境代表，再逐虚单根计算模二配对并取反。
+summary: 伴随纤维零元对应全一基 grading，其余元素先取规范环境代表，再逐虚单根配对取反得到 grading。
 sources:
   - grading.md
 kind: concept
 createdAt: "2026-10-09T14:50:11.521Z"
-updatedAt: "2026-10-09T22:31:17.983Z"
+updatedAt: "2026-10-10T00:34:29.412Z"
 tags:
-  - 紧致分级
-  - 仿射映射
+  - grading
+  - 规范化
 aliases:
   - quasisplit-规范化与-grading-的仿射线性求值
   - Q规G的
@@ -18,50 +18,51 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
 title: Quasisplit 规范化与 grading 的仿射线性求值
-summary: Quasisplit 规范化将零伴随纤维元素的 grading 设为全一；其他元素通过规范环境代表的模二配对取反求值，可实现 grading 的唯一逆像由 shift 列的忠实性保证。
+summary: Quasisplit 规范化将伴随纤维零元的 grading 设为全一；其他元素通过规范环境代表的模二配对取反求值，可实现 grading 的唯一逆像由 shift 列的忠实性保证。
 sources:
   - grading.md
 kind: concept
 tags:
-  - grading
-  - 拟分裂规范化
-  - 模二线性代数
+  - 紧致分级
+  - 仿射映射
+aliases:
+  - quasisplit-规范化与-grading-的仿射线性求值
 ---
 
 # Quasisplit 规范化与 grading 的仿射线性求值
 
-Quasisplit（拟分裂）规范化以 adjoint fiber（伴随纤维）的零元素为基点，将每个 simple-imaginary 根标记为 noncompact（非紧），因此 `base_grading` 是全一位向量。其他元素的 grading 由其 canonical ambient representative（规范环境代表）逐根配对并取反得到，即实现中的 `!dot`，等价于将配对向量与全一基点做 XOR。^[grading.md:35-38]
+Quasisplit（拟分裂）规范化以 adjoint fiber（伴随纤维）的零元素为基点，将每个 simple-imaginary 根标记为 noncompact（非紧），因此 `base_grading` 是全一位向量。其他元素的 grading 由其 canonical ambient representative（规范环境代表）逐根配对并取反得到，即实现中的 `!dot`，等价于将模二配对向量与全一基点做 XOR。^[grading.md:35-38]
 
 ## 位向量与坐标约定
 
-`Grading` 是 `ModTwoVector` 的 newtype，第 \(i\) 位对应所属模型的 `imaginary_simple_roots` 列表中的第 \(i\) 个根，置位表示 noncompact。该列表是 `RootInvolutionData::imaginary_simple_roots` 的副本，采用 crate 的确定性根序。^[grading.md:17-20]
+`Grading` 是 `ModTwoVector` 的 newtype，第 \(i\) 位对应所属模型的 simple-imaginary 根列表中的第 \(i\) 项，置位表示非紧。该列表是 `RootInvolutionData::imaginary_simple_roots` 的副本，采用 crate 的确定性根序。^[grading.md:17-20]
 
-grading 的索引表示 simple-imaginary 根的位置，而 ambient fiber 与 adjoint fiber 的模二坐标索引全 datum 的格坐标或单根。即使这些空间维数相同，也必须通过类型区分，不能仅依赖维数检查；参见 [[Grading 的位向量类型纪律]]。^[grading.md:22-27]
+grading 的索引表示 simple-imaginary 根的位置，而 ambient fiber 与 adjoint fiber 的模二坐标索引全 datum 的格坐标或单根。即使维数相同，也必须通过类型区分，不能仅依赖维数检查；参见 [[Grading 的位向量类型纪律]]。^[grading.md:22-27]
 
 ## 仿射线性求值
 
-设 simple-imaginary 根列表为 \(\alpha_0,\ldots,\alpha_{r-1}\)，伴随纤维元素 \(x\) 的规范环境代表为 \(\widetilde{x}\)。在 \(\mathbf F_2\) 上，求值公式为 \(g_i(x)=1\oplus\langle\alpha_i,\widetilde{x}\rangle\)，其中配对值按模二解释。配对为零时对应 noncompact，配对为一时对应 compact（紧）；全一向量是这一仿射线性映射的常量项。^[grading.md:35-38, grading.md:59-60]
+设 simple-imaginary 根列表为 \(\alpha_0,\ldots,\alpha_{r-1}\)，伴随纤维元素 \(x\) 的规范环境代表为 \(\widetilde{x}\)。在 \(\mathbf F_2\) 上，求值公式为 \(g_i(x)=1\oplus\langle\alpha_i,\widetilde{x}\rangle\)，其中配对值按模二解释。配对为零时对应非紧，配对为一时对应 compact（紧）；全一向量构成这一仿射映射的常量项。^[grading.md:17-20, grading.md:35-38, grading.md:59-60]
 
-`simple_mod_two` 保存单根坐标的奇性，使用 `*coordinate % 2 != 0` 判定，包含负奇数。`grading_shifts[j]` 保存第 \(j\) 个伴随基代表与各单根奇性向量的 \(\mathbf F_2\) 配对，表示该基方向引起的 grading 变化量。^[grading.md:47-51]
+`simple_mod_two` 保存单根坐标的奇性，使用 `*coordinate % 2 != 0` 判定，因此负奇数同样归约为置位。`grading_shifts[j]` 保存第 \(j\) 个伴随基代表与各单根奇性向量的 \(\mathbf F_2\) 配对，描述该基方向引起的 grading 变化。^[grading.md:47-51]
 
-`grading(element)` 先调用 `canonical_representative`，再逐根配对取反。外来纤维元素会触发 `CartanFiberMismatch`，因此求值要求元素来自相应纤维。^[grading.md:59-60]
+`grading(element)` 先调用 `canonical_representative`，再逐根配对取反。若元素来自其他纤维，则返回 `CartanFiberMismatch`；求值因此依赖相应纤维的来源一致性。^[grading.md:59-60]
 
 ## 构造约束与忠实性
 
-`CartanGradingData::build` 检查根系统与 involution 数据的 datum 一致性，以及 adjoint 所属 ambient fiber 的 involution 与输入的一致性；失败时分别返回 `DatumMismatch` 和 `CartanFiberInvolutionMismatch`。构造器不接收独立的 ambient fiber 参数，而使用 `AdjointCartanFiber::ambient_fiber` 构建 `m_alpha`，以保留伴随下降验证所用的确切来源；参见 [[CartanGradingData 与纤维来源一致性]]。^[grading.md:40-45]
+`CartanGradingData::build` 检查根系统与 involution 数据的 datum 是否一致，以及 adjoint 所属 ambient fiber 的 involution 是否与输入一致；失败分别返回 `DatumMismatch` 和 `CartanFiberInvolutionMismatch`。构造器不接收独立的 ambient fiber 参数，而使用 `AdjointCartanFiber::ambient_fiber` 构建 `m_alpha`，保留伴随下降验证所用的确切来源；参见 [[CartanGradingData 与纤维来源一致性]]。^[grading.md:40-45]
 
-构造期通过 `ensure_faithful_shifts` 检查 shift 列的线性独立性，相关列会导致 `GradingShiftsNotFaithful`。这一 [[Grading shifts 的忠实性不变量]] 保证每个可实现 grading 对应唯一的伴随纤维元素，但不保证所有 grading 都可实现。上游对应检查是断言，Rust 实现改为无条件拒绝；来源将其描述为防御性检查，没有已知公共构造路径能产生相关列。^[grading.md:52-55, grading.md:61-67]
+构造期通过 `ensure_faithful_shifts` 检查 shift 列的线性独立性，相关列导致 `GradingShiftsNotFaithful`。这一 [[Grading shifts 的忠实性不变量]] 保证每个可实现 grading 对应唯一的伴随纤维元素，但不保证所有 grading 都可实现。上游对应检查是断言，Rust 实现改为无条件拒绝；来源将其描述为防御性检查，没有已知公共构造路径能产生相关列。^[grading.md:52-55, grading.md:61-67]
 
 ## 从 grading 恢复元素
 
-`element_from_grading(target)` 使用增广消元求解，右端为 `target XOR base`。由于 `base` 全一，右端恰好标记目标 grading 的 compact 位置。每个 shift 列附带一个位于 `imaginary_rank + adjoint_basis_index` 的 marker 位，归约右端时同步累计所需的基组合。^[grading.md:61-65]
+`element_from_grading(target)` 使用增广消元求解，右端为 `target XOR base`。由于 `base` 全一，右端恰好标记目标 grading 的紧位置。每个 shift 列附带一个位于 `imaginary_rank + adjoint_basis_index` 的 marker 位，归约右端时同步累计所需的基组合。^[grading.md:61-65]
 
-若归约余数的低 `imaginary_rank` 位仍有置位，则目标不可实现，返回 `StructureError::ImpossibleGrading`；否则按 marker 位选择伴随基代表，以 `xor_assign` 汇总得到 ambient 代表。解的唯一性来自构造期的 faithful 检查。^[grading.md:65-67]
+若归约余数的低 `imaginary_rank` 位仍有置位，则目标不可实现，返回 `StructureError::ImpossibleGrading`；否则按 marker 位选择伴随基代表，以 `xor_assign` 汇总为 ambient 代表。解的唯一性来自构造期检查的 faithful 不变量。^[grading.md:65-67]
 
 ## 测试锚点与证据边界
 

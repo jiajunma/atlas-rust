@@ -1,14 +1,14 @@
 ---
 title: 跨对偶的 Cartan 类对应与扭曲代表元
-summary: 通过对偶根像置换定位共轭类且缺类时报错，内部代表元则在对偶 datum 上重放原 Weyl 字以保留双格作用及对合来源。
+summary: 通过对偶根像置换定位共轭类且缺类时报错，内部代表元则在对偶 datum 上重放原 Weyl 字，以保留双格作用及对合来源。
 sources:
   - root-datum-dual.md
 kind: concept
 createdAt: "2026-10-09T15:10:30.009Z"
-updatedAt: "2026-10-09T22:47:48.925Z"
+updatedAt: "2026-10-10T00:50:35.623Z"
 tags:
+  - 对偶
   - Cartan分类
-  - 对偶性
   - 扭曲对合
 aliases:
   - 跨对偶的-cartan-类对应与扭曲代表元
@@ -19,7 +19,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -48,15 +48,15 @@ aliases:
 
 `dual_cartan_correspondence` 按 crate 的 Cartan 顺序遍历原分类，为每个类输出 `(对偶 CartanId, 对偶类的 weak-real-form 计数)`。前置校验检查两侧 fundamental 的存在性与 datum 一致性，相关错误为 `DatumMismatch`；主流程通过带来源检查的 `TwistedConjugacyPartition::class_of` 建立 `cartan_of_raw` 反查表。编号背景见 [[CartanId 的 Atlas 编号顺序]]。^[root-datum-dual.md:141-146]
 
-代码注释将该对应解释为上游对 `tw` 与 `tw * w0` 的反序配对：对偶 distinguished involution 为 \(-(\delta w_0)^t\)，结合转置对应逆步，配对 involution 化简为 \(-(w\delta)|_{\mathrm{co}}\)。由于对偶 twisted involution 随后会被规范化，存储代表元一般是 `tw*w0` 的共轭，直接比较矩阵并不可靠。因此，实现以 lattice map 在对偶根上诱导的根像置换作为定位键。上述解释来自代码注释，来源包未独立验证。^[root-datum-dual.md:147-151]
+代码注释将该对应解释为上游对 `tw` 与 `tw * w0` 的反序配对：对偶 distinguished involution 为 \(-(\delta w_0)^t\)，结合转置对应逆步，配对 involution 化简为 \(-(w\delta)|_{\mathrm{co}}\)。由于对偶 twisted involution 随后会被规范化，存储代表元一般是 `tw*w0` 的共轭，直接比较矩阵并不可靠。因此，实现以 lattice map 在对偶根上诱导的根像置换作为定位键。这一设计解释来自代码注释，来源包未独立验证。^[root-datum-dual.md:147-151]
 
-公开参数 `_weyl_budget` 是遗留的未使用参数；函数中的最长元行走实际以 `dual.root_system().roots().len()`，即已枚举的对偶根数为预算。查不到对应类会触发不变量错误，不表示允许缺失的条目。实现另有三处 `.expect("cartan_ids yields in-range ids")`；来源还指出 `cartan_of_raw[raw]` 的直接索引依赖构造不变量。^[root-datum-dual.md:152-155, root-datum-dual.md:200-201]
+公开参数 `_weyl_budget` 是遗留的未使用参数；函数中的最长元行走实际以 `dual.root_system().roots().len()`，即已枚举的对偶根数为预算。查不到对应类会触发不变量错误，不表示允许缺失的条目。实现另有三处 `.expect("cartan_ids yields in-range ids")`；`cartan_of_raw[raw]` 的直接索引也依赖构造不变量。^[root-datum-dual.md:152-155, root-datum-dual.md:200-201]
 
 ## 扭曲代表元构造
 
-`dual_twisted_representative` 先通过 `WeylElement::from_action` 与 `canonical_word` 提取原代表元的 Weyl 字，所用 `WeylInterface` 由原 datum 的 Cartan 矩阵构造。随后在对偶 datum 上逐生成元重放该字，末步左合成 `longest`，再结合对偶 distinguished involution 构造 `TwistedInvolution`。相关概念见 [[Weyl 元素的规范词]]与[[扭曲对合（TwistedInvolution）]]。^[root-datum-dual.md:157-164]
+`dual_twisted_representative` 先通过 `WeylElement::from_action` 与 `canonical_word` 提取原代表元的 Weyl 字，所用 `WeylInterface` 由原 datum 的 Cartan 矩阵构造。随后在对偶 datum 上逐生成元重放该字，末步左合成 `longest`，再结合对偶 distinguished involution 构造 `TwistedInvolution`。相关背景见 [[Weyl 元素的规范词]]。^[root-datum-dual.md:157-164]
 
-文档将这一流程描述为 RealWeylContext 对偶 fiber 所用的同一原词重放方式。它保留权格与余权格上的作用，以及 distinguished-involution 的来源信息；裸根置换查找则用于前述 Cartan 共轭类定位。^[root-datum-dual.md:147-164]
+文档将这一流程描述为 RealWeylContext 对偶 fiber 所用的同一原词重放方式。与用于共轭类定位的裸根置换查找相比，它保留权格与余权格上的作用，以及 distinguished-involution 的来源信息。^[root-datum-dual.md:159-164]
 
 ## 测试锚点与证据边界
 

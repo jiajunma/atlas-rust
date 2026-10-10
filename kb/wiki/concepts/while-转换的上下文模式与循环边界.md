@@ -1,11 +1,11 @@
 ---
 title: while 转换的上下文模式与循环边界
-summary: while 将循环层置于整棵 do 树外，由所需上下文选择 void、count 或 row 模式，row 路径先尝试 [*] 特化再回退 row_coercion。
+summary: while 将循环层置于整棵 do 树外，按上下文选择 void、count 或 row 模式，row 路径先尝试 [*] 特化再回退 row_coercion。
 sources:
   - atlas-core-convert-expr.md
 kind: concept
 createdAt: "2026-10-09T14:27:09.935Z"
-updatedAt: "2026-10-09T22:13:30.172Z"
+updatedAt: "2026-10-10T00:15:51.761Z"
 tags:
   - 控制流
   - 类型转换
@@ -17,7 +17,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -28,19 +28,18 @@ sources:
 kind: concept
 tags:
   - 控制流
-  - 类型检查
-  - 类型上下文
+  - 类型转换
 aliases:
   - while-转换的上下文模式与循环边界
 ---
 
 # while 转换的上下文模式与循环边界
 
-`while` 属于 `convert_expr` 的 `loop` 转换族，与 `for`、`counted-for` 一同处理。转换遍同时执行类型检查与类型合成，`while` 的模式则由所需类型上下文决定；入口机制参见 [[convert_expr 的 in/out 类型模式与单遍转换]]。^[atlas-core-convert-expr.md:12-14, atlas-core-convert-expr.md:33-44]
+`while` 属于 `convert_expr` 的 `loop` 转换族，与 `for`、`counted-for` 一同处理。转换遍在单遍中同时执行类型检查与类型合成，`while` 的转换模式由所需类型上下文决定；入口机制参见 [[convert_expr 的 in/out 类型模式与单遍转换]]。^[atlas-core-convert-expr.md:12-14, atlas-core-convert-expr.md:33-44]
 
 ## 循环边界与条件检查
 
-源材料描述的上游 `axis.w` 规则将循环层置于整棵 `do` 树之外；压平守卫时不得将守卫移出这一循环边界。^[atlas-core-convert-expr.md:40-41]
+源材料描述的上游 `axis.w` 规则将循环层置于整棵 `do` 树之外；压平守卫时，不得将守卫移出这一循环边界。^[atlas-core-convert-expr.md:40-41]
 
 条件先进行 a-priori 转换，再检查其类型是否为 `bool`。类型不匹配时，诊断沿用上游措辞 `found … while … was needed.`。^[atlas-core-convert-expr.md:41-42]
 
@@ -52,9 +51,9 @@ aliases:
 
 ## 实现组织与证据边界
 
-`loop` 是转换调度器的 12 个表达式族之一。全部族助手均标记为 `#[inline(never)]`，分区时保留原有分支体与已调整的共享转换上下文，属于不改变语义的机械划分。源材料指出，相关栈问题涉及分析帧，而非求值器。^[atlas-core-convert-expr.md:26-38]
+`loop` 是转换调度器的 12 个表达式族之一。全部族助手均标记为 `#[inline(never)]`；机械分区保留原有分支体与已调整的共享转换上下文，不改变语义。源材料指出，促成这一组织方式的栈问题涉及分析帧，而非求值器。^[atlas-core-convert-expr.md:26-38]
 
-本页依据结构性源码阅读，不构成语言兼容性验收。源材料中的上游行号对应关系属于实现方的移植陈述；转换行为的兼容性仍以 HPC 语料门为准，相关主题见 [[HPC 验收证据链]]。^[atlas-core-convert-expr.md:9-17, atlas-core-convert-expr.md:67-69]
+本页依据结构性源码阅读，不构成语言兼容性验收。源材料中的上游行号对应关系属于实现方的移植陈述；转换行为的兼容性仍以 HPC 语料门为准，参见 [[HPC 验收证据链]]。^[atlas-core-convert-expr.md:9-17, atlas-core-convert-expr.md:67-69]
 
 ## Sources
 

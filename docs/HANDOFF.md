@@ -575,6 +575,22 @@ rule 5.  Final: **599 concepts / 77 sources / Fresh / 0 pending / zero red
 links (951 indexed names)**; logged in `kb/log.md` 2026-10-10.  Editorial
 only — not mathematical acceptance.
 
+Follow-up 4 (2026-10-10, frames packet): `atlas-core-frames` closes the
+last substantive coverage gap — the evaluation frame chain (Rc-linked
+frames with shared tails, (depth,offset) addressing, the borrow
+discipline, with_frame/with_context restoration on every non-panicking
+exit, take_local as the safe pilfering counterpart, GlobalCell
+fresh-cell-per-definition).  Maintainer-written, snapshot at git base
+`1c880415`.  Compile recompiled all 78 sources → 526 held candidates
+(510 refreshes + 16 new pages), all reviewed (sieve 248 pass; 268 B-tier =
+376 flags eyeballed; 10 C-tier resolved; 16 new pages read in full — the
+new alcove pages correctly treat the "-theta fixed subspace" naming vs
+theta(Delta)=0 check as an ambiguity to verify, with the right
+(θ+I)Δ=0-vs-θΔ=0 analysis, not as an asserted bug).  Zero gate rejections
+this round.  Final: **615 concepts / 78 sources / Fresh / 0 pending /
+zero red links (973 indexed names)**; logged in `kb/log.md` 2026-10-10.
+Editorial only — not mathematical acceptance.
+
 ### Upstream HEAD moved (2026-10-09, read-only finding)
 
 A fresh `git ls-remote` at 2026-10-09T13:14:20Z resolves upstream

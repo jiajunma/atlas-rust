@@ -5,7 +5,7 @@ sources:
   - atlas-core-value-layer.md
 kind: concept
 createdAt: "2026-10-09T14:38:56.402Z"
-updatedAt: "2026-10-09T22:23:00.256Z"
+updatedAt: "2026-10-10T00:25:56.869Z"
 tags:
   - 值模型
   - 解释器
@@ -18,7 +18,7 @@ modelId: codex-cli-default
 promptVersion: v6
 promptModifiers:
   - lang=zh-CN
-  - policy=81ad51b115c49a37eb623781761b22803544a24ebca2c6ce25d8ff094a836c7b
+  - policy=64721d7a1a45edb7f094b26adcd835a9732563f7c9e12935cdd235fbb15ae06d
 ---
 
 ---
@@ -31,6 +31,8 @@ tags:
   - Rust设计
   - 值模型
   - 求值器
+aliases:
+  - 求值器的-value-值模型
 ---
 
 # 求值器的 Value 值模型
@@ -53,7 +55,7 @@ tags:
 
 ## 闭包与调用环境
 
-`Closure` 保存参数信息、绑定形状、递归标志、表达式体、定义环境帧链及源码跨度。`body: Rc<TypedExpr>` 使同一 lambda 字面量产生的闭包共享表达式体；`frame: Option<Rc<Frame>>` 使定义域帧链在弹出后仍然存活。`span` 用于回溯调用行的 `defined at …`，`param_names` 按绑定顺序保存参数名，在无参闭包或内建支持的成员闭包中为空。^[atlas-core-value-layer.md:30-37]
+`Closure` 保存参数信息、绑定形状、递归标志、表达式体、定义环境帧链及源码跨度。`body: Rc<TypedExpr>` 使同一 lambda 字面量产生的所有闭包共享表达式体；`frame: Option<Rc<Frame>>` 使定义域帧链在弹出后仍然存活。`span` 用于回溯调用行的 `defined at …`，`param_names` 按绑定顺序保存参数名，在无参闭包或内建支持的成员闭包中为空。^[atlas-core-value-layer.md:30-37]
 
 绑定形状由 `shapes: Rc<[SlotShape]>` 描述：`Leaf` 占一个槽，`Discard` 不占槽，`Tuple` 按元素解构，`whole` 将未解构的完整值绑定在元素槽之前。`parameters` 为 0 表示无参，调用时不再额外压帧；递归闭包在调用帧的 0 号槽绑定自身。^[atlas-core-value-layer.md:30-33]
 
@@ -61,7 +63,7 @@ tags:
 
 ## 实现阶段与证据边界
 
-源文档列出了 `Value` 的线性代数变体，同时保留了线性载荷模块“将在 phase-B stage B2 嵌入 `Value`，此前模块独立”的阶段性自述。这两种表述并存于同一源包。^[atlas-core-value-layer.md:15-19, atlas-core-value-layer.md:53-53]
+源文档列出了 `Value` 的线性代数变体，同时保留了线性载荷模块“将在 phase-B stage B2 嵌入 `Value`，此前模块独立”的阶段性自述。这两种表述并存于同一源包，不能据此消除其阶段差异。^[atlas-core-value-layer.md:15-19, atlas-core-value-layer.md:53-53]
 
 本页依据结构性阅读，不构成语言或数学验收。源包记录三个支撑文件合计 11 个测试：`value` 4 个、`linear_values` 3 个、`formula` 4 个。`Domain`／`DomainValue` 的领域内容位于 `domain_builtins.rs`，在该源包中尚待分包说明；上游行号引用属于实现方的移植陈述，值打印兼容性以 HPC 语料门为准。^[atlas-core-value-layer.md:9-11, atlas-core-value-layer.md:69-74]
 

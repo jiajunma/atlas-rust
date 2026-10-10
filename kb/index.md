@@ -54,6 +54,7 @@
 | [补全候选的会话级顺序索引（frames/completions.rs）](sources/atlas-core-completions.md) | 补全候选顺序索引——intern 顺序、惰性快照与失效纪律；结构性阅读，不作数学验收 |
 | [组内名解析（typed/type_groups.rs）——递归图构造前的验证与形参转发](sources/atlas-core-type-groups.md) | 组内名解析——BFS 验证顺序、局部名禁显式参数、裸自引用形参转发；结构性阅读，不作数学验收 |
 | [数学测试与基准库结构（tests/math、tests/fixtures、tests/reference）](sources/tests-math-library.md) | 测试基准库——目录结构、schema、群×操作清单与证据纪律；结构性阅读，不作数学验收 |
+| [求值帧链与共享槽（frames.rs）——闭包捕获、借用纪律与全局 cell](sources/atlas-core-frames.md) | 求值帧链——Rc 链、借用纪律、恢复语义与 pilfering 对应；结构性阅读，不作数学验收 |
 | [根编号与 alcove 机器（domain_builtins.rs 5005–5924）——RootNumbering 的 RootNbr 序与 alcove 墙/标签/词](sources/atlas-core-root-numbering-alcove.md) | 根编号与 alcove 机器——RootNumbering 的 RootNbr 序与 alcove 墙/标签/词；结构性阅读，不作数学验收 |
 | [crate 根：atlas-core 语言门面（lib.rs）——15 个公开模块、1 个 crate 私有矩阵约化与兼容契约版本](sources/atlas-core-root.md) | crate 根：atlas-core 语言门面——15 个公开模块、1 个 crate 私有矩阵约化与兼容契约版本；结构性阅读，不作数学验收 |
 | [会话帧：文件包含、输出重定向与顶层输出面（session_frame.rs）](sources/atlas-core-session-frame.md) | 会话帧：文件包含、输出重定向与顶层输出面；结构性阅读，不作数学验收 |
@@ -93,4 +94,4 @@
 - [来源索引](sources/index.md)、[变更日志](log.md)
 - [主题模板](templates/topic.md)、[设计决策模板](templates/decision.md)
 
-上表现已覆盖全部 77 个来源包（599 页概念 wiki 见 [MOC](wiki/MOC.md)，Fresh 无待审候选）。页面均为结构性阅读记录，不代表数学验收；验收以 HPC 门与 append-only 账本为准。
+上表现已覆盖全部 78 个来源包（615 页概念 wiki 见 [MOC](wiki/MOC.md)，Fresh 无待审候选）。页面均为结构性阅读记录，不代表数学验收；验收以 HPC 门与 append-only 账本为准。
