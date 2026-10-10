@@ -43,7 +43,7 @@ Root ladder 固定宽度坐标溢出修复的 AFTER-v3 已有明确的限定接�
 
 ## 修复对象与版本边界
 
-对完整存储的有限根集 \(R\subseteq\mathbb Z^d\)，ladder bottom 集定义为 \(B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}\)。当所有已存坐标均为 `i32` 时，超出该类型表示范围的精确差不可能属于已存集合。修复仅将 `build_ladder_bottoms` 两次成员查询中的 `StructureError::ArithmeticOverflow` 解释为“不属于”，保持 root 与 coroot 查询独立，并继续传播分配失败及其他错误。该规则不适用于一般向量减法、反射或输入验证；详见 [[Root ladder bottom 集与固定宽度成员查询]]、[[Rust ladder 成员查询的选择性溢出处理]]。^[root-ladder-overflow-repair.md:41-53, root-ladder-overflow-repair.md:74-83]
+对完整存储的有限根集 $R\subseteq\mathbb Z^d$，ladder bottom 集定义为 $B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}$。当所有已存坐标均为 `i32` 时，超出该类型表示范围的精确差不可能属于已存集合。修复仅将 `build_ladder_bottoms` 两次成员查询中的 `StructureError::ArithmeticOverflow` 解释为“不属于”，保持 root 与 coroot 查询独立，并继续传播分配失败及其他错误。该规则不适用于一般向量减法、反射或输入验证；详见 [[Root ladder bottom 集与固定宽度成员查询]]、[[Rust ladder 成员查询的选择性溢出处理]]。^[root-ladder-overflow-repair.md:41-53, root-ladder-overflow-repair.md:74-83]
 
 接受绑定于 `crates/atlas-real-group/src/root_system.rs` 的特定字节，SHA-256 为 `cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9`；候选 Git base 为 `eba9c7ea080e61de9d4b105fbf54589c44a10b87`。来源保留候选快照，并另以 2026-10-03 阅读快照记录状态推进。^[root-ladder-overflow-repair.md:27-34, root-ladder-overflow-repair.md:70-72]
 
@@ -78,7 +78,7 @@ AFTER-v3（job `3875239`）最终状态为 `COMPLETED 0:0`。[独立检查记录
 
 这些证据不证明一般 root system、KGB、KLV、unitarity、Hodge、associated cycle 或 AV-ann 正确性，也不支持更高 rank、性能、内存或并行验收结论。来源要求 AFTER execution/report 不能自我验收，独立 review 也不能绕过正式账本；相关原则参见 [[HPC 验收证据链]]。^[root-ladder-overflow-repair.md:109-113, root-ladder-overflow-repair.md:127-130, root-ladder-overflow-repair.md:141-143]
 
-修复本身不是性能优化：此前因溢出早退的极值输入现在会完成 \(O(|R|^2)\) 表构造，可能使用更多时间。性能或内存结论仍需受控测量，不能由回归通过或源码哈希绑定推出。^[root-ladder-overflow-repair.md:85-88]
+修复本身不是性能优化：此前因溢出早退的极值输入现在会完成 $O(|R|^2)$ 表构造，可能使用更多时间。性能或内存结论仍需受控测量，不能由回归通过或源码哈希绑定推出。^[root-ladder-overflow-repair.md:85-88]
 
 ## Sources
 

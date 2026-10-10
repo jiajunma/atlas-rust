@@ -54,9 +54,9 @@ Alcove 模块使用 `Rational` 矩阵消元、分母通分和整数可除性检�
 
 ## 精确求逆与根格整性
 
-`rational_inverse` 在增广矩阵 `[A|I]` 上执行 Gauss–Jordan 消元。非方阵或找不到主元列时返回 `Ok(None)`；成功时返回整数矩阵与公共分母 `(numerator, d)`，满足 \(A^{-1}=\mathrm{numerator}/d\)。其中 \(d>0\) 依赖 `Rational` 的正分母约定，代码未显式断言。^[alcove.md:166-169]
+`rational_inverse` 在增广矩阵 `[A|I]` 上执行 Gauss–Jordan 消元。非方阵或找不到主元列时返回 `Ok(None)`；成功时返回整数矩阵与公共分母 `(numerator, d)`，满足 $A^{-1}=\mathrm{numerator}/d$。其中 $d>0$ 依赖 `Rational` 的正分母约定，代码未显式断言。^[alcove.md:166-169]
 
-`root_vertex_simple` 使用系数全正的本原 coroot 关系，丢弃第一面系数为 1 的墙，以其余墙构造转置子 Cartan 矩阵。矩阵条目为 `bracket(id(column), id(row))`，此处通过 `?` 传播配对错误；求逆后计算 \(\mathrm{base}=C^{-T}\,\mathrm{floors}\)。缺少系数为 1 的墙时报 `"alcove component has no coefficient-1 wall"`，矩阵奇异时报 `"alcove generator Cartan matrix is singular"`。^[alcove.md:152-157]
+`root_vertex_simple` 使用系数全正的本原 coroot 关系，丢弃第一面系数为 1 的墙，以其余墙构造转置子 Cartan 矩阵。矩阵条目为 `bracket(id(column), id(row))`，此处通过 `?` 传播配对错误；求逆后计算 $\mathrm{base}=C^{-T}\,\mathrm{floors}$。缺少系数为 1 的墙时报 `"alcove component has no coefficient-1 wall"`，矩阵奇异时报 `"alcove generator Cartan matrix is singular"`。^[alcove.md:152-157]
 
 算法通过各分量是否能被公共分母整除来判定 `base` 的整性。若初始结果非整，则依次将每面后续系数为 1 的墙的取值加 1 重试。首个整数候选以 `entry / denominator` 为系数，对根坐标进行 checked 线性组合，再转为 `i32`；全部候选非整时报 `"alcove vertex lies outside the root lattice"`。^[alcove.md:158-162]
 

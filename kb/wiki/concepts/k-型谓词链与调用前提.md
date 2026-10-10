@@ -37,13 +37,13 @@ aliases:
 
 # K 型谓词链与调用前提
 
-K 型是[[StandardRepr 标准表示参数]]去掉 ν 后的 K-限制，表示为 `KType { x: KgbId, lam_rho: Weight, height: u32 }`。`lam_rho` 存储其 \((1-\theta_x)X^*\) 陪集中由 `lambda_unique` 选出的规范代表，`height` 在构造时预计算。六个谓词检查不同性质，其中部分调用前提不在谓词内部验证。^[ktype.md:11-14, ktype.md:24-30]
+K 型是[[StandardRepr 标准表示参数]]去掉 ν 后的 K-限制，表示为 `KType { x: KgbId, lam_rho: Weight, height: u32 }`。`lam_rho` 存储其 $(1-\theta_x)X^*$ 陪集中由 `lambda_unique` 选出的规范代表，`height` 在构造时预计算。六个谓词检查不同性质，其中部分调用前提不在谓词内部验证。^[ktype.md:11-14, ktype.md:24-30]
 
 ## 构造与共同求值核
 
-crate 外只能通过 `sr_k(rc, x, λ−ρ)` 构造 K 型。该入口执行 `lambda_unique` 规范化，并预存 \((1+\theta)\lambda\) 的 height，其中 \((1+\theta)\lambda=\lambda_\rho+\theta\lambda_\rho+(1+\theta)\rho\)。crate 内的原始构造器 `new` 不校验不变量，可以装入任意 height，构造纪律依赖调用方。参见[[KType 表示参数与规范化构造]]。^[ktype.md:18-21]
+crate 外只能通过 `sr_k(rc, x, λ−ρ)` 构造 K 型。该入口执行 `lambda_unique` 规范化，并预存 $(1+\theta)\lambda$ 的 height，其中 $(1+\theta)\lambda=\lambda_\rho+\theta\lambda_\rho+(1+\theta)\rho$。crate 内的原始构造器 `new` 不校验不变量，可以装入任意 height，构造纪律依赖调用方。参见[[KType 表示参数与规范化构造]]。^[ktype.md:18-21]
 
-私有求值核 `theta_plus_1_eval(α)` 计算 \(\langle\lambda_\rho,\alpha^\vee\rangle+\operatorname{colevel}(\alpha)+\langle\lambda_\rho,(\theta\alpha)^\vee\rangle+\operatorname{colevel}(\theta\alpha)\)。谓词集对这一求值只使用符号或零测试。^[ktype.md:22-23]
+私有求值核 `theta_plus_1_eval(α)` 计算 $\langle\lambda_\rho,\alpha^\vee\rangle+\operatorname{colevel}(\alpha)+\langle\lambda_\rho,(\theta\alpha)^\vee\rangle+\operatorname{colevel}(\theta\alpha)$。谓词集对这一求值只使用符号或零测试。^[ktype.md:22-23]
 
 ## 六个谓词及其前提
 
@@ -51,7 +51,7 @@ crate 外只能通过 `sr_k(rc, x, λ−ρ)` 构造 K 型。该入口执行 `lam
 
 `is_nonzero` 检查不存在奇异紧单虚根。它**假设 `is_standard` 成立，但不自行检查**，标准性由调用方保证。^[ktype.md:25-26]
 
-`is_semifinal` 检查权重 \(2\lambda_\rho+2\rho-2\rho_R\) 在实单根上的配对是否同余于 \(0\pmod 4\)。^[ktype.md:26-27]
+`is_semifinal` 检查权重 $2\lambda_\rho+2\rho-2\rho_R$ 在实单根上的配对是否同余于 $0\pmod 4$。^[ktype.md:26-27]
 
 `is_normal` 检查不存在奇异复下降。上游断言四联前提；Rust 移植的注释说明，由于计算是 total，入口不检查这些前提。源包未列出四联前提的具体组成。^[ktype.md:27-28]
 

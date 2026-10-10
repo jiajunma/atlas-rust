@@ -41,17 +41,17 @@ Weyl 词作用于根与权时，统一采用**最后一个字母先作用**的�
 
 ## 作用顺序
 
-对于词 \(w=s_1s_2\cdots s_k\) 及根或权 \(v\)，这一约定表示 \(w(v)=s_1(s_2(\cdots s_k(v)\cdots))\)：先施加最右侧的 \(s_k\)，最后施加最左侧的 \(s_1\)。例如，词 \(s_1s_2\) 表示先施加 \(s_2\)，再施加 \(s_1\)。^[atlas-core-center-classifier.md:51-53]
+对于词 $w=s_1s_2\cdots s_k$ 及根或权 $v$，这一约定表示 $w(v)=s_1(s_2(\cdots s_k(v)\cdots))$：先施加最右侧的 $s_k$，最后施加最左侧的 $s_1$。例如，词 $s_1s_2$ 表示先施加 $s_2$，再施加 $s_1$。^[atlas-core-center-classifier.md:51-53]
 
 ## 反射词的构造
 
-`simple_reflect_root_nbr` 实现单根 \(s\) 的反射在 `RootNbr` 上的作用。`reflection_word` 沿**首个下降**将根降到单根，再逆序回溯得到共轭词；来源将其对应到上游 `RootSystem::reflection_word`（`rootdata.cpp:601–618`）。详见 [[反射词的首个下降构造]]。^[atlas-core-center-classifier.md:48-50]
+`simple_reflect_root_nbr` 实现单根 $s$ 的反射在 `RootNbr` 上的作用。`reflection_word` 沿**首个下降**将根降到单根，再逆序回溯得到共轭词；来源将其对应到上游 `RootSystem::reflection_word`（`rootdata.cpp:601–618`）。详见 [[反射词的首个下降构造]]。^[atlas-core-center-classifier.md:48-50]
 
 ## 轨道词转换的乘法方向
 
 `convert_to_words` 经陪集树展开恒等，每一步将反射词**左乘**到父段条目上。来源明确指出，这一方向与反射子群的见证序配对，采用一致的词对权作用约定。^[atlas-core-center-classifier.md:42-44]
 
-该转换属于 adjoint 轨道机器。同一机器中的 `basic_orbit_adjoint` 构造 `cartan` 前 \(i+1\) 个生成元的 Levi 子商轨道；`vertex_orbit` 是用于沿 `label > 1` 最终扩展的模变体。相关背景见 [[Levi 子商轨道与顶点轨道扩展]] 与 [[adjoint 轨道的分层有序 BFS]]。^[atlas-core-center-classifier.md:31-44]
+该转换属于 adjoint 轨道机器。同一机器中的 `basic_orbit_adjoint` 构造 `cartan` 前 $i+1$ 个生成元的 Levi 子商轨道；`vertex_orbit` 是用于沿 `label > 1` 最终扩展的模变体。相关背景见 [[Levi 子商轨道与顶点轨道扩展]] 与 [[adjoint 轨道的分层有序 BFS]]。^[atlas-core-center-classifier.md:31-44]
 
 ## 证据边界
 

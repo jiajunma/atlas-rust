@@ -34,7 +34,7 @@ tags:
 
 # 基本 Alcove 的墙数
 
-基本 Alcove 的墙由所有单余根及每个不可约分量的一条最低余根组成。因此，若根系的秩为 \(r\)，不可约分量数为 \(c\)，则基本 Alcove 的墙数为 \(N_{\mathrm{walls}}=r+c\)。源材料将这一构造对应到 `RootSystem::fundamental_alcove_walls`，上游位置为 `rootdata.cpp:474–481`。^[atlas-core-root-numbering-alcove.md:45-48]
+基本 Alcove 的墙由所有单余根及每个不可约分量的一条最低余根组成。因此，若根系的秩为 $r$，不可约分量数为 $c$，则基本 Alcove 的墙数为 $N_{\mathrm{walls}}=r+c$。源材料将这一构造对应到 `RootSystem::fundamental_alcove_walls`，上游位置为 `rootdata.cpp:474–481`。^[atlas-core-root-numbering-alcove.md:45-48]
 
 ## 实现与可观察行为
 

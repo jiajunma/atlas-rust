@@ -23,19 +23,19 @@ promptModifiers:
 
 # 对偶分量群的 fiber rank
 
-`fiber_rank(weight_matrix, budget)` 位于 `involution_classification.rs`，计算对偶分量群 `dualPi0(-θᵀ)` 的 \(\mathbf F_2\) 维数，即 `Cartan_info` 打印的 fiber size 指数。源码注释引用 `tori.cpp:162-173` 与 `subquotient.h:79`；来源材料仅转录这些上游引用。^[cayley-cross.md:10-13, cayley-cross.md:80-86]
+`fiber_rank(weight_matrix, budget)` 位于 `involution_classification.rs`，计算对偶分量群 `dualPi0(-θᵀ)` 的 $\mathbf F_2$ 维数，即 `Cartan_info` 打印的 fiber size 指数。源码注释引用 `tori.cpp:162-173` 与 `subquotient.h:79`；来源材料仅转录这些上游引用。^[cayley-cross.md:10-13, cayley-cross.md:80-86]
 
 ## 计算公式
 
-令 \(\theta\) 为输入的权格作用矩阵，\(q=-\theta^T\)。计算公式为 \(\dim_{\mathbf F_2}\ker((q+I)\bmod 2)-\dim_{\mathbf F_2}\operatorname{span}(\operatorname{plusBasis}(q)\bmod 2)\)，其中 `plusBasis(q)` 由 \(q-I\) 的整数饱和核给出。^[cayley-cross.md:80-84]
+令 $\theta$ 为输入的权格作用矩阵，$q=-\theta^T$。计算公式为 $\dim_{\mathbf F_2}\ker((q+I)\bmod 2)-\dim_{\mathbf F_2}\operatorname{span}(\operatorname{plusBasis}(q)\bmod 2)$，其中 `plusBasis(q)` 由 $q-I$ 的整数饱和核给出。^[cayley-cross.md:80-84]
 
-第一项通过模二子空间秩求得；第二项先计算 \(q-I\) 的饱和核，再调用 `reduce_basis_mod_two` 将核基约化到模二空间，求其张成空间的维数。因此，计算同时涉及整数格上的饱和核与模二空间上的秩。^[cayley-cross.md:82-84]
+第一项通过模二子空间秩求得；第二项先计算 $q-I$ 的饱和核，再调用 `reduce_basis_mod_two` 将核基约化到模二空间，求其张成空间的维数。因此，计算同时涉及整数格上的饱和核与模二空间上的秩。^[cayley-cross.md:82-84]
 
 ## 算术行为与调用前提
 
 实现最后使用 `saturating_sub`，该减法采用饱和行为，不因相减报错。同文件的 `classify_plus_identity` 使用 `checked_sub`，来源将这一差异记录为阅读观察；相关分类算法见 [[利用饱和核与模二秩计算整对合分类]]。^[cayley-cross.md:74-85]
 
-`fiber_rank` 自身不检查对合前提。相比之下，`classify_involution` 依次执行方阵形状检查、资源预算门和对合检查，后者使用全程 checked 的 `i128` 算术逐元验证 \(M^2=I\)。这些检查属于另一个函数，不能视为 `fiber_rank` 已提供的保证；相关顺序见 [[对合分类的资源预算与验证顺序]]。^[cayley-cross.md:67-72, cayley-cross.md:85-86]
+`fiber_rank` 自身不检查对合前提。相比之下，`classify_involution` 依次执行方阵形状检查、资源预算门和对合检查，后者使用全程 checked 的 `i128` 算术逐元验证 $M^2=I$。这些检查属于另一个函数，不能视为 `fiber_rank` 已提供的保证；相关顺序见 [[对合分类的资源预算与验证顺序]]。^[cayley-cross.md:67-72, cayley-cross.md:85-86]
 
 ## 测试与证据边界
 

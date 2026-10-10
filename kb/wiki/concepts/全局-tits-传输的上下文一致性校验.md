@@ -47,7 +47,7 @@ provenanceState: extracted
 
 `validate_context` 首先检查 `weyl_action` 和 `root_involution` 的 datum 是否都等于 `inner_class.datum()`。任一不等便返回 `DatumMismatch`；只有根数据检查通过后，才比较对合矩阵。^[error-global-tits.md:101-104]
 
-令 \(w\) 为元素的 Weyl 作用，\(\delta\) 为内类的 distinguished involution。函数通过 `compose_matrices` 计算 \(w\cdot\delta\) 的 weight 与 coweight 矩阵，并分别与存储对合的对应矩阵比较；任一不等便返回 `DistinguishedInvolutionMismatch`。相关作用背景见 [[WeylAction 的对偶全格作用]]。^[error-global-tits.md:101-104]
+令 $w$ 为元素的 Weyl 作用，$\delta$ 为内类的 distinguished involution。函数通过 `compose_matrices` 计算 $w\cdot\delta$ 的 weight 与 coweight 矩阵，并分别与存储对合的对应矩阵比较；任一不等便返回 `DistinguishedInvolutionMismatch`。相关作用背景见 [[WeylAction 的对偶全格作用]]。^[error-global-tits.md:101-104]
 
 ## 各入口的检查时机
 

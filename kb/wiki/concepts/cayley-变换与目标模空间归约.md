@@ -52,7 +52,7 @@ provenanceState: extracted
 
 ## 逆 Cayley：源侧修复与目标归约
 
-`inverse_cayley` 先执行裸的 `sigma_inv_mult`：反射左 torus 部分，并在左乘增加 Weyl 长度时加上 \(m_\alpha\)。实根源处的模约化可能已遗忘源侧 grading；若重建出的根为 compact，则使用第一个与该根配对非平凡的源模空间基向量修复 grading。若不存在这样的基向量，则报 `TitsCosetInvariantViolation`。^[tits-element.md:54-58]
+`inverse_cayley` 先执行裸的 `sigma_inv_mult`：反射左 torus 部分，并在左乘增加 Weyl 长度时加上 $m_\alpha$。实根源处的模约化可能已遗忘源侧 grading；若重建出的根为 compact，则使用第一个与该根配对非平凡的源模空间基向量修复 grading。若不存在这样的基向量，则报 `TitsCosetInvariantViolation`。^[tits-element.md:54-58]
 
 修复后，操作在虚根目标处调用 `quotient_representative` 归约，并复核目标的 simple grading。若源根不是实根，或向下的 Cartan 类尚未加入表，则返回 `None`。这一流程使用源模空间修复 grading，再使用目标模空间确定最终代表元。^[tits-element.md:54-60]
 

@@ -35,21 +35,21 @@ tags:
 
 # 下降集、good ascent 与本原性
 
-`KlSupport<B: BlockTopology>` 为每个块元素预计算下降集（tau-invariant）与 good-ascent 集，并用它们判定本原性、建立本原索引。**本原性相对于给定的目标下降集定义**：`x` 对 `y` 的下降集本原，当且仅当 `x` 的 good ascent 中没有一个属于 `y` 的下降集。KLV 多项式 \(P_{x,y}\) 存放在第 `y` 列的 `prim_index(x, desc(y))` 处。^[kl-support.md:16-21]
+`KlSupport<B: BlockTopology>` 为每个块元素预计算下降集（tau-invariant）与 good-ascent 集，并用它们判定本原性、建立本原索引。**本原性相对于给定的目标下降集定义**：`x` 对 `y` 的下降集本原，当且仅当 `x` 的 good ascent 中没有一个属于 `y` 的下降集。KLV 多项式 $P_{x,y}$ 存放在第 `y` 列的 `prim_index(x, desc(y))` 处。^[kl-support.md:16-21]
 
 ## 下降集与 good ascent
 
-记 \(\mathrm{desc}(x)\) 为元素 `x` 的下降集，\(\mathrm{good}(x)\) 为其 good-ascent 集。构造时逐生成元分类：状态满足 `is_descent()` 时加入下降集；否则，仅在状态不是 `ImaginaryTypeII` 时加入 good-ascent 集。因此，**`ImaginaryTypeII` 既不是下降，也不是 good ascent**；good-ascent 集并非所有非下降生成元的集合。^[kl-support.md:32-37]
+记 $\mathrm{desc}(x)$ 为元素 `x` 的下降集，$\mathrm{good}(x)$ 为其 good-ascent 集。构造时逐生成元分类：状态满足 `is_descent()` 时加入下降集；否则，仅在状态不是 `ImaginaryTypeII` 时加入 good-ascent 集。因此，**`ImaginaryTypeII` 既不是下降，也不是 good ascent**；good-ascent 集并非所有非下降生成元的集合。^[kl-support.md:32-37]
 
 这两个集合使用 [[RankFlags：简单生成元位集]] 表示，底层为私有 `u32`，要求 rank ≤ 32。`contains(other)` 表示超集判定，`first_bit` 按编号升序寻找最低置位，`intersect` 与 `difference` 返回新集合。`set` 和 `is_set` 自身不检查边界，`KlSupport` 的使用路径依靠构造门控保证秩不超限。^[kl-support.md:23-28]
 
 ## 三种判定语义
 
-给定目标下降集 \(D=\mathrm{desc}(y)\)，`is_primitive(x, D)` 检查 \(\mathrm{good}(x)\cap D=\varnothing\)，即目标下降集中不存在 `x` 的 good ascent。^[kl-support.md:19-21, kl-support.md:41-43]
+给定目标下降集 $D=\mathrm{desc}(y)$，`is_primitive(x, D)` 检查 $\mathrm{good}(x)\cap D=\varnothing$，即目标下降集中不存在 `x` 的 good ascent。^[kl-support.md:19-21, kl-support.md:41-43]
 
-`is_extremal(x, D)` 检查 \(\mathrm{desc}(x)\supseteq D\)，即 `x` 的下降集包含整个目标下降集。它与本原性的判定条件不同：extremal 使用下降集的包含关系，本原性使用 good-ascent 集与目标下降集的不相交关系。^[kl-support.md:41-43]
+`is_extremal(x, D)` 检查 $\mathrm{desc}(x)\supseteq D$，即 `x` 的下降集包含整个目标下降集。它与本原性的判定条件不同：extremal 使用下降集的包含关系，本原性使用 good-ascent 集与目标下降集的不相交关系。^[kl-support.md:41-43]
 
-`ascent_descent(x, y)` 返回差集 \(\mathrm{desc}(y)\setminus\mathrm{desc}(x)\) 的最低置位，即该差集中编号最小的生成元。^[kl-support.md:27-28, kl-support.md:41-42]
+`ascent_descent(x, y)` 返回差集 $\mathrm{desc}(y)\setminus\mathrm{desc}(x)$ 的最低置位，即该差集中编号最小的生成元。^[kl-support.md:27-28, kl-support.md:41-42]
 
 ## [[唯一上升像与本原元素回退|唯一上升像与本原元素回退]]
 

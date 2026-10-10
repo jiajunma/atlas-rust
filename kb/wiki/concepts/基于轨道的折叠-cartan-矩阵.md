@@ -46,7 +46,7 @@ provenanceState: extracted
 
 ## 矩阵条目与下标方向
 
-原始矩阵采用约定 \(\operatorname{cartan}[a][b]=\langle\alpha_a,\alpha_b^\vee\rangle\)。输出条目 \(C(i,j)\) 对第 \(j\) 个轨道的折叠根与第 \(i\) 个轨道的折叠余根进行配对，累加相应的 `cartan[a][b]`。因此，输出的第一下标选择余根轨道，第二下标选择根轨道。^[dynkin.md:82-83]
+原始矩阵采用约定 $\operatorname{cartan}[a][b]=\langle\alpha_a,\alpha_b^\vee\rangle$。输出条目 $C(i,j)$ 对第 $j$ 个轨道的折叠根与第 $i$ 个轨道的折叠余根进行配对，累加相应的 `cartan[a][b]`。因此，输出的第一下标选择余根轨道，第二下标选择根轨道。^[dynkin.md:82-83]
 
 ## 校验与调用契约
 

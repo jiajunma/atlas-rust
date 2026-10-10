@@ -41,7 +41,7 @@ tags:
 
 ## 输入与坐标约定
 
-原型 `RootDatum` 使用单根基坐标：单根为标准基向量 \(e_i\)，第 \(j\) 个单余根为 Cartan 矩阵的第 \(j\) 列。`from_basis` 先逐个检查向量维度，不符时返回 `RankMismatch`，再按行主序核对配对关系 \(\langle \mathrm{root}_i,\mathrm{coroot}_j\rangle=\mathrm{cartan}[i][j]\)，不符时返回 `RootPairingMismatch`。相关构造规则见 [[原型 RootDatum 的构造校验与配对约定]]。^[lib-root.md:34-38]
+原型 `RootDatum` 使用单根基坐标：单根为标准基向量 $e_i$，第 $j$ 个单余根为 Cartan 矩阵的第 $j$ 列。`from_basis` 先逐个检查向量维度，不符时返回 `RankMismatch`，再按行主序核对配对关系 $\langle \mathrm{root}_i,\mathrm{coroot}_j\rangle=\mathrm{cartan}[i][j]$，不符时返回 `RootPairingMismatch`。相关构造规则见 [[原型 RootDatum 的构造校验与配对约定]]。^[lib-root.md:34-38]
 
 ## 搜索与输出顺序
 

@@ -58,7 +58,7 @@ crate 根共有 60 条模块声明，其中 5 个公开模块为 `deform`、`ext
 
 A1 原型层中的类型全部为 `pub(crate)`，实现注释标记其等待替换（pending replacement）。其中 `LatticeVector(Vec<i32>)` 是无校验的 newtype，声明的迁移方向是由 `Weight`／`Coweight` 在编译期区分对偶格；这属于待完成的替换方向。相关背景见 [[A1 迁移原型层与对偶格类型设计]]。^[lib-root.md:30-33]
 
-原型层还包含 `PrototypeWeylGroup`、`RootType`、`CartanInvolution` 和 `RealReductiveGroup`。`CartanInvolution` 校验 \(M^2=I\) 及单根像属于根系，但其 `compact_imaginary` 标志是未经校验的调用方断言，来源注明该标志已被 `Grading` 取代。`RealReductiveGroup::simple_real_rank` 的含义刻意窄于 real rank。^[lib-root.md:42-49]
+原型层还包含 `PrototypeWeylGroup`、`RootType`、`CartanInvolution` 和 `RealReductiveGroup`。`CartanInvolution` 校验 $M^2=I$ 及单根像属于根系，但其 `compact_imaginary` 标志是未经校验的调用方断言，来源注明该标志已被 `Grading` 取代。`RealReductiveGroup::simple_real_rank` 的含义刻意窄于 real rank。^[lib-root.md:42-49]
 
 原型 `RootDatum` 与 `root_datum` 模块中的 `BasedRootDatum` 名称相近，但并非同一类型。原型构造器调用 `BasedRootDatum::standard` 的校验关系应与类型身份区分；相关类型见 [[BasedRootDatum：带基根数据与构造不变量]]。^[lib-root.md:34-38, lib-root.md:55-58]
 

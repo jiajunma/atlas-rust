@@ -44,17 +44,17 @@ aliases:
 
 [[BasedRootDatum：带基根数据与构造不变量|BasedRootDatum]] 区分环境格秩 `lattice_rank` 与简单根个数 `semisimple_rank`。构造时要求每个简单根、简单余根的坐标维数等于 `lattice_rank`；合法输入包括带中心环面的根数据，以及空 Cartan 矩阵配合正 `lattice_rank` 的纯环面。^[root-datum-dual.md:18-21, root-datum-dual.md:39-51]
 
-令 \(n=\texttt{lattice_rank}\)，简单余根坐标组成行矩阵 \(A_{\mathrm{coroot}}\)，简单根坐标组成行矩阵 \(A_{\mathrm{root}}\)。两个接口求取的整数核分别满足以下正交条件。^[root-datum-dual.md:69-74]
+令 $n=\texttt{lattice_rank}$，简单余根坐标组成行矩阵 $A_{\mathrm{coroot}}$，简单根坐标组成行矩阵 $A_{\mathrm{root}}$。两个接口求取的整数核分别满足以下正交条件。^[root-datum-dual.md:69-74]
 
-\[
+$$
 \ker_{\mathbb Z} A_{\mathrm{coroot}}
 =\{x\in\mathbb Z^n:\langle x,\alpha_i^\vee\rangle=0\ \text{对所有 }i\},
-\]
+$$
 
-\[
+$$
 \ker_{\mathbb Z} A_{\mathrm{root}}
 =\{y\in\mathbb Z^n:\langle\alpha_i,y\rangle=0\ \text{对所有 }i\}.
-\]
+$$
 
 前者的核基包装为 `Weight`，后者包装为 `Coweight`，保留权与余权的类型区别。^[root-datum-dual.md:69-74]
 
@@ -68,7 +68,7 @@ aliases:
 
 当矩阵行列表为空时，辅助函数 `annihilator_matrix` 显式构造 `IntegerMatrix::zero(0, lattice_rank, budget)`。空方程组的核是整个环境格；若仅从空行推断列数，就会丢失环境格的秩，因此零行矩阵仍须保留 `lattice_rank` 列。^[root-datum-dual.md:75-79]
 
-来源记录的两个无根回归测试覆盖秩 \(0,1,2,4\)，固定 `coradical_basis()` 与 `radical_basis()` 均返回环境格的单位坐标基。这些测试是纯环面修复的回归守卫，来源链指向 `docs/slices/torus_radical_2026-09-29.md`。^[root-datum-dual.md:75-79]
+来源记录的两个无根回归测试覆盖秩 $0,1,2,4$，固定 `coradical_basis()` 与 `radical_basis()` 均返回环境格的单位坐标基。这些测试是纯环面修复的回归守卫，来源链指向 `docs/slices/torus_radical_2026-09-29.md`。^[root-datum-dual.md:75-79]
 
 ## 文档差异与证据范围
 

@@ -40,7 +40,7 @@ Weyl 群层分为矩阵级作用 `WeylAction` 与词级组合元素 `WeylElement
 
 ## 矩阵作用层：全格作用与等值
 
-`WeylAction` 保存 `datum: Arc<BasedRootDatum>`、`weight_matrix` 和 `coweight_matrix`。单位作用使用 `lattice_rank` 阶单位矩阵；简单反射依据根与余根的对偶配对构造，矩阵条目为 \(M_{ij}=\delta_{ij}-\mathrm{reflected}_i\mathrm{pairing}_j\)。`root_reflection` 支持任意枚举根上的反射，且与根的符号无关，可用于重放 Cayley/cross 分解。详见 [[WeylAction 的对偶全格作用]]。^[weyl-layer.md:28-36]
+`WeylAction` 保存 `datum: Arc<BasedRootDatum>`、`weight_matrix` 和 `coweight_matrix`。单位作用使用 `lattice_rank` 阶单位矩阵；简单反射依据根与余根的对偶配对构造，矩阵条目为 $M_{ij}=\delta_{ij}-\mathrm{reflected}_i\mathrm{pairing}_j$。`root_reflection` 支持任意枚举根上的反射，且与根的符号无关，可用于重放 Cayley/cross 分解。详见 [[WeylAction 的对偶全格作用]]。^[weyl-layer.md:28-36]
 
 `compose` 的顺序是先作用 `right`、再作用 `self`；`act` 与 `act_on_coweight` 分别作用于两个格。构造矩阵作用无需枚举 Weyl 群，完整枚举由独立的 `WeylGroup::enumerate_actions(budget)` 接口提供，并要求显式基数预算。^[weyl-layer.md:19-21, weyl-layer.md:37-41]
 
@@ -50,13 +50,13 @@ Weyl 群层分为矩阵级作用 `WeylAction` 与词级组合元素 `WeylElement
 
 ## 词级元素层：根置换与调用方契约
 
-`WeylElement` 属于 KGB map 的 stage (a)，提供 \(O(1)\) 的长度与下降查询。每次操作能够进行的来源一致性检查仅是根数匹配；始终使用同一环境根系属于调用方契约，由 KGB stages 负责。根置换的反对称性依靠“构造器是唯一入口”保证，构造入口包括 `identity`、`simple_reflection` 与 `from_action`。^[weyl-layer.md:22-24, weyl-layer.md:64-70]
+`WeylElement` 属于 KGB map 的 stage (a)，提供 $O(1)$ 的长度与下降查询。每次操作能够进行的来源一致性检查仅是根数匹配；始终使用同一环境根系属于调用方契约，由 KGB stages 负责。根置换的反对称性依靠“构造器是唯一入口”保证，构造入口包括 `identity`、`simple_reflection` 与 `from_action`。^[weyl-layer.md:22-24, weyl-layer.md:64-70]
 
-左右下降读取不同方向的置换。`has_left_descent` 读取逆置换，以 \(w^{-1}(\alpha_s)<0\) 判定 \(\ell(sw)<\ell(w)\)；`has_right_descent` 读取正向置换，以 \(w(\alpha_s)<0\) 判定 \(\ell(ws)<\ell(w)\)。详见 [[WeylElement 的置换表示与长度下降不变量]]。^[weyl-layer.md:71-74]
+左右下降读取不同方向的置换。`has_left_descent` 读取逆置换，以 $w^{-1}(\alpha_s)<0$ 判定 $\ell(sw)<\ell(w)$；`has_right_descent` 读取正向置换，以 $w(\alpha_s)<0$ 判定 $\ell(ws)<\ell(w)$。详见 [[WeylElement 的置换表示与长度下降不变量]]。^[weyl-layer.md:71-74]
 
-`multiply` 的复合方向与 `WeylAction::compose` 一致，并在同一趟计算中按 \((uv)^{-1}=v^{-1}u^{-1}\) 维护逆置换。乘积长度从 positivity slice 重新计算，不能直接相加操作数长度。`left_multiply_simple` 与 `right_multiply_simple` 报告长度变化，其中 \(-1\) 对应 `sigma_mult` 分支，\(+1\) 对应 `sigma_inv_mult`；`inverse` 直接返回逆。^[weyl-layer.md:75-79]
+`multiply` 的复合方向与 `WeylAction::compose` 一致，并在同一趟计算中按 $(uv)^{-1}=v^{-1}u^{-1}$ 维护逆置换。乘积长度从 positivity slice 重新计算，不能直接相加操作数长度。`left_multiply_simple` 与 `right_multiply_simple` 报告长度变化，其中 $-1$ 对应 `sigma_mult` 分支，$+1$ 对应 `sigma_inv_mult`；`inverse` 直接返回逆。^[weyl-layer.md:75-79]
 
-`twisted_conjugate` 计算 \(s_{\mathrm{gen}}\,w\,s_{\mathrm{twist}(\mathrm{gen})}\)，是 Tits 扭曲共轭的 Weyl 影子。`twist` 必须是生成元上的对合置换；它与 distinguished involution 的单根作用一致这一要求由调用方保证。stage (b) 使用的长度变化 \(d\in\{0,\pm2\}\) 由调用点对缓存长度作差获得，参见 [[Weyl 元素的扭曲共轭]]。^[weyl-layer.md:80-84]
+`twisted_conjugate` 计算 $s_{\mathrm{gen}}\,w\,s_{\mathrm{twist}(\mathrm{gen})}$，是 Tits 扭曲共轭的 Weyl 影子。`twist` 必须是生成元上的对合置换；它与 distinguished involution 的单根作用一致这一要求由调用方保证。stage (b) 使用的长度变化 $d\in\{0,\pm2\}$ 由调用点对缓存长度作差获得，参见 [[Weyl 元素的扭曲共轭]]。^[weyl-layer.md:80-84]
 
 ## 约化词与规范排序
 
@@ -64,7 +64,7 @@ Weyl 群层分为矩阵级作用 `WeylAction` 与词级组合元素 `WeylElement
 
 `WeylInterface::new(cartan)` 保存上游构造器的内部生成元重编号：Dynkin 分量按分类顺序排列，各分量的 Bourbaki `position` 对 A/E/F/G 型直接使用，对 B/C/D 型反转。`outward()` 将内部编号映射到 datum 生成元编号。移植保留的可观察效果是规范词选择与 `ParabolicPieces` 的内部序 piece 索引。^[weyl-layer.md:95-99]
 
-`ParabolicPieces::key` 返回按 internal-level 顺序排列的 piece 列表，对应唯一分解 \(w=w_1\cdots w_n\)，其中各 \(w_i\) 是相应右陪集的最小代表元。列表的字典序比较复刻上游 `WeylElt::operator<`，也用于 involution 排序的平局判定，并由 KGB 重编号使用。详见 [[ParabolicPieces 的抛物分解与排序键]]。^[weyl-layer.md:100-105]
+`ParabolicPieces::key` 返回按 internal-level 顺序排列的 piece 列表，对应唯一分解 $w=w_1\cdots w_n$，其中各 $w_i$ 是相应右陪集的最小代表元。列表的字典序比较复刻上游 `WeylElt::operator<`，也用于 involution 排序的平局判定，并由 KGB 重编号使用。详见 [[ParabolicPieces 的抛物分解与排序键]]。^[weyl-layer.md:100-105]
 
 ## 算术与失败边界
 

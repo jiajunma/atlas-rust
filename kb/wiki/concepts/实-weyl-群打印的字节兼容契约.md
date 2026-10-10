@@ -54,7 +54,7 @@ provenanceState: extracted
 
 `format_word` 将空词打印为 `e`；非空词使用从 1 开始的生成元编号，以逗号连接。打印读取 `WeylElement::canonical_word`。来源说明，生成元按构造得到与上游 `WeylGroup::word` 相同的规范词，因此未移植 `reflection_word` 与 `to_dominant` 机制，相关背景见 [[Weyl 元素的规范词]]。^[real-weyl.md:75-81, real-weyl.md:156-157]
 
-每个列出的根对应一个 Weyl 反射。R-群的每个核位向量对应一个反射乘积，按 `orth` 坐标的置位升序右乘；核生成元本身按自由列升序产生。复根生成元为 \(s_{rn}\cdot s_{\theta(rn)}\)，先构造根的反射，再右乘其对合像的反射。^[real-weyl.md:75-79, real-weyl.md:130-133]
+每个列出的根对应一个 Weyl 反射。R-群的每个核位向量对应一个反射乘积，按 `orth` 坐标的置位升序右乘；核生成元本身按自由列升序产生。复根生成元为 $s_{rn}\cdot s_{\theta(rn)}$，先构造根的反射，再右乘其对合像的反射。^[real-weyl.md:75-79, real-weyl.md:130-133]
 
 ## 换行与空行
 

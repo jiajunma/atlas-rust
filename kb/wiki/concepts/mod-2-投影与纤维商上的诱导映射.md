@@ -27,7 +27,7 @@ mod-2 投影将源余特征格中的奇偶坐标映到伴随半单商，并经�
 
 ## 整数投影与模二实现
 
-整数投影 `map_coweight` 实现限制映射 \(Y \to P^\vee\)：对源余特征 \(y\)，按源单根顺序计算配对 \(\langle\alpha_i,y\rangle\)，以这些整数作为目标坐标。伴随 datum 的 character 基为源单根全基，cocharacter 基为对应的基本余权基。这一投影可以具有中心核，不要求为同构；相关构造见 [[伴随根数据与余特征格投影]]。^[adjoint-fiber.md:17-19, adjoint-fiber.md:39-44]
+整数投影 `map_coweight` 实现限制映射 $Y \to P^\vee$：对源余特征 $y$，按源单根顺序计算配对 $\langle\alpha_i,y\rangle$，以这些整数作为目标坐标。伴随 datum 的 character 基为源单根全基，cocharacter 基为对应的基本余权基。这一投影可以具有中心核，不要求为同构；相关构造见 [[伴随根数据与余特征格投影]]。^[adjoint-fiber.md:17-19, adjoint-fiber.md:39-44]
 
 私有方法 `apply_mod_two` 按根系数的奇性逐坐标翻转奇偶位，可经 `ModTwoAmbientMap` 或 `FiberToAdjoint` 调用。在其实现中，`bit(i) == None` 的分支按非 1 处理。^[adjoint-fiber.md:45-46]
 
@@ -43,12 +43,12 @@ mod-2 投影将源余特征格中的奇偶坐标映到伴随半单商，并经�
 
 `AmbientCoweight` 与 `AdjointCoweight` 均携带 `Arc<AdjointProjectionModel>`。其相等判断同时要求模型指针相同与坐标相等；整数投影也先检查来源。这种 [[余权坐标的投影出处绑定]] 防止跨投影复用坐标，两次独立构建的投影会以 `DatumMismatch` 拒绝彼此的坐标。^[adjoint-fiber.md:19-23, adjoint-fiber.md:41-42]
 
-投影工作量在构建期按 \(2\,lr^2\,ss\) 预检，在运行期按 `lr·target·vector_count` 检查，其中 `lr` 为格秩、`ss` 为半单秩。运行期预算逐次调用独立检查，不跨调用累计；预算乘加使用受检算术，溢出返回 `ArithmeticOverflow`。^[adjoint-fiber.md:52-58]
+投影工作量在构建期按 $2\,lr^2\,ss$ 预检，在运行期按 `lr·target·vector_count` 检查，其中 `lr` 为格秩、`ss` 为半单秩。运行期预算逐次调用独立检查，不跨调用累计；预算乘加使用受检算术，溢出返回 `ArithmeticOverflow`。^[adjoint-fiber.md:52-58]
 
 ## 测试证据与限制
 
 测试锚点包括 A1 恒等对合下的生成元投影与规范代表元、中心余权入核及投影可加性，以及 A1+A2 非对称作用下逐坐标基的交织关系
-\(\operatorname{map}(\theta y)=\theta_{\mathrm{adjoint}}\operatorname{map}(y)\)。
+$\operatorname{map}(\theta y)=\theta_{\mathrm{adjoint}}\operatorname{map}(y)$。
 另有跨投影坐标拒绝、rank-33 动态秩和两条预算拒绝路径的测试。^[adjoint-fiber.md:64-72]
 
 这些证据仍有明确边界：若干分配、算术及非法作用错误分支未覆盖，`coordinates`、`same_class`、`basis_representatives` 和 `identity` 的直接调用也未覆盖。源材料属于结构性阅读，不声称数学验收；本次知识维护未执行测试或 benchmark。^[adjoint-fiber.md:10-13, adjoint-fiber.md:72-75, adjoint-fiber.md:81-85]

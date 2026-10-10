@@ -48,7 +48,7 @@ tags:
 
 构造器刻意不接收独立的 ambient fiber 参数，而是直接针对 `AdjointCartanFiber::ambient_fiber` 构建 `m_alpha`。这使构造所用纤维保持为伴随下降得到证明时的确切来源，而不依赖纤维值相等来表达同一性。^[grading.md:42-45]
 
-逐虚根收集时，`m_alpha` 是余根在 ambient fiber 中的模二像，伴随 `m_alpha` 则经投影取得。投影公式 \(\Pi(y)_j=\langle\alpha_j,y\rangle\) 正是其 bracket 向量，因此配对逻辑只在投影内保留一份实现，详见 [[m_alpha 的模二归约与伴随投影]]。`simple_mod_two` 保存单根坐标的奇性，判定式 `*coordinate % 2 != 0` 包含负奇数。^[grading.md:47-51]
+逐虚根收集时，`m_alpha` 是余根在 ambient fiber 中的模二像，伴随 `m_alpha` 则经投影取得。投影公式 $\Pi(y)_j=\langle\alpha_j,y\rangle$ 正是其 bracket 向量，因此配对逻辑只在投影内保留一份实现，详见 [[m_alpha 的模二归约与伴随投影]]。`simple_mod_two` 保存单根坐标的奇性，判定式 `*coordinate % 2 != 0` 包含负奇数。^[grading.md:47-51]
 
 ## 求值输入与逆向恢复
 

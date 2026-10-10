@@ -45,7 +45,7 @@ A1 加中心环面边界 fixture 用于检验 root/coroot ladder 构造中的 `i
 
 测试文件 `tests/math/generics/root_ladder_coordinate_boundary.atlas` 包含 11 个 A1+torus case，覆盖 root/coroot 交换、两种 numbering、阈值下方、阈值上方及 `i32::MAX`，并保留 recovery marker `719`。来源中的账本条目记载，原版接受了全部 11 个 case 的 22 条记录。^[root-ladder-overflow-repair.md:92-95, root-ladder-overflow-repair.md:124-126]
 
-对完整存储的有限根集 \(R\subseteq\mathbb Z^d\) 和 \(\alpha\in R\)，ladder bottom 集定义为 \(B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}\)。若精确差的某个坐标超出 `i32` 范围，它就不可能等于任何已存向量，因此成员查询应返回 `false`，相应的 \(\beta\) 应进入 bottom 集。详见 [[Root ladder bottom 集与固定宽度成员查询]]。^[root-ladder-overflow-repair.md:41-49]
+对完整存储的有限根集 $R\subseteq\mathbb Z^d$ 和 $\alpha\in R$，ladder bottom 集定义为 $B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}$。若精确差的某个坐标超出 `i32` 范围，它就不可能等于任何已存向量，因此成员查询应返回 `false`，相应的 $\beta$ 应进入 bottom 集。详见 [[Root ladder bottom 集与固定宽度成员查询]]。^[root-ladder-overflow-repair.md:41-49]
 
 这一结论仅适用于完整 `i32` 存储集合上的精确差成员查询，不允许 wrapping 或 saturating 算术，也不能推广到一般向量减法、反射、root combination、seed negation 或构造输入验证。修复只在 `build_ladder_bottoms` 的两次查询中将 `StructureError::ArithmeticOverflow` 解释为不属于集合；分配失败及其他错误继续传播，root 溢出也不会跳过独立的 coroot 查询。参见 [[Rust ladder 成员查询的选择性溢出处理]]。^[root-ladder-overflow-repair.md:51-53, root-ladder-overflow-repair.md:74-83]
 

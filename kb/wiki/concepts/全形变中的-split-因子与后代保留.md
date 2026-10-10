@@ -35,15 +35,15 @@ tags:
 
 # 全形变中的 Split 因子与后代保留
 
-普通全形变必须保留子项的 Split 因子及其后代贡献。`full_deformation_uncached` 在 scale-zero 基底保留**全部 final 项**，对子项则以 \(c(1-s)\) 因子继续递归；若停在前一个可约点并将其变成单个 K 型，就会丢弃 Split 因子与后代。^[atlas-core-deformation-cache.md:36-40]
+普通全形变必须保留子项的 Split 因子及其后代贡献。`full_deformation_uncached` 在 scale-zero 基底保留**全部 final 项**，对子项则以 $c(1-s)$ 因子继续递归；若停在前一个可约点并将其变成单个 K 型，就会丢弃 Split 因子与后代。^[atlas-core-deformation-cache.md:36-40]
 
 ## 递推关系
 
-普通全形变遍历**每个可约点**，采用递推式 \(F(z)=L(z)+\sum_t c_t(1-s)F(t)\)。由于 \((1-s)^2=2(1-s)\)，来源将其对应于原版整数递推 \(D(z)\mathrel{+}=c_tL(t)+2c_tD(t)\)。因此，递归处理须保留 \(1-s\) 因子；相关系数表示可参见 [[SplitInteger 分裂整数系数]]。^[atlas-core-deformation-cache.md:29-40]
+普通全形变遍历**每个可约点**，采用递推式 $F(z)=L(z)+\sum_t c_t(1-s)F(t)$。由于 $(1-s)^2=2(1-s)$，来源将其对应于原版整数递推 $D(z)\mathrel{+}=c_tL(t)+2c_tD(t)$。因此，递归处理须保留 $1-s$ 因子；相关系数表示可参见 [[SplitInteger 分裂整数系数]]。^[atlas-core-deformation-cache.md:29-40]
 
 ## 基底与子项处理
 
-`full_deformation_uncached` 的 scale-zero 基底对应 `deformation_unit::set_LKTs`，保留全部 final 项。每个子项依次经过 `scale` → `deform_readjust` → `rep lookup` → `common_deformation_terms`；其中 `common_deformation_terms` 使用块修饰符、原始行与 `gamma`，随后以 \(c(1-s)\) 因子递归。将这一步替换为单个 K 型会丢失来源明确要求保留的 Split 因子与后代贡献。^[atlas-core-deformation-cache.md:36-40]
+`full_deformation_uncached` 的 scale-zero 基底对应 `deformation_unit::set_LKTs`，保留全部 final 项。每个子项依次经过 `scale` → `deform_readjust` → `rep lookup` → `common_deformation_terms`；其中 `common_deformation_terms` 使用块修饰符、原始行与 `gamma`，随后以 $c(1-s)$ 因子递归。将这一步替换为单个 K 型会丢失来源明确要求保留的 Split 因子与后代贡献。^[atlas-core-deformation-cache.md:36-40]
 
 顶层 `compute_full_deform` 对输入参数的每个 final 组分分别计算形变，按该组分的系数缩放后合并，再按 canonical `KTypePol` 项序排序。参见 [[全形变参数规范化与结果聚合]]。^[atlas-core-deformation-cache.md:41-42]
 

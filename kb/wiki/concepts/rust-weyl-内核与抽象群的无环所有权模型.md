@@ -72,7 +72,7 @@ Original Atlas 的 `W_elt_value` 强持有 root datum，保证元素存活期间
 
 来源记录 AFTER-v5 job `3900050` 为 `COMPLETED 0:0`：cold_dual 完全字节相等，prewarmed_dual 在 stdout、退出码与有序 error summary 上一致。验收证据文件为 `math_weyl_context_core_after_v5_acceptance_2026_10_06.json`，report SHA 前缀为 `3288480d…`。接受范围仅为 A1 限定语义，不授予 cache、performance、memory、rank 或更广数学 release。^[weyl-context-identity-and-sharing.md:63-69]
 
-A1 跨 dual 乘法只涉及 \(s_0s_0=1\)，不能发现 generator renumbering 错误或直接复合 foreign root permutation 的问题。现有 rebind fixture 仍有 alias 保持旧 datum 存活，也未证明仅靠保存的 WeylElt 就能维持 datum 生命周期；Atlas 输出同样无法证明 fresh-equal owner 使用独立 coordinate cell。后两项需要额外 lifetime fixture 与 HPC-only `Weak`/work-count 守卫。^[weyl-context-identity-and-sharing.md:313-318]
+A1 跨 dual 乘法只涉及 $s_0s_0=1$，不能发现 generator renumbering 错误或直接复合 foreign root permutation 的问题。现有 rebind fixture 仍有 alias 保持旧 datum 存活，也未证明仅靠保存的 WeylElt 就能维持 datum 生命周期；Atlas 输出同样无法证明 fresh-equal owner 使用独立 coordinate cell。后两项需要额外 lifetime fixture 与 HPC-only `Weak`/work-count 守卫。^[weyl-context-identity-and-sharing.md:313-318]
 
 后续 [[Weyl 语义回归的递进验证门禁]] 包括 G2 非对称 interface-order、B2/C2、两个乘法操作数顺序、inner-class dual 与 `no_value` relations。截至来源的 2026-10-09 更新，G2 gate 已冻结和彩排，因隧道中断尚待提交，其余后续见证已起草为 provisional fixture。语义 gate 全部通过后，才进入 one-build work-count 测试及同节点、交替顺序、fresh-process 的 time/CPU/RSS A/B；`59 -> 至多 5` 只是调用层工作量假设。^[weyl-context-identity-and-sharing.md:95-100, weyl-context-identity-and-sharing.md:320-330]
 

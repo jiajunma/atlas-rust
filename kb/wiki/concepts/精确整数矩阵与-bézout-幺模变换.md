@@ -53,9 +53,9 @@ provenanceState: extracted
 
 ## 饱和整数核与后续归约
 
-`saturated_kernel(matrix, budget)` 先检查预算，再进行保持幺模右因子 \(V\) 的行列混合约化。矩阵对角化后，\(V\) 中对应零对角元的列构成完整整数核。实现刻意不采用“有理行约化再通分”的路径。^[integer-lattice.md:39-41]
+`saturated_kernel(matrix, budget)` 先检查预算，再进行保持幺模右因子 $V$ 的行列混合约化。矩阵对角化后，$V$ 中对应零对角元的列构成完整整数核。实现刻意不采用“有理行约化再通分”的路径。^[integer-lattice.md:39-41]
 
-[[整数基的模 2 归约|reduce_basis_mod_two]] 将整数基模 2 归约，仅保留其在 \(Y/2Y\) 中的张成。`negative_coweight_eigenspace` 则直接从余特征作用计算 \(\ker_{\mathbb Z}(I+\theta_Y)\)：由于 `LatticeInvolution::coweight_matrix()` 已存储余特征上的对偶作用，该函数有意不再转置，详见[[余特征作用的负特征整数子格]]。^[integer-lattice.md:42-45]
+[[整数基的模 2 归约|reduce_basis_mod_two]] 将整数基模 2 归约，仅保留其在 $Y/2Y$ 中的张成。`negative_coweight_eigenspace` 则直接从余特征作用计算 $\ker_{\mathbb Z}(I+\theta_Y)$：由于 `LatticeInvolution::coweight_matrix()` 已存储余特征上的对偶作用，该函数有意不再转置，详见[[余特征作用的负特征整数子格]]。^[integer-lattice.md:42-45]
 
 ## 关系格封装与可观测基
 

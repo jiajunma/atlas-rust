@@ -57,7 +57,7 @@ provenanceState: extracted
 
 ## 算法中的预算使用
 
-`saturated_kernel(matrix, budget)` 先检查预算，再执行保持幺模右因子 \(V\) 的行列混合约化。矩阵对角化后，\(V\) 中对应零对角元的列构成完整整数核；实现有意不采用“有理行约化再通分”的方法。^[integer-lattice.md:39-41]
+`saturated_kernel(matrix, budget)` 先检查预算，再执行保持幺模右因子 $V$ 的行列混合约化。矩阵对角化后，$V$ 中对应零对角元的列构成完整整数核；实现有意不采用“有理行约化再通分”的方法。^[integer-lattice.md:39-41]
 
 [[承载可观测量的适配基（adapted_basis）|adapted_basis]] 在消元前预检工作矩阵、基、逆及对角线的合计条目数，再逐行执行 `gcd_row_to_pivot`，并循环调用 `find_small_remainder` 消元。因此，此处的条目预算覆盖多份工作数据，而不只检查输入矩阵。^[integer-lattice.md:57-64]
 

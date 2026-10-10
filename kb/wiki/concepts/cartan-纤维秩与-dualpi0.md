@@ -38,13 +38,13 @@ aliases:
 
 # Cartan 纤维秩与 dualPi0
 
-Cartan 纤维秩由 `involution_classification.rs` 中的 `fiber_rank` 计算，表示 \(\operatorname{dualPi0}(-\theta^{\mathsf T})\) 的 \(\mathbf F_2\) 维数，也是 `Cartan_info` 打印的纤维大小指数。这一函数服务于 Cartan 分类与拓扑计算。^[twisted-involution-trio.md:54-58, twisted-involution-trio.md:79-81]
+Cartan 纤维秩由 `involution_classification.rs` 中的 `fiber_rank` 计算，表示 $\operatorname{dualPi0}(-\theta^{\mathsf T})$ 的 $\mathbf F_2$ 维数，也是 `Cartan_info` 打印的纤维大小指数。这一函数服务于 Cartan 分类与拓扑计算。^[twisted-involution-trio.md:54-58, twisted-involution-trio.md:79-81]
 
 ## 计算公式
 
-令 \(q=-\theta^{\mathsf T}\)。`fiber_rank` 从 \((q+I)\bmod 2\) 的核维数中，减去 `plusBasis(q)` 模二后张成空间的维数，公式如下。^[twisted-involution-trio.md:54-56]
+令 $q=-\theta^{\mathsf T}$。`fiber_rank` 从 $(q+I)\bmod 2$ 的核维数中，减去 `plusBasis(q)` 模二后张成空间的维数，公式如下。^[twisted-involution-trio.md:54-56]
 
-\[
+$$
 \operatorname{fiber\_rank}(\theta)
 =
 \dim_{\mathbf F_2}\ker\bigl((q+I)\bmod 2\bigr)
@@ -52,7 +52,7 @@ Cartan 纤维秩由 `involution_classification.rs` 中的 `fiber_rank` 计算，
 \dim_{\mathbf F_2}\operatorname{span}
 \bigl(\operatorname{plusBasis}(q)\bmod 2\bigr),
 \qquad q=-\theta^{\mathsf T}.
-\]
+$$
 
 实现中的核维数通过 `kernel_dim = rank − image.rank()` 得到；最终维数差使用 `saturating_sub`，因此实现对异常维数关系的处理需要与数学公式分开理解。^[twisted-involution-trio.md:54-58]
 
@@ -60,7 +60,7 @@ Cartan 纤维秩由 `involution_classification.rs` 中的 `fiber_rank` 计算，
 
 同一文件中的 `InvolutionClassification` 保存整数对合分解为恒等、交换对和取负因子时唯一确定的三个秩，分别对应 compact、complex、split；它刻意不选择或存储分解本身。相关概念见 [[整数对合的 compact/complex/split 分类]]。^[twisted-involution-trio.md:39-42]
 
-分类计算使用 \(\theta+I\) 的饱和核求得 `plus_rank`，并以 \((\theta+I)\bmod 2\) 的像秩确定 `complex`，再计算 `compact` 与 `split`。`fiber_rank` 则针对 \(q=-\theta^{\mathsf T}\) 求上述模二维数差；两者虽位于同一文件，算术防御策略并不相同。^[twisted-involution-trio.md:49-58]
+分类计算使用 $\theta+I$ 的饱和核求得 `plus_rank`，并以 $(\theta+I)\bmod 2$ 的像秩确定 `complex`，再计算 `compact` 与 `split`。`fiber_rank` 则针对 $q=-\theta^{\mathsf T}$ 求上述模二维数差；两者虽位于同一文件，算术防御策略并不相同。^[twisted-involution-trio.md:49-58]
 
 ## 算术与错误处理边界
 

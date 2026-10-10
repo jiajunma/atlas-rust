@@ -57,7 +57,7 @@ Primitivisation（本原化）将扩展 KLV 表中的元素查询归约到指定
 
 `x_index`、`self_index` 和 `flips` 通过 `mask_of` 查表。辅助集合 `very_easy_set(x,y)` 等于 `good_ascents(x) ∩ descents(y)`，`easy_set(x,y)` 等于 `descents(y) ∖ descents(x)`；表还提供 `length_floor`、`col_size` 以及 `extr_back_up_mask`、`prim_back_up_mask` 回溯接口。^[extended-kl.md:54-62]
 
-`ExtKlTable` 为每个块元素 `y` 存储一列多项式池索引，以 `x` 相对于 `descents(y)` 的 primitive 位置寻址。`kl_pol_index` 返回 `(KLIndex, bool)`；`p(x,y)` 返回 twisted KLV 多项式 \(P_{x,y}\)，在 flip 为真时通过 `scaled(-1)` 恢复符号。参见 [[扩展 KLV 多项式表的逐列存储]]。^[extended-kl.md:72-80]
+`ExtKlTable` 为每个块元素 `y` 存储一列多项式池索引，以 `x` 相对于 `descents(y)` 的 primitive 位置寻址。`kl_pol_index` 返回 `(KLIndex, bool)`；`p(x,y)` 返回 twisted KLV 多项式 $P_{x,y}$，在 flip 为真时通过 `scaled(-1)` 恢复符号。参见 [[扩展 KLV 多项式表的逐列存储]]。^[extended-kl.md:72-80]
 
 多项式池复用 `KlHashTable`，条目是系数类型为 `i32` 的 `KlPol`。池索引不打包符号位；本原化符号保存在独立的 `prim_flip` bitmap 中，查询时另行读取。`raw_ext_KL` 包装层将返回对渲染为 `inx.second ? -inx.first : inx.first`；这种带号呈现不改变池索引与符号的分离存储方式。参见 [[多项式池与 primitivisation 符号分离]]。^[extended-kl.md:28-35]
 

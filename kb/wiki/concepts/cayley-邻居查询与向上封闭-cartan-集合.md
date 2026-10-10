@@ -23,7 +23,7 @@ promptModifiers:
 
 # Cayley 邻居查询与向上封闭 Cartan 集合
 
-`InvolutionTable::cayley(generator, id)` 通过反射乘积 \(s\cdot w\) 与置换查表计算 Cayley 邻居。目标 Cartan 类尚未添加时返回 `None`；KGB 构建 stage-(e) 要求预先添加对应实形式的**向上封闭 Cartan 集合**，此后返回 `None` 即表示调用方违反不变量。^[involution-table.md:79-81]
+`InvolutionTable::cayley(generator, id)` 通过反射乘积 $s\cdot w$ 与置换查表计算 Cayley 邻居。目标 Cartan 类尚未添加时返回 `None`；KGB 构建 stage-(e) 要求预先添加对应实形式的**向上封闭 Cartan 集合**，此后返回 `None` 即表示调用方违反不变量。^[involution-table.md:79-81]
 
 ## 查询与存储基础
 
@@ -31,7 +31,7 @@ promptModifiers:
 
 `add_cartan(classification, cartan)` 将指定 Cartan 类的轨道加入表，重复添加返回已有切片。种子与期望大小来自 classification，生成轨道必须恰好达到期望大小，否则报告 `"orbit size"` 不变量错误。相关约束见 [[Cartan 轨道的幂等添加与容量约束]]。^[involution-table.md:44-49]
 
-表的 `lookup` 使用前向根置换作为键，涉及同基数外来根系元素时仍有调用方契约，详见 [[前向根置换索引及其调用方契约]]。`cayley` 经反射乘积加置换查表计算邻居；`cross(generator, id)` 则直接读取构建时存储的 \(s\cdot w\cdot\mathrm{twist}(s)\) 链接，两者的作用公式与查询路径不同。^[involution-table.md:73-81]
+表的 `lookup` 使用前向根置换作为键，涉及同基数外来根系元素时仍有调用方契约，详见 [[前向根置换索引及其调用方契约]]。`cayley` 经反射乘积加置换查表计算邻居；`cross(generator, id)` 则直接读取构建时存储的 $s\cdot w\cdot\mathrm{twist}(s)$ 链接，两者的作用公式与查询路径不同。^[involution-table.md:73-81]
 
 ## 向上封闭的调用契约
 

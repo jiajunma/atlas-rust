@@ -44,7 +44,7 @@ provenanceState: extracted
 
 ## 公共上下文中的作用
 
-`CommonContext` 将 KGB 层面的生成元作用转运到共轭的父单根上，提供 `status`、`cross`、`is_parity`、`down_cayley` 和 `up_cayley` 五个操作。`cross` 先按反射词对 `x` 做交叉作用，并利用 `pos_to_neg` 实根修正平移 `gamma_lambda`，再按父根反射；`up_cayley` 在提升后的 `gamma_lambda` 不满足奇偶条件时，加上 \(\alpha_s/2\) 作奇偶修正。^[partial-common-block.md:44-55]
+`CommonContext` 将 KGB 层面的生成元作用转运到共轭的父单根上，提供 `status`、`cross`、`is_parity`、`down_cayley` 和 `up_cayley` 五个操作。`cross` 先按反射词对 `x` 做交叉作用，并利用 `pos_to_neg` 实根修正平移 `gamma_lambda`，再按父根反射；`up_cayley` 在提升后的 `gamma_lambda` 不满足奇偶条件时，加上 $\alpha_s/2$ 作奇偶修正。^[partial-common-block.md:44-55]
 
 `singular_flags` 按子系统生成元逐一判定奇异性，检查相应余根是否在参数 `gamma` 的分子上取零。^[partial-common-block.md:56-57]
 

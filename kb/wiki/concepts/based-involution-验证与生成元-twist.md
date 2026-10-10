@@ -48,13 +48,13 @@ aliases:
 
 ## 生成元 twist 的含义
 
-设 distinguished involution 为 \(\delta\)，简单生成元 \(s\) 对应简单根 \(\alpha_s\)。`generator_twist()` 返回的置换满足 \(\alpha_{\mathrm{twist}[s]}=\delta(\alpha_s)\)：`twist[s]` 就是该简单根像所对应的生成元。此接口对应上游 `TwistedWeylGroup` 的 `weyl::Twist`。^[inner-class.md:49-51]
+设 distinguished involution 为 $\delta$，简单生成元 $s$ 对应简单根 $\alpha_s$。`generator_twist()` 返回的置换满足 $\alpha_{\mathrm{twist}[s]}=\delta(\alpha_s)$：`twist[s]` 就是该简单根像所对应的生成元。此接口对应上游 `TwistedWeylGroup` 的 `weyl::Twist`。^[inner-class.md:49-51]
 
-这一置换用于表达 twisted conjugation。在 `canonicalize` 中，返回的生成元按执行顺序排列；依次对每个 \(s\) 执行 \(\sigma\leftarrow s\cdot\sigma\cdot\delta(s)\)，即可将输入传送到规范代表元，其中 \(\delta(s)\) 是上述生成元像。完整算法见 [[Twisted involution 的三阶段规范化]]。^[inner-class.md:49-51, inner-class.md:63-68]
+这一置换用于表达 twisted conjugation。在 `canonicalize` 中，返回的生成元按执行顺序排列；依次对每个 $s$ 执行 $\sigma\leftarrow s\cdot\sigma\cdot\delta(s)$，即可将输入传送到规范代表元，其中 $\delta(s)$ 是上述生成元像。完整算法见 [[Twisted involution 的三阶段规范化]]。^[inner-class.md:49-51, inner-class.md:63-68]
 
 ## 与内类成员判定的关系
 
-`twisted_from_involution` 验证给定对合是否属于当前内类，并返回分解 \(\theta=w\cdot\delta\) 中的 Weyl 元素 \(w\)。调用方须预先检查矩阵为方阵且满足对合条件；该方法中的权格矩阵相等性蕴含 twist 比较，拒绝同样使用 `StructureError::InvalidBasedAutomorphism`。详见 [[InnerClass 成员判定与 twisted 分解]]。^[inner-class.md:55-59]
+`twisted_from_involution` 验证给定对合是否属于当前内类，并返回分解 $\theta=w\cdot\delta$ 中的 Weyl 元素 $w$。调用方须预先检查矩阵为方阵且满足对合条件；该方法中的权格矩阵相等性蕴含 twist 比较，拒绝同样使用 `StructureError::InvalidBasedAutomorphism`。详见 [[InnerClass 成员判定与 twisted 分解]]。^[inner-class.md:55-59]
 
 ## 实现与证据边界
 

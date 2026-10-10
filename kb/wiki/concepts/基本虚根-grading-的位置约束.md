@@ -40,7 +40,7 @@ tags:
 
 ## 基与位的含义
 
-算法先将[[强代表下降到基本纤维]]，约化环面部分，再构造余权 \(\mathrm{coweight}=\mathrm{coch}+\mathrm{lift}(\mathrm{tp})\)，其中 `lift(tp)` 在环面部分的置位坐标加 1。目标模式建立在基本纤维 `CartanId(0)` 的虚单根基上。^[minimal-torus.md:53-64]
+算法先将[[强代表下降到基本纤维]]，约化环面部分，再构造余权 $\mathrm{coweight}=\mathrm{coch}+\mathrm{lift}(\mathrm{tp})$，其中 `lift(tp)` 在环面部分的置位坐标加 1。目标模式建立在基本纤维 `CartanId(0)` 的虚单根基上。^[minimal-torus.md:53-64]
 
 `start` 由各虚单根与 `coweight` 的配对是否为偶数确定，置位表示紧致；`constrained` 标记该位置的基根是否为 datum-单根；`target` 在受约束位置记录目标实形的**非紧致性**，通过翻转适配 crate 的 `Grading` 存储约定。解释这些位时须保留各自的紧致性语义，相关背景见[[Grading 的位向量类型纪律]]。^[minimal-torus.md:63-67]
 

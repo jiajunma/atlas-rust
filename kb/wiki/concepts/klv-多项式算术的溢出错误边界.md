@@ -43,7 +43,7 @@ provenanceState: extracted
 
 [[KLV 多项式的表示与不变量]]包括：系数按次数从低到高排列，零多项式使用空向量，非零多项式通过 `trim` 保持最高次系数非零。非负性与首一性属于算法输出的外层性质，并非类型维护的不变量。^[kl-polynomial-table.md:21-27]
 
-系数计算使用普通 `i32` 算术；移位操作中的 `index + d` 下标计算同样未经检查。相关运算包括加减、乘以 \(1+q\)、移位加减、带系数的移位累加、标量倍乘，以及 \(q=-1\) 时的交错求和，服务于 KLV 递归与 μ-修正。^[kl-polynomial-table.md:31-48, kl-polynomial-table.md:62-64]
+系数计算使用普通 `i32` 算术；移位操作中的 `index + d` 下标计算同样未经检查。相关运算包括加减、乘以 $1+q$、移位加减、带系数的移位累加、标量倍乘，以及 $q=-1$ 时的交错求和，服务于 KLV 递归与 μ-修正。^[kl-polynomial-table.md:31-48, kl-polynomial-table.md:62-64]
 
 ## 整性检查与错误返回
 
@@ -57,7 +57,7 @@ provenanceState: extracted
 
 ## 测试与证据边界
 
-来源列出的四个测试锚点覆盖池种子序号、乘以 \(1+q\) 的展开、\(q=-1\) 求值，以及一个 `sub_shifted` 单项案例，没有列出溢出边界测试。明确列出的未测路径包括 `add`／`sub`、`add_shifted`、`scaled`、`divide_by_2` 错误分支和 `quotient_by_1_plus_q` 等，参见 [[KLV 多项式引擎的测试覆盖与证据边界]]。^[kl-polynomial-table.md:118-123]
+来源列出的四个测试锚点覆盖池种子序号、乘以 $1+q$ 的展开、$q=-1$ 求值，以及一个 `sub_shifted` 单项案例，没有列出溢出边界测试。明确列出的未测路径包括 `add`／`sub`、`add_shifted`、`scaled`、`divide_by_2` 错误分支和 `quotient_by_1_plus_q` 等，参见 [[KLV 多项式引擎的测试覆盖与证据边界]]。^[kl-polynomial-table.md:118-123]
 
 本页依据结构性源码阅读。来源未执行构建、测试或原版运行，不包含数学验收、性能或并行结论；KLV 计算正确性另有其 [[HPC 验收证据链]]，本来源不重述或扩展。上游行号转述自源码注释，未独立重读上游，可能随版本演进而漂移。^[kl-polynomial-table.md:9-17, kl-polynomial-table.md:130-135]
 

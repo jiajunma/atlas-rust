@@ -42,7 +42,7 @@ provenanceState: extracted
 
 # 扭对合与 Weyl 平移
 
-`TwistedInvolution` 表示杰出对合（distinguished involution）\(\theta\) 的 Weyl 平移：给定 Weyl 作用 \(w\)，要求复合 \(w\theta\) 仍为对合，即 \((w\theta)^2=1\)。该类型建立这一根论条件；[[扭曲对合的 Cayley/Cross 分解|Cayley/cross 分解]]由 `CayleyCrossDecomposition` 负责，典范化由 `InnerClass::canonicalize` 负责。Atlas Cartan 类的编号依赖 twisted 共轭轨道的典范代表元，不由本类型单独完成。^[involution-types.md:102-106, twisted-involution-trio.md:15-20]
+`TwistedInvolution` 表示杰出对合（distinguished involution）$\theta$ 的 Weyl 平移：给定 Weyl 作用 $w$，要求复合 $w\theta$ 仍为对合，即 $(w\theta)^2=1$。该类型建立这一根论条件；[[扭曲对合的 Cayley/Cross 分解|Cayley/cross 分解]]由 `CayleyCrossDecomposition` 负责，典范化由 `InnerClass::canonicalize` 负责。Atlas Cartan 类的编号依赖 twisted 共轭轨道的典范代表元，不由本类型单独完成。^[involution-types.md:102-106, twisted-involution-trio.md:15-20]
 
 ## 表示与接口
 
@@ -54,7 +54,7 @@ provenanceState: extracted
 
 检查通过后，分别复合权格与余权格作用矩阵，顺序均为 **Weyl 矩阵在左、distinguished 矩阵在右**。结果依次进入 `LatticeInvolution::new` 与 `RootInvolutionData::new`。`TwistedInvolution::new` 本体没有直接构造 `InvalidInvolution` 的位置；这类错误由内部构造器传播。^[involution-types.md:108-112, twisted-involution-trio.md:25-29]
 
-`LatticeInvolution::new` 重新执行完整验证：两矩阵必须为格秩阶方阵，先检查权格矩阵平方为单位矩阵，再检查余权格矩阵平方为单位矩阵，最后验证配对保持 \(W^{T}C=I\)。对合条件不成立返回 `InvalidInvolution`，配对保持失败返回 `InvalidRootAutomorphism`；检验算术使用受检的 `i128` 累加，溢出传播 `ArithmeticOverflow`。相关顺序见 [[对合类型的分层构造验证与错误优先级]]。^[involution-types.md:63-71, involution-types.md:108-112]
+`LatticeInvolution::new` 重新执行完整验证：两矩阵必须为格秩阶方阵，先检查权格矩阵平方为单位矩阵，再检查余权格矩阵平方为单位矩阵，最后验证配对保持 $W^{T}C=I$。对合条件不成立返回 `InvalidInvolution`，配对保持失败返回 `InvalidRootAutomorphism`；检验算术使用受检的 `i128` 累加，溢出传播 `ArithmeticOverflow`。相关顺序见 [[对合类型的分层构造验证与错误优先级]]。^[involution-types.md:63-71, involution-types.md:108-112]
 
 `RootInvolutionData::new` 进一步验证复合确实置换根，并把每个存储余根运输到像根的余根。仅有配对保持不足以保证这一性质：固定所有根却移动余根中心环面坐标的作用仍须被排除。单根级错误优先于逐根主循环中的泛型错误；根置换的二阶性依赖 `LatticeInvolution` 的验证，不另作独立检查。^[involution-types.md:80-92, involution-types.md:144-145]
 

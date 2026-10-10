@@ -44,7 +44,7 @@ K 型的变形包括优势化、θ 稳定化和规范形构造，分别使用权
 
 `made_dominant` 要求输入为标准 K 型，非标准输入报错 `"standard K-type in make_dominant"`。算法对求值为负的复单根执行 cross 与反射，并在每轮末尾通过 `lambda_unique` 重新规范化。终止预算为 `weight_defect((1+θ)λ)`，超限时报错 `"dominance termination"`。^[ktype.md:35-38]
 
-求值核 `theta_plus_1_eval(α)` 计算 \(\langle\lambda_\rho,\alpha^\vee\rangle+\operatorname{colevel}(\alpha)+\langle\lambda_\rho,(\theta\alpha)^\vee\rangle+\operatorname{colevel}(\theta\alpha)\)。`is_standard` 要求单虚余根上的求值非负，`is_dominant` 则要求所有单根上的求值非负；相关前提见 [[K 型谓词链与调用前提]]。^[ktype.md:22-30]
+求值核 `theta_plus_1_eval(α)` 计算 $\langle\lambda_\rho,\alpha^\vee\rangle+\operatorname{colevel}(\alpha)+\langle\lambda_\rho,(\theta\alpha)^\vee\rangle+\operatorname{colevel}(\theta\alpha)$。`is_standard` 要求单虚余根上的求值非负，`is_dominant` 则要求所有单根上的求值非负；相关前提见 [[K 型谓词链与调用前提]]。^[ktype.md:22-30]
 
 优势化原样携带 `height`，依据是源码注释所断言的 Weyl 共轭移动下 height 不变；这一不变性在来源中属于注释陈述。^[ktype.md:35-38]
 

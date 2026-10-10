@@ -34,7 +34,7 @@ promptModifiers:
 
 生成的轨道必须恰好填满期望大小，否则报告 `InvolutionTableInvariantViolation { invariant: "orbit size" }`。BFS 通过邻居 `s_g · current · s_{twist(g)}` 扩展轨道，并以前向根置换为去重键，详见 [[Twisted cross-action 的 BFS 轨道构建]]。^[involution-table.md:44-54]
 
-`push_record` 中的 `index_by_permutation.insert(key, id)` 是没有碰撞检查的 `BTreeMap::insert`，但来源核对确认：在表自身的不变量下，静默覆盖在数学上不可达。键是 Weyl 因子 \(w\) 的完整根置换，忠实决定 \(w\)，而固定的 \(\delta\) 又使 \(w\) 唯一决定 \(\theta=w\delta\)。同一内类的不同 Cartan 轨道是两两不交的扭曲共轭类，因此不同 Cartan 添加所产生的键集合互不相交。^[involution-table.md:60-65]
+`push_record` 中的 `index_by_permutation.insert(key, id)` 是没有碰撞检查的 `BTreeMap::insert`，但来源核对确认：在表自身的不变量下，静默覆盖在数学上不可达。键是 Weyl 因子 $w$ 的完整根置换，忠实决定 $w$，而固定的 $\delta$ 又使 $w$ 唯一决定 $\theta=w\delta$。同一内类的不同 Cartan 轨道是两两不交的扭曲共轭类，因此不同 Cartan 添加所产生的键集合互不相交。^[involution-table.md:60-65]
 
 同一 Cartan 类的重复添加由入口处的幂等检查拦截，同一 BFS 内的重复元素则先被 lookup 命中。因此，轨道间不发生键覆盖属于表自身的不变量，无需另加调用方纪律。仍需调用方保证的是 `lookup` 的外来根系元素契约：同基数的不同根系可能具有同形置换，而根数匹配是唯一结构性防线。参见 [[前向根置换索引及其调用方契约]]。^[involution-table.md:62-67, involution-table.md:73-74]
 

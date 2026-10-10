@@ -56,7 +56,7 @@ aliases:
 
 `a1_real_cross_leaves_both_components_unchanged` 检查 A1 实根交叉后环面与扭曲对合两个分量均不变。`a2_complex_cross_reflects_the_rational_coweight` 检查 `(1/3, 1/2)` 经 `crossed_generator(1)` 变为 `(5/6, 3/2)`，Weyl 作用为 `s1∘s0∘s1`。^[error-global-tits.md:128-130]
 
-复根分支采用精确有理更新 \(t \leftarrow t-\langle\alpha,t\rangle\alpha^\vee\)。`b2_complex_cross_uses_the_coroot_not_the_root_direction` 专门锚定更新使用余根方向；根类型背景见 [[对合下的虚根、实根与复根分类]]。^[error-global-tits.md:79-85, error-global-tits.md:133-133]
+复根分支采用精确有理更新 $t \leftarrow t-\langle\alpha,t\rangle\alpha^\vee$。`b2_complex_cross_uses_the_coroot_not_the_root_direction` 专门锚定更新使用余根方向；根类型背景见 [[对合下的虚根、实根与复根分类]]。^[error-global-tits.md:79-85, error-global-tits.md:133-133]
 
 ### Weyl 字的执行顺序
 

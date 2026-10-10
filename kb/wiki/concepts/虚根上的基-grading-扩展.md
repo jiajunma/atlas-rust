@@ -41,7 +41,7 @@ aliases:
 
 ## 坐标求解与根类型检查
 
-设虚根为 \(\beta=\sum_i c_i\beta_i\)，其中 \(\beta_i\) 为虚单根，则扩展值为 \(\sum_i c_i\bmod 2\)。坐标通过精确求解**转置的 bracket 索引子 Cartan 系统**获得：系统第 \(j\) 行记录各基根与第 \(j\) 个余根的配对。^[real-form-labels-order.md:32-35]
+设虚根为 $\beta=\sum_i c_i\beta_i$，其中 $\beta_i$ 为虚单根，则扩展值为 $\sum_i c_i\bmod 2$。坐标通过精确求解**转置的 bracket 索引子 Cartan 系统**获得：系统第 $j$ 行记录各基根与第 $j$ 个余根的配对。^[real-form-labels-order.md:32-35]
 
 实现显式检查虚根性，因为非虚根的投影也可能具有整数坐标。因此，坐标整性不能替代[[对合下的虚根、实根与复根分类|根类型判定]]；求得整坐标本身不足以接受输入。^[real-form-labels-order.md:33-35]
 

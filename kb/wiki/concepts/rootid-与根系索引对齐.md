@@ -48,9 +48,9 @@ provenanceState: extracted
 
 ## 确定性编号与记录一致性
 
-根系从 [[BasedRootDatum：带基根数据与构造不变量|BasedRootDatum]] 枚举得到。构造先为每个简单根插入正负记录，简单坐标分别为 \(\pm e_i\)，再通过简单反射进行广度优先闭包。最终根序由闭包 `BTreeMap` 的环境根坐标键序决定，与 BFS 的发现顺序无关。^[root-system.md:18-20, root-system.md:55-62]
+根系从 [[BasedRootDatum：带基根数据与构造不变量|BasedRootDatum]] 枚举得到。构造先为每个简单根插入正负记录，简单坐标分别为 $\pm e_i$，再通过简单反射进行广度优先闭包。最终根序由闭包 `BTreeMap` 的环境根坐标键序决定，与 BFS 的发现顺序无关。^[root-system.md:18-20, root-system.md:55-62]
 
-闭包插入先检查自配对 \(\langle\alpha,\alpha^\vee\rangle=2\)，再检查重复根坐标；重复候选也必须通过自配对检查。重复键对应的余根与简单坐标必须逐字节一致，否则报告 `"coroot agreement"` 不变量错误。重复候选不计入根数。这些检查属于防御性检查，来源说明已知公开 datum 构造路径无法触发相应错误，测试通过直接注入私有 `Closure` 覆盖拒绝路径。^[root-system.md:64-69]
+闭包插入先检查自配对 $\langle\alpha,\alpha^\vee\rangle=2$，再检查重复根坐标；重复候选也必须通过自配对检查。重复键对应的余根与简单坐标必须逐字节一致，否则报告 `"coroot agreement"` 不变量错误。重复候选不计入根数。这些检查属于防御性检查，来源说明已知公开 datum 构造路径无法触发相应错误，测试通过直接注入私有 `Closure` 覆盖拒绝路径。^[root-system.md:64-69]
 
 ## 编号、生成器顺序与正性
 

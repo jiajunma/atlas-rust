@@ -47,15 +47,15 @@ aliases:
 
 ## Weyl 姿态变换
 
-`RepContext::transform_srm<LEFT_TO_RIGHT>(w, srm)` 沿 Weyl 词逐字母变换参数，`LEFT_TO_RIGHT` 决定施加方向。每一步依据 `kgb_status(x, s)` 分派：Complex 分支对 `x` 执行 cross，并对分子作简单反射；Real 分支保持 `x` 不变，对分子作以 \(-\rho_R\) 为中心的仿射反射；Imaginary 分支返回 `RepInvariantViolation`。变换结束后，在最终 `x` 处通过 `real_unique` 归一化。^[block-access-modifier.md:66-70]
+`RepContext::transform_srm<LEFT_TO_RIGHT>(w, srm)` 沿 Weyl 词逐字母变换参数，`LEFT_TO_RIGHT` 决定施加方向。每一步依据 `kgb_status(x, s)` 分派：Complex 分支对 `x` 执行 cross，并对分子作简单反射；Real 分支保持 `x` 不变，对分子作以 $-\rho_R$ 为中心的仿射反射；Imaginary 分支返回 `RepInvariantViolation`。变换结束后，在最终 `x` 处通过 `real_unique` 归一化。^[block-access-modifier.md:66-70]
 
-私有函数 `simple_reflect_numerator` 执行分子更新 \(v \leftarrow v-\alpha_s(\langle v,\mathrm{coroot}_s\rangle+\mathrm{offset})\)，保持有理权分母不变，算术全程采用 checked 运算。Complex 分支的 offset 为零，Real 分支的 offset 为分母。^[block-access-modifier.md:66-69, block-access-modifier.md:83-85]
+私有函数 `simple_reflect_numerator` 执行分子更新 $v \leftarrow v-\alpha_s(\langle v,\mathrm{coroot}_s\rangle+\mathrm{offset})$，保持有理权分母不变，算术全程采用 checked 运算。Complex 分支的 offset 为零，Real 分支的 offset 为分母。^[block-access-modifier.md:66-69, block-access-modifier.md:83-85]
 
 Rust 使用 `WeylElement::reduced_word` 给出的典范最左下降约化词，上游则使用 transducer 随元素存储的词。来源将其记录为有意偏差，并转述实现文档关于目标域内无语义差异的声明。两个方向使用同一典范词，使 `transform<false>` 成为 `transform<true>` 的逐字母逆；`make_relative_to` 与 `sr` 依赖这一性质。词构造可参见[[基于左下降剥离的规范约化词]]。^[block-access-modifier.md:58-62]
 
 ## 平移、相对化与恢复
 
-`shift_srm` 将 `amount` 加到 `gamma_lambda`，随后在不变的 involution 处归一化。`make_diff_integral_orthogonal` 从两个代表的差中减去其在 \((1-\theta)X^*\) 中的固定原像，经由 `IntegralSubsystem::integral`、`RepTable::integral_codec` 与 `theta_1_preimage`，使结果与 `srm.gamma_lambda()` 的整根系正交。差为零时短路；debug 构建另有正交性断言。^[block-access-modifier.md:71-75]
+`shift_srm` 将 `amount` 加到 `gamma_lambda`，随后在不变的 involution 处归一化。`make_diff_integral_orthogonal` 从两个代表的差中减去其在 $(1-\theta)X^*$ 中的固定原像，经由 `IntegralSubsystem::integral`、`RepTable::integral_codec` 与 `theta_1_preimage`，使结果与 `srm.gamma_lambda()` 的整根系正交。差为零时短路；debug 构建另有正交性断言。^[block-access-modifier.md:71-75]
 
 `make_relative_to(loc, srm0, bm, srm1)` 先对定位器部分进行逆合成，再使用**更新后的** `bm.w` 执行 `transform<true>`，将 `srm1` 移回基姿态，最后把 `bm.shift` 设为两个 `gamma_lambda` 的整正交差。相关定位器操作见[[定位器的相对姿态变换]]。^[block-access-modifier.md:76-78]
 

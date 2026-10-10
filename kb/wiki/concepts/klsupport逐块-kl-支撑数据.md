@@ -37,7 +37,7 @@ provenanceState: extracted
 
 # KlSupport：逐块 KL 支撑数据
 
-`KlSupport<B: BlockTopology>` 为每个块提供 KL 算法所需的支撑数据：各元素的下降集（tau-invariant）、good-ascent 集、length-stop 长度边界表，以及按给定下降集组织的本原索引表。KLV 多项式 \(P_{x,y}\) 存放在第 `y` 列的 `prim_index(x, desc(y))` 位置。^[kl-support.md:16-21]
+`KlSupport<B: BlockTopology>` 为每个块提供 KL 算法所需的支撑数据：各元素的下降集（tau-invariant）、good-ascent 集、length-stop 长度边界表，以及按给定下降集组织的本原索引表。KLV 多项式 $P_{x,y}$ 存放在第 `y` 列的 `prim_index(x, desc(y))` 位置。^[kl-support.md:16-21]
 
 ## 构造与存储约束
 

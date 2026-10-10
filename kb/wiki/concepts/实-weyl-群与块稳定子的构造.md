@@ -63,9 +63,9 @@ provenanceState: extracted
 
 ## 单侧 fiber 数据与 R-群
 
-两侧共用 `fiber_side(root_system, involution, grading, element)`。正虚根先按上游键排序，再由基 grading 与代表元平移项判断非紧性：基 grading 为 \(\langle\alpha,\rho^\vee_{\mathrm{im}}\rangle\) 的奇偶，其中 \(2\rho^\vee_{\mathrm{im}}\) 是正虚余根之和；平移项是 ambient 代表与根的 datum-simple 坐标的模二点积。配对和 \(\sum_\beta \operatorname{bracket}(\alpha,\beta)\) 必须为偶数，否则触发 `"imaginary-simple coordinates"` 不变量错误。紧根累加进 `two_rho_ic`。^[real-weyl.md:118-127]
+两侧共用 `fiber_side(root_system, involution, grading, element)`。正虚根先按上游键排序，再由基 grading 与代表元平移项判断非紧性：基 grading 为 $\langle\alpha,\rho^\vee_{\mathrm{im}}\rangle$ 的奇偶，其中 $2\rho^\vee_{\mathrm{im}}$ 是正虚余根之和；平移项是 ambient 代表与根的 datum-simple 坐标的模二点积。配对和 $\sum_\beta \operatorname{bracket}(\alpha,\beta)$ 必须为偶数，否则触发 `"imaginary-simple coordinates"` 不变量错误。紧根累加进 `two_rho_ic`。^[real-weyl.md:118-127]
 
-紧根集合经 `simple_basis` 得到 `compact_basis`；`orth` 选取非紧且与 `two_rho` 正交的根，这些根强正交并构成 \(A_1^n\)。`simple_basis` 保留上游的特殊扫描行为：候选因反射结果非正而移除自身时，整个外层扫描终止，后续候选不再检查；调用方只传入正根。^[real-weyl.md:128-137]
+紧根集合经 `simple_basis` 得到 `compact_basis`；`orth` 选取非紧且与 `two_rho` 正交的根，这些根强正交并构成 $A_1^n$。`simple_basis` 保留上游的特殊扫描行为：候选因反射结果非正而移除自身时，整个外层扫描终止，后续候选不再检查；调用方只传入正根。^[real-weyl.md:128-137]
 
 R-群生成向量通过各 `orth` 根的 `m_alpha` 的 fiber 坐标求核得到。实现将这些坐标按行注入 `ModTwoSubspace`，按自由列升序生成核基：每个向量置位自由列自身，以及含有该自由列位的主元行所对应的位置。每个 `orth` 条目占一个位坐标，核生成元顺序与上游约定一致。^[real-weyl.md:63-64, real-weyl.md:130-133]
 
@@ -83,7 +83,7 @@ R-群生成向量通过各 `orth` 根的 `m_alpha` 的 fiber 坐标求核得到�
 
 ## Weyl 生成元与展示
 
-每个列出的根经 `WeylAction::root_reflection` 和 `WeylElement::from_action` 转换为 Weyl 元素。每个 R-群核向量对应一个反射乘积，按 `orth` 坐标升序遍历置位并右乘；复根生成元为 \(s_{\mathrm{rn}}s_{\theta(\mathrm{rn})}\)，先构造根反射，再右乘其对合像的反射。生成元按构造即具有规范词，打印使用 `canonical_word`，参见 [[Weyl 元素的规范词]]。^[real-weyl.md:75-81]
+每个列出的根经 `WeylAction::root_reflection` 和 `WeylElement::from_action` 转换为 Weyl 元素。每个 R-群核向量对应一个反射乘积，按 `orth` 坐标升序遍历置位并右乘；复根生成元为 $s_{\mathrm{rn}}s_{\theta(\mathrm{rn})}$，先构造根反射，再右乘其对合像的反射。生成元按构造即具有规范词，打印使用 `canonical_word`，参见 [[Weyl 元素的规范词]]。^[real-weyl.md:75-81]
 
 打印层分别以 `W^C.((A.W_ic) x W^R)` 和 `W^C.((A_i.W_ic) x (A_r.W_rc))` 展示实 Weyl 群与块稳定子的结构。空词打印为 `e`，非空词使用从 1 开始的生成元编号并以逗号连接；标点、空行和行终止均属于字节契约，详见 [[实 Weyl 群打印的字节兼容契约]]。^[real-weyl.md:149-157]
 

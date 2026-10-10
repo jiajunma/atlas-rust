@@ -58,7 +58,7 @@ provenanceState: extracted
 
 `ExtKlTable` 为每个块元素 `y` 保存一列池索引，按 `x` 相对于 `y` 的 descent set 的 primitive 位置寻址；翻转信息在查询时单独读取。列布局参见 [[扩展 KLV 多项式表的逐列存储]]。^[extended-kl.md:31-33, extended-kl.md:72-78]
 
-`ExtKlTable::kl_pol_index` 返回 `(KLIndex, bool)`，分别给出池索引与翻转标志。`p(x,y)` 返回 twisted KLV 多项式 \(P_{x,y}\)，需要翻转时通过 `scaled(-1)` 将池中的多项式取负。^[extended-kl.md:76-78]
+`ExtKlTable::kl_pol_index` 返回 `(KLIndex, bool)`，分别给出池索引与翻转标志。`p(x,y)` 返回 twisted KLV 多项式 $P_{x,y}$，需要翻转时通过 `scaled(-1)` 将池中的多项式取负。^[extended-kl.md:76-78]
 
 `raw_ext_KL` 包装层将返回对渲染为 `inx.second ? -inx.first : inx.first`。这一带符号索引是包装层的呈现方式，内部仍保留池索引与翻转标志的分离表示。^[extended-kl.md:31-35]
 

@@ -42,14 +42,14 @@ provenanceState: extracted
 
 # 伴随 Cartan 纤维的构建与下降验证
 
-`AdjointCartanFiber::build` 接收已验证的 root-datum 对合与已构建的 ambient `CartanFiber`，在伴随半单商上构造有限 \(\mathbb F_2\) Cartan 纤维，并验证源投影能够下降到目标子商。构建成功的对象同时持有源纤维、投影与目标纤维。来源属于结构性源码阅读，不构成数学验收。^[adjoint-fiber.md:9-13, adjoint-fiber.md:25-37]
+`AdjointCartanFiber::build` 接收已验证的 root-datum 对合与已构建的 ambient `CartanFiber`，在伴随半单商上构造有限 $\mathbb F_2$ Cartan 纤维，并验证源投影能够下降到目标子商。构建成功的对象同时持有源纤维、投影与目标纤维。来源属于结构性源码阅读，不构成数学验收。^[adjoint-fiber.md:9-13, adjoint-fiber.md:25-37]
 
 ## 子商模型与伴随投影
 
-`CartanFiber` 采用余特征格 \(Y\) 上的子商
-\(\ker_{\mathbb F_2}(I+\theta_Y)/\operatorname{red}_2\ker_{\mathbb Z}(I+\theta_Y)\)，并使用 low-pivot 归约基。文档注释声明它与 \(Y^\theta/(I+\theta_Y)Y\) 同构，但自然坐标不同；实现采用前一种坐标约定。参见 [[Cartan fiber 的有限域子商模型]]。^[cartan-fibers.md:16-24]
+`CartanFiber` 采用余特征格 $Y$ 上的子商
+$\ker_{\mathbb F_2}(I+\theta_Y)/\operatorname{red}_2\ker_{\mathbb Z}(I+\theta_Y)$，并使用 low-pivot 归约基。文档注释声明它与 $Y^\theta/(I+\theta_Y)Y$ 同构，但自然坐标不同；实现采用前一种坐标约定。参见 [[Cartan fiber 的有限域子商模型]]。^[cartan-fibers.md:16-24]
 
-`AdjointBasedRootDatum` 使用源 datum 的 Cartan 矩阵调用 `BasedRootDatum::standard`。按文档声明，其 character 基是源单根全基，cocharacter 基是对应的基本余权基。投影 \(Y\to P^\vee\) 将 \(y\) 映为它与各源单根的配对，目标坐标按单根顺序排列；该映射可以有中心核，不是同构。参见 [[伴随根数据与余特征格投影]]。^[cartan-fibers.md:101-112]
+`AdjointBasedRootDatum` 使用源 datum 的 Cartan 矩阵调用 `BasedRootDatum::standard`。按文档声明，其 character 基是源单根全基，cocharacter 基是对应的基本余权基。投影 $Y\to P^\vee$ 将 $y$ 映为它与各源单根的配对，目标坐标按单根顺序排列；该映射可以有中心核，不是同构。参见 [[伴随根数据与余特征格投影]]。^[cartan-fibers.md:101-112]
 
 ## 固定的构建顺序
 
@@ -57,7 +57,7 @@ provenanceState: extracted
 
 接着构造投影，并由 `root_basis_action` 将每个单根像的单根坐标写为矩阵的一列，得到半单秩方阵。`id_of`、`image` 或 `simple_coordinates` 任一步缺失，均返回 `InvalidRootAutomorphism`。余权作用取根作用矩阵的转置；注释给出的理由是对偶作用应为逆转置，而 `RootInvolutionData` 已验证根作用为对合，因此逆转置等于转置。^[cartan-fibers.md:129-133]
 
-随后调用 `LatticeInvolution::new` 与 `CartanFiber::build_owned` 构造目标纤维。后者遵循“先分母后分子”：先计算整数负特征子格并模二归约，再计算 \(\ker_{\mathbb F_2}(I+\theta_Y)\)，最后构造 `ModTwoSubquotient`。分子计算使用余特征作用矩阵的行，不再转置；整数格预算在分母构造阶段执行。参见 [[Cartan fiber 的先分母后分子构造]]。^[cartan-fibers.md:72-80, cartan-fibers.md:134-136]
+随后调用 `LatticeInvolution::new` 与 `CartanFiber::build_owned` 构造目标纤维。后者遵循“先分母后分子”：先计算整数负特征子格并模二归约，再计算 $\ker_{\mathbb F_2}(I+\theta_Y)$，最后构造 `ModTwoSubquotient`。分子计算使用余特征作用矩阵的行，不再转置；整数格预算在分母构造阶段执行。参见 [[Cartan fiber 的先分母后分子构造]]。^[cartan-fibers.md:72-80, cartan-fibers.md:134-136]
 
 ## 下降验证与出处约束
 
@@ -71,11 +71,11 @@ provenanceState: extracted
 
 `fiber_map()` 克隆所持有的源纤维、目标纤维和投影，构造字段全私有的 `FiberToAdjoint`。其 `apply` 固定执行三步：取得源元素的 `canonical_representative`，应用 mod-2 投影，再调用目标纤维的 `element_from_ambient`。实现不保存稠密 mod-2 映射矩阵或缓存像，每次调用都按需投影。参见 [[FiberToAdjoint 的按需投影]]。^[adjoint-fiber.md:35-37, cartan-fibers.md:138-141]
 
-源元素的典范代表由 low-pivot 坐标约定确定：商坐标第 \(j\) 位选择 `basis_representatives()[j]`，所选代表的 XOR 即典范 ambient 代表。mod-2 投影按根系数的奇性逐坐标翻转位；其 `bit(i) == None` 分支按非 1 处理。^[cartan-fibers.md:85-89, adjoint-fiber.md:45-48]
+源元素的典范代表由 low-pivot 坐标约定确定：商坐标第 $j$ 位选择 `basis_representatives()[j]`，所选代表的 XOR 即典范 ambient 代表。mod-2 投影按根系数的奇性逐坐标翻转位；其 `bit(i) == None` 分支按非 1 处理。^[cartan-fibers.md:85-89, adjoint-fiber.md:45-48]
 
 ## 资源预算与失败边界
 
-设半单秩为 \(r\)、源格秩为 \(n\)。构建预检依次限制半单秩、持久存储估算 \(16r^2+rn\)，以及投影操作估算 \(2n^2r\)，超限分别返回带 `"semisimple rank"`、`"persistent entries"` 或 `"projection operations"` 的 `AdjointFiberResourceLimit`。投影工作量估算依据是每个源坐标至多贡献一个分子与一个分母基向量；系数 16 的逐项构成未文档化。参见 [[伴随 fiber 的分配前资源预算]]。^[cartan-fibers.md:122-128]
+设半单秩为 $r$、源格秩为 $n$。构建预检依次限制半单秩、持久存储估算 $16r^2+rn$，以及投影操作估算 $2n^2r$，超限分别返回带 `"semisimple rank"`、`"persistent entries"` 或 `"projection operations"` 的 `AdjointFiberResourceLimit`。投影工作量估算依据是每个源坐标至多贡献一个分子与一个分母基向量；系数 16 的逐项构成未文档化。参见 [[伴随 fiber 的分配前资源预算]]。^[cartan-fibers.md:122-128]
 
 运行期 `check_projection_work` 按“源秩 × 目标秩 × 向量数”逐次检查，没有跨调用累计。预算乘加使用 `checked_product` 和 `checked_sum`，溢出返回 `ArithmeticOverflow`；分配使用 `try_reserve_exact`，失败返回 `AllocationFailed`。其他错误包括 `RankMismatch` 与转置输入非方阵时的 `InvalidInvolution`；非测试代码无 panic 或 assert。^[adjoint-fiber.md:52-62]
 

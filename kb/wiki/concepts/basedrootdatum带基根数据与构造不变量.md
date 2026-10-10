@@ -48,19 +48,19 @@ provenanceState: extracted
 
 `from_simple_data` 按固定顺序校验输入：先验证 Cartan 矩阵并确定 `semisimple_rank`，再要求 `lattice_rank >= semisimple_rank`，随后检查简单根与简单余根的数量均等于 `semisimple_rank`，最后检查每个根、余根的坐标秩均等于 `lattice_rank`。上述数量或秩条件不满足时返回 `StructureError::RankMismatch`。^[root-datum-dual.md:39-44]
 
-完成这些检查后，构造器逐 `(row, column)` 验证配对关系 \(\langle\alpha_{\mathrm{row}},\alpha^\vee_{\mathrm{column}}\rangle=\mathrm{cartan[row][column]}\)。不一致时返回 `StructureError::RootPairingMismatch { row, column, expected, actual }`，保留错误位置及期望值、实际值；相关错误体系见 [[StructureError 统一错误分类学]]。^[root-datum-dual.md:45-46]
+完成这些检查后，构造器逐 `(row, column)` 验证配对关系 $\langle\alpha_{\mathrm{row}},\alpha^\vee_{\mathrm{column}}\rangle=\mathrm{cartan[row][column]}$。不一致时返回 `StructureError::RootPairingMismatch { row, column, expected, actual }`，保留错误位置及期望值、实际值；相关错误体系见 [[StructureError 统一错误分类学]]。^[root-datum-dual.md:45-46]
 
 `standard(cartan)` 取单位坐标向量为简单根，取 Cartan 矩阵的**列**为简单余根，因此总有 `lattice_rank == semisimple_rank`。一般构造允许格秩大于半单秩，以容纳中心环面；也允许空 Cartan 矩阵配合正格秩，表示无根的纯环面。^[root-datum-dual.md:48-51]
 
 ## Cartan 矩阵校验
 
-`validate_cartan` 依次拒绝非方阵、对角元不为 2 或非对角元为正、零模式不对称，以及非有限型矩阵。非方阵返回 `NonSquareCartan`，其余上述失败返回 `InvalidCartanMatrix`。零模式对称要求 \(C_{ij}=0\) 当且仅当 \(C_{ji}=0\)。空矩阵通过全部检查，与纯环面的构造边界一致。^[root-datum-dual.md:53-58]
+`validate_cartan` 依次拒绝非方阵、对角元不为 2 或非对角元为正、零模式不对称，以及非有限型矩阵。非方阵返回 `NonSquareCartan`，其余上述失败返回 `InvalidCartanMatrix`。零模式对称要求 $C_{ij}=0$ 当且仅当 $C_{ji}=0$。空矩阵通过全部检查，与纯环面的构造边界一致。^[root-datum-dual.md:53-58]
 
 `is_finite_type` 使用 `malachite::Rational` 进行两遍精确有理计算：先在每个连通分量以比例因子 1 播种，沿非零 Cartan 边按 `scale[row] * C[row][col] / C[col][row]` 传播，发现冲突即返回 `false`；随后对 scale 加权矩阵作 LDLᵀ 式分解，任一主元不大于零即返回 `false`。详见 [[Cartan 矩阵的精确有理有限型检查]]。该检查与有限型的等价性是源材料记录的代码意图，并非数学验收结论。^[root-datum-dual.md:60-65]
 
 ## 简单反射与算术边界
 
-`reflect_weight(generator, weight)` 先检查权的坐标秩是否等于 `lattice_rank`，再检查生成元下标；失败分别返回 `RankMismatch` 与 `IndexOutOfRange { index, upper_bound: semisimple_rank }`。权上的反射为 \(x\mapsto x-\langle x,\alpha_g^\vee\rangle\alpha_g\)，余权上的对偶形式为 \(y\mapsto y-\langle\alpha_g,y\rangle\alpha_g^\vee\)。^[root-datum-dual.md:81-88]
+`reflect_weight(generator, weight)` 先检查权的坐标秩是否等于 `lattice_rank`，再检查生成元下标；失败分别返回 `RankMismatch` 与 `IndexOutOfRange { index, upper_bound: semisimple_rank }`。权上的反射为 $x\mapsto x-\langle x,\alpha_g^\vee\rangle\alpha_g$，余权上的对偶形式为 $y\mapsto y-\langle\alpha_g,y\rangle\alpha_g^\vee$。^[root-datum-dual.md:81-88]
 
 底层 `reflect_coordinates` 使用 `i128` 中间值，通过 `checked_mul`、`checked_sub` 和 `i32::try_from` 检查乘法、减法与坐标收窄。分配失败返回 `AllocationFailed`，算术或转换失败返回 `ArithmeticOverflow`。实现先用 `.get()` 检查一个数组，再直接索引另一个数组；其安全性依赖构造时保证简单根与简单余根数组长度均为 `semisimple_rank`。^[root-datum-dual.md:89-92]
 

@@ -59,13 +59,13 @@ Bourbaki 重编号规定 `layout_involution` 中扁平化单根位置与输出�
 
 ## 与一般格基转换的关系
 
-Bourbaki 重编号规定查表输出的矩阵下标；独立函数 `on_basis` 则计算一般格基上的表示 \(B^{-1}MB\)，其中 \(M\) 为 `matrix`，\(B\) 为 `basis`。该函数使用有理逆和有理矩阵乘法，再逐项检查结果的整性及 `i32` 可表示性。^[primitive-involution.md:86-89, primitive-involution.md:104-111]
+Bourbaki 重编号规定查表输出的矩阵下标；独立函数 `on_basis` 则计算一般格基上的表示 $B^{-1}MB$，其中 $M$ 为 `matrix`，$B$ 为 `basis`。该函数使用有理逆和有理矩阵乘法，再逐项检查结果的整性及 `i32` 可表示性。^[primitive-involution.md:86-89, primitive-involution.md:104-111]
 
 `on_basis` 将非方阵、奇异基、非整结果和转换失败四类情况统一折叠为 `None`，调用方无法区分，包装器将其统一标记为不兼容格。详见 [[换基失败的统一不兼容格语义]]。^[primitive-involution.md:111-113]
 
 ## 测试锚点与证据范围
 
-测试使用因子 `[A1,A2]`、字母 `"cs"` 和 `perm [2,0,1]`，检查 Bourbaki 重编号对表输出的作用。另一个锚点是 A2 的 `'s'`／`'u'` 翻转矩阵 \(\begin{pmatrix}0&1\\1&0\end{pmatrix}\)，它在 `perm [1,0]` 下保持不变。^[primitive-involution.md:122-127]
+测试使用因子 `[A1,A2]`、字母 `"cs"` 和 `perm [2,0,1]`，检查 Bourbaki 重编号对表输出的作用。另一个锚点是 A2 的 `'s'`／`'u'` 翻转矩阵 $\begin{pmatrix}0&1\\1&0\end{pmatrix}$，它在 `perm [1,0]` 下保持不变。^[primitive-involution.md:122-127]
 
 现有测试未覆盖 `'C'` 在非恒等 `perm` 下的行为，也未覆盖退化空输入。来源属于结构性源码阅读，不构成数学正确性验收；上游行号转录自代码注释，未独立核对上游字节。该次知识维护未执行 Atlas、Cargo、测试或 benchmark，因此测试锚点不代表本次执行结果。更多限制见 [[对合查表实现的证据范围与测试缺口]]。^[primitive-involution.md:132-149]
 

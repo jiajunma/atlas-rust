@@ -39,11 +39,11 @@ provenanceState: extracted
 
 # twisted KL 和的长度函数选择
 
-在 \(q=s\) 处计算交错 twisted KL 和时，`twisted_kl_sum` 与 `twisted_kl_column_at_s` 的关键差异是**确定符号所用的长度函数**：前者使用扩展块自身的长度，后者使用父块的长度。^[deformation-drivers.md:95-103]
+在 $q=s$ 处计算交错 twisted KL 和时，`twisted_kl_sum` 与 `twisted_kl_column_at_s` 的关键差异是**确定符号所用的长度函数**：前者使用扩展块自身的长度，后者使用父块的长度。^[deformation-drivers.md:95-103]
 
 ## 接口与编号约定
 
-`twisted_kl_sum` 对应上游自由函数 `twisted_KL_sum`（`repr.cpp:2304-2350`），计算扩展块元素 `y` 在 \(q=s\) 处的交错 twisted KL 列和。输入 `y` 使用扩展块编号，符号取自 `eblock.length`。^[deformation-drivers.md:97-99]
+`twisted_kl_sum` 对应上游自由函数 `twisted_KL_sum`（`repr.cpp:2304-2350`），计算扩展块元素 `y` 在 $q=s$ 处的交错 twisted KL 列和。输入 `y` 使用扩展块编号，符号取自 `eblock.length`。^[deformation-drivers.md:97-99]
 
 `twisted_kl_column_at_s` 对应上游 `Rep_table::twisted_KL_column_at_s`（`repr.cpp:2371-2423`），计算父块元素 `y0` 所对应参数的交错和。符号取自 `parent.length(eblock.z(x))`：先通过 `eblock.z(x)` 将扩展块元素映射到父块，再读取父块长度。相关编号关系见 [[扩展块与父块的索引映射]]。^[deformation-drivers.md:100-103]
 

@@ -42,7 +42,7 @@ Original Atlas 先用抽象简单根坐标 `Byte_vector` 建立 simple-root ladd
 
 ## 数学对象与成员关系
 
-对完整存储的有限根集 \(R\subseteq\mathbb Z^d\) 和 \(\alpha\in R\)，ladder bottom 集定义为 \(B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}\)，即收集减去 \(\alpha\) 后不再属于根集的根 \(\beta\)。参见 [[Root ladder bottom 集与固定宽度成员查询]]。^[root-ladder-overflow-repair.md:41-49]
+对完整存储的有限根集 $R\subseteq\mathbb Z^d$ 和 $\alpha\in R$，ladder bottom 集定义为 $B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}$，即收集减去 $\alpha$ 后不再属于根集的根 $\beta$。参见 [[Root ladder bottom 集与固定宽度成员查询]]。^[root-ladder-overflow-repair.md:41-49]
 
 构造必须保持精确的根／余根成员关系。Original Atlas 与 Rust 可以使用不同的坐标和存储策略，但固定宽度表示不能改变成员查询的结果。^[root-ladder-overflow-repair.md:64-66]
 
@@ -56,7 +56,7 @@ Rust 则逐对相减环境格坐标来进行成员查询。来源要求两者保
 
 Rust 原有错误是在构造 root/coroot ladder bottom 表时，将环境格坐标差的 `i32` 溢出视为整个 `RootSystem` 构造失败。原版的抽象坐标构造不经过这一环境格大坐标减法路径。^[root-ladder-overflow-repair.md:13-15, root-ladder-overflow-repair.md:57-62]
 
-对于完整存储为 `i32` 坐标的根或余根集合，如果数学整数中的精确差有任一坐标超出 `i32` 范围，该差就不可能等于任何已存向量。因此，这一成员查询应返回 `false`，相应的 \(\beta\) 应进入 bottom 集。这个论证不允许 wrapping 或 saturating 算术，也不能推广至一般向量减法、反射、root combination、seed negation 或构造输入验证。^[root-ladder-overflow-repair.md:46-53]
+对于完整存储为 `i32` 坐标的根或余根集合，如果数学整数中的精确差有任一坐标超出 `i32` 范围，该差就不可能等于任何已存向量。因此，这一成员查询应返回 `false`，相应的 $\beta$ 应进入 bottom 集。这个论证不允许 wrapping 或 saturating 算术，也不能推广至一般向量减法、反射、root combination、seed negation 或构造输入验证。^[root-ladder-overflow-repair.md:46-53]
 
 [[Rust ladder 成员查询的选择性溢出处理|Rust 的局部修复]]仅调整 `build_ladder_bottoms` 中的两次成员查询：减法成功时保持原有 root 二分查找或 coroot map 查找；仅将 `StructureError::ArithmeticOverflow` 解释为不属于集合；分配失败及其他错误继续传播。root 与 coroot 查询独立执行，root 溢出不会跳过 coroot 查询；底层减法、反射、`combine_roots`、数据布局、排序和 public API 均不修改。^[root-ladder-overflow-repair.md:74-83]
 

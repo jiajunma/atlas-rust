@@ -26,7 +26,7 @@ promptModifiers:
 
 ## 三种基本构造
 
-`qk_plus_1(k)` 构造 \(1+q^k\)，`qk_minus_1(k)` 构造 \(q^k-1\)，`qk_minus_q(k)` 构造 \(q^k-q\)。三者均返回 `KlPol`；来源标注的上游对应位置依次为 `ext_kl.cpp:178-184`、`186-192` 和 `194-200`。^[extended-kl.md:66-67]
+`qk_plus_1(k)` 构造 $1+q^k$，`qk_minus_1(k)` 构造 $q^k-1$，`qk_minus_q(k)` 构造 $q^k-q$。三者均返回 `KlPol`；来源标注的上游对应位置依次为 `ext_kl.cpp:178-184`、`186-192` 和 `194-200`。^[extended-kl.md:66-67]
 
 ## 带符号乘积
 

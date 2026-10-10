@@ -51,7 +51,7 @@ original Atlas 的 `W_elt_value` 强持有所属 root datum，并引用该 datum
 
 截至来源的 2026-10-09 更新，owner/kernel 修复已通过 AFTER-v5 job `3900050`，并以生产提交 `690c2b92` 落地；接受范围仍限于 A1 语义，不授予缓存、性能、内存、更高 rank 或更广数学 release。这一状态不代表紧凑表示迁移已经完成。^[weyl-context-identity-and-sharing.md:63-74, weyl-context-identity-and-sharing.md:238-245]
 
-A1 的跨 dual 乘法仅检验 \(s_0s_0=1\)，无法发现错误的生成元重编号或直接复合 foreign root permutation。既有 rebind 用例还保留 `wc_alias`，因此没有证明“仅由保存的 WeylElt 维持 datum 生命周期”。这些限制直接影响新表示能否被现有测试充分约束。^[weyl-context-identity-and-sharing.md:313-318]
+A1 的跨 dual 乘法仅检验 $s_0s_0=1$，无法发现错误的生成元重编号或直接复合 foreign root permutation。既有 rebind 用例还保留 `wc_alias`，因此没有证明“仅由保存的 WeylElt 维持 datum 生命周期”。这些限制直接影响新表示能否被现有测试充分约束。^[weyl-context-identity-and-sharing.md:313-318]
 
 来源规划的后续语义门包括 G2 非对称 interface-order 见证、B2/C2、两个乘法操作数顺序、inner-class dual construction、`no_value` relations，以及 sole-WeylElt lifetime。相关 G2 区别见 [[Canonical dual 的转置根数据与 G2 预热见证]]；这些后续 fixture 在来源更新时仍为 provisional，不能写成已验证结果。^[weyl-context-identity-and-sharing.md:320-330]
 

@@ -41,7 +41,7 @@ aliases:
 
 ## 作用像与枚举对象
 
-枚举键记录群元素对全部单根的作用像。原型 `RootDatum` 使用单根基坐标：单根为 \(e_i\)，单余根为 Cartan 矩阵的第 \(j\) 列；构造与配对约定见 [[原型 RootDatum 的构造校验与配对约定]]。^[lib-root.md:34-44]
+枚举键记录群元素对全部单根的作用像。原型 `RootDatum` 使用单根基坐标：单根为 $e_i$，单余根为 Cartan 矩阵的第 $j$ 列；构造与配对约定见 [[原型 RootDatum 的构造校验与配对约定]]。^[lib-root.md:34-44]
 
 群元素枚举与根枚举的对象不同：`PrototypeWeylGroup` 枚举 Weyl 群元素，而 `RootDatum::roots()` 以正负单根播种，通过 FIFO BFS 构造反射闭包，并将所得根向量按坐标字典序排序。来源只对根枚举明确说明了这一输出排序规则。^[lib-root.md:39-44]
 

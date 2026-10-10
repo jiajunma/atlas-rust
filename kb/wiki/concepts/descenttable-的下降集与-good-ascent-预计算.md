@@ -58,22 +58,22 @@ provenanceState: extracted
 
 `very_easy_set(x,y)` 取 `good_ascents(x)` 与 `descents(y)` 的交集；`easy_set(x,y)` 取 `descents(y)` 中不属于 `descents(x)` 的生成元，即下列两个集合。^[extended-kl.md:56-57]
 
-\[
+$$
 \begin{aligned}
 \operatorname{very\_easy\_set}(x,y)
 &=\operatorname{good\_ascents}(x)\cap\operatorname{descents}(y),\\
 \operatorname{easy\_set}(x,y)
 &=\operatorname{descents}(y)\setminus\operatorname{descents}(x).
 \end{aligned}
-\]
+$$
 
-`is_extremal` 检查 \(\operatorname{descent\_set}(x)\supseteq\operatorname{descents}(y)\)；`is_primitive` 检查 \(\operatorname{good\_ascent\_set}(x)\cap\operatorname{descents}(y)\) 是否为空。二者分别采用下降集包含关系与 good ascent 交集条件。^[extended-kl.md:59-60]
+`is_extremal` 检查 $\operatorname{descent\_set}(x)\supseteq\operatorname{descents}(y)$；`is_primitive` 检查 $\operatorname{good\_ascent\_set}(x)\cap\operatorname{descents}(y)$ 是否为空。二者分别采用下降集包含关系与 good ascent 交集条件。^[extended-kl.md:59-60]
 
 `x_index`、`self_index` 和 `flips` 经 `mask_of` 查表。接口还提供 `length_floor`、`col_size`，以及回溯操作 `extr_back_up_mask` 和 `prim_back_up_mask`。^[extended-kl.md:58-62]
 
 ## 与多项式列访问的衔接
 
-`ExtKlTable` 为每个块元素 `y` 保存一列多项式池索引，以 `x` 相对于 `descents(y)` 的 primitive 位置寻址。`kl_pol_index` 返回 `(KLIndex, bool)`；`p(x,y)` 给出 twisted KLV 多项式 \(P_{x,y}\)，在 flip 为真时通过 `scaled(-1)` 应用符号。^[extended-kl.md:72-78]
+`ExtKlTable` 为每个块元素 `y` 保存一列多项式池索引，以 `x` 相对于 `descents(y)` 的 primitive 位置寻址。`kl_pol_index` 返回 `(KLIndex, bool)`；`p(x,y)` 给出 twisted KLV 多项式 $P_{x,y}$，在 flip 为真时通过 `scaled(-1)` 应用符号。^[extended-kl.md:72-78]
 
 ## 证据边界
 

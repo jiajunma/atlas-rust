@@ -38,7 +38,7 @@ tags:
 
 ## 群阶计算的职责
 
-`weyl_size.rs` 的唯一入口是 crate 内可见的 `weyl_order_of_cartan`。模块注释将其用途关联到按需 twisted 共轭划分中的轨道大小核对，所用阶商公式为 \(\lvert W\rvert/(\lvert W_{\mathrm{im}}\rvert\cdot\lvert W_{\mathrm{re}}\rvert\cdot\lvert W_{\mathrm{cx}}\rvert)\)。这一用途只需要群阶，因此无需区分同阶的 B/C 型取向；识别过程可采用连通分量拆分与分支形状分析。详见 [[基于 Cartan 矩阵识别的 Weyl 群阶计算]]。^[weyl-size-presentation.md:17-21]
+`weyl_size.rs` 的唯一入口是 crate 内可见的 `weyl_order_of_cartan`。模块注释将其用途关联到按需 twisted 共轭划分中的轨道大小核对，所用阶商公式为 $\lvert W\rvert/(\lvert W_{\mathrm{im}}\rvert\cdot\lvert W_{\mathrm{re}}\rvert\cdot\lvert W_{\mathrm{cx}}\rvert)$。这一用途只需要群阶，因此无需区分同阶的 B/C 型取向；识别过程可采用连通分量拆分与分支形状分析。详见 [[基于 Cartan 矩阵识别的 Weyl 群阶计算]]。^[weyl-size-presentation.md:17-21]
 
 计算先逐行检查矩阵是否方形，再按非零非对角链接以 BFS 划分连通分量，最后将各分量的阶相乘。零对角行列对应的环面因子贡献阶 1。群阶使用精确 `Integer` 算术，因为分量乘积在 crate 的动态秩范围内可超出 `u128`。^[weyl-size-presentation.md:21-25]
 

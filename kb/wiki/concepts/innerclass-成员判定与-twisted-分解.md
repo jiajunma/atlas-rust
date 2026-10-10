@@ -39,7 +39,7 @@ provenanceState: extracted
 
 # InnerClass 成员判定与 twisted 分解
 
-`InnerClass::twisted_from_involution` 验证输入对合是否属于当前内类，并返回分解 \(\theta=w\cdot\delta\) 中的 Weyl 元素 \(w\)。其中 \(\theta\) 是输入对合，\(\delta\) 是当前内类的 distinguished involution（特选对合）；成员判定与分解均相对于这个具体内类进行。^[inner-class.md:53-59]
+`InnerClass::twisted_from_involution` 验证输入对合是否属于当前内类，并返回分解 $\theta=w\cdot\delta$ 中的 Weyl 元素 $w$。其中 $\theta$ 是输入对合，$\delta$ 是当前内类的 distinguished involution（特选对合）；成员判定与分解均相对于这个具体内类进行。^[inner-class.md:53-59]
 
 ## 上下文与调用前提
 
@@ -49,9 +49,9 @@ provenanceState: extracted
 
 ## 判定依据与失败行为
 
-判定中的权格矩阵相等性（weight-matrix equality）蕴含 twist 比较。成功时返回满足 \(\theta=w\cdot\delta\) 的 \(w\)；拒绝时使用 `StructureError::InvalidBasedAutomorphism`。^[inner-class.md:55-59]
+判定中的权格矩阵相等性（weight-matrix equality）蕴含 twist 比较。成功时返回满足 $\theta=w\cdot\delta$ 的 $w$；拒绝时使用 `StructureError::InvalidBasedAutomorphism`。^[inner-class.md:55-59]
 
-相关接口 `generator_twist()` 给出特选对合对简单生成元的置换：`twist[s]` 所对应的单根是 \(\alpha_s\) 在特选对合下的像。`based_involution_twist` 则要求对合置换根系、传送余根，并将每个单根映到单根；详见 [[Based involution 验证与生成元 twist]]。^[inner-class.md:44-51]
+相关接口 `generator_twist()` 给出特选对合对简单生成元的置换：`twist[s]` 所对应的单根是 $\alpha_s$ 在特选对合下的像。`based_involution_twist` 则要求对合置换根系、传送余根，并将每个单根映到单根；详见 [[Based involution 验证与生成元 twist]]。^[inner-class.md:44-51]
 
 ## 与构造入口的关系
 

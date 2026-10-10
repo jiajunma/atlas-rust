@@ -40,11 +40,11 @@ tags:
 
 ## 运算规则
 
-设有理权的分子为 \(v\)，简单根为 \(\alpha_s\)，对应简单余根为 \(\operatorname{coroot}_s\)。函数执行 \(v \leftarrow v-\alpha_s\bigl(\langle v,\operatorname{coroot}_s\rangle+\mathrm{offset}\bigr)\)：偏移量加入配对值，再乘简单根并从原分子中减去，分母保持不变。来源将该实现对应到上游 `rootdata.h:610-611` 与 `617-618` 的 offset 变体。^[block-access-modifier.md:83-85]
+设有理权的分子为 $v$，简单根为 $\alpha_s$，对应简单余根为 $\operatorname{coroot}_s$。函数执行 $v \leftarrow v-\alpha_s\bigl(\langle v,\operatorname{coroot}_s\rangle+\mathrm{offset}\bigr)$：偏移量加入配对值，再乘简单根并从原分子中减去，分母保持不变。来源将该实现对应到上游 `rootdata.h:610-611` 与 `617-618` 的 offset 变体。^[block-access-modifier.md:83-85]
 
 ## 在 Weyl 姿态变换中的使用
 
-`RepContext::transform_srm<LEFT_TO_RIGHT>` 沿 Weyl 词逐字母操作，并根据 `kgb_status(x, s)` 分派。Complex 分支对 \(x\) 执行 cross，以 `offset = 0` 对分子执行普通简单反射；Real 分支保持 \(x\) 不变，以有理权的分母作为 `offset`，执行以 \(-\rho_R\) 为中心的仿射反射。Imaginary* 分支返回 `RepInvariantViolation`。`LEFT_TO_RIGHT` 选择施加方向，全部字母处理完成后，在最终 \(x\) 处执行 `real_unique` 归一化。^[block-access-modifier.md:66-70]
+`RepContext::transform_srm<LEFT_TO_RIGHT>` 沿 Weyl 词逐字母操作，并根据 `kgb_status(x, s)` 分派。Complex 分支对 $x$ 执行 cross，以 `offset = 0` 对分子执行普通简单反射；Real 分支保持 $x$ 不变，以有理权的分母作为 `offset`，执行以 $-\rho_R$ 为中心的仿射反射。Imaginary* 分支返回 `RepInvariantViolation`。`LEFT_TO_RIGHT` 选择施加方向，全部字母处理完成后，在最终 $x$ 处执行 `real_unique` 归一化。^[block-access-modifier.md:66-70]
 
 Rust 使用 `WeylElement::reduced_word` 给出的典范最左下降约化词，上游则使用 transducer 随元素存储的词。两个方向使用同一典范词，使 `transform<false>` 成为 `transform<true>` 的逐字母逆；来源声明这一偏差对目标域无语义差异。词的构造可参见 [[基于左下降剥离的规范约化词]]。^[block-access-modifier.md:58-62]
 

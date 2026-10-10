@@ -47,17 +47,17 @@ Rust 使用 `WeylElement::reduced_word` 给出的典范最左下降约化词，�
 
 ## 按根类型逐字母变换
 
-每一步查询 `kgb_status(x, s)`。在 `Complex` 状态下，对 KGB 元素 `x` 施加 cross，并对有理权分子执行 offset 为零的简单反射。在 `Real` 状态下，`x` 保持不变，分子执行以 \(-\rho_R\) 为中心的仿射反射，offset 等于分母。^[block-access-modifier.md:66-69]
+每一步查询 `kgb_status(x, s)`。在 `Complex` 状态下，对 KGB 元素 `x` 施加 cross，并对有理权分子执行 offset 为零的简单反射。在 `Real` 状态下，`x` 保持不变，分子执行以 $-\rho_R$ 为中心的仿射反射，offset 等于分母。^[block-access-modifier.md:66-69]
 
 遇到 `Imaginary*` 状态时，变换返回 `RepInvariantViolation`；上游对应异常为 `Bad Weyl group element SRM transform`。所有字母处理完成后，在最终 `x` 处执行 `real_unique` 归一化。^[block-access-modifier.md:66-70]
 
-私有函数 `simple_reflect_numerator` 对有理权分子 \(v\) 执行 \(v\leftarrow v-\alpha_s\bigl(\langle v,\operatorname{coroot}_s\rangle+\mathrm{offset}\bigr)\)。分母保持不变，全程使用 checked 算术。^[block-access-modifier.md:83-85]
+私有函数 `simple_reflect_numerator` 对有理权分子 $v$ 执行 $v\leftarrow v-\alpha_s\bigl(\langle v,\operatorname{coroot}_s\rangle+\mathrm{offset}\bigr)$。分母保持不变，全程使用 checked 算术。^[block-access-modifier.md:83-85]
 
 ## 相对化与标准参数恢复
 
 `make_relative_to(loc, srm0, bm, srm1)` 先执行 locator 部分的逆合成，再使用**更新后的** `bm.w` 执行 `transform<true>`，把 `srm1` 移回基姿态，最后将 `bm.shift` 设为两个 `gamma_lambda` 的整正交差。相关定位器操作见 [[定位器的相对姿态变换]]。^[block-access-modifier.md:76-78]
 
-整正交差由 `make_diff_integral_orthogonal` 构造：从两代表的差中减去其在 \((1-\theta)X^*\) 中的固定原像，使结果与 `srm.gamma_lambda()` 的整根系正交。该过程经过 `IntegralSubsystem::integral`、`RepTable::integral_codec` 与 `theta_1_preimage`；差为零时短路，debug 构建带有正交性断言。^[block-access-modifier.md:72-75]
+整正交差由 `make_diff_integral_orthogonal` 构造：从两代表的差中减去其在 $(1-\theta)X^*$ 中的固定原像，使结果与 `srm.gamma_lambda()` 的整根系正交。该过程经过 `IntegralSubsystem::integral`、`RepTable::integral_codec` 与 `theta_1_preimage`；差为零时短路，debug 构建带有正交性断言。^[block-access-modifier.md:72-75]
 
 恢复路径 `sr_with_modifier(srm, bm, gamma)` 依次加入 `bm.shift`、执行 `transform<false>(bm.w)`，最后调用 `to_standard`。`shift_srm` 在更新 `gamma_lambda` 后，于不变的 involution 处归一化。完整流程参见 [[块修正子的相对化与标准参数恢复]]。^[block-access-modifier.md:71-81]
 

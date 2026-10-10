@@ -43,7 +43,7 @@ Canonical dual 还涉及对象身份。原版按完整 `PreRootDatum` 内容进�
 来源的 G2 预登记指出，canonical dual 带有转置后的 coroot 矩阵，任何 `adjoint(G2,·)` 都无法构造出相同内容。因此，以 `adjoint(G2,false)` 预热并不能占用真正 canonical dual 的共享槽位；这类 fixture 无法检验预热目标导致的拒绝行为。这是 capture 前的源码预期，不是已捕获结论。^[weyl-context-identity-and-sharing.md:86-91]
 
 真正的 G2 预热见证需要显式构造转置内容，其 Cartan 矩阵为
-\(\begin{pmatrix}2&-3\\-1&2\end{pmatrix}\)。
+$\begin{pmatrix}2&-3\\-1&2\end{pmatrix}$。
 相比之下，C2 的固定 Cartan 矩阵正是 B2 的转置，所以 `dual(SC(B2,true))` 与 `adjoint(C2,false)` 内容一致，适合构造对应的预热见证。^[weyl-context-identity-and-sharing.md:92-94]
 
 ## 对跨坐标 Weyl 运算的影响
@@ -54,7 +54,7 @@ Rust 已落地的修复采用 abstract-group `Arc` identity 检查，并在左�
 
 ## 验证范围
 
-A1 跨 dual 的乘法只涉及 \(s_0s_0=1\)，无法发现错误的 generator renumbering，也无法排除直接复合 foreign root permutation 的错误。根编号与接口顺序的验证因此需要 G2 非对称见证，以及 B2/C2、两个乘法操作数顺序等后续 gate，参见 [[Weyl 语义回归的递进验证门禁]]。^[weyl-context-identity-and-sharing.md:313-324]
+A1 跨 dual 的乘法只涉及 $s_0s_0=1$，无法发现错误的 generator renumbering，也无法排除直接复合 foreign root permutation 的错误。根编号与接口顺序的验证因此需要 G2 非对称见证，以及 B2/C2、两个乘法操作数顺序等后续 gate，参见 [[Weyl 语义回归的递进验证门禁]]。^[weyl-context-identity-and-sharing.md:313-324]
 
 截至来源的 2026-10-09 更新，G2 capture pair 已冻结并完成彩排，但因隧道中断尚未提交；显式转置内容预热等后续 fixture 仍为 provisional、未接线。已完成的 A1 验收不能推广为 G2 编号兼容性、高 rank 正确性或性能收益的证明。^[weyl-context-identity-and-sharing.md:63-69, weyl-context-identity-and-sharing.md:95-100, weyl-context-identity-and-sharing.md:326-330]
 

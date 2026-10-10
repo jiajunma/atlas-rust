@@ -43,7 +43,7 @@ provenanceState: extracted
 
 ## 重建原因
 
-上游直接读取 `cc.dualFiber()`，Rust crate 则不能直接复用对偶分类存储的 fiber：当前 Cartan 对合的对偶对合 \(-\theta\) 一般只是典范对偶 Cartan 代表元的共轭。来源以 `tw * w0` 描述相关转换，因此实现针对当前 Cartan 类临时重建对偶链。^[real-weyl.md:106-116]
+上游直接读取 `cc.dualFiber()`，Rust crate 则不能直接复用对偶分类存储的 fiber：当前 Cartan 对合的对偶对合 $-\theta$ 一般只是典范对偶 Cartan 代表元的共轭。来源以 `tw * w0` 描述相关转换，因此实现针对当前 Cartan 类临时重建对偶链。^[real-weyl.md:106-116]
 
 ## 构造顺序与预算
 

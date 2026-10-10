@@ -40,19 +40,19 @@ aliases:
 
 ## 前向折叠的含义
 
-设字为 \( [i_0,i_1,\ldots,i_{k-1}] \)，初始元素为 \(x_0\)，则依次计算 \(x_{j+1}=x_j.\mathrm{crossed\_generator}(i_j)\)，最终返回 \(x_k\)。“前向”指从切片首项向末项遍历，每一步使用前一步返回的元素。单生成元方法采用 `&self -> Result<Self>`，原值不变。^[error-global-tits.md:90-97]
+设字为 $[i_0,i_1,\ldots,i_{k-1}] $，初始元素为 $x_0$，则依次计算 $x_{j+1}=x_j.\mathrm{crossed\_generator}(i_j)$，最终返回 $x_k$。“前向”指从切片首项向末项遍历，每一步使用前一步返回的元素。单生成元方法采用 `&self -> Result<Self>`，原值不变。^[error-global-tits.md:90-97]
 
-作用对象 [[全局 Tits 元素的精确有理环面表示|GlobalTitsElement]] 保存完整有理余特征（含中心坐标）及 twisted involution。环面坐标取 \([0,2)\) 中的典范代表元，向纤维 mod-two 商的规约发生在之后。^[error-global-tits.md:60-65]
+作用对象 [[全局 Tits 元素的精确有理环面表示|GlobalTitsElement]] 保存完整有理余特征（含中心坐标）及 twisted involution。环面坐标取 $[0,2)$ 中的典范代表元，向纤维 mod-two 商的规约发生在之后。^[error-global-tits.md:60-65]
 
 ## 每一步执行的变换
 
-单生成元交叉作用记为 \(s*(t,w)*\delta(s)\)。对于单根 \(\alpha_i\)，复根分支执行 \(t\leftarrow t-\langle\alpha_i,t\rangle\alpha_i^\vee\)；虚根分支要求配对为整数，再执行 \(t\leftarrow t+(1-\langle\alpha_i,t\rangle)\alpha_i^\vee\)；实根分支保持环面坐标不变。具体规则见 [[按根类型划分的单生成元交叉作用]]。^[error-global-tits.md:75-85]
+单生成元交叉作用记为 $s*(t,w)*\delta(s)$。对于单根 $\alpha_i$，复根分支执行 $t\leftarrow t-\langle\alpha_i,t\rangle\alpha_i^\vee$；虚根分支要求配对为整数，再执行 $t\leftarrow t+(1-\langle\alpha_i,t\rangle)\alpha_i^\vee$；实根分支保持环面坐标不变。具体规则见 [[按根类型划分的单生成元交叉作用]]。^[error-global-tits.md:75-85]
 
-每一步随后将环面坐标逐项模 2 规范化，并将 Weyl 作用更新为 \(s_i\circ w\circ s_{\delta(i)}\)，再经 `TwistedInvolution::new` 重建。因此，前向遍历规定的是这些完整单步变换的执行次序。^[error-global-tits.md:87-97]
+每一步随后将环面坐标逐项模 2 规范化，并将 Weyl 作用更新为 $s_i\circ w\circ s_{\delta(i)}$，再经 `TwistedInvolution::new` 重建。因此，前向遍历规定的是这些完整单步变换的执行次序。^[error-global-tits.md:87-97]
 
 ## 校验与错误传播
 
-`crossed_word` 在遍历前调用一次 `validate_context`，每次 `crossed_generator` 又重新校验。Weyl 作用或根对合的 datum 与 `inner_class.datum()` 不同时，返回 `DatumMismatch`；否则比较 \(w\cdot\delta\) 的权与余权矩阵和存储的对合矩阵，任一不一致即返回 `DistinguishedInvolutionMismatch`。参见 [[全局 Tits 传输的上下文一致性校验]]。^[error-global-tits.md:77-79, error-global-tits.md:94-97, error-global-tits.md:101-104]
+`crossed_word` 在遍历前调用一次 `validate_context`，每次 `crossed_generator` 又重新校验。Weyl 作用或根对合的 datum 与 `inner_class.datum()` 不同时，返回 `DatumMismatch`；否则比较 $w\cdot\delta$ 的权与余权矩阵和存储的对合矩阵，任一不一致即返回 `DistinguishedInvolutionMismatch`。参见 [[全局 Tits 传输的上下文一致性校验]]。^[error-global-tits.md:77-79, error-global-tits.md:94-97, error-global-tits.md:101-104]
 
 字中的生成元不会在入口统一预检：只有折叠执行到 `generator >= semisimple_rank` 的位置时，才返回 `IndexOutOfRange`。单步执行还可能因无法确定根类型而返回 `InvalidRootAutomorphism`，或因虚根配对不整而返回 `InvalidStrongTorusFactor`。^[error-global-tits.md:77-85, error-global-tits.md:94-97]
 

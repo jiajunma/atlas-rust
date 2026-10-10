@@ -48,7 +48,7 @@ aliases:
 
 `KlSupport` 为每个块元素构造下降集与 good-ascent 集：满足 `is_descent()` 的生成元进入下降集；否则，仅当类型不是 `ImaginaryTypeII` 时进入 good-ascent 集。因此，`ImaginaryTypeII` 既不是下降，也不是 good ascent，参见 [[下降集、good ascent 与本原性]]。^[kl-support.md:32-39]
 
-记元素 \(x\) 的下降集为 \(\operatorname{desc}(x)\)，good-ascent 集为 \(\operatorname{good}(x)\)。`ascent_descent(x, y)` 返回差集 \(\operatorname{desc}(y)\setminus\operatorname{desc}(x)\) 的最低置位；`is_extremal(x, desc_y)` 检查 \(\operatorname{desc}(x)\supseteq\operatorname{desc}_y\)；`is_primitive(x, desc_y)` 检查 \(\operatorname{good}(x)\cap\operatorname{desc}_y=\varnothing\)。^[kl-support.md:41-43]
+记元素 $x$ 的下降集为 $\operatorname{desc}(x)$，good-ascent 集为 $\operatorname{good}(x)$。`ascent_descent(x, y)` 返回差集 $\operatorname{desc}(y)\setminus\operatorname{desc}(x)$ 的最低置位；`is_extremal(x, desc_y)` 检查 $\operatorname{desc}(x)\supseteq\operatorname{desc}_y$；`is_primitive(x, desc_y)` 检查 $\operatorname{good}(x)\cap\operatorname{desc}_y=\varnothing$。^[kl-support.md:41-43]
 
 ## 容量与测试边界
 

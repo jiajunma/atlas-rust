@@ -37,13 +37,13 @@ aliases:
 
 # KType 表示参数与规范化构造
 
-`KType` 表示[[StandardRepr 标准表示参数]]去掉 \(\nu\) 后的 K-限制，结构为 `KType { x: KgbId, lam_rho: Weight, height: u32 }`。其中 `lam_rho` 存储其 \((1-\theta_x)X^*\) 陪集经 `lambda_unique` 选出的规范代表，`height` 在构造时预计算。^[ktype.md:10-14]
+`KType` 表示[[StandardRepr 标准表示参数]]去掉 $\nu$ 后的 K-限制，结构为 `KType { x: KgbId, lam_rho: Weight, height: u32 }`。其中 `lam_rho` 存储其 $(1-\theta_x)X^*$ 陪集经 `lambda_unique` 选出的规范代表，`height` 在构造时预计算。^[ktype.md:10-14]
 
 ## 构造入口与不变量
 
 `KType::new` 是 `pub(crate)` 可见的原始构造器，不校验不变量。crate 内部可以通过它装入任意 `height`，正确性依赖调用方纪律；crate 外部只能通过 `sr_k` 构造。^[ktype.md:18-19]
 
-`sr_k(rc, x, λ−ρ)` 先执行 `lambda_unique` 规范化，再预存 \((1+\theta)\lambda\) 的 height。其计算公式为 \((1+\theta)\lambda=\lambda_\rho+\theta\cdot\lambda_\rho+(1+\theta)\rho\)，`theta_plus_1_lambda` 使用同一公式。^[ktype.md:20-21]
+`sr_k(rc, x, λ−ρ)` 先执行 `lambda_unique` 规范化，再预存 $(1+\theta)\lambda$ 的 height。其计算公式为 $(1+\theta)\lambda=\lambda_\rho+\theta\cdot\lambda_\rho+(1+\theta)\rho$，`theta_plus_1_lambda` 使用同一公式。^[ktype.md:20-21]
 
 来源在表示约定中称规范化“只在 `sr_k` 发生一次”，同时明确记载后续 `made_dominant` 会在每轮末尾调用 `lambda_unique` 重新规范化。因此，构造时的规范代表约定需要与后续变形中的重新规范化一并理解。^[ktype.md:11-14, ktype.md:35-38]
 
@@ -59,7 +59,7 @@ aliases:
 
 ## 测试与证据边界
 
-来源列出的测试锚点包括 split A1 中 `x=2`、权重 `[0]` 的 K 型：六个谓词全真、三个变形保持不动，以及模 \(2X^*\) 的相等性。另有通过 `sr_k_of_standard` 和 `sr_of_ktype` 实现的 `StandardRepr` 往返测试，以及 su(2,1) 中涉及 `x=4/5` 当选代表的非 final 锚点。^[ktype.md:65-70]
+来源列出的测试锚点包括 split A1 中 `x=2`、权重 `[0]` 的 K 型：六个谓词全真、三个变形保持不动，以及模 $2X^*$ 的相等性。另有通过 `sr_k_of_standard` 和 `sr_of_ktype` 实现的 `StandardRepr` 往返测试，以及 su(2,1) 中涉及 `x=4/5` 当选代表的非 final 锚点。^[ktype.md:65-70]
 
 两个 su(2,1) 测试只有 `eprintln!`、没有断言，属于观察型用例，不构成机械锚点。未覆盖范围包括 `kgp_set` 整体、全部终止预算错误、`equivalent` 的异 Cartan 分支、`to_canonical_fiber` 的错误分支及各溢出和分配分支。详见[[K 型实现的测试锚点与证据边界]]。^[ktype.md:70-74]
 

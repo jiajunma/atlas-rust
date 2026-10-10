@@ -53,7 +53,7 @@ provenanceState: extracted
 | 测试情形 | 主要检查 |
 | --- | --- |
 | 单连通 A1 | quasisplit 规范化；`m_alpha` 非平凡、伴随像平凡；grading 与元素双向往返 |
-| A2 恒等对合 | 四元素双射；根序 index 0 为 \(\alpha_2\)；shift 为置换矩阵 |
+| A2 恒等对合 | 四元素双射；根序 index 0 为 $\alpha_2$；shift 为置换矩阵 |
 | A2 扭转对合 | 全紧 grading 返回 `ImpossibleGrading`；`adjoint.dimension() == 0`；`grading_shift(0)` 为 `None` |
 | A1×A1 交换对合 | `imaginary_rank == 0` |
 | 含中心余权坐标 | 区分 `m_alpha` 与其伴随像 |
@@ -68,7 +68,7 @@ A2 扭转测试锚定不可实现的全紧 grading，以及零维 adjoint fiber 
 
 ### 模二归约与坐标区分
 
-B2 测试以余根 \((2,-1)\) 归约为 \((0,1)\) 为锚点，确认 `coordinate % 2 != 0` 包含负奇数。含中心余权坐标的测试区分 ambient fiber 中的 `m_alpha` 与其伴随像，参见 [[m_alpha 的模二归约与伴随投影]]。^[grading.md:47-51, grading.md:76-78]
+B2 测试以余根 $(2,-1)$ 归约为 $(0,1)$ 为锚点，确认 `coordinate % 2 != 0` 包含负奇数。含中心余权坐标的测试区分 ambient fiber 中的 `m_alpha` 与其伴随像，参见 [[m_alpha 的模二归约与伴随投影]]。^[grading.md:47-51, grading.md:76-78]
 
 ### 来源校验与 shift 忠实性
 

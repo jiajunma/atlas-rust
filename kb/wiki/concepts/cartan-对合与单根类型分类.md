@@ -40,7 +40,7 @@ aliases:
 
 ## 对合验证与紧性标志
 
-`CartanInvolution` 检查矩阵满足 \(M^2=I\)，并检查单根的像属于根系。其 `compact_imaginary` 标志是未经校验的调用方断言，因此这些检查并未验证虚根紧性。来源明确标明该标志已被 `Grading` 取代，相关概念见 [[Grading 的位向量类型纪律]]。^[lib-root.md:45-47]
+`CartanInvolution` 检查矩阵满足 $M^2=I$，并检查单根的像属于根系。其 `compact_imaginary` 标志是未经校验的调用方断言，因此这些检查并未验证虚根紧性。来源明确标明该标志已被 `Grading` 取代，相关概念见 [[Grading 的位向量类型纪律]]。^[lib-root.md:45-47]
 
 原型 `RootDatum::roots()` 以正负单根播种，通过 FIFO BFS 构造反射闭包，并按坐标字典序输出。计算采用 `i128` 中间精度再收窄至 `i32`，溢出时报 `ArithmeticOverflow`；第 4097 个互异向量触发 `RootSystemTooLarge`。此原型 `RootDatum` 与正式模块中的 [[BasedRootDatum：带基根数据与构造不变量|BasedRootDatum]] 是不同类型。^[lib-root.md:39-41, lib-root.md:57-58]
 
@@ -48,7 +48,7 @@ aliases:
 
 `RootType` 提供四种分类：`CompactImaginary`（紧虚根）、`NoncompactImaginary`（非紧虚根）、`Real`（实根）和 `Complex`（复根）。`classify_simple_root` 根据单根的像等于原根、等于负根或属于其他情况进行分类。^[lib-root.md:45-49]
 
-对于单根 \(\alpha\)，若对合固定 \(\alpha\)，则为虚根，再由紧性标志区分紧虚根与非紧虚根；若像为 \(-\alpha\)，则为实根；其余情况为复根。来源列出的固定根测试验证了按标志判为非紧虚根的情形。相关背景见 [[对合下的虚根、实根与复根分类]]。^[lib-root.md:45-49, lib-root.md:53-54]
+对于单根 $\alpha$，若对合固定 $\alpha$，则为虚根，再由紧性标志区分紧虚根与非紧虚根；若像为 $-\alpha$，则为实根；其余情况为复根。来源列出的固定根测试验证了按标志判为非紧虚根的情形。相关背景见 [[对合下的虚根、实根与复根分类]]。^[lib-root.md:45-49, lib-root.md:53-54]
 
 `RealReductiveGroup` 的 `simple_real_rank` 有明确的范围限制：其含义刻意窄于一般 real rank，不能将两者等同。^[lib-root.md:48-49]
 

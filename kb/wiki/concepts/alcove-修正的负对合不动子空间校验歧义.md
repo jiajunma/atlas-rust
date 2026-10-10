@@ -25,13 +25,13 @@ promptModifiers:
 
 # Alcove 修正的负对合不动子空间校验歧义
 
-`alcove_center` 的“−θ 不动子空间校验”实际验证 \((I+\theta)\Delta=0\)，其中 \(\Delta=\mathrm{centered\_gamma}-\gamma\)。来源此前将其误述为 \(\theta\Delta=0\)，原因是漏读了 `try_fold` 的非零初始项。2026-10-10 的更正记录确认：实现与错误命名一致，这一歧义来自阅读转述，并非该检查的实现缺陷。^[alcove.md:84-96]
+`alcove_center` 的“−θ 不动子空间校验”实际验证 $(I+\theta)\Delta=0$，其中 $\Delta=\mathrm{centered\_gamma}-\gamma$。来源此前将其误述为 $\theta\Delta=0$，原因是漏读了 `try_fold` 的非零初始项。2026-10-10 的更正记录确认：实现与错误命名一致，这一歧义来自阅读转述，并非该检查的实现缺陷。^[alcove.md:84-96]
 
 ## 实际判定条件
 
-检查通过 `rc.theta(z)?` 获取对合，随后逐行累加。第 \(i\) 行的 `try_fold` 初始值为 `difference.numerator()[i]`，再累加各项 \(\theta_{ij}\operatorname{num}(\Delta)_j\)，因此完整结果为 \(\operatorname{num}(\Delta)_i+\sum_j\theta_{ij}\operatorname{num}(\Delta)_j\)，即 \(((I+\theta)\operatorname{num}(\Delta))_i\)，而不是单独的矩阵乘积。^[alcove.md:84-88]
+检查通过 `rc.theta(z)?` 获取对合，随后逐行累加。第 $i$ 行的 `try_fold` 初始值为 `difference.numerator()[i]`，再累加各项 $\theta_{ij}\operatorname{num}(\Delta)_j$，因此完整结果为 $\operatorname{num}(\Delta)_i+\sum_j\theta_{ij}\operatorname{num}(\Delta)_j$，即 $((I+\theta)\operatorname{num}(\Delta))_i$，而不是单独的矩阵乘积。^[alcove.md:84-88]
 
-由于分母为正，分子上的零值条件等价于 \((I+\theta)\Delta=0\)，也就是 \(\theta\Delta=-\Delta\)。因此，修正量属于 θ 的 \((-1)\)-特征空间，恰为 −θ 的不动子空间；参数的连续坐标（环面因子侧）位于该空间，居中修正不得离开它。^[alcove.md:89-93]
+由于分母为正，分子上的零值条件等价于 $(I+\theta)\Delta=0$，也就是 $\theta\Delta=-\Delta$。因此，修正量属于 θ 的 $(-1)$-特征空间，恰为 −θ 的不动子空间；参数的连续坐标（环面因子侧）位于该空间，居中修正不得离开它。^[alcove.md:89-93]
 
 ## 在重心计算中的位置
 
@@ -41,7 +41,7 @@ promptModifiers:
 
 ## 歧义的来源与更正
 
-先前描述省略了折叠累加的初始项，将“差值本身加上 θ 对差值的作用”误读成“θ 对差值的作用”。更正的关键是把初始项纳入完整表达式；这里的初始值直接决定算子是 \(I+\theta\)。这一案例体现了 [[折叠累加初值的算法语义]]：阅读 fold 时，初始值也是算法语义的一部分。^[alcove.md:87-96]
+先前描述省略了折叠累加的初始项，将“差值本身加上 θ 对差值的作用”误读成“θ 对差值的作用”。更正的关键是把初始项纳入完整表达式；这里的初始值直接决定算子是 $I+\theta$。这一案例体现了 [[折叠累加初值的算法语义]]：阅读 fold 时，初始值也是算法语义的一部分。^[alcove.md:87-96]
 
 ## 证据边界
 

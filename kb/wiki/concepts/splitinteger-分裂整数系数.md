@@ -36,19 +36,19 @@ provenanceState: extracted
 
 # SplitInteger 分裂整数系数
 
-`SplitInteger { a, b }` 表示分裂整数 \(a+bs\)，两个字段均为 `i32`，乘法规则满足 \(s^2=1\)。它是形变公式 \(F(z)=L(z)+(1-s)D(z)\) 中承载 \(s\)-系数的类型。^[deformation-drivers.md:50-59]
+`SplitInteger { a, b }` 表示分裂整数 $a+bs$，两个字段均为 `i32`，乘法规则满足 $s^2=1$。它是形变公式 $F(z)=L(z)+(1-s)D(z)$ 中承载 $s$-系数的类型。^[deformation-drivers.md:50-59]
 
 ## 算术规则
 
-`add_int` 将整数加到常数部分；`times_s` 交换两个分量，即 \((a+bs)s=b+as\)；`times_1_s` 计算 \((a+bs)(1-s)=(a-b)+(b-a)s\)。`negate` 与 `mul_int` 分别逐分量取负和乘以整数。这些操作对应上游 `arithmetic.h` 的运算。^[deformation-drivers.md:54-59]
+`add_int` 将整数加到常数部分；`times_s` 交换两个分量，即 $(a+bs)s=b+as$；`times_1_s` 计算 $(a+bs)(1-s)=(a-b)+(b-a)s$。`negate` 与 `mul_int` 分别逐分量取负和乘以整数。这些操作对应上游 `arithmetic.h` 的运算。^[deformation-drivers.md:54-59]
 
-类型实现 `Add` 和 `Mul` trait，其中分裂乘法为 \((a+bs)(c+ds)=(ac+bd)+(ad+bc)s\)。此外，它支持与 `(i32, i32)` 之间的双向 `From` 转换。^[deformation-drivers.md:57-59]
+类型实现 `Add` 和 `Mul` trait，其中分裂乘法为 $(a+bs)(c+ds)=(ac+bd)+(ad+bc)s$。此外，它支持与 `(i32, i32)` 之间的双向 `From` 转换。^[deformation-drivers.md:57-59]
 
 所有算术均使用 `wrapping_*`，沿用上游的环绕语义；溢出防护不属于该类型的职责。因此，实现中的系数运算受 `i32` 固定宽度环绕语义约束。^[deformation-drivers.md:52-59]
 
 ## 在形变计算中的作用
 
-`Split(c, -c)` 表示 \(c(1-s)\)。`twisted_deformation_terms` 为 final、delta-fixed 的父块元素返回 `(StandardRepr, int)` 形变项，顺序为 reverse-accumulated finals；wrapper 将每个整数系数 \(c\) 映射为 `Split(c, -c)`，再按 `SR_poly` 顺序排序。^[deformation-drivers.md:59-59, deformation-drivers.md:107-111]
+`Split(c, -c)` 表示 $c(1-s)$。`twisted_deformation_terms` 为 final、delta-fixed 的父块元素返回 `(StandardRepr, int)` 形变项，顺序为 reverse-accumulated finals；wrapper 将每个整数系数 $c$ 映射为 `Split(c, -c)`，再按 `SR_poly` 顺序排序。^[deformation-drivers.md:59-59, deformation-drivers.md:107-111]
 
 `block_deformation_to_height` 返回 full block 中 height 不超过 `height_bound` 的 `(StandardRepr, SplitInteger)` 项，按 downward（reversed）block order 排列，并另外返回与 `accumulator` 平行的已消费项 flags。`u32::MAX` 对应上游负界表示的 maximal level。^[deformation-drivers.md:115-120]
 

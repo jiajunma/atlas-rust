@@ -42,7 +42,7 @@ aliases:
 
 ## 数学含义与方向
 
-对于有效的 Cartan 类编号，`is_below(a, b)` 为真，当且仅当 \(a\ne b\)，且 \(b\) 的固定环面的单位连通分支可以经 Weyl 共轭包含于 \(a\) 的相应单位连通分支。等价地，存在一条从 \(a\) 进入 \(b\) 的非空单根 Cayley 链，其中 \(a\) 是较紧致（more-compact）的一端。^[cartan-classification.md:45-47]
+对于有效的 Cartan 类编号，`is_below(a, b)` 为真，当且仅当 $a\ne b$，且 $b$ 的固定环面的单位连通分支可以经 Weyl 共轭包含于 $a$ 的相应单位连通分支。等价地，存在一条从 $a$ 进入 $b$ 的非空单根 Cayley 链，其中 $a$ 是较紧致（more-compact）的一端。^[cartan-classification.md:45-47]
 
 fundamental class 位于其他每个 Cartan 类之下。该关系具有严格性：不可反身性是构造不变量，因此对有效类编号，`is_below(x, x)` 恒为 `Some(false)`。^[cartan-classification.md:48-49]
 

@@ -63,7 +63,7 @@ original Atlas 通过弱驻留提供根数据的规范活对象身份，每个�
 
 来源记录 AFTER-v5 job `3900050` 以 `COMPLETED 0:0` 完成，验收证据文件为 `math_weyl_context_core_after_v5_acceptance_2026_10_06.json`，report SHA 前缀为 `3288480d…`。其中 cold_dual 完全字节相等，prewarmed_dual 的 stdout、退出码和有序 error summary 一致；验证树随后以生产提交 `690c2b92` 落地。接受范围仍限于 A1 语义，不授予缓存、性能、内存、rank 或更广数学 release。^[weyl-context-identity-and-sharing.md:63-74]
 
-A1 的跨 dual 乘法仅为 \(s_0s_0=1\)，不能发现错误的生成元重编号或直接复合外部坐标根置换的问题。现有 rebind 情形仍由 `wc_alias` 保持旧 RootDatum 存活，未证明“仅由保存的 WeylElt 维持 datum 生命周期”。Atlas 输出也不能证明 fresh-equal owner 使用独立 coordinate cell；这些问题需要额外 lifetime fixture 和 HPC-only 的 `Weak`／work-count 守卫。^[weyl-context-identity-and-sharing.md:313-318]
+A1 的跨 dual 乘法仅为 $s_0s_0=1$，不能发现错误的生成元重编号或直接复合外部坐标根置换的问题。现有 rebind 情形仍由 `wc_alias` 保持旧 RootDatum 存活，未证明“仅由保存的 WeylElt 维持 datum 生命周期”。Atlas 输出也不能证明 fresh-equal owner 使用独立 coordinate cell；这些问题需要额外 lifetime fixture 和 HPC-only 的 `Weak`／work-count 守卫。^[weyl-context-identity-and-sharing.md:313-318]
 
 后续顺序是先覆盖 G2 非对称 interface-order、B2/C2、两个乘法操作数顺序、inner-class dual construction 和 `no_value` relations，再加入 one-build work-count 测试，最后进行同节点、交替顺序、fresh-process 的 time／CPU／RSS A/B。`59 -> 至多 5` 只是调用方工作次数假设，并非已测加速，参见 [[Weyl 语义回归的递进验证门禁]]。^[weyl-context-identity-and-sharing.md:320-324]
 

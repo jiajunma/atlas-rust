@@ -42,9 +42,9 @@ provenanceState: extracted
 
 ## 参数与求值
 
-[[KType 表示参数与规范化构造|KType]] 是标准表示参数去掉 ν 后的 K-限制，保存 `x: KgbId`、`lam_rho: Weight` 和预计算的 `height: u32`。`lam_rho` 存储其 \((1-\theta_x)X^*\) 陪集经 `lambda_unique` 选出的规范代表；crate 外只能通过 `sr_k` 构造，由它完成规范化并计算 height。^[ktype.md:11-14, ktype.md:18-21]
+[[KType 表示参数与规范化构造|KType]] 是标准表示参数去掉 ν 后的 K-限制，保存 `x: KgbId`、`lam_rho: Weight` 和预计算的 `height: u32`。`lam_rho` 存储其 $(1-\theta_x)X^*$ 陪集经 `lambda_unique` 选出的规范代表；crate 外只能通过 `sr_k` 构造，由它完成规范化并计算 height。^[ktype.md:11-14, ktype.md:18-21]
 
-私有求值核 `theta_plus_1_eval(α)` 计算 \(\langle\lambda_\rho,\alpha^\vee\rangle+\operatorname{colevel}(\alpha)+\langle\lambda_\rho,(\theta\alpha)^\vee\rangle+\operatorname{colevel}(\theta\alpha)\)。[[K 型谓词链与调用前提|谓词集]]使用其符号或零值；`finals_for` 的分支同样依据 `eval` 的符号以及根的状态。^[ktype.md:22-30, ktype.md:45-51]
+私有求值核 `theta_plus_1_eval(α)` 计算 $\langle\lambda_\rho,\alpha^\vee\rangle+\operatorname{colevel}(\alpha)+\langle\lambda_\rho,(\theta\alpha)^\vee\rangle+\operatorname{colevel}(\theta\alpha)$。[[K 型谓词链与调用前提|谓词集]]使用其符号或零值；`finals_for` 的分支同样依据 `eval` 的符号以及根的状态。^[ktype.md:22-30, ktype.md:45-51]
 
 ## 按根类型展开
 
@@ -54,7 +54,7 @@ provenanceState: extracted
 
 ### 非紧虚根 `inc`
 
-当 `eval < 0` 时，将 Cayley 像项压入工作栈；若 cross 不动，即 type-2 情形，还压入 \(\lambda_\rho+\alpha\) 的移位项。随后执行 cross，并将系数取负。^[ktype.md:47-49]
+当 `eval < 0` 时，将 Cayley 像项压入工作栈；若 cross 不动，即 type-2 情形，还压入 $\lambda_\rho+\alpha$ 的移位项。随后执行 cross，并将系数取负。^[ktype.md:47-49]
 
 ### 复根 `Complex`
 
@@ -62,7 +62,7 @@ provenanceState: extracted
 
 ### 实根 `Real`
 
-当 \(\langle\lambda_\rho,\alpha^\vee\rangle\) 为奇数时，以 `shift = (eval + 1) / 2` 投影到墙，再按逆 Cayley 变换分裂。无双值时只压入 `first`；若为 `None`，则报错 `"parity real inverse Cayley"`。相关操作见 [[Cross、Cayley 与逆 Cayley 链接]]。^[ktype.md:50-51]
+当 $\langle\lambda_\rho,\alpha^\vee\rangle$ 为奇数时，以 `shift = (eval + 1) / 2` 投影到墙，再按逆 Cayley 变换分裂。无双值时只压入 `first`；若为 `None`，则报错 `"parity real inverse Cayley"`。相关操作见 [[Cross、Cayley 与逆 Cayley 链接]]。^[ktype.md:50-51]
 
 ## 规范化与 height 传递
 

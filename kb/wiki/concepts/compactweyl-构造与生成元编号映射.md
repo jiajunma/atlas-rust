@@ -38,7 +38,7 @@ provenanceState: extracted
 
 # CompactWeyl 构造与生成元编号映射
 
-`CompactWeyl` 实现 du Cloux / van Leeuwen 的 transducer（抛物子商）表示。Weyl 元素由固定栈数组表示，第 \(i\) 项索引抛物子商 \(W_{i-1}\backslash W_i\) 的极小陪集代表元。构造器建立内部生成元序及对应的 transducer，并通过编号映射衔接 piece 局部字母与外部生成元。^[weyl-transducer.md:19-22, weyl-transducer.md:44-49]
+`CompactWeyl` 实现 du Cloux / van Leeuwen 的 transducer（抛物子商）表示。Weyl 元素由固定栈数组表示，第 $i$ 项索引抛物子商 $W_{i-1}\backslash W_i$ 的极小陪集代表元。构造器建立内部生成元序及对应的 transducer，并通过编号映射衔接 piece 局部字母与外部生成元。^[weyl-transducer.md:19-22, weyl-transducer.md:44-49]
 
 ## 构造流程
 
@@ -50,7 +50,7 @@ provenanceState: extracted
 
 `piece_offset(i)` 将 piece 的局部字母转换为**全局内部编号**；`d_out()` 将**内部编号转换为外部编号**。前者处理 piece 局部编号与全局内部编号之间的转换，后者处理内部序与外部序之间的转换。^[weyl-transducer.md:48-49]
 
-相关的 `coxeter_entry(letter, i, j)` 根据连通分型的类型字母和 Bourbaki 序生成元返回 Coxeter 矩阵项。它先交换下标使 \(a \le b\)，再对非 D/E 型按下标差分派，对 D/E 型按分叉规则处理；详见 [[Coxeter 矩阵的分型查表]]。^[weyl-transducer.md:37-40]
+相关的 `coxeter_entry(letter, i, j)` 根据连通分型的类型字母和 Bourbaki 序生成元返回 Coxeter 矩阵项。它先交换下标使 $a \le b$，再对非 D/E 型按下标差分派，对 D/E 型按分叉规则处理；详见 [[Coxeter 矩阵的分型查表]]。^[weyl-transducer.md:37-40]
 
 ## 规范词与根置换
 

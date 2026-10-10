@@ -22,7 +22,7 @@ promptModifiers:
 
 # 扭曲对合（TwistedInvolution）
 
-`TwistedInvolution` 表示 distinguished 对合 \(\theta\) 经 Weyl 元 \(w\) 平移后得到的对合 \(w\theta\)。构造器验证 \((w\theta)^2=1\)，并验证合成作用在枚举根系上形成根置换、将每个余根运输到像根的余根。Atlas Cartan 类最终由 twisted 共轭轨道的 canonical 代表元编号；本类型负责建立其中的根论条件。^[involution-types.md:104-112]
+`TwistedInvolution` 表示 distinguished 对合 $\theta$ 经 Weyl 元 $w$ 平移后得到的对合 $w\theta$。构造器验证 $(w\theta)^2=1$，并验证合成作用在枚举根系上形成根置换、将每个余根运输到像根的余根。Atlas Cartan 类最终由 twisted 共轭轨道的 canonical 代表元编号；本类型负责建立其中的根论条件。^[involution-types.md:104-112]
 
 ## 类型结构与不变量
 
@@ -32,9 +32,9 @@ promptModifiers:
 
 ## 构造顺序与错误优先级
 
-`new` 接收 `&BasedRootDatum`、`&RootSystem`、`&LatticeInvolution` 和 `WeylAction`。它先检查三个 datum 的一致性，任一不符即返回 `DatumMismatch`，优先于全部秩检查；随后按 `root_system`、`distinguished`、`weyl_action` 的顺序检查秩，再分别合成两格上的作用矩阵。乘法方向固定为 \(w\) 在左、\(\theta\) 在右。^[involution-types.md:52-53, involution-types.md:108-112]
+`new` 接收 `&BasedRootDatum`、`&RootSystem`、`&LatticeInvolution` 和 `WeylAction`。它先检查三个 datum 的一致性，任一不符即返回 `DatumMismatch`，优先于全部秩检查；随后按 `root_system`、`distinguished`、`weyl_action` 的顺序检查秩，再分别合成两格上的作用矩阵。乘法方向固定为 $w$ 在左、$\theta$ 在右。^[involution-types.md:52-53, involution-types.md:108-112]
 
-合成结果完整重走 `LatticeInvolution::new` 的验证：两个矩阵须为格秩阶方阵，随后先验证权作用平方为单位矩阵，再验证余权作用平方为单位矩阵，最后验证配对保持条件 \(W^T C=I\)。形状或平方条件不满足时返回 `InvalidInvolution`，配对条件失败返回 `InvalidRootAutomorphism`；平方检验使用 `i128` 检查累加，溢出传播为 `ArithmeticOverflow`。^[involution-types.md:67-71, involution-types.md:110-112]
+合成结果完整重走 `LatticeInvolution::new` 的验证：两个矩阵须为格秩阶方阵，随后先验证权作用平方为单位矩阵，再验证余权作用平方为单位矩阵，最后验证配对保持条件 $W^T C=I$。形状或平方条件不满足时返回 `InvalidInvolution`，配对条件失败返回 `InvalidRootAutomorphism`；平方检验使用 `i128` 检查累加，溢出传播为 `ArithmeticOverflow`。^[involution-types.md:67-71, involution-types.md:110-112]
 
 随后调用 `RootInvolutionData::new`，依次检查 datum、秩、单根像和逐根运输。单根级错误 `SimpleRootImageNotRoot`、`SimpleCorootImageMismatch` 先于主循环中的泛型错误；主循环中，像不是根返回 `InvalidRootAutomorphism`，余根运输不符返回 `InvalidRootDatumAutomorphism`。相关主题见 [[对合类型的分层构造验证与错误优先级]]。^[involution-types.md:86-92, involution-types.md:110-112]
 
@@ -48,7 +48,7 @@ promptModifiers:
 
 ## 测试锚点与证据范围
 
-来源记录的 twisted 测试包括：A1 的 `s0` 平移合法，得到两个实根；A2 的三阶元 `s0·s1` 返回 `InvalidInvolution`；来自不同但同秩 datum（A2 与 B2）的 Weyl 作用返回 `DatumMismatch`；带中心环面的 distinguished 对合 \(\operatorname{diag}(1,-1)\) 与 `s0` 合成合法。^[involution-types.md:130-132]
+来源记录的 twisted 测试包括：A1 的 `s0` 平移合法，得到两个实根；A2 的三阶元 `s0·s1` 返回 `InvalidInvolution`；来自不同但同秩 datum（A2 与 B2）的 Weyl 作用返回 `DatumMismatch`；带中心环面的 distinguished 对合 $\operatorname{diag}(1,-1)$ 与 `s0` 合成合法。^[involution-types.md:130-132]
 
 `compose_matrices` 的 `RankMismatch` 分支没有直接测试覆盖。来源指出，该分支在 `TwistedInvolution::new` 内受前置秩检查阻挡，但辅助函数仍具有 crate 内可见性。私有辅助函数的裸下标索引依赖调用点的前置方阵和秩检查；来源将其潜在 panic 路径标为阅读推断，并指出字段私有保证实例经过门控构造。^[involution-types.md:138-143]
 

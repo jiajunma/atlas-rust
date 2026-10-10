@@ -37,15 +37,15 @@ aliases:
 
 # Split 系数算术与零因子筛选
 
-`SplitValue` 表示形如 \(e+f\,s\)、满足 \(s^2=1\) 的系数，以整数对 \((e,f)\) 存储。其算术遵循上游 `Split_integer` 的机器位宽回绕语义，相关表示见 [[SplitInteger 分裂整数系数]]。^[atlas-core-domain-values.md:59-61]
+`SplitValue` 表示形如 $e+f\,s$、满足 $s^2=1$ 的系数，以整数对 $(e,f)$ 存储。其算术遵循上游 `Split_integer` 的机器位宽回绕语义，相关表示见 [[SplitInteger 分裂整数系数]]。^[atlas-core-domain-values.md:59-61]
 
 ## 算术与打印约定
 
-机器位宽回绕是该系数类型的算术契约，来源将其对应到上游 `arithmetic.h:152-213`。打印形式为 `(e±|f|s)`，其中 \(f\) 的符号折入分隔符，对应上游 `io/basic_io.cpp:150-154`。^[atlas-core-domain-values.md:59-61]
+机器位宽回绕是该系数类型的算术契约，来源将其对应到上游 `arithmetic.h:152-213`。打印形式为 `(e±|f|s)`，其中 $f$ 的符号折入分隔符，对应上游 `io/basic_io.cpp:150-154`。^[atlas-core-domain-values.md:59-61]
 
 ## 零因子筛选
 
-`split_keeps` 根据标量筛选项：对于 \(1\mp s\) 的倍数这类零因子标量，删除在湮灭点取值为零的项；其余标量保留所有项。来源将这一规则对应到上游 `atlas-types.w:5868-5900`。^[atlas-core-domain-values.md:62-63]
+`split_keeps` 根据标量筛选项：对于 $1\mp s$ 的倍数这类零因子标量，删除在湮灭点取值为零的项；其余标量保留所有项。来源将这一规则对应到上游 `atlas-types.w:5868-5900`。^[atlas-core-domain-values.md:62-63]
 
 ## 多项式中的系数
 

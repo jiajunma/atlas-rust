@@ -45,7 +45,7 @@ tags:
 
 ## 单根基与配对方向
 
-在单根基坐标下，第 \(i\) 个单根取标准基向量 \(e_i\)，第 \(j\) 个单余根取 Cartan 矩阵的第 \(j\) **列**。`from_basis` 核对 \(\langle \mathrm{root}_i,\mathrm{coroot}_j\rangle=\mathrm{cartan}[i][j]\)，因此根索引对应矩阵行，余根索引对应矩阵列。^[lib-root.md:34-38]
+在单根基坐标下，第 $i$ 个单根取标准基向量 $e_i$，第 $j$ 个单余根取 Cartan 矩阵的第 $j$ **列**。`from_basis` 核对 $\langle \mathrm{root}_i,\mathrm{coroot}_j\rangle=\mathrm{cartan}[i][j]$，因此根索引对应矩阵行，余根索引对应矩阵列。^[lib-root.md:34-38]
 
 原型使用的 `LatticeVector(Vec<i32>)` 是不带校验的 newtype。其文档声明将由 `Weight`／`Coweight` 的编译期对偶格区分取代；这是待替换原型的迁移方向，来源未声明替换已经完成。^[lib-root.md:30-33]
 

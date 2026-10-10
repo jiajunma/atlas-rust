@@ -53,7 +53,7 @@ aliases:
 
 ## 复根的长度判据
 
-对于 `Complex` 状态，令 \(y=\operatorname{cross}(x,s)\)，并用 \(\ell_{\mathrm{inv}}(x)\) 表示元素 \(x\) 所属对合的长度，则下降条件为 \(\ell_{\mathrm{inv}}(y)<\ell_{\mathrm{inv}}(x)\)。比较对象是两端的对合长度。^[kgb-graph-structure.md:33-34]
+对于 `Complex` 状态，令 $y=\operatorname{cross}(x,s)$，并用 $\ell_{\mathrm{inv}}(x)$ 表示元素 $x$ 所属对合的长度，则下降条件为 $\ell_{\mathrm{inv}}(y)<\ell_{\mathrm{inv}}(x)$。比较对象是两端的对合长度。^[kgb-graph-structure.md:33-34]
 
 元素编号标准化另有排序键：“对合长度、Weyl 长度、`WeylElt::pieces` 字典序”。该排序包含两种长度，但下降判据只使用上述对合长度比较；编号过程见 [[tau packet 与 KGB 元素编号标准化]]。^[kgb-graph-structure.md:33-34, kgb-graph-structure.md:60-70]
 

@@ -37,11 +37,11 @@ aliases:
 
 # 限制权的商格单射表示（RestrictedWeight）
 
-`RestrictedWeight` 是商格 \(X^*/\ker(1-\theta)\) 中元素的不透明表示，内部使用私有 `Vec<i32>` 保存坐标。它以 \((1-\theta)(weight)\) 编码权的等价类，形成商格到像格的**单射表示**；编码坐标不能直接解释为原始权的环境坐标。^[layout-restricted-roots.md:48-55]
+`RestrictedWeight` 是商格 $X^*/\ker(1-\theta)$ 中元素的不透明表示，内部使用私有 `Vec<i32>` 保存坐标。它以 $(1-\theta)(weight)$ 编码权的等价类，形成商格到像格的**单射表示**；编码坐标不能直接解释为原始权的环境坐标。^[layout-restricted-roots.md:48-55]
 
 ## 商类与编码坐标
 
-在 split A1 中，`alpha` 的类编码为 `2alpha`，但并不等于 `2alpha` 的类。因此，需要区分原始权、权的商类和商类的编码；编码中出现的倍增来自 \(1-\theta\) 的作用。^[layout-restricted-roots.md:50-55]
+在 split A1 中，`alpha` 的类编码为 `2alpha`，但并不等于 `2alpha` 的类。因此，需要区分原始权、权的商类和商类的编码；编码中出现的倍增来自 $1-\theta$ 的作用。^[layout-restricted-roots.md:50-55]
 
 `restrict` 通过逐坐标 `checked_sub` 计算限制。私有方法 `doubled` 通过逐坐标 `checked_mul(2)` 计算倍增，仅供 `is_multipliable` 使用；两者均采用受检整数算术。^[layout-restricted-roots.md:53-55]
 
@@ -51,7 +51,7 @@ aliases:
 
 限制根由 `BTreeMap` 收集，因此按编码坐标的字典序升序排列。`root(weight)` 使用二分查找；`is_multipliable(weight)` 判断该限制权的二倍类本身是否也是一个限制根的类。^[layout-restricted-roots.md:59-62]
 
-限制根系的 `rank` 取自对合的 `anti_invariant_rank`，即 \(-1\) 特征空间的秩，而非纤维数量，参见 [[对合的反不变秩]]。^[layout-restricted-roots.md:59-60]
+限制根系的 `rank` 取自对合的 `anti_invariant_rank`，即 $-1$ 特征空间的秩，而非纤维数量，参见 [[对合的反不变秩]]。^[layout-restricted-roots.md:59-60]
 
 ## 构造上下文
 
@@ -59,7 +59,7 @@ aliases:
 
 ## 测试锚点与证据边界
 
-来源列出三个测试锚点：split A1 的秩为 1，有两个限制根，`alpha` 纤维的重数为 1 且不可乘；compact A1 没有限制根；A2 在对合矩阵 \(\begin{pmatrix}0&-1\\-1&0\end{pmatrix}\) 下秩为 1，`lambda` 纤维的重数为 2 且可乘。^[layout-restricted-roots.md:64-66]
+来源列出三个测试锚点：split A1 的秩为 1，有两个限制根，`alpha` 纤维的重数为 1 且不可乘；compact A1 没有限制根；A2 在对合矩阵 $\begin{pmatrix}0&-1\\-1&0\end{pmatrix}$ 下秩为 1，`lambda` 纤维的重数为 2 且可乘。^[layout-restricted-roots.md:64-66]
 
 错误分支没有失败路径测试，`rank` 与限制根条数的一致性也未断言。`is_multipliable` 的数学性质，包括与 BC 型非约化根系的关系，未在该文件中断言，来源包亦不作验收。^[layout-restricted-roots.md:77-85]
 

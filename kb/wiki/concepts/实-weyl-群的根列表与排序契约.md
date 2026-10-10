@@ -42,7 +42,7 @@ promptModifiers:
 
 ## `orth` 次序与 R-群坐标
 
-两侧共用的 `fiber_side` 先按上游键排序正虚根，再判定紧性并提取紧根简单基。`orth` 由非紧且与 `two_rho` 正交的根组成；这些根强正交，构成 \(A_1^n\)。R-群位向量的每个坐标对应一个 `orth` 条目，因此必须连同根列表顺序解释。^[real-weyl.md:63-64, real-weyl.md:120-129]
+两侧共用的 `fiber_side` 先按上游键排序正虚根，再判定紧性并提取紧根简单基。`orth` 由非紧且与 `two_rho` 正交的根组成；这些根强正交，构成 $A_1^n$。R-群位向量的每个坐标对应一个 `orth` 条目，因此必须连同根列表顺序解释。^[real-weyl.md:63-64, real-weyl.md:120-129]
 
 `r_vectors` 将各个 `orth` 根的 `m_alpha`（fiber 坐标）按行注入 `ModTwoSubspace`，按自由列升序生成核基。每个核向量置位于该自由列，以及含有该自由列位的主元行对应位置；这一规则保留上游核生成元顺序，可结合 [[由自由坐标构造 F₂ 右核]] 阅读。^[real-weyl.md:130-133]
 
@@ -50,7 +50,7 @@ promptModifiers:
 
 ## 从列表到生成元词
 
-`RealWeylGenerators` 为每个列出的根构造一个反射元素，经过 `WeylAction::root_reflection` 与 `WeylElement::from_action` 转换。每个 R-群核向量对应一个乘积：按 `orth` 索引升序访问置位项，并依次右乘相应反射。复根生成元则按 \(s_r s_{\theta(r)}\) 构造，即先取根反射，再右乘其对合像的反射。^[real-weyl.md:75-79]
+`RealWeylGenerators` 为每个列出的根构造一个反射元素，经过 `WeylAction::root_reflection` 与 `WeylElement::from_action` 转换。每个 R-群核向量对应一个乘积：按 `orth` 索引升序访问置位项，并依次右乘相应反射。复根生成元则按 $s_r s_{\theta(r)}$ 构造，即先取根反射，再右乘其对合像的反射。^[real-weyl.md:75-79]
 
 生成元打印直接使用 `WeylElement::canonical_word`，关联 [[Weyl 元素的规范词]]；来源说明这些词按构造已经典范化，因此未移植 `reflection_word`／`to_dominant` 机制。打印时空词为 `e`，非空词使用从 1 开始的生成元编号，以逗号连接。^[real-weyl.md:79-81, real-weyl.md:156-157]
 

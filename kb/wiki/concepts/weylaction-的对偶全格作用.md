@@ -40,7 +40,7 @@ tags:
 
 `WeylAction` 保存 `datum: Arc<BasedRootDatum>`、`weight_matrix` 和 `coweight_matrix`，分别承载根数据及两个对偶格上的作用矩阵。`identity` 构造 `lattice_rank` 阶单位矩阵，覆盖完整格，而不局限于半单部分。根数据的背景见 [[BasedRootDatum：带基根数据与构造不变量]]。^[weyl-layer.md:19-21, weyl-layer.md:30-32]
 
-`simple_reflection` 根据根与余根的对偶配对构造反射矩阵，条目为 \(M_{ij}=\delta_{ij}-\mathrm{reflected}_i\,\mathrm{pairing}_j\)。构造采用受检的 `i128` 算术，再收窄为 `i32`。`root_reflection` 支持任意枚举根上的反射，结果与根的符号无关，用于 Cayley/cross 分解重放中的强正交根反射。^[weyl-layer.md:31-36]
+`simple_reflection` 根据根与余根的对偶配对构造反射矩阵，条目为 $M_{ij}=\delta_{ij}-\mathrm{reflected}_i\,\mathrm{pairing}_j$。构造采用受检的 `i128` 算术，再收窄为 `i32`。`root_reflection` 支持任意枚举根上的反射，结果与根的符号无关，用于 Cayley/cross 分解重放中的强正交根反射。^[weyl-layer.md:31-36]
 
 ## 作用、复合与层间转换
 

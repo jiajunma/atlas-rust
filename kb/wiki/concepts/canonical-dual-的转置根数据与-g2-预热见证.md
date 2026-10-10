@@ -57,7 +57,7 @@ Weyl 元素的 `=`、`!=`、`*` 在产生结果前先检查 WeylGroup 地址，�
 
 来源的上游逐行阅读指出，G2 的 canonical dual 带有转置 coroot 矩阵，任何 `adjoint(G2,·)` 都无法构造出该内容。由此登记的预测是：`WG_DUAL_OWNER` 与 `WG_REVERSE_OWNER` 在两个引擎中均应打印 `false`。冻结 contract 原先的 `true` 预测应作为预测失准记录，而非视为引擎分歧；来源尚未将这一预测确认为捕获结果。^[weyl-context-identity-and-sharing.md:86-89]
 
-原预热 fixture 使用 `adjoint(G2,false)`，无法占用 canonical dual 的 cold-share 槽位，因此其 dual 侧三元组并未触发所需的预热条件，预期两个引擎都不抛错。真正的 G2 预热拒绝见证需要显式调用 `root_datum`，以根矩阵 \(I_2\)、余根矩阵 \(\begin{pmatrix}2&-3\\-1&2\end{pmatrix}\) 和 preference 参数 `false` 构造并预热准确的转置内容。^[weyl-context-identity-and-sharing.md:89-93]
+原预热 fixture 使用 `adjoint(G2,false)`，无法占用 canonical dual 的 cold-share 槽位，因此其 dual 侧三元组并未触发所需的预热条件，预期两个引擎都不抛错。真正的 G2 预热拒绝见证需要显式调用 `root_datum`，以根矩阵 $I_2$、余根矩阵 $\begin{pmatrix}2&-3\\-1&2\end{pmatrix}$ 和 preference 参数 `false` 构造并预热准确的转置内容。^[weyl-context-identity-and-sharing.md:89-93]
 
 B2/C2 提供了更直接的对照：C2 的固定 Cartan 矩阵正是 B2 的转置，所以 `dual(SC(B2,true))` 与 `adjoint(C2,false)` 内容一致。G2 普通 adjoint 构造无法预热 canonical dual 的问题不影响这一对照。^[weyl-context-identity-and-sharing.md:93-94]
 
@@ -65,7 +65,7 @@ B2/C2 提供了更直接的对照：C2 的固定 Cartan 矩阵正是 B2 的转�
 
 已落地的 Rust 修复使 `RootDatumHandle` 携带 `Arc<DatumWeylIdentity>`，并按完整 datum 内容加 preference 弱驻留 identity。`dual(RootDatum)` 仅在 canonical target 仍 cold 时共享 source 的 abstract group，绝不覆盖预热目标。二元运算先比较 abstract-group `Arc` 身份，再在左侧坐标系重放右侧 external word；关系运算在 `no_value` 级别同样执行身份检查，参见 [[Weyl 元素的可失败关系与跨坐标运算]]。^[weyl-context-identity-and-sharing.md:249-261]
 
-G2 的非对称 interface-order 见证用于补足 A1 的覆盖缺口：A1 跨 dual 乘法只有 \(s_0s_0=1\)，无法发现生成元重编号错误或直接复合 foreign root permutation 的错误。后续还需分别覆盖 B2/C2、两个乘法操作数顺序、inner-class dual construction、`no_value` relations，以及仅由 WeylElt 维持 datum 生命周期的情形。这些属于 [[Weyl 语义回归的递进验证门禁]]。^[weyl-context-identity-and-sharing.md:313-330]
+G2 的非对称 interface-order 见证用于补足 A1 的覆盖缺口：A1 跨 dual 乘法只有 $s_0s_0=1$，无法发现生成元重编号错误或直接复合 foreign root permutation 的错误。后续还需分别覆盖 B2/C2、两个乘法操作数顺序、inner-class dual construction、`no_value` relations，以及仅由 WeylElt 维持 datum 生命周期的情形。这些属于 [[Weyl 语义回归的递进验证门禁]]。^[weyl-context-identity-and-sharing.md:313-330]
 
 ## 验证状态与证据边界
 

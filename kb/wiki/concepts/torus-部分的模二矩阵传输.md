@@ -54,7 +54,7 @@ Torus 部分的模二矩阵传输是 KGB stage c 实现 Tits 群操作的一项�
 
 `cross` 返回在目标处已归约的 based cross action。其闭式实现等价于先执行 `sigma_mult(s, .)`，再执行 `mult_sigma_inv(., twist(s))`，并加上 offset 修正。`cayley` 执行裸 `sigma_mult`，随后在目标处扩大的 mod-space 中归约；目标 Cartan 类尚未加入表时返回 `None`。参见 [[Based cross action 的闭式实现]] 与 [[Cayley 变换与目标模空间归约]]。^[tits-element.md:50-53]
 
-`inverse_cayley` 先执行裸 `sigma_inv_mult`：反射左 torus 部分，并在左乘增加 Weyl 长度时加上 \(m_\alpha\)。real source 处的模约化可能遗忘源侧 grading，因此若重建出的根为 compact，就用第一个与该根配对非平凡的 source mod-space 基向量修复；找不到这样的基向量时报告 `TitsCosetInvariantViolation`。随后在 imaginary target 处执行 `quotient_representative` 归约，并复核目标 simple grading。根不是 real，或向下的 Cartan 类尚未加入表时返回 `None`。^[tits-element.md:54-60]
+`inverse_cayley` 先执行裸 `sigma_inv_mult`：反射左 torus 部分，并在左乘增加 Weyl 长度时加上 $m_\alpha$。real source 处的模约化可能遗忘源侧 grading，因此若重建出的根为 compact，就用第一个与该根配对非平凡的 source mod-space 基向量修复；找不到这样的基向量时报告 `TitsCosetInvariantViolation`。随后在 imaginary target 处执行 `quotient_representative` 归约，并复核目标 simple grading。根不是 real，或向下的 Cartan 类尚未加入表时返回 `None`。^[tits-element.md:54-60]
 
 ## 证据边界
 

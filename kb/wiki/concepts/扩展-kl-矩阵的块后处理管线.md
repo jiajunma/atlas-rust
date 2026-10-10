@@ -50,7 +50,7 @@ provenanceState: extracted
 
 ## 列填充与访问基础
 
-`ExtKlTable` 为每个块元素 `y` 保存一列池索引，按照 `x` 相对于 `y` 的下降集所对应的 primitive 位置寻址。`kl_pol_index` 返回 `(KLIndex, bool)`；`p(x,y)` 则在翻转标志为真时应用 `scaled(-1)`，得到 twisted KLV 多项式 \(P_{x,y}\)。详见 [[扩展 KLV 多项式表的逐列存储]] 与 [[Primitivisation 索引与符号传播]]。^[extended-kl.md:72-80]
+`ExtKlTable` 为每个块元素 `y` 保存一列池索引，按照 `x` 相对于 `y` 的下降集所对应的 primitive 位置寻址。`kl_pol_index` 返回 `(KLIndex, bool)`；`p(x,y)` 则在翻转标志为真时应用 `scaled(-1)`，得到 twisted KLV 多项式 $P_{x,y}$。详见 [[扩展 KLV 多项式表的逐列存储]] 与 [[Primitivisation 索引与符号传播]]。^[extended-kl.md:72-80]
 
 `fill_columns(limit)` 计算所有 `y < limit` 的列，`limit == 0` 时填满整块。填充失败时，Rust 实现清空出错列并传播错误，保持“每列要么为空、要么完整”的不变式；上游则通过 `catch(...)` 吞掉异常。这是明确记录的有意偏离，参见 [[列填充的完整性不变式与错误传播]]。^[extended-kl.md:84-87]
 

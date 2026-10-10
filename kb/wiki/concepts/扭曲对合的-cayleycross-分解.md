@@ -35,15 +35,15 @@ Cayley 根与 cross word 在不同移植实现之间并不唯一，因为 Atlas 
 
 ### 输入校验与生成元置换
 
-`build` 首先检查 `twisted.weyl_action().datum()` 是否匹配，不匹配则返回 `DatumMismatch`。随后比较 weight 与 coweight 两侧矩阵，要求存储对合恰为 \(w\circ\delta\)，否则返回 `DistinguishedInvolutionMismatch`。来源指出，该条件迫使 \(w^{-1}=\delta w\delta\)，为终止性论证提供前提。^[cayley-cross.md:28-31]
+`build` 首先检查 `twisted.weyl_action().datum()` 是否匹配，不匹配则返回 `DatumMismatch`。随后比较 weight 与 coweight 两侧矩阵，要求存储对合恰为 $w\circ\delta$，否则返回 `DistinguishedInvolutionMismatch`。来源指出，该条件迫使 $w^{-1}=\delta w\delta$，为终止性论证提供前提。^[cayley-cross.md:28-31]
 
-构造器逐个取得简单根的 `simple_ids`，再建立生成元置换 `twist[g]`，记录 \(\delta\) 将第 \(g\) 个简单根映到哪个生成元下标。若无法找到对应下标，则返回 `InvalidBasedAutomorphism`。^[cayley-cross.md:32-34]
+构造器逐个取得简单根的 `simple_ids`，再建立生成元置换 `twist[g]`，记录 $\delta$ 将第 $g$ 个简单根映到哪个生成元下标。若无法找到对应下标，则返回 `InvalidBasedAutomorphism`。^[cayley-cross.md:32-34]
 
 ### 下降剥离与资源预算
 
-[[Cayley/Cross 的下降剥离算法]]按生成元下标升序选择首个 descent，判据是 \(\delta(\theta(\alpha_g))\) 的简单坐标全部不大于零。若没有 descent，而当前作用仍非单位，则触发 `"peeling termination"` 不变量错误。^[cayley-cross.md:35-37]
+[[Cayley/Cross 的下降剥离算法]]按生成元下标升序选择首个 descent，判据是 $\delta(\theta(\alpha_g))$ 的简单坐标全部不大于零。若没有 descent，而当前作用仍非单位，则触发 `"peeling termination"` 不变量错误。^[cayley-cross.md:35-37]
 
-每步操作由根类型决定：Real 根产生 Cayley 字母，并将当前作用更新为 \(s_g\circ\mathrm{current}\)；Complex 根产生 Cross 字母，并更新为 \(s_g\circ\mathrm{current}\circ s_{\mathrm{twist}[g]}\)。Imaginary 根触发 `"descent kind"` 错误；代码注释声明 imaginary 根不可能成为 descent。^[cayley-cross.md:40-43]
+每步操作由根类型决定：Real 根产生 Cayley 字母，并将当前作用更新为 $s_g\circ\mathrm{current}$；Complex 根产生 Cross 字母，并更新为 $s_g\circ\mathrm{current}\circ s_{\mathrm{twist}[g]}$。Imaginary 根触发 `"descent kind"` 错误；代码注释声明 imaginary 根不可能成为 descent。^[cayley-cross.md:40-43]
 
 预算检查发生在找到 descent 之后、执行步骤之前。当 `steps == max_peeling_steps` 时，返回资源名为 `"peeling steps"` 的 `CayleyCrossResourceLimit`。无需剥离的输入因此可在零预算下通过；Complex 步骤虽然复合两次反射，仍只计一个预算步骤，详见 [[Cayley/Cross 剥离预算的逻辑步计数]]。^[cayley-cross.md:37-43]
 
@@ -59,7 +59,7 @@ Cayley 根与 cross word 在不同移植实现之间并不唯一，因为 Atlas 
 
 ## 测试与证据边界
 
-来源列出的测试锚点包括：两种 distinguished involution 下的 identity 空分解；A1×A1 中 identity 配合 \(s_0\) 得到一个 Cayley 根，swap 配合 \(s_0\circ s_1\) 得到一个 cross 字母；A2 最长元 \(s_0s_1s_0\) 得到坐标为 \([1,1]\) 的 Cayley 根及 `cross_word [0]`。B2 的短根、长根 pinning 两例分别覆盖长根化生效与无需变换的路径。^[cayley-cross.md:55-58]
+来源列出的测试锚点包括：两种 distinguished involution 下的 identity 空分解；A1×A1 中 identity 配合 $s_0$ 得到一个 Cayley 根，swap 配合 $s_0\circ s_1$ 得到一个 cross 字母；A2 最长元 $s_0s_1s_0$ 得到坐标为 $[1,1]$ 的 Cayley 根及 `cross_word [0]`。B2 的短根、长根 pinning 两例分别覆盖长根化生效与无需变换的路径。^[cayley-cross.md:55-58]
 
 A2、B2 的 twisted involution 全枚举测试检查分解成功、重放相等及 Cayley 根两两正交；三条负路径精确匹配零预算、异 datum 与异 backing 的错误。不过，六种 `CayleyCrossInvariantViolation` 不变量串均无专门负测试，A1×A1 swap 案例也仅固定 `cross_word.len() == 1`，未固定字母内容。^[cayley-cross.md:58-59, cayley-cross.md:97-99]
 

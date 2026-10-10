@@ -36,7 +36,7 @@ aliases:
 
 # Weyl 元素的扭曲共轭
 
-Weyl 元素的扭曲共轭由词级组合层 `WeylElement::twisted_conjugate` 实现。对当前元素 \(w\) 和生成元编号 `gen`，它计算 \(s_{\mathrm{gen}}\cdot w\cdot s_{\mathrm{twist}(\mathrm{gen})}\)。该操作是 Tits 扭曲共轭在 Weyl 层的影子。^[weyl-layer.md:80-84]
+Weyl 元素的扭曲共轭由词级组合层 `WeylElement::twisted_conjugate` 实现。对当前元素 $w$ 和生成元编号 `gen`，它计算 $s_{\mathrm{gen}}\cdot w\cdot s_{\mathrm{twist}(\mathrm{gen})}$。该操作是 Tits 扭曲共轭在 Weyl 层的影子。^[weyl-layer.md:80-84]
 
 ## twist 与调用方契约
 
@@ -46,11 +46,11 @@ Weyl 元素的扭曲共轭由词级组合层 `WeylElement::twisted_conjugate` �
 
 ## 长度变化与下降查询
 
-KGB stage (b) 使用的长度变化为 \(d\in\{0,\pm2\}\)，由调用点对扭曲共轭前后的缓存长度做减法取得。词级组合层提供 \(O(1)\) 的长度与下降查询。^[weyl-layer.md:22-24, weyl-layer.md:80-84]
+KGB stage (b) 使用的长度变化为 $d\in\{0,\pm2\}$，由调用点对扭曲共轭前后的缓存长度做减法取得。词级组合层提供 $O(1)$ 的长度与下降查询。^[weyl-layer.md:22-24, weyl-layer.md:80-84]
 
-左下降的判定为 \(\ell(sw)<\ell(w)\iff w^{-1}(\alpha_s)<0\)，因此 `has_left_descent` 读取逆向量；右下降的判定为 \(\ell(ws)<\ell(w)\iff w(\alpha_s)<0\)，因此 `has_right_descent` 读取正向置换。^[weyl-layer.md:70-74]
+左下降的判定为 $\ell(sw)<\ell(w)\iff w^{-1}(\alpha_s)<0$，因此 `has_left_descent` 读取逆向量；右下降的判定为 $\ell(ws)<\ell(w)\iff w(\alpha_s)<0$，因此 `has_right_descent` 读取正向置换。^[weyl-layer.md:70-74]
 
-一般乘法 `multiply` 在同一趟操作中按 \((uv)^{-1}=v^{-1}u^{-1}\) 维护逆，并从 positivity slice 重新计算长度，不能将操作数长度直接相加。单生成元左乘、右乘接口则报告长度变化。^[weyl-layer.md:75-79]
+一般乘法 `multiply` 在同一趟操作中按 $(uv)^{-1}=v^{-1}u^{-1}$ 维护逆，并从 positivity slice 重新计算长度，不能将操作数长度直接相加。单生成元左乘、右乘接口则报告长度变化。^[weyl-layer.md:75-79]
 
 ## 所属层次与证据边界
 

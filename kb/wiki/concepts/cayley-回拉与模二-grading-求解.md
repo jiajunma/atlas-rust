@@ -37,7 +37,7 @@ aliases:
 
 # Cayley 回拉与模二 grading 求解
 
-Cayley 回拉与模二 grading 求解是 `RealFormLabels` 使用的 grading-based legacy mechanism，用于把一个 Cartan 的局部弱实类映射到 fundamental 分区的全局实形式编号。`label(k)` 给出按 `classes()` 顺序排列的局部类 \(k\) 的全局标签，是[[弱实形式的局部到全局标签映射]]的计算核心。^[real-form-labels-order.md:17-40]
+Cayley 回拉与模二 grading 求解是 `RealFormLabels` 使用的 grading-based legacy mechanism，用于把一个 Cartan 的局部弱实类映射到 fundamental 分区的全局实形式编号。`label(k)` 给出按 `classes()` 顺序排列的局部类 $k$ 的全局标签，是[[弱实形式的局部到全局标签映射]]的计算核心。^[real-form-labels-order.md:17-40]
 
 ## 构造前提
 
@@ -49,7 +49,7 @@ Cayley 回拉与模二 grading 求解是 `RealFormLabels` 使用的 grading-base
 
 ## 基 grading 的扩展
 
-`base_grading_extension` 是 `pub(crate)` 函数。基本 grading 在任意虚根处的值，等于该根在虚单根基下的坐标系数和的奇偶。坐标通过精确求解**转置的 bracket 索引子 Cartan 系统**得到，其中第 \(j\) 行记录各基根与余根 \(j\) 的配对。^[real-form-labels-order.md:32-35]
+`base_grading_extension` 是 `pub(crate)` 函数。基本 grading 在任意虚根处的值，等于该根在虚单根基下的坐标系数和的奇偶。坐标通过精确求解**转置的 bracket 索引子 Cartan 系统**得到，其中第 $j$ 行记录各基根与余根 $j$ 的配对。^[real-form-labels-order.md:32-35]
 
 坐标整性不能作为虚根性判据，因为非虚根的投影也可能具有整数坐标。因此，实现显式检查根类，不能用整性检查替代虚根门控。^[real-form-labels-order.md:33-35]
 

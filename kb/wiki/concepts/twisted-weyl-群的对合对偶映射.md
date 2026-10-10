@@ -23,17 +23,17 @@ promptModifiers:
 
 # Twisted Weyl 群的对合对偶映射
 
-Twisted Weyl 群的对合对偶映射 `dual_involution` 将原侧的 twisted involution \(w\) 配到对偶侧的 \(\mathrm{dual}_w\)。[[完整块的 KGB 纤维积]]使用这一映射，将一个实形式的 KGB 图与其对偶实形式的 KGB 图配对，形成完整块。^[block-graph.md:15-24]
+Twisted Weyl 群的对合对偶映射 `dual_involution` 将原侧的 twisted involution $w$ 配到对偶侧的 $\mathrm{dual}_w$。[[完整块的 KGB 纤维积]]使用这一映射，将一个实形式的 KGB 图与其对偶实形式的 KGB 图配对，形成完整块。^[block-graph.md:15-24]
 
 ## 数学描述与计算顺序
 
-该映射在对合矩阵层面表现为负转置；在 Weyl 元素层面，映射 \(f\) 由以下关系刻画，其中实现从对偶侧最长元出发。^[block-graph.md:20-24]
+该映射在对合矩阵层面表现为负转置；在 Weyl 元素层面，映射 $f$ 由以下关系刻画，其中实现从对偶侧最长元出发。^[block-graph.md:20-24]
 
-\[
+$$
 f(e)=w_0,\qquad f(s.w)=f(w)\,d(s).
-\]
+$$
 
-实现接口为 `dual_involution(word, dual_system, dual_twist, dual_longest)`。算法从 `dual_longest` 开始，按 \(w\) 的约化字**自右向左**遍历，以对偶扭曲字母逐次右乘。参数 `word` 携带两侧共享的外部生成元编号，因此字母编号与遍历、乘法方向都是该实现约定的一部分；相关作用顺序可参见[[Weyl 词对根与权的作用顺序]]。^[block-graph.md:20-24]
+实现接口为 `dual_involution(word, dual_system, dual_twist, dual_longest)`。算法从 `dual_longest` 开始，按 $w$ 的约化字**自右向左**遍历，以对偶扭曲字母逐次右乘。参数 `word` 携带两侧共享的外部生成元编号，因此字母编号与遍历、乘法方向都是该实现约定的一部分；相关作用顺序可参见[[Weyl 词对根与权的作用顺序]]。^[block-graph.md:20-24]
 
 ## 在完整块构造中的作用
 
@@ -43,7 +43,7 @@ f(e)=w_0,\qquad f(s.w)=f(w)\,d(s).
 
 ## 与块图对偶的关系
 
-`dual_involution` 用于确定两侧对合的配对关系；[[完整块图的对偶数据变换]]则由 `BlockGraph::dual` 对已经构建的块执行数据变换：反转元素序、交换 \(x/y\) 坐标、反射长度，并映射下降状态及 cross/Cayley 链。二者处在完整块处理的不同层次。^[block-graph.md:17-24, block-graph.md:95-104]
+`dual_involution` 用于确定两侧对合的配对关系；[[完整块图的对偶数据变换]]则由 `BlockGraph::dual` 对已经构建的块执行数据变换：反转元素序、交换 $x/y$ 坐标、反射长度，并映射下降状态及 cross/Cayley 链。二者处在完整块处理的不同层次。^[block-graph.md:17-24, block-graph.md:95-104]
 
 ## 验证范围与证据边界
 

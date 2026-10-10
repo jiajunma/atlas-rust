@@ -37,11 +37,11 @@ provenanceState: extracted
 
 # 饱和整数核（saturated_kernel）
 
-`saturated_kernel(matrix, budget)` 计算饱和整数核的基，属于 `integer_lattice.rs` 中基于 Malachite 大整数 `Integer` 的精确格线性代数基础设施。函数先通过预算检查，再进行保持幺模右因子 \(V\) 的行列混合约化。^[integer-lattice.md:19-20, integer-lattice.md:39-41]
+`saturated_kernel(matrix, budget)` 计算饱和整数核的基，属于 `integer_lattice.rs` 中基于 Malachite 大整数 `Integer` 的精确格线性代数基础设施。函数先通过预算检查，再进行保持幺模右因子 $V$ 的行列混合约化。^[integer-lattice.md:19-20, integer-lattice.md:39-41]
 
 ## 约化方法
 
-算法在行列混合约化过程中保持幺模右因子 \(V\)。矩阵对角化后，\(V\) 中对应零对角元的列构成完整整数核的基。实现刻意不采用“先做有理行约化，再通分”的方法。^[integer-lattice.md:39-41]
+算法在行列混合约化过程中保持幺模右因子 $V$。矩阵对角化后，$V$ 中对应零对角元的列构成完整整数核的基。实现刻意不采用“先做有理行约化，再通分”的方法。^[integer-lattice.md:39-41]
 
 ## 输入与计算预算
 
@@ -51,9 +51,9 @@ provenanceState: extracted
 
 ## 相关格运算
 
-[[余特征作用的负特征整数子格]] 对应的 `negative_coweight_eigenspace` 从余特征作用本身计算 \(\ker_{\mathbb Z}(I+\theta_Y)\)。`LatticeInvolution::coweight_matrix()` 已经存储余特征上的对偶作用，因此该函数有意不再转置矩阵。^[integer-lattice.md:43-45]
+[[余特征作用的负特征整数子格]] 对应的 `negative_coweight_eigenspace` 从余特征作用本身计算 $\ker_{\mathbb Z}(I+\theta_Y)$。`LatticeInvolution::coweight_matrix()` 已经存储余特征上的对偶作用，因此该函数有意不再转置矩阵。^[integer-lattice.md:43-45]
 
-[[整数基的模 2 归约]] 对应的 `reduce_basis_mod_two` 将整数基模 \(2\) 归约，只保留其在 \(Y/2Y\) 中的张成。^[integer-lattice.md:42-42]
+[[整数基的模 2 归约]] 对应的 `reduce_basis_mod_two` 将整数基模 $2$ 归约，只保留其在 $Y/2Y$ 中的张成。^[integer-lattice.md:42-42]
 
 ## 证据范围
 

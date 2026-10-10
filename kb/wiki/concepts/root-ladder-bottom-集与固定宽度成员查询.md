@@ -42,9 +42,9 @@ Root ladder bottom 集由根之间的精确差是否仍属于根集决定。对�
 
 ## 数学定义与适用前提
 
-对完整存储的有限根集 \(R\subseteq\mathbb Z^d\) 和 \(\alpha\in R\)，ladder bottom 集定义为 \(B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}\)。这里的 \(\beta-\alpha\) 是数学整数中的精确差。^[root-ladder-overflow-repair.md:41-49]
+对完整存储的有限根集 $R\subseteq\mathbb Z^d$ 和 $\alpha\in R$，ladder bottom 集定义为 $B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}$。这里的 $\beta-\alpha$ 是数学整数中的精确差。^[root-ladder-overflow-repair.md:41-49]
 
-Rust 将已存根和余根的坐标表示为 `i32`。若精确差的任一坐标超出 `i32` 可表示区间，该差就不可能等于任何已存向量。因此，这次成员查询必为 `false`，相应的 \(\beta\) 应进入 bottom 集；余根集合采用同一判据。^[root-ladder-overflow-repair.md:46-49]
+Rust 将已存根和余根的坐标表示为 `i32`。若精确差的任一坐标超出 `i32` 可表示区间，该差就不可能等于任何已存向量。因此，这次成员查询必为 `false`，相应的 $\beta$ 应进入 bottom 集；余根集合采用同一判据。^[root-ladder-overflow-repair.md:46-49]
 
 这一结论仅适用于“精确差是否属于完整的 `i32` 存储集合”。它不允许 wrapping 或 saturating 算术，也不能推广到一般向量减法、反射、root combination、seed negation 或构造输入验证。分配失败及其他错误仍须传播。^[root-ladder-overflow-repair.md:51-53]
 
@@ -54,7 +54,7 @@ Rust 将已存根和余根的坐标表示为 `i32`。若精确差的任一坐标
 
 共享的 `difference` 缓冲区在每次 helper 调用开始时清空。溢出留下的部分坐标前缀不会在错误分支中读取，下一次调用会再次清空缓冲区。修复不改变 `subtract_coordinates`、reflection、`combine_roots`、数据布局、排序或 public API。^[root-ladder-overflow-repair.md:78-86]
 
-该修复不构成性能优化：过去提前失败的极值输入现在会完成 \(O(|R|^2)\) 的表构造，可能使用更多时间。性能或内存结论需要受控测量支持。^[root-ladder-overflow-repair.md:85-88]
+该修复不构成性能优化：过去提前失败的极值输入现在会完成 $O(|R|^2)$ 的表构造，可能使用更多时间。性能或内存结论需要受控测量支持。^[root-ladder-overflow-repair.md:85-88]
 
 ## 与 original Atlas 的关系
 

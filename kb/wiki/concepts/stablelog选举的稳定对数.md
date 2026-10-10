@@ -36,22 +36,22 @@ provenanceState: extracted
 
 # stable_log：选举的稳定对数
 
-`stable_log` 为 KGB 种子 \(x_0\) 的构造选取一个精确位于 \(\xi^T\) 的 \(+1\) 特征空间中的稳定对数。其 adapted-basis 代表元选择承载可观测量：它固定 `g_rho_check`，进而固定每一个下游 `torus_factor` 的有理数值。^[real-form-seed.md:19-31]
+`stable_log` 为 KGB 种子 $x_0$ 的构造选取一个精确位于 $\xi^T$ 的 $+1$ 特征空间中的稳定对数。其 adapted-basis 代表元选择承载可观测量：它固定 `g_rho_check`，进而固定每一个下游 `torus_factor` 的有理数值。^[real-form-seed.md:19-31]
 
 ## 计算过程
 
 来源将上游 `stable_log` 定位于 `y_values.cpp:155-166`，并给出以下四步计算过程。^[real-form-seed.md:26-28]
 
-1. 将输入逐坐标模 \(1\) 归约，取非负剩余。
-2. 取 \(\xi+1\) 的前 \(d\) 个 adapted-basis 坐标。
-3. 将这些坐标再次模 \(1\) 归约，即模整个不动格（fixed lattice）。
+1. 将输入逐坐标模 $1$ 归约，取非负剩余。
+2. 取 $\xi+1$ 的前 $d$ 个 adapted-basis 坐标。
+3. 将这些坐标再次模 $1$ 归约，即模整个不动格（fixed lattice）。
 4. 转换回原坐标。
 
-两次归约分别作用于输入的原坐标和所选的不动格坐标，输出恰好落在 \(+1\) 特征空间。代表元选择的相关背景见 [[承载可观测量的适配基（adapted_basis）]]。^[real-form-seed.md:21-31]
+两次归约分别作用于输入的原坐标和所选的不动格坐标，输出恰好落在 $+1$ 特征空间。代表元选择的相关背景见 [[承载可观测量的适配基（adapted_basis）]]。^[real-form-seed.md:21-31]
 
 ## 输入前置条件
 
-实现检查的前置条件是：逐坐标归约后，输入的尾部 adapted-basis 坐标必须为整数。这等价于输入模余特征格 \(X_*\) 同余于一个被对合精确固定的向量。`some_coch` 输入在结构上满足这一条件，一般的 squares 则不一定满足。^[real-form-seed.md:29-31]
+实现检查的前置条件是：逐坐标归约后，输入的尾部 adapted-basis 坐标必须为整数。这等价于输入模余特征格 $X_*$ 同余于一个被对合精确固定的向量。`some_coch` 输入在结构上满足这一条件，一般的 squares 则不一定满足。^[real-form-seed.md:29-31]
 
 ## 在种子构造中的作用
 

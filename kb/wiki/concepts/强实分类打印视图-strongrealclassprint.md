@@ -42,7 +42,7 @@ provenanceState: extracted
 
 ## 分类背景
 
-[[强实形式与 fiber 轨道|强实形式]]层建立在已完成的 Cartan 分类之上。一个强实形式代表元对应某个平方类的 fiber group 中的一个 \(W_{im}\) 轨道，并归属于一个弱实形式。每个 Cartan 类的 [[Cartan 类的强实层 StrongRealData|StrongRealData]] 保存平方类集合、逐平方类的 fiber 轨道大小与强代表元。^[strong-real.md:19-22, strong-real.md:34-40]
+[[强实形式与 fiber 轨道|强实形式]]层建立在已完成的 Cartan 分类之上。一个强实形式代表元对应某个平方类的 fiber group 中的一个 $W_{im}$ 轨道，并归属于一个弱实形式。每个 Cartan 类的 [[Cartan 类的强实层 StrongRealData|StrongRealData]] 保存平方类集合、逐平方类的 fiber 轨道大小与强代表元。^[strong-real.md:19-22, strong-real.md:34-40]
 
 ## 打印字段
 
@@ -56,7 +56,7 @@ provenanceState: extracted
 
 [[平方类编号与换基不变量|SquareClassId]] 是商空间 `(adjoint fiber group) / im(toAdjoint)` 在本 crate 的 echelon 基下的陪集坐标整数。来源记载，stage-(d) 排序审计确认本 crate 与上游的基选举一致，因此在所述版本中，这些编号等于上游 `printStrongReal` 的 `class #N`。这一对应依赖双方共享的 low-pivot RREF 约定；任一侧换基只会置换标签，不改变 partition 结构及各项大小。^[strong-real.md:24-30]
 
-fiber 轨道编号具有另一种选择依赖：`StrongRealFormRep` 的 `fiber_orbit` 编号取决于消元选取的具体解，且本 crate 与上游的约定不同。轨道大小不依赖这一选择，因为由 \(\ker(\mathrm{toAdjoint})\) 给出的平移与作用交换。^[strong-real.md:34-37]
+fiber 轨道编号具有另一种选择依赖：`StrongRealFormRep` 的 `fiber_orbit` 编号取决于消元选取的具体解，且本 crate 与上游的约定不同。轨道大小不依赖这一选择，因为由 $\ker(\mathrm{toAdjoint})$ 给出的平移与作用交换。^[strong-real.md:34-37]
 
 ## 证据范围
 

@@ -42,15 +42,15 @@ Cayley/Cross 的下降剥离算法用于构造[[扭曲对合的 Cayley/Cross 分
 
 ## 输入校验与生成元准备
 
-`build` 首先检查来源一致性：`twisted.weyl_action().datum()` 不匹配时返回 `DatumMismatch`；存储的对合必须恰为 \(w\circ\delta\)，且 weight 与 coweight 两侧矩阵都要一致，否则返回 `DistinguishedInvolutionMismatch`。来源说明，这一门控也支撑终止性论证，因为它迫使 \(w^{-1}=\delta w\delta\)。^[cayley-cross.md:28-31]
+`build` 首先检查来源一致性：`twisted.weyl_action().datum()` 不匹配时返回 `DatumMismatch`；存储的对合必须恰为 $w\circ\delta$，且 weight 与 coweight 两侧矩阵都要一致，否则返回 `DistinguishedInvolutionMismatch`。来源说明，这一门控也支撑终止性论证，因为它迫使 $w^{-1}=\delta w\delta$。^[cayley-cross.md:28-31]
 
-随后建立简单根编号表 `simple_ids`，并计算生成元上的 twist 置换：`twist[g]` 表示 \(\delta\) 将第 \(g\) 个简单根映到的生成元下标。若找不到对应生成元，返回 `InvalidBasedAutomorphism`。生成元下标与 `RootId` 必须区分：`cross_word` 存储前者，`cayley_roots` 存储后者。^[cayley-cross.md:17-19, cayley-cross.md:32-34]
+随后建立简单根编号表 `simple_ids`，并计算生成元上的 twist 置换：`twist[g]` 表示 $\delta$ 将第 $g$ 个简单根映到的生成元下标。若找不到对应生成元，返回 `InvalidBasedAutomorphism`。生成元下标与 `RootId` 必须区分：`cross_word` 存储前者，`cayley_roots` 存储后者。^[cayley-cross.md:17-19, cayley-cross.md:32-34]
 
 ## 下降选择与剥离规则
 
-循环按外部生成元下标升序扫描，选择第一个使 \(\delta(\theta(\alpha_g))\) 的简单根坐标全部不大于零的生成元。若不存在下降，但当前作用仍非单位，则返回 `"peeling termination"` 不变量错误。^[cayley-cross.md:35-37]
+循环按外部生成元下标升序扫描，选择第一个使 $\delta(\theta(\alpha_g))$ 的简单根坐标全部不大于零的生成元。若不存在下降，但当前作用仍非单位，则返回 `"peeling termination"` 不变量错误。^[cayley-cross.md:35-37]
 
-找到下降并通过预算检查后，算法依据[[对合下的虚根、实根与复根分类|根类型]]记录字母并更新当前作用 `current`。Real 根记录 Cayley 字母，更新为 \(s_g\circ\mathrm{current}\)；Complex 根记录 Cross 字母，更新为 \(s_g\circ\mathrm{current}\circ s_{\mathrm{twist}[g]}\)。Imaginary 分支返回 `"descent kind"` 不变量错误；源码注释声明 imaginary 根不可能是下降。^[cayley-cross.md:37-43]
+找到下降并通过预算检查后，算法依据[[对合下的虚根、实根与复根分类|根类型]]记录字母并更新当前作用 `current`。Real 根记录 Cayley 字母，更新为 $s_g\circ\mathrm{current}$；Complex 根记录 Cross 字母，更新为 $s_g\circ\mathrm{current}\circ s_{\mathrm{twist}[g]}$。Imaginary 分支返回 `"descent kind"` 不变量错误；源码注释声明 imaginary 根不可能是下降。^[cayley-cross.md:37-43]
 
 预算检查发生在**找到下降之后、实际步进之前**：当 `steps == max_peeling_steps` 时，返回 `CayleyCrossResourceLimit { resource: "peeling steps" }`。因此，无须剥离的输入可以在预算为零时通过；Complex 分支虽然复合两次反射，预算仍只计一步。^[cayley-cross.md:37-42]
 
@@ -68,7 +68,7 @@ Cayley/Cross 的下降剥离算法用于构造[[扭曲对合的 Cayley/Cross 分
 
 ## 测试与证据边界
 
-来源记录的测试锚点包括：两种 distinguished involution 下的空 identity 分解；A1×A1 的 Cayley 与 Cross 示例；A2 最长元 \(s_0s_1s_0\) 得到 Cayley 根 \([1,1]\) 与 `cross_word [0]`；B2 长根化生效与不作改变的两种情形；以及 A2、B2 twisted involution 全枚举中的分解、重放相等和根两两正交检查。预算为零、不同 datum、不同 backing 的三条负路径也有精确错误匹配。^[cayley-cross.md:55-59]
+来源记录的测试锚点包括：两种 distinguished involution 下的空 identity 分解；A1×A1 的 Cayley 与 Cross 示例；A2 最长元 $s_0s_1s_0$ 得到 Cayley 根 $[1,1]$ 与 `cross_word [0]`；B2 长根化生效与不作改变的两种情形；以及 A2、B2 twisted involution 全枚举中的分解、重放相等和根两两正交检查。预算为零、不同 datum、不同 backing 的三条负路径也有精确错误匹配。^[cayley-cross.md:55-59]
 
 这些记录属于结构性源码阅读，不构成数学正确性验收。每步长度减少 1 或 2、长根计数递增保证终止、imaginary 根不能成为下降，以及跨实现分解不唯一等声明均仅作转述，未独立验证。六种 `CayleyCrossInvariantViolation` 不变量错误均无专门负测试；A1×A1 的 swap 用例只固定 `cross_word.len() == 1`，未固定字母内容。^[cayley-cross.md:95-99]
 

@@ -46,15 +46,15 @@ provenanceState: extracted
 
 ## 长度与左右下降
 
-设 \(s\) 为简单生成元，\(\alpha_s\) 为对应单根。`has_left_descent` 读取**逆向量**，以 \(w^{-1}(\alpha_s)<0\) 判定 \(\ell(sw)<\ell(w)\)；`has_right_descent` 读取**正向置换**，以 \(w(\alpha_s)<0\) 判定 \(\ell(ws)<\ell(w)\)。长度与这两种下降查询均为 O(1)。^[weyl-layer.md:22-24, weyl-layer.md:71-74]
+设 $s$ 为简单生成元，$\alpha_s$ 为对应单根。`has_left_descent` 读取**逆向量**，以 $w^{-1}(\alpha_s)<0$ 判定 $\ell(sw)<\ell(w)$；`has_right_descent` 读取**正向置换**，以 $w(\alpha_s)<0$ 判定 $\ell(ws)<\ell(w)$。长度与这两种下降查询均为 O(1)。^[weyl-layer.md:22-24, weyl-layer.md:71-74]
 
-`left_multiply_simple` 和 `right_multiply_simple` 报告长度变化：\(-1\) 对应 `sigma_mult` 分支，\(+1\) 对应 `sigma_inv_mult` 分支。^[weyl-layer.md:77-79]
+`left_multiply_simple` 和 `right_multiply_simple` 报告长度变化：$-1$ 对应 `sigma_mult` 分支，$+1$ 对应 `sigma_inv_mult` 分支。^[weyl-layer.md:77-79]
 
 ## 运算中的不变量维护
 
-`multiply` 的复合约定与 `WeylAction::compose` 一致，即 `self` 在右操作数之后作用。乘法在同一趟计算中利用 \((uv)^{-1}=v^{-1}u^{-1}\) 维护逆置换，并从 positivity slice 重新计算结果长度，而不是将操作数长度相加。`inverse` 直接返回逆。^[weyl-layer.md:37-38, weyl-layer.md:75-79]
+`multiply` 的复合约定与 `WeylAction::compose` 一致，即 `self` 在右操作数之后作用。乘法在同一趟计算中利用 $(uv)^{-1}=v^{-1}u^{-1}$ 维护逆置换，并从 positivity slice 重新计算结果长度，而不是将操作数长度相加。`inverse` 直接返回逆。^[weyl-layer.md:37-38, weyl-layer.md:75-79]
 
-`twisted_conjugate` 计算 \(s_{\mathrm{gen}}\,w\,s_{\mathrm{twist}(\mathrm{gen})}\)，是 Tits 扭曲共轭在 Weyl 层的对应操作。`twist` 必须是生成元上的对合置换；它与 distinguished involution 的单根作用一致，属于调用方契约。stage (b) 所需的长度变化 \(d\in\{0,\pm2\}\) 由调用点通过缓存长度相减获得，相关概念见[[Weyl 元素的扭曲共轭]]。^[weyl-layer.md:80-84]
+`twisted_conjugate` 计算 $s_{\mathrm{gen}}\,w\,s_{\mathrm{twist}(\mathrm{gen})}$，是 Tits 扭曲共轭在 Weyl 层的对应操作。`twist` 必须是生成元上的对合置换；它与 distinguished involution 的单根作用一致，属于调用方契约。stage (b) 所需的长度变化 $d\in\{0,\pm2\}$ 由调用点通过缓存长度相减获得，相关概念见[[Weyl 元素的扭曲共轭]]。^[weyl-layer.md:80-84]
 
 ## 下降剥离与规范约化词
 

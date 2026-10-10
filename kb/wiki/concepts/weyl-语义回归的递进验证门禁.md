@@ -57,7 +57,7 @@ BEFORE 必须实际执行目标回归。首个 BEFORE job `3884862` 在 checker/
 
 两个 core-only A1 fixture 覆盖 same owner、alias、fresh-equal datum、两个 warm-source/cold-target dual 方向，以及重新绑定后的旧值寿命；观察 `word`、`length`、`root_permutation`、`root_datum`、`=`、`!=`、`*`。错误路径涵盖 preference-distinct owner、cold source/prewarmed canonical target、owner/dual mismatch、越界与负 generator，并在每次错误后设置 recovery marker。^[weyl-context-identity-and-sharing.md:301-307]
 
-A1 跨 dual 的乘法只有 \(s_0s_0=1\)，无法发现错误的生成元重编号或直接复合另一坐标系根排列的问题。寿命用例仍由 `wc_alias` 保持旧 RootDatum 存活，未证明仅靠保存的 WeylElt 就能维持 datum 生命周期；Atlas 输出也不能证明 fresh-equal owner 使用独立 coordinate cell。后两项分别需要额外 lifetime fixture 和 HPC-only `Weak`/work-count 单元守卫。^[weyl-context-identity-and-sharing.md:313-318]
+A1 跨 dual 的乘法只有 $s_0s_0=1$，无法发现错误的生成元重编号或直接复合另一坐标系根排列的问题。寿命用例仍由 `wc_alias` 保持旧 RootDatum 存活，未证明仅靠保存的 WeylElt 就能维持 datum 生命周期；Atlas 输出也不能证明 fresh-equal owner 使用独立 coordinate cell。后两项分别需要额外 lifetime fixture 和 HPC-only `Weak`/work-count 单元守卫。^[weyl-context-identity-and-sharing.md:313-318]
 
 ## AFTER 验收与生产落地
 

@@ -36,7 +36,7 @@ aliases:
 
 # Alcove 分母界守卫
 
-`denominator_exceeds_alcove_bound` 是 deformation 的分母守卫，用于判断分母是否严格超过阈值 \(2^{\mathrm{rank}}\)。它与 `alcove_center` 同为 alcove 模块的公开函数；后者的参数处理见 [[Alcove 重心计算与标准参数重建]]。^[alcove.md:17-24, alcove.md:91-97]
+`denominator_exceeds_alcove_bound` 是 deformation 的分母守卫，用于判断分母是否严格超过阈值 $2^{\mathrm{rank}}$。它与 `alcove_center` 同为 alcove 模块的公开函数；后者的参数处理见 [[Alcove 重心计算与标准参数重建]]。^[alcove.md:17-24, alcove.md:91-97]
 
 ## 接口与判定规则
 
@@ -48,7 +48,7 @@ aliases:
 
 ## 测试覆盖
 
-单元测试固定了两个边界：`rank = 62` 时，分母取 \(2^{62}\) 返回 `false`，取 \(2^{62}+1\) 返回 `true`；`rank = 63` 或 `rank = 64` 时，即使分母取 `i64::MAX`，仍返回 `false`。^[alcove.md:93-97]
+单元测试固定了两个边界：`rank = 62` 时，分母取 $2^{62}$ 返回 `false`，取 $2^{62}+1$ 返回 `true`；`rank = 63` 或 `rank = 64` 时，即使分母取 `i64::MAX`，仍返回 `false`。^[alcove.md:93-97]
 
 ## 证据边界
 

@@ -41,9 +41,9 @@ aliases:
 
 ## 环面表示与去重
 
-私有类型 `GlobalTorusElement` 用 `numerator: Vec<i64>` 和 `denominator: i64` 表示 \(\exp(i\pi\cdot\mathrm{numerator}/\mathrm{denominator})\)，坐标按模 \(2\mathbb Z^{\mathrm{rank}}\) 理解。其表示保留算术历史：构造入口约化分子，简单反射后故意不再约化，因此打印中可以出现负分子。详见 [[全局环面元素的算术历史表示]]。^[global-kgb.md:19-29]
+私有类型 `GlobalTorusElement` 用 `numerator: Vec<i64>` 和 `denominator: i64` 表示 $\exp(i\pi\cdot\mathrm{numerator}/\mathrm{denominator})$，坐标按模 $2\mathbb Z^{\mathrm{rank}}$ 理解。其表示保留算术历史：构造入口约化分子，简单反射后故意不再约化，因此打印中可以出现负分子。详见 [[全局环面元素的算术历史表示]]。^[global-kgb.md:19-29]
 
-去重指纹将 `log_2pi` 的分子投影到 \(\theta+I\) 饱和像的适应基各列，再对分母取 `rem_euclid`，只保留 `diagonal.len()` 个分量。源码注释以同一饱和像的基之间存在幺模变换说明指纹的无损性；格条目预算限制为 64 位，以保障 `i128` 累加不溢出。详见 [[基于饱和像适应基的 KGB 去重指纹]]。^[global-kgb.md:33-36]
+去重指纹将 `log_2pi` 的分子投影到 $\theta+I$ 饱和像的适应基各列，再对分母取 `rem_euclid`，只保留 `diagonal.len()` 个分量。源码注释以同一饱和像的基之间存在幺模变换说明指纹的无损性；格条目预算限制为 64 位，以保障 `i128` 累加不溢出。详见 [[基于饱和像适应基的 KGB 去重指纹]]。^[global-kgb.md:33-36]
 
 ## 分阶段构造
 
@@ -57,7 +57,7 @@ aliases:
 
 ## 闭包不变量
 
-cross 扩展要求长度差为偶数。若半长度差 \(d=\Delta/2\ne0\)，则执行 `simple_reflect` 并标记为 `Complex`；虚根分支执行 `imaginary_cross_act`，由 `negative_at` 判定紧性；实根分支要求 cross 像等于自身。新指纹只能进入当前正在开启的新包，且 cross 两端的 Cartan 类号必须一致。^[global-kgb.md:67-72]
+cross 扩展要求长度差为偶数。若半长度差 $d=\Delta/2\ne0$，则执行 `simple_reflect` 并标记为 `Complex`；虚根分支执行 `imaginary_cross_act`，由 `negative_at` 判定紧性；实根分支要求 cross 像等于自身。新指纹只能进入当前正在开启的新包，且 cross 两端的 Cartan 类号必须一致。^[global-kgb.md:67-72]
 
 Cayley 链接仅为 `ImaginaryNoncompact` 元素建立，环面部分原样克隆；逆 Cayley 槽的首次写入占 `.0`，第二次写入占 `.1`。^[global-kgb.md:72-74]
 

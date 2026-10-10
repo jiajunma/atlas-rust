@@ -43,17 +43,17 @@ aliases:
 
 ## 左乘规则与作用顺序
 
-若父段条目对应 Weyl 词 \(w\)，当前步骤的反射词为 \(r\)，则新条目对应 \(rw\)。这将来源中的“左乘到父段条目上”写成乘积形式；相关见证背景见 [[反射子群轨道与见证的独立验证]]。^[atlas-core-center-classifier.md:42-44]
+若父段条目对应 Weyl 词 $w$，当前步骤的反射词为 $r$，则新条目对应 $rw$。这将来源中的“左乘到父段条目上”写成乘积形式；相关见证背景见 [[反射子群轨道与见证的独立验证]]。^[atlas-core-center-classifier.md:42-44]
 
 `word_act_root` 与 `word_act_weight` 分别实现词对根和权的作用，两者均采用**最后一个字母先作用**的约定。前者对应 `RootSystem::permuted_root`（`rootdata.h:313–318`），后者对应 `weyl.cpp:1071–1082`，参见 [[Weyl 词对根与权的作用顺序]]。^[atlas-core-center-classifier.md:51-53]
 
-由这两项规则可知，乘积 \(rw\) 的作用顺序是先施加父词 \(w\)，再施加当前反射词 \(r\)。
+由这两项规则可知，乘积 $rw$ 的作用顺序是先施加父词 $w$，再施加当前反射词 $r$。
 
 ## 轨道构造与反射词背景
 
 轨道元素 `AdjOrbitElem` 使用 adjoint 坐标。共享核心 `adjoint_orbit_bfs` 将新元素插在 `finish` 之后，使尾部保持递减，并在每层完成后反转为递增；这一排序纪律见 [[adjoint 轨道的分层有序 BFS]]。^[atlas-core-center-classifier.md:33-37]
 
-`basic_orbit_adjoint` 构造 `cartan` 前 \(i+1\) 个生成元的 Levi 子商轨道；`vertex_orbit` 是用于沿 `label > 1` 进行最终扩展的模变体。两者的背景见 [[Levi 子商轨道与顶点轨道扩展]]。^[atlas-core-center-classifier.md:38-41]
+`basic_orbit_adjoint` 构造 `cartan` 前 $i+1$ 个生成元的 Levi 子商轨道；`vertex_orbit` 是用于沿 `label > 1` 进行最终扩展的模变体。两者的背景见 [[Levi 子商轨道与顶点轨道扩展]]。^[atlas-core-center-classifier.md:38-41]
 
 反射词由 `reflection_word` 沿首个下降将根降到单根，再逆序回溯得到共轭词；`simple_reflect_root_nbr` 提供单根反射在 `RootNbr` 上的作用。具体构造见 [[反射词的首个下降构造]]。^[atlas-core-center-classifier.md:48-50]
 

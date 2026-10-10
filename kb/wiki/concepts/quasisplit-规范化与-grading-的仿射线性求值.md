@@ -40,15 +40,15 @@ Quasisplit（拟分裂）规范化以 adjoint fiber（伴随纤维）的零元�
 
 ## 位向量与坐标约定
 
-`Grading` 是 `ModTwoVector` 的 newtype，第 \(i\) 位对应所属模型的 simple-imaginary 根列表中的第 \(i\) 项，置位表示非紧。该列表是 `RootInvolutionData::imaginary_simple_roots` 的副本，采用 crate 的确定性根序。^[grading.md:17-20]
+`Grading` 是 `ModTwoVector` 的 newtype，第 $i$ 位对应所属模型的 simple-imaginary 根列表中的第 $i$ 项，置位表示非紧。该列表是 `RootInvolutionData::imaginary_simple_roots` 的副本，采用 crate 的确定性根序。^[grading.md:17-20]
 
 grading 的索引表示 simple-imaginary 根的位置，而 ambient fiber 与 adjoint fiber 的模二坐标索引全 datum 的格坐标或单根。即使维数相同，也必须通过类型区分，不能仅依赖维数检查；参见 [[Grading 的位向量类型纪律]]。^[grading.md:22-27]
 
 ## 仿射线性求值
 
-设 simple-imaginary 根列表为 \(\alpha_0,\ldots,\alpha_{r-1}\)，伴随纤维元素 \(x\) 的规范环境代表为 \(\widetilde{x}\)。在 \(\mathbf F_2\) 上，求值公式为 \(g_i(x)=1\oplus\langle\alpha_i,\widetilde{x}\rangle\)，其中配对值按模二解释。配对为零时对应非紧，配对为一时对应 compact（紧）；全一向量构成这一仿射映射的常量项。^[grading.md:17-20, grading.md:35-38, grading.md:59-60]
+设 simple-imaginary 根列表为 $\alpha_0,\ldots,\alpha_{r-1}$，伴随纤维元素 $x$ 的规范环境代表为 $\widetilde{x}$。在 $\mathbf F_2$ 上，求值公式为 $g_i(x)=1\oplus\langle\alpha_i,\widetilde{x}\rangle$，其中配对值按模二解释。配对为零时对应非紧，配对为一时对应 compact（紧）；全一向量构成这一仿射映射的常量项。^[grading.md:17-20, grading.md:35-38, grading.md:59-60]
 
-`simple_mod_two` 保存单根坐标的奇性，使用 `*coordinate % 2 != 0` 判定，因此负奇数同样归约为置位。`grading_shifts[j]` 保存第 \(j\) 个伴随基代表与各单根奇性向量的 \(\mathbf F_2\) 配对，描述该基方向引起的 grading 变化。^[grading.md:47-51]
+`simple_mod_two` 保存单根坐标的奇性，使用 `*coordinate % 2 != 0` 判定，因此负奇数同样归约为置位。`grading_shifts[j]` 保存第 $j$ 个伴随基代表与各单根奇性向量的 $\mathbf F_2$ 配对，描述该基方向引起的 grading 变化。^[grading.md:47-51]
 
 `grading(element)` 先调用 `canonical_representative`，再逐根配对取反。若元素来自其他纤维，则返回 `CartanFiberMismatch`；求值因此依赖相应纤维的来源一致性。^[grading.md:59-60]
 
@@ -66,7 +66,7 @@ grading 的索引表示 simple-imaginary 根的位置，而 ambient fiber 与 ad
 
 ## 测试锚点与证据边界
 
-源码测试锚点包括 SC A1 的 quasisplit 规范化与双向往返、A2 恒等对合下的四元素双射，以及 A2 扭转情形对全紧 grading 的拒绝。A2 恒等情形中，根序 index 0 为 \(\alpha_2\)，shift 为置换矩阵；A2 扭转情形中，伴随纤维维数为零，`grading_shift(0)` 返回 `None`。另有注入重复列与零列的测试直接检查忠实性拒绝行为。^[grading.md:52-55, grading.md:73-78]
+源码测试锚点包括 SC A1 的 quasisplit 规范化与双向往返、A2 恒等对合下的四元素双射，以及 A2 扭转情形对全紧 grading 的拒绝。A2 恒等情形中，根序 index 0 为 $\alpha_2$，shift 为置换矩阵；A2 扭转情形中，伴随纤维维数为零，`grading_shift(0)` 返回 `None`。另有注入重复列与零列的测试直接检查忠实性拒绝行为。^[grading.md:52-55, grading.md:73-78]
 
 来源属于结构性阅读，未执行构建、测试或原版运行，不构成数学验收、性能或并行结论。明确未覆盖的分支包括 `build` 中的两处 `IndexOutOfRange`、多数溢出与分配分支，以及 `element_from_grading` 入口的 `RankMismatch`。^[grading.md:9-13, grading.md:80-81, grading.md:91-91]
 

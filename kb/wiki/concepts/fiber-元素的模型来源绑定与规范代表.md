@@ -41,7 +41,7 @@ aliases:
 
 ## 子商与坐标约定
 
-`CartanFiber` 是附着于 Cartan 对合的有限分量群。令 \(Y\) 为余特征格，源码文档记录其采用的子商为 \(\ker_{\mathbb F_2}(I+\theta_Y)/\operatorname{red}_2\ker_{\mathbb Z}(I+\theta_Y)\)，实现选择 low-pivot 归约基作为坐标约定。文档称它与 \(Y^\theta/(I+\theta_Y)Y\) 同构，但自然坐标不同；来源包未独立验证这一同构声明。参见 [[Cartan fiber 的有限域子商模型]] 与 [[F₂ 子商的低主元坐标（ModTwoSubquotient）]]。^[cartan-fibers.md:16-27, cartan-fibers.md:153-154]
+`CartanFiber` 是附着于 Cartan 对合的有限分量群。令 $Y$ 为余特征格，源码文档记录其采用的子商为 $\ker_{\mathbb F_2}(I+\theta_Y)/\operatorname{red}_2\ker_{\mathbb Z}(I+\theta_Y)$，实现选择 low-pivot 归约基作为坐标约定。文档称它与 $Y^\theta/(I+\theta_Y)Y$ 同构，但自然坐标不同；来源包未独立验证这一同构声明。参见 [[Cartan fiber 的有限域子商模型]] 与 [[F₂ 子商的低主元坐标（ModTwoSubquotient）]]。^[cartan-fibers.md:16-27, cartan-fibers.md:153-154]
 
 ## 模型来源与相等性
 
@@ -53,9 +53,9 @@ aliases:
 
 ## 规范代表与基坐标
 
-`canonical_representative` 返回 low-pivot 约定下确定性的环境代表。`coordinates` 的第 \(j\) 位选择 `basis_representatives()[j]`，所有被选中的基代表按 XOR 相加，恰好得到该元素的规范代表。^[cartan-fibers.md:87-89]
+`canonical_representative` 返回 low-pivot 约定下确定性的环境代表。`coordinates` 的第 $j$ 位选择 `basis_representatives()[j]`，所有被选中的基代表按 XOR 相加，恰好得到该元素的规范代表。^[cartan-fibers.md:87-89]
 
-来源记录的测试锚点包括：恒等 rank-2 环面的 fiber 维数为 2，基代表为 \([e_0,e_1]\)；\(-I\) 对合的 fiber 维数为 0；swap 对合的 fiber 平凡，且环境向量 \(e_0\) 被拒绝。rank-3 非对称例则锚定分子计算使用矩阵的行、不转置，其分子为 \(\langle e_0,e_2\rangle\)，商的基代表为 \([e_2]\)。^[cartan-fibers.md:94-97]
+来源记录的测试锚点包括：恒等 rank-2 环面的 fiber 维数为 2，基代表为 $[e_0,e_1]$；$-I$ 对合的 fiber 维数为 0；swap 对合的 fiber 平凡，且环境向量 $e_0$ 被拒绝。rank-3 非对称例则锚定分子计算使用矩阵的行、不转置，其分子为 $\langle e_0,e_2\rangle$，商的基代表为 $[e_2]$。^[cartan-fibers.md:94-97]
 
 ## 来源绑定与伴随映射
 

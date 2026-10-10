@@ -41,7 +41,7 @@ Weyl 元素的 `=`、`!=` 和 `*` 在产生结果前检查 Weyl 群地址；不�
 
 ## 验证目标与证据边界
 
-B2/C2 是 A1 之后计划逐步覆盖的见证之一。A1 的跨 dual 乘法只有 \(s_0s_0=1\)，无法暴露错误的生成元重编号或直接复合外来根排列的问题，详见 [[A1 恒等乘积对生成元编号错误的遮蔽]]。后续验证还包括 G2、两个乘法操作数顺序、inner-class dual 构造及 `no_value` 关系。^[weyl-context-identity-and-sharing.md:313-324]
+B2/C2 是 A1 之后计划逐步覆盖的见证之一。A1 的跨 dual 乘法只有 $s_0s_0=1$，无法暴露错误的生成元重编号或直接复合外来根排列的问题，详见 [[A1 恒等乘积对生成元编号错误的遮蔽]]。后续验证还包括 G2、两个乘法操作数顺序、inner-class dual 构造及 `no_value` 关系。^[weyl-context-identity-and-sharing.md:313-324]
 
 对于共享抽象群身份但使用不同坐标系的 Weyl 元素，已落地修复先检查 abstract-group `Arc` 身份，再在左侧坐标系中重放右侧 external word；这与跨类型见证需要检查的坐标兼容性相关，参见 [[Weyl 元素兼容性与跨坐标词重放]]。该修复的已接受范围仍限定于 A1。^[weyl-context-identity-and-sharing.md:249-261, weyl-context-identity-and-sharing.md:63-69]
 

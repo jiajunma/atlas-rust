@@ -36,19 +36,19 @@ aliases:
 
 # Cartan 类型识别的输入校验边界
 
-`weyl_order_of_cartan` 是 crate 内部的 Weyl 群阶计算入口，通过连通分量拆分与分支形状分析求阶，用于 twisted 共轭轨道大小的阶商核对。由于只需要群阶，它不区分阶同为 \(2^n n!\) 的 B/C 取向。算法背景见 [[基于 Cartan 矩阵识别的 Weyl 群阶计算]]。^[weyl-size-presentation.md:17-21]
+`weyl_order_of_cartan` 是 crate 内部的 Weyl 群阶计算入口，通过连通分量拆分与分支形状分析求阶，用于 twisted 共轭轨道大小的阶商核对。由于只需要群阶，它不区分阶同为 $2^n n!$ 的 B/C 取向。算法背景见 [[基于 Cartan 矩阵识别的 Weyl 群阶计算]]。^[weyl-size-presentation.md:17-21]
 
 ## 入口检查与算术边界
 
 入口逐行检查矩阵是否为方形，不满足时返回 `NonSquareCartan`；随后按非零非对角链接进行 BFS，拆分连通分量，将各分量的阶相乘。零对角行、列作为环面因子，贡献阶 1，既不作为搜索种子，也不满足邻居条件。^[weyl-size-presentation.md:23-25]
 
-群阶使用精确 `Integer` 算术，因为分量乘积在 crate 的动态秩范围内可超出 `u128`。`component_order` 使用 `checked_mul` 计算边重数 \(C_{ij}C_{ji}\)，溢出返回 `ArithmeticOverflow`；这是该函数中唯一的受检算术操作。^[weyl-size-presentation.md:21-28]
+群阶使用精确 `Integer` 算术，因为分量乘积在 crate 的动态秩范围内可超出 `u128`。`component_order` 使用 `checked_mul` 计算边重数 $C_{ij}C_{ji}$，溢出返回 `ArithmeticOverflow`；这是该函数中唯一的受检算术操作。^[weyl-size-presentation.md:21-28]
 
 ## 已实现的形状检查
 
-`component_order` 按最大边重数分派。最大重数为 3 时，仅接受秩 2，返回 G2 的阶 12。最大重数为 2 时，拒绝度数大于 2 的节点；秩 4 且双键位于两个内节点之间时返回 F4 的阶 1152，其余按 B/C 链的公式 \(2^n n!\) 计算。^[weyl-size-presentation.md:27-30]
+`component_order` 按最大边重数分派。最大重数为 3 时，仅接受秩 2，返回 G2 的阶 12。最大重数为 2 时，拒绝度数大于 2 的节点；秩 4 且双键位于两个内节点之间时返回 F4 的阶 1152，其余按 B/C 链的公式 $2^n n!$ 计算。^[weyl-size-presentation.md:27-30]
 
-最大重数为 1 时，拒绝度数大于 3 或存在多个分叉的情况。无分叉时按 A 型返回 \((n+1)!\)；单叉时按排序后的分支长度匹配：\([1,1,\_]\) 对应 D 型，\([1,2,2]\)、\([1,2,3]\)、\([1,2,4]\) 分别对应 E6、E7、E8，其余形状拒绝。详见 [[Dynkin 图分支形状与 Weyl 群阶识别]]。^[weyl-size-presentation.md:30-34]
+最大重数为 1 时，拒绝度数大于 3 或存在多个分叉的情况。无分叉时按 A 型返回 $(n+1)!$；单叉时按排序后的分支长度匹配：$[1,1,\_]$ 对应 D 型，$[1,2,2]$、$[1,2,3]$、$[1,2,4]$ 分别对应 E6、E7、E8，其余形状拒绝。详见 [[Dynkin 图分支形状与 Weyl 群阶识别]]。^[weyl-size-presentation.md:30-34]
 
 ## 已知校验缺口
 

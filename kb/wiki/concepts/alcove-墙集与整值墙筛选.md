@@ -40,7 +40,7 @@ provenanceState: extracted
 
 ## 筛选条件
 
-墙集过滤器只保留“余根不能被减去”的根，对应上游 `min_coroots_for` 的成员条件：相关余根之差 \(\alpha^\vee-\beta^\vee\) 不是余根。墙集筛选依据余根差的成员关系；整值墙的记录则依据墙在 `gamma` 上的取值是否为整数。^[atlas-core-root-numbering-alcove.md:29-32]
+墙集过滤器只保留“余根不能被减去”的根，对应上游 `min_coroots_for` 的成员条件：相关余根之差 $\alpha^\vee-\beta^\vee$ 不是余根。墙集筛选依据余根差的成员关系；整值墙的记录则依据墙在 `gamma` 上的取值是否为整数。^[atlas-core-root-numbering-alcove.md:29-32]
 
 ## 墙分量与标签
 

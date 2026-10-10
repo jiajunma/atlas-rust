@@ -44,9 +44,9 @@ aliases:
 
 正虚根先按上游 `RootNbr` 键排序，即按高度与简单坐标的反向字典序排列。非紧性判定结合基 grading 的线性扩张与代表元给出的模二平移项。^[real-weyl.md:58-64, real-weyl.md:122-127]
 
-基 grading 取 \(\langle\alpha,\rho^\vee_{\mathrm{im}}\rangle\) 的奇偶，其中 \(2\rho^\vee_{\mathrm{im}}\) 是正虚余根之和。实现要求相应的 \(\sum_\beta \operatorname{bracket}(\alpha,\beta)\) 为偶数；若为奇数，返回 `"imaginary-simple coordinates"` 不变量错误。平移项由 `parity_dot` 计算，是 ambient 代表与根的 datum-simple 坐标的模二点积。^[real-weyl.md:122-127]
+基 grading 取 $\langle\alpha,\rho^\vee_{\mathrm{im}}\rangle$ 的奇偶，其中 $2\rho^\vee_{\mathrm{im}}$ 是正虚余根之和。实现要求相应的 $\sum_\beta \operatorname{bracket}(\alpha,\beta)$ 为偶数；若为奇数，返回 `"imaginary-simple coordinates"` 不变量错误。平移项由 `parity_dot` 计算，是 ambient 代表与根的 datum-simple 坐标的模二点积。^[real-weyl.md:122-127]
 
-紧根累加进 `two_rho_ic`，通过 `simple_basis(compact)` 得到 `compact_basis`。`orth` 选取非紧且与 `two_rho` 正交的根；这些根强正交，构成 \(A_1^n\) 子系统。^[real-weyl.md:126-129]
+紧根累加进 `two_rho_ic`，通过 `simple_basis(compact)` 得到 `compact_basis`。`orth` 选取非紧且与 `two_rho` 正交的根；这些根强正交，构成 $A_1^n$ 子系统。^[real-weyl.md:126-129]
 
 `simple_basis` 保留上游的特殊扫描行为：候选因自身反射结果非正而被移除时，整个外层扫描立即终止，后续候选不再检查。调用方只传入正根。^[real-weyl.md:135-137]
 

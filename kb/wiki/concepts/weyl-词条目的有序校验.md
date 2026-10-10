@@ -27,7 +27,7 @@ promptModifiers:
 
 ## 校验顺序与边界
 
-设半单秩为 \(r\)，合法条目 \(i\) 必须满足 \(0 \le i < r\)。负数在 unsigned 转换阶段被拒绝；通过转换的条目仍须接受秩上界检查，因此 \(i=r\) 也不合法。这里使用的是半单秩。来源给出的诊断形式为 `Illegal Weyl word entry i (should be <r)`。^[atlas-core-domain-values.md:93-95]
+设半单秩为 $r$，合法条目 $i$ 必须满足 $0 \le i < r$。负数在 unsigned 转换阶段被拒绝；通过转换的条目仍须接受秩上界检查，因此 $i=r$ 也不合法。这里使用的是半单秩。来源给出的诊断形式为 `Illegal Weyl word entry i (should be <r)`。^[atlas-core-domain-values.md:93-95]
 
 ## 与 Weyl 身份及规范词的关系
 

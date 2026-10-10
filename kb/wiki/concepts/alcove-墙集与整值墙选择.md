@@ -52,9 +52,9 @@ aliases:
 
 ## 分层选择与候选筛除
 
-外层循环按元组字典序确定最小层，并通过稳定排序将该层候选移到前段。内层逐个取出最小层根 \(\alpha\)：一律加入 `walls`，若 `remainder == 0`，则同时加入 `integrals`。^[alcove.md:119-121]
+外层循环按元组字典序确定最小层，并通过稳定排序将该层候选移到前段。内层逐个取出最小层根 $\alpha$：一律加入 `walls`，若 `remainder == 0`，则同时加入 `integrals`。^[alcove.md:119-121]
 
-每选定一面墙 \(\alpha\)，算法就扫描剩余候选根 \(\beta\)，逐坐标计算 \(\alpha^\vee-\beta^\vee\)。若差向量属于 `coroot_table`，则丢弃 \(\beta\)；否则保留。筛除方向固定为“已选墙的余根减去候选余根”。若被丢弃的候选也属于当前最小层，则用 `saturating_sub` 减少该层计数 `n_min`。^[alcove.md:121-124]
+每选定一面墙 $\alpha$，算法就扫描剩余候选根 $\beta$，逐坐标计算 $\alpha^\vee-\beta^\vee$。若差向量属于 `coroot_table`，则丢弃 $\beta$；否则保留。筛除方向固定为“已选墙的余根减去候选余根”。若被丢弃的候选也属于当前最小层，则用 `saturating_sub` 减少该层计数 `n_min`。^[alcove.md:121-124]
 
 ## 下游用途
 

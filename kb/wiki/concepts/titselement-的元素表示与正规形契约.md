@@ -56,7 +56,7 @@ provenanceState: extracted
 
 `cayley` 执行裸的 `sigma_mult`，随后在目标处扩大的模空间（mod-space）中归约；若目标 Cartan 类尚未加入表，则返回 `None`。详见 [[Cayley 变换与目标模空间归约]]。^[tits-element.md:52-53]
 
-`inverse_cayley` 先执行裸的 `sigma_inv_mult`：反射左 torus 部分，并在左乘增加 Weyl 长度时加上 \(m_\alpha\)。real 源处的模约化可能已遗忘源侧 grading；若重建出的根为 compact，则使用第一个与该根配对非平凡的源模空间基向量修复，找不到这样的基向量时报 `TitsCosetInvariantViolation`。最后在 imaginary 目标处通过 `quotient_representative` 归约，并复核目标的 simple grading。根不是 real，或向下的 Cartan 类未加入表时，返回 `None`。^[tits-element.md:54-60]
+`inverse_cayley` 先执行裸的 `sigma_inv_mult`：反射左 torus 部分，并在左乘增加 Weyl 长度时加上 $m_\alpha$。real 源处的模约化可能已遗忘源侧 grading；若重建出的根为 compact，则使用第一个与该根配对非平凡的源模空间基向量修复，找不到这样的基向量时报 `TitsCosetInvariantViolation`。最后在 imaginary 目标处通过 `quotient_representative` 归约，并复核目标的 simple grading。根不是 real，或向下的 Cartan 类未加入表时，返回 `None`。^[tits-element.md:54-60]
 
 ## 上下文与 grading 查询前提
 

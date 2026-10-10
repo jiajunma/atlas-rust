@@ -37,7 +37,7 @@ promptModifiers:
 
 ## 测试与证据边界
 
-来源列出的四个多项式模块测试覆盖池种子序号、乘以 \(1+q\)、在 \(q=-1\) 处求值和一个 `sub_shifted` 用例；其中未列出 `coefficient()` 零延拓或 `is_zero()` 的直接测试，并明确将 `add`、`sub` 列为未测面。因此，上述访问与判别语义依据源码结构性阅读，不应表述为已获完整测试验证。^[kl-polynomial-table.md:55-56, kl-polynomial-table.md:118-123]
+来源列出的四个多项式模块测试覆盖池种子序号、乘以 $1+q$、在 $q=-1$ 处求值和一个 `sub_shifted` 用例；其中未列出 `coefficient()` 零延拓或 `is_zero()` 的直接测试，并明确将 `add`、`sub` 列为未测面。因此，上述访问与判别语义依据源码结构性阅读，不应表述为已获完整测试验证。^[kl-polynomial-table.md:55-56, kl-polynomial-table.md:118-123]
 
 该来源未执行构建、测试或原版运行，也不提供数学验收、性能或并行结论；进一步的证据范围可参见 [[KLV 多项式引擎的测试覆盖与证据边界]]。^[kl-polynomial-table.md:135-135]
 

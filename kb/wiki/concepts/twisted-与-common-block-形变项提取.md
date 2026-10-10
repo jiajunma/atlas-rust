@@ -41,9 +41,9 @@ tags:
 
 `twisted_deformation_terms` 的所述移植入口采用平凡的 [[BlockModifier 块修正子|block modifier]]。输入元素 `y` 必须是 final、delta-fixed，并使用 **PARENT 块编号**；输出为 `(StandardRepr, int)` 对，按 finals 的反向累积顺序（reverse-accumulated finals）返回。^[deformation-drivers.md:107-111]
 
-包装层将每个整数系数 `c` 转为 `Split(c, -c)`，然后按 `SR_poly` 顺序排序。提取函数的返回顺序与包装层的多项式排序是两个不同约定。[[SplitInteger 分裂整数系数|SplitInteger]] 表示 \(a+bs\)，因此 `Split(c, -c)` 正是 \(c(1-s)\)。^[deformation-drivers.md:52-59, deformation-drivers.md:107-111]
+包装层将每个整数系数 `c` 转为 `Split(c, -c)`，然后按 `SR_poly` 顺序排序。提取函数的返回顺序与包装层的多项式排序是两个不同约定。[[SplitInteger 分裂整数系数|SplitInteger]] 表示 $a+bs$，因此 `Split(c, -c)` 正是 $c(1-s)$。^[deformation-drivers.md:52-59, deformation-drivers.md:107-111]
 
-来源采用的形变记号为 \(D(z)=\sum c\bigl(L(t)+2D(t)\bigr)\) 与 \(F(z)=L(z)+(1-s)D(z)\)。包装层的系数转换对应其中的 \(1-s\) 因子；`SplitInteger` 使用 `i32` 分量和 `wrapping_*` 算术，本类型不提供溢出防护。^[deformation-drivers.md:16-16, deformation-drivers.md:52-59]
+来源采用的形变记号为 $D(z)=\sum c\bigl(L(t)+2D(t)\bigr)$ 与 $F(z)=L(z)+(1-s)D(z)$。包装层的系数转换对应其中的 $1-s$ 因子；`SplitInteger` 使用 `i32` 分量和 `wrapping_*` 算术，本类型不提供溢出防护。^[deformation-drivers.md:16-16, deformation-drivers.md:52-59]
 
 ## Common-block 路径与参数重构
 
@@ -51,7 +51,7 @@ tags:
 
 在真积分子系统上，父块是 `PartialBlock`。每行参数通过该行存储的 `gamma_lambda` 与 lookup 返回的 block modifier，经 `RepContext::sr_with_modifier` 重构，对应上游 `common_block::sr`。^[deformation-drivers.md:34-37]
 
-完整块路径则由调用方一次性提供 `lambda_rho`，要求所有形变项共享该值。这是实质性前提：完整块中逐元素的 `lambda_rho` 可以变化，例如 SL(2,R) 在 \(\gamma=2\rho\) 时，compact-Cartan 元素为 `[1]`，split 元素为 `[0]`。语言层使用 `rc.lambda_rho(p)`。^[deformation-drivers.md:29-33]
+完整块路径则由调用方一次性提供 `lambda_rho`，要求所有形变项共享该值。这是实质性前提：完整块中逐元素的 `lambda_rho` 可以变化，例如 SL(2,R) 在 $\gamma=2\rho$ 时，compact-Cartan 元素为 `[1]`，split 元素为 `[0]`。语言层使用 `rc.lambda_rho(p)`。^[deformation-drivers.md:29-33]
 
 ## 父块借用与奇异集
 
@@ -63,7 +63,7 @@ tags:
 
 [[积分块范围与奇异集|IntegralBlockScope]] 依据 coroot 与 `gamma` 是否整配对分类：等价判据是 `coroot · gamma.numerator()` 能被 `gamma.denominator()` 整除。无根整配对时，common block 是长度为零的单例 `{p}`，形变项为空；[[递归 twisted deformation 与取消语义|递归 twisted deformation]] 对这一情形也不调用 `lookup`。^[deformation-drivers.md:63-70, deformation-drivers.md:130-134]
 
-来源在 `ProperSubsystem` 分类处要求：不支持 common-block 的完整块移植入口必须显式失败，不能默默改用完整块计算；这一限制需与另述的 partial-block 路径一同理解。来源给出的 A1 例子中，\(\nu=[1]/2\) 时完整块大小为 3，而积分块是单例，直接替用完整块会改变计算范围。^[deformation-drivers.md:34-39, deformation-drivers.md:73-75, deformation-drivers.md:112-114]
+来源在 `ProperSubsystem` 分类处要求：不支持 common-block 的完整块移植入口必须显式失败，不能默默改用完整块计算；这一限制需与另述的 partial-block 路径一同理解。来源给出的 A1 例子中，$\nu=[1]/2$ 时完整块大小为 3，而积分块是单例，直接替用完整块会改变计算范围。^[deformation-drivers.md:34-39, deformation-drivers.md:73-75, deformation-drivers.md:112-114]
 
 ## 证据范围
 

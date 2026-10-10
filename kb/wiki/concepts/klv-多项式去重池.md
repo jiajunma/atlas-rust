@@ -48,7 +48,7 @@ aliases:
 
 `KlHashTable::new()` 建立两个固定种子：索引 `0` 对应零多项式，索引 `1` 对应常数多项式 `1`。这一约定与上游 `KLStore{Zero, One}` 的初始化一致。^[kl-polynomial-table.md:59-61, kl-polynomial-table.md:68-72]
 
-这两个固定索引参与 [[KLV 表的 primitive 投影与访问语义]]：当 `kl_pol(x, y)` 的 primitive 投影位置超出列长时，若 `x` 恰好投影到 `y` 自身，则返回索引 `1`，表示 \(P_{y,y}=1\)；否则返回索引 `0`，表示零多项式。^[kl-polynomial-table.md:89-93]
+这两个固定索引参与 [[KLV 表的 primitive 投影与访问语义]]：当 `kl_pol(x, y)` 的 primitive 投影位置超出列长时，若 `x` 恰好投影到 `y` 自身，则返回索引 `1`，表示 $P_{y,y}=1$；否则返回索引 `0`，表示零多项式。^[kl-polynomial-table.md:89-93]
 
 **派生的 `Default` 与 `new()` 不等价。** `KlHashTable::default()` 得到空池，不包含零与一种子。来源将其记录为条件性风险：若存在这样的调用点，固定索引约定将被破坏；来源未确认此类调用点存在。^[kl-polynomial-table.md:59-61]
 

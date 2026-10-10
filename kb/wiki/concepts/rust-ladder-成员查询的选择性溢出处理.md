@@ -42,7 +42,7 @@ Rust 构造 root/coroot ladder bottom 表时，需要判断两个已存向量的
 
 ## 数学依据与适用边界
 
-对完整存储的有限根集 \(R\subseteq\mathbb Z^d\) 和 \(\alpha\in R\)，[[Root ladder bottom 集与固定宽度成员查询|ladder bottom 集]]定义为 \(B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}\)。Rust 将已存根和余根的坐标表示为 `i32`；若精确整数差 \(\beta-\alpha\) 的任一坐标超出 `i32` 可表示范围，该差就不可能等于任何已存向量。因此成员查询必为 `false`，相应的 \(\beta\) 应进入 bottom 集。^[root-ladder-overflow-repair.md:41-49]
+对完整存储的有限根集 $R\subseteq\mathbb Z^d$ 和 $\alpha\in R$，[[Root ladder bottom 集与固定宽度成员查询|ladder bottom 集]]定义为 $B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}$。Rust 将已存根和余根的坐标表示为 `i32`；若精确整数差 $\beta-\alpha$ 的任一坐标超出 `i32` 可表示范围，该差就不可能等于任何已存向量。因此成员查询必为 `false`，相应的 $\beta$ 应进入 bottom 集。^[root-ladder-overflow-repair.md:41-49]
 
 这个结论只适用于“精确差是否属于完整的 `i32` 存储集合”的查询。它不允许 wrapping 或 saturating 算术，也不适用于一般向量减法、反射、root combination、seed negation 或构造输入验证。分配失败及未来其他错误仍须传播。^[root-ladder-overflow-repair.md:51-53]
 
@@ -72,7 +72,7 @@ AFTER-v3 作业 `3875239` 以 `COMPLETED 0:0` 结束，[独立检查记录](../.
 
 证据限于 A1 加中心环面坐标边界 fixture、相关 kernel 与解释器回归、两个 crate 的完整 Rust 套件及目录治理 harness。它不证明一般 root system 或 KGB 正确性，不覆盖更高 rank、KLV、unitarity、Hodge、associated cycle 或 AV-ann，也不构成性能或并行验收；完整 Rust 套件属于回归守卫，而非 oracle 证明。^[root-ladder-overflow-repair.md:30-34, root-ladder-overflow-repair.md:124-130]
 
-该修复不是性能优化：过去提前失败的极值输入现在会完成 \(O(|R|^2)\) 表构造，可能增加耗时。性能或内存结论仍须受控测量支持。^[root-ladder-overflow-repair.md:85-88]
+该修复不是性能优化：过去提前失败的极值输入现在会完成 $O(|R|^2)$ 表构造，可能增加耗时。性能或内存结论仍须受控测量支持。^[root-ladder-overflow-repair.md:85-88]
 
 ## Sources
 

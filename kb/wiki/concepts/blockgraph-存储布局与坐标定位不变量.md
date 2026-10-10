@@ -51,7 +51,7 @@ aliases:
 
 构建时，各包按原 KGB 对合顺序排列，包内采用 **x 外层、y 内层**的笛卡尔积顺序。实现检查 `xs.len() == size`，不满足时报 `"block size"`；`xs` 弱增是区间表与坐标定位成立的不变量。^[block-graph.md:62-71]
 
-`first_z_of_x[x]` 保存满足 \(x(z)\ge x\) 的首个块元素位置。表长为 `xrange + 1`，并带有值为 `size` 的哨兵。这里使用“大于等于”条件，表项所指元素的 x 坐标不保证恰好等于查询值。^[block-graph.md:62-64]
+`first_z_of_x[x]` 保存满足 $x(z)\ge x$ 的首个块元素位置。表长为 `xrange + 1`，并带有值为 `size` 的哨兵。这里使用“大于等于”条件，表项所指元素的 x 坐标不保证恰好等于查询值。^[block-graph.md:62-64]
 
 `element(x, y)` 先取得 x 对应的 `first_z_of_x` 区间，再按连续 y 坐标偏移定位候选元素，随后核验候选坐标。这一检查承担上游断言的校验职责；失败返回 `Err(StructureError)`，包括越界的 `IndexOutOfRange` 与纤维不符的 `"element fiber"`。^[block-graph.md:88-91]
 
@@ -65,9 +65,9 @@ Cayley 表构建会回填逆 Cayley 槽，槽满时报 `"Cayley pair slots"`。c
 
 ## 对偶变换中的索引重建
 
-`dual()` 将元素编号反转为 \(z'=\mathrm{size}-1-z\)，交换 x/y 坐标，并变换状态及链接。交换后，`first_z_of_x` 按原块 `max_y + 1` 的范围重新计算；相关变换见 [[完整块图的对偶数据变换]]。^[block-graph.md:95-104]
+`dual()` 将元素编号反转为 $z'=\mathrm{size}-1-z$，交换 x/y 坐标，并变换状态及链接。交换后，`first_z_of_x` 按原块 `max_y + 1` 的范围重新计算；相关变换见 [[完整块图的对偶数据变换]]。^[block-graph.md:95-104]
 
-对偶长度为 \(\mathrm{max\_len}-\ell(z)\)，其中 \(\mathrm{max\_len}\) 取末元素长度，空块取 0。该实现依赖末元素长度最大的排序性质。^[block-graph.md:95-99]
+对偶长度为 $\mathrm{max\_len}-\ell(z)$，其中 $\mathrm{max\_len}$ 取末元素长度，空块取 0。该实现依赖末元素长度最大的排序性质。^[block-graph.md:95-99]
 
 ## 测试与证据边界
 

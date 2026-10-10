@@ -46,13 +46,13 @@ provenanceState: extracted
 
 R-群的每个核位向量对应一个反射乘积。构造时按 `orth` 下标升序遍历置位，并依次右乘相应根反射；因此，必须保留位向量坐标与 `orth` 根列表的对应关系，以及规定的右乘顺序。^[real-weyl.md:63-64, real-weyl.md:75-77]
 
-复根对应的生成元为 \(s_{rn}\,s_{\theta(rn)}\)：先构造 `reflect(root)`，再右乘 `reflect(image)`，其中 `image` 是该根在对合下的像。打印使用所得群元素的规范词。^[real-weyl.md:77-81]
+复根对应的生成元为 $s_{rn}\,s_{\theta(rn)}$：先构造 `reflect(root)`，再右乘 `reflect(image)`，其中 `image` 是该根在对合下的像。打印使用所得群元素的规范词。^[real-weyl.md:77-81]
 
 ## 根列表与 R-群坐标
 
 `RealWeyl` 的根列表保存原侧（primal）`RootId`。`imaginary` 与 `real` 按上游 `RootNbr` 顺序排列，排序键为高度及简单坐标的反向字典序；`complex` 则保留 `makeSimpleComplex` 的输出顺序。对偶侧的 `real_compact`、`real_orth` 通过余根向量映回原侧根，因为对偶根向量就是原侧余根向量。相关编号见 [[RootNumbering 根编号与 RootNbr 顺序]]。^[real-weyl.md:58-62]
 
-单侧 fiber 构造中，`orth` 由非紧且与 `two_rho` 正交的根组成；这些根强正交，构成 \(A_1^n\)。每个 `orth` 根在 R-群位向量中占一个坐标。^[real-weyl.md:63-64, real-weyl.md:128-129]
+单侧 fiber 构造中，`orth` 由非紧且与 `two_rho` 正交的根组成；这些根强正交，构成 $A_1^n$。每个 `orth` 根在 R-群位向量中占一个坐标。^[real-weyl.md:63-64, real-weyl.md:128-129]
 
 `r_vectors` 将各 `orth` 根的 `m_alpha` 的 fiber 坐标按行注入 `ModTwoSubspace`，再按自由列升序构造核生成元。每个生成元的置位集合为 `[free] + {有 free 位的主元行}`，以保留上游核生成元的顺序。这里的自由列顺序决定生成元列表顺序，而单个向量的置位顺序决定反射乘积的构造顺序；参见 [[fiber grading 与 R-群核生成元]]。^[real-weyl.md:75-77, real-weyl.md:130-133]
 

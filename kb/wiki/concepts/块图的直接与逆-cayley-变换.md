@@ -53,7 +53,7 @@ aliases:
 
 ## 对偶变换中的像对
 
-[[完整块图的对偶数据变换]]将元素编号反转为 \(z'=\mathrm{size}-1-z\)，并将 Cayley 链目标 \(c\) 映为 \(\mathrm{size}-1-c\)。第二像仅在第一像有定义时映射。相关状态的对偶配对为 `ImaginaryTypeI ↔ RealTypeII`、`ImaginaryTypeII ↔ RealTypeI`。^[block-graph.md:43-44, block-graph.md:95-101]
+[[完整块图的对偶数据变换]]将元素编号反转为 $z'=\mathrm{size}-1-z$，并将 Cayley 链目标 $c$ 映为 $\mathrm{size}-1-c$。第二像仅在第一像有定义时映射。相关状态的对偶配对为 `ImaginaryTypeI ↔ RealTypeII`、`ImaginaryTypeII ↔ RealTypeI`。^[block-graph.md:43-44, block-graph.md:95-101]
 
 双值 Cayley 像对在对偶变换中不重新排序，因此将 `dual()` 的结果与原生构建的对偶块比较时，双值像按无序集合比较。^[block-graph.md:100-101]
 

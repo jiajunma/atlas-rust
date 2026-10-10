@@ -36,7 +36,7 @@ promptModifiers:
 
 ## R-群位向量的坐标与顺序
 
-`fiber_side` 先按 grading 判定虚根的紧性，累加紧根得到 `two_rho_ic`，并求出紧根简单基 `compact_basis`；`orth` 则选取非紧且与 `two_rho` 正交的根。来源将这些根描述为强正交根，构成 \(A_1^n\)。^[real-weyl.md:122-129]
+`fiber_side` 先按 grading 判定虚根的紧性，累加紧根得到 `two_rho_ic`，并求出紧根简单基 `compact_basis`；`orth` 则选取非紧且与 `two_rho` 正交的根。来源将这些根描述为强正交根，构成 $A_1^n$。^[real-weyl.md:122-129]
 
 每个 R-群位向量的一个坐标对应一个 `orth` 条目。计算 `r_vectors` 时，将各 `orth` 根的 `m_alpha` fiber 坐标按行注入 `ModTwoSubspace`，再构造核生成元。每个自由列按升序产生一个生成元，置位集合为 `[free]` 加上所有含该自由列位的主元行；这一顺序复现上游核生成元顺序。相关背景见 [[m_alpha 的模二归约与伴随投影]]。^[real-weyl.md:63-64, real-weyl.md:130-133]
 
@@ -48,7 +48,7 @@ promptModifiers:
 
 ## 对偶 fiber 的来源与预算
 
-对偶侧的数据不能直接复用对偶分类存储中的 fiber，因为所需的对偶 Cartan 对合 \(-\theta\) 一般只是典范对偶 Cartan 代表元的共轭。每次 `real_weyl` 调用都会临时重建对偶 fiber、grading、弱实形式分区及标签链，不使用缓存；各步使用 `RealWeylContext.budget` 的相应子预算，primal 侧则读取已有的 `classification`。详见 [[对偶 Cartan fiber 链的临时重建]]。^[real-weyl.md:104-116, real-weyl.md:186-187]
+对偶侧的数据不能直接复用对偶分类存储中的 fiber，因为所需的对偶 Cartan 对合 $-\theta$ 一般只是典范对偶 Cartan 代表元的共轭。每次 `real_weyl` 调用都会临时重建对偶 fiber、grading、弱实形式分区及标签链，不使用缓存；各步使用 `RealWeylContext.budget` 的相应子预算，primal 侧则读取已有的 `classification`。详见 [[对偶 Cartan fiber 链的临时重建]]。^[real-weyl.md:104-116, real-weyl.md:186-187]
 
 ## 测试与证据边界
 

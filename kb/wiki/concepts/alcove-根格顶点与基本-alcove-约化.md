@@ -54,7 +54,7 @@ provenanceState: extracted
 
 算法丢弃分量中**第一面关系系数为 1 的墙**，由其余墙构造转置子 Cartan 矩阵：
 `transposed[row][column] = bracket(id(column), id(row))`。
-此处 `bracket` 的错误通过 `?` 传播。求逆后，初始候选系数向量为 \(\mathrm{base}=C^{-T}\mathrm{floors}\)，其中 `floors` 为保留墙的朴素下取整值。^[alcove.md:147-157]
+此处 `bracket` 的错误通过 `?` 传播。求逆后，初始候选系数向量为 $\mathrm{base}=C^{-T}\mathrm{floors}$，其中 `floors` 为保留墙的朴素下取整值。^[alcove.md:147-157]
 
 候选以整数分子和公共分母表示。若有分量不能被分母整除，算法依次尝试将每面后续关系系数为 1 的墙的取值加 1，重新检查整性。首个全部为整数的候选以 `entry / denominator` 为系数，对**根坐标**进行带溢出检查的线性组合，最后转换为 `i32` 返回。因此，关系计算使用余根，最终顶点组合使用根。^[alcove.md:152-162]
 

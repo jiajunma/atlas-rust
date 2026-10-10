@@ -83,7 +83,7 @@ provenanceState: extracted
 
 `GlobalTitsElement::new` 先检查环面因子的维数是否等于根数据的格秩，不符时返回 `RankMismatch`；随后验证上下文，最后将环面坐标逐项模 2 规范化并存储，twisted involution 原样存储。^[error-global-tits.md:69-73]
 
-上下文验证先检查 Weyl 作用与根对合的 datum 是否等于 `inner_class.datum()`，不符时返回 `DatumMismatch`；再比较 \(w\delta\) 的 weight/coweight 矩阵与存储的对合矩阵，任一不等时返回 `DistinguishedInvolutionMismatch`。详见 [[全局 Tits 传输的上下文一致性校验]]。^[error-global-tits.md:101-104]
+上下文验证先检查 Weyl 作用与根对合的 datum 是否等于 `inner_class.datum()`，不符时返回 `DatumMismatch`；再比较 $w\delta$ 的 weight/coweight 矩阵与存储的对合矩阵，任一不等时返回 `DistinguishedInvolutionMismatch`。详见 [[全局 Tits 传输的上下文一致性校验]]。^[error-global-tits.md:101-104]
 
 ### 单生成元与词的检查顺序
 

@@ -51,11 +51,11 @@ aliases:
 
 表复用 `kl_polynomial.rs` 中的 `KlHashTable` 类型，池条目为系数属于 `i32` 的 `KlPol`，但每个 `ExtKlTable` 始终拥有自己的池。池索引不打包符号位；primitivisation 符号存于独立的 `prim_flip` bitmap，查询时另行读取。详见 [[多项式池与 primitivisation 符号分离]]。^[extended-kl.md:28-35, extended-kl.md:72-74]
 
-`kl_pol_index(x,y)` 返回 `(KLIndex, bool)`，分别表示池索引与符号翻转标志。`p(x,y)` 返回 twisted KLV 多项式 \(P_{x,y}\)，需要翻转时通过 `scaled(-1)` 应用符号；`raw_ext_KL` 包装层则将返回对渲染为 `inx.second ? -inx.first : inx.first`。^[extended-kl.md:33-35, extended-kl.md:76-77]
+`kl_pol_index(x,y)` 返回 `(KLIndex, bool)`，分别表示池索引与符号翻转标志。`p(x,y)` 返回 twisted KLV 多项式 $P_{x,y}$，需要翻转时通过 `scaled(-1)` 应用符号；`raw_ext_KL` 包装层则将返回对渲染为 `inx.second ? -inx.first : inx.first`。^[extended-kl.md:33-35, extended-kl.md:76-77]
 
 ## 查询接口
 
-表提供 `rank`、`size`、`descent_set`、`descent_type`、`l` 和 `polys` 等访问器，其中 `descent_type` 返回 `DescValue`。`nonzero_column(y)` 从 `y` 开始递减列出非零条目对应的 `x`；`mu(i,x,y)` 提取 \(q^{(\ell(y/x)-i)/2}\) 的系数，其中 \(i=1,2,3\)。^[extended-kl.md:74-80]
+表提供 `rank`、`size`、`descent_set`、`descent_type`、`l` 和 `polys` 等访问器，其中 `descent_type` 返回 `DescValue`。`nonzero_column(y)` 从 `y` 开始递减列出非零条目对应的 `x`；`mu(i,x,y)` 提取 $q^{(\ell(y/x)-i)/2}$ 的系数，其中 $i=1,2,3$。^[extended-kl.md:74-80]
 
 `is_extremal` 判断 `descent_set(x)` 是否包含 `descents(y)`；`is_primitive` 判断 `good_ascent_set(x)` 与 `descents(y)` 的交集是否为空。二者分别对应 extremal 与 primitive 判定。^[extended-kl.md:59-60, extended-kl.md:78-80]
 

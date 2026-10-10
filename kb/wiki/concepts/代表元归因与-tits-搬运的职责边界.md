@@ -46,24 +46,24 @@ tags:
 
 ## 代表元级归因路径
 
-归因首先施加对偶不动点投影，采用 Atlas 的行向量、右乘约定，即 \(v\mapsto(v+v\theta)/2\)。投影值的整数配对使平方中心化；虚单根上的偶数配对标记非紧（noncompact），由此确定 grading。^[weak-real-form.md:58-63]
+归因首先施加对偶不动点投影，采用 Atlas 的行向量、右乘约定，即 $v\mapsto(v+v\theta)/2$。投影值的整数配对使平方中心化；虚单根上的偶数配对标记非紧（noncompact），由此确定 grading。^[weak-real-form.md:58-63]
 
 整性检查先于虚根 grading 提取，要求投影值与**每个单根**的配对均为整数；不满足时返回 `InvalidStrongTorusFactor`。这一检查覆盖全部单根，使虚根基为空的实 Cartan 也无法绕过整性门。随后通过 `element_from_grading` → 局部 `class_of` → `labels().label(local)` 完成[[弱实形式的局部到全局标签映射]]。^[weak-real-form.md:74-82]
 
-局部类别来自 adjoint Cartan fiber 的 \(W_{im}\) 轨道划分，每条轨道对应该 Cartan involution 处的一个弱实形式。划分保存类表与确定性代表元，实形标签则由 `RealFormLabels` 保存；参见[[弱实形式的伴随 Cartan 纤维轨道划分]]。^[weak-real-form.md:20-23]
+局部类别来自 adjoint Cartan fiber 的 $W_{im}$ 轨道划分，每条轨道对应该 Cartan involution 处的一个弱实形式。划分保存类表与确定性代表元，实形标签则由 `RealFormLabels` 保存；参见[[弱实形式的伴随 Cartan 纤维轨道划分]]。^[weak-real-form.md:20-23]
 
 ## 来源一致性与检查顺序
 
 `CartanClassification` 不保留 `InnerClass` 句柄，因此函数先从分类的第一个代表元重构归一化 distinguished involution，作为显式来源一致性（provenance）门；不匹配时报 `DatumMismatch`。随后检查 `twisted` 的 datum 与 distinguished-involution 分解，分解不匹配时报 `DistinguishedInvolutionMismatch`。^[weak-real-form.md:65-71]
 
-完整检查顺序为：原始环面因子长度等于格秩，否则报 `RankMismatch`；检查 provenance；检查 `twisted` 的 datum；验证 \(w\cdot\delta=\theta\)；查找存储代表元；执行投影；检查整性；提取 grading；查询局部类别与全局标签。分解门通过 `compose_matrices` 同时检查 weight 与 coweight 矩阵，代表元查找先于投影。详见[[弱实形式归因的来源与整性门控]]。^[weak-real-form.md:74-82]
+完整检查顺序为：原始环面因子长度等于格秩，否则报 `RankMismatch`；检查 provenance；检查 `twisted` 的 datum；验证 $w\cdot\delta=\theta$；查找存储代表元；执行投影；检查整性；提取 grading；查询局部类别与全局标签。分解门通过 `compose_matrices` 同时检查 weight 与 coweight 矩阵，代表元查找先于投影。详见[[弱实形式归因的来源与整性门控]]。^[weak-real-form.md:74-82]
 
 ## 测试锚点与证据边界
 
-来源记录的相关测试锚点包括：合成 A1 的紧、分裂 Cartan 配环面因子 \(0\) 得类 \(0\)，紧 Cartan 配 \(1/2\) 得类 \(1\)；秩与半整投影门控；外来同秩分类优先报 `DatumMismatch`；以及 A2 反射的半整投影诊断。各 `ArithmeticOverflow` 转换分支尚未覆盖。^[weak-real-form.md:84-91]
+来源记录的相关测试锚点包括：合成 A1 的紧、分裂 Cartan 配环面因子 $0$ 得类 $0$，紧 Cartan 配 $1/2$ 得类 $1$；秩与半整投影门控；外来同秩分类优先报 `DatumMismatch`；以及 A2 反射的半整投影诊断。各 `ArithmeticOverflow` 转换分支尚未覆盖。^[weak-real-form.md:84-91]
 
 本页依据两次字节未变的结构性源码阅读。来源包未执行构建、测试或原版运行，不重述或扩展既有 HPC 正确性证据链，也不提供数学验收、性能或并行结论。上游行号转述自源码注释，未独立重读上游，可能随版本演进而漂移。^[weak-real-form.md:9-16, weak-real-form.md:101-106]
 
 ## Sources
 
-- [weak-real-form.md](../../sources/weak-real-form.md) — 弱实形式划分：adjoint fiber 的 \(W_{im}\) 轨道。
+- [weak-real-form.md](../../sources/weak-real-form.md) — 弱实形式划分：adjoint fiber 的 $W_{im}$ 轨道。

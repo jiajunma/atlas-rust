@@ -46,21 +46,21 @@ aliases:
 
 ## 有理关系的求解
 
-设分量中的墙余根为 \(\alpha_1^\vee,\ldots,\alpha_m^\vee\)，按列组成矩阵 \(A=(\alpha_1^\vee\ \cdots\ \alpha_m^\vee)\)。`labels_for_component` 使用 `Rational` 执行 Gauss–Jordan 全消元，包括主元行上方的消元，并要求自由列恰好为一个；否则返回 `RootSystemInvariantViolation`，其 invariant 为 `"alcove wall component must have one coroot relation"`。^[alcove.md:138-141]
+设分量中的墙余根为 $\alpha_1^\vee,\ldots,\alpha_m^\vee$，按列组成矩阵 $A=(\alpha_1^\vee\ \cdots\ \alpha_m^\vee)$。`labels_for_component` 使用 `Rational` 执行 Gauss–Jordan 全消元，包括主元行上方的消元，并要求自由列恰好为一个；否则返回 `RootSystemInvariantViolation`，其 invariant 为 `"alcove wall component must have one coroot relation"`。^[alcove.md:138-141]
 
-设唯一自由列为 \(f\)，函数取关系向量的自由分量 \(c_f=1\)，并将每个主元列的系数设为对应消元行在自由列上的元素的负值，即 `-matrix[pivot][free]`。这样得到满足 \(Ac=0\) 的有理关系。相关计算属于 [[Alcove 算法中的精确有理线性代数]]。^[alcove.md:138-143]
+设唯一自由列为 $f$，函数取关系向量的自由分量 $c_f=1$，并将每个主元列的系数设为对应消元行在自由列上的元素的负值，即 `-matrix[pivot][free]`。这样得到满足 $Ac=0$ 的有理关系。相关计算属于 [[Alcove 算法中的精确有理线性代数]]。^[alcove.md:138-143]
 
 ## 整数化与符号约定
 
-函数使用 `checked_lcm` 对关系系数的分母通分，将系数转换为 `i64`，再以全体系数的最大公约数约化。所得整数系数满足 \(\sum_i c_i\alpha_i^\vee=0\)，且不存在大于 \(1\) 的公因子，即为本原整数关系。^[alcove.md:141-143]
+函数使用 `checked_lcm` 对关系系数的分母通分，将系数转换为 `i64`，再以全体系数的最大公约数约化。所得整数系数满足 $\sum_i c_i\alpha_i^\vee=0$，且不存在大于 $1$ 的公因子，即为本原整数关系。^[alcove.md:141-143]
 
 符号调整只检查向量的首元素：若首元素为负，则用 `checked_neg` 将整个向量取负；若首元素为零，则不翻转符号。这里的规则并不是寻找首个非零元素，也不能仅凭这一步将实现描述为逐项保证系数为正。^[alcove.md:142-143]
 
 ## 在 Alcove 算法中的用途
 
-在 [[墙连通分量与重心分数约束]] 中，`barycentre_eq` 将所有墙的分数初始化为 \((0,1)\)，再调用 `labels_for_component`。非整值墙的分数改为 \((1,\texttt{n_off}\times\texttt{labels[position]})\)，整值墙保持 \((0,1)\)。这些分数随后进入 [[Alcove 重心计算与标准参数重建]] 的逐墙线性方程。^[alcove.md:70-76, alcove.md:132-134]
+在 [[墙连通分量与重心分数约束]] 中，`barycentre_eq` 将所有墙的分数初始化为 $(0,1)$，再调用 `labels_for_component`。非整值墙的分数改为 $(1,\texttt{n_off}\times\texttt{labels[position]})$，整值墙保持 $(0,1)$。这些分数随后进入 [[Alcove 重心计算与标准参数重建]] 的逐墙线性方程。^[alcove.md:70-76, alcove.md:132-134]
 
-在 [[Alcove 根格顶点与基本 Alcove 约化]] 中，`root_vertex_simple` 使用全正的本原关系系数，丢弃第一面系数为 \(1\) 的墙，由其余墙构造转置子 Cartan 矩阵。若不存在系数为 \(1\) 的墙，则报错 `"alcove component has no coefficient-1 wall"`。若初次求得的坐标非整，则依次将后续系数为 \(1\) 的墙的取值加一重试；全部尝试仍非整时，报错 `"alcove vertex lies outside the root lattice"`。^[alcove.md:152-162]
+在 [[Alcove 根格顶点与基本 Alcove 约化]] 中，`root_vertex_simple` 使用全正的本原关系系数，丢弃第一面系数为 $1$ 的墙，由其余墙构造转置子 Cartan 矩阵。若不存在系数为 $1$ 的墙，则报错 `"alcove component has no coefficient-1 wall"`。若初次求得的坐标非整，则依次将后续系数为 $1$ 的墙的取值加一重试；全部尝试仍非整时，报错 `"alcove vertex lies outside the root lattice"`。^[alcove.md:152-162]
 
 ## 证据边界
 

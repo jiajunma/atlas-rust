@@ -48,7 +48,7 @@ provenanceState: extracted
 
 ## 抛物子商与编号转换
 
-紧凑 Weyl 元素使用固定栈数组 `WeylElt = [u8; WEYL_MAX_RANK]` 表示，第 \(i\) 项索引抛物子商 \(W_{i-1}\backslash W_i\) 的极小陪集代表元，乘法经由各生成元的 transducer 完成。`WEYL_MAX_RANK = 32` 是表示上界，不是元素枚举预算；相关限制见 [[WeylElt 的固定数组与容量边界]]。^[weyl-transducer.md:19-22, weyl-transducer.md:28-32]
+紧凑 Weyl 元素使用固定栈数组 `WeylElt = [u8; WEYL_MAX_RANK]` 表示，第 $i$ 项索引抛物子商 $W_{i-1}\backslash W_i$ 的极小陪集代表元，乘法经由各生成元的 transducer 完成。`WEYL_MAX_RANK = 32` 是表示上界，不是元素枚举预算；相关限制见 [[WeylElt 的固定数组与容量边界]]。^[weyl-transducer.md:19-22, weyl-transducer.md:28-32]
 
 `CompactWeyl::new(cartan)` 先分类 Dynkin 图，再反转 B/C/D 型得到内部序，最后为每个内部生成元构造一个 transducer。`d_out()` 将内部编号映射到外部编号；`piece_offset(i)` 将 piece 的局部字母转换为全局内部编号。详见 [[CompactWeyl 构造与生成元编号映射]]。^[weyl-transducer.md:44-49]
 

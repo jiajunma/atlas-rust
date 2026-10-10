@@ -48,13 +48,13 @@ provenanceState: extracted
 
 `InnerClass::from_root_involution` 接受未带基根数据上的任意对合，验证其置换根系并传送余根，再左复合 `wrt_distinguished` 从反射后的单根像中读出的 Weyl 词，使之成为带基根数据的对合。该入口随后丢弃 Weyl 词；需要同时取得相对于所得 distinguished involution 的 Weyl 因子时，可使用委托给 `InnerClass::from_root_involution_with_factor` 的 `inner_class_with_twisted_involution`。参见 [[从根数据对合构造内类]]。^[inner-class.md:29-40]
 
-`based_involution_twist` 要求对合置换本类根系、传送余根，并将每个单根映到单根。成功时返回诱导的单根置换，拒绝时返回 `StructureError::InvalidBasedAutomorphism`。`generator_twist()` 给出 distinguished involution 对简单生成元的置换：`twist[s]` 对应的单根是 \(\alpha_s\) 的 distinguished image。参见 [[Based involution 验证与生成元 twist]]。^[inner-class.md:44-51]
+`based_involution_twist` 要求对合置换本类根系、传送余根，并将每个单根映到单根。成功时返回诱导的单根置换，拒绝时返回 `StructureError::InvalidBasedAutomorphism`。`generator_twist()` 给出 distinguished involution 对简单生成元的置换：`twist[s]` 对应的单根是 $\alpha_s$ 的 distinguished image。参见 [[Based involution 验证与生成元 twist]]。^[inner-class.md:44-51]
 
 ## 成员判定与规范化
 
-`twisted_from_involution` 在调用方已检查平方与对合性的前提下，验证输入属于当前内类，并返回分解 \(\theta=w\cdot\delta\) 中的 Weyl 元素 \(w\)，其中 \(\delta\) 为 distinguished involution。权格矩阵相等蕴含 twist 比较；拒绝由 `StructureError::InvalidBasedAutomorphism` 表达。参见 [[InnerClass 成员判定与 twisted 分解]]。^[inner-class.md:53-59]
+`twisted_from_involution` 在调用方已检查平方与对合性的前提下，验证输入属于当前内类，并返回分解 $\theta=w\cdot\delta$ 中的 Weyl 元素 $w$，其中 $\delta$ 为 distinguished involution。权格矩阵相等蕴含 twist 比较；拒绝由 `StructureError::InvalidBasedAutomorphism` 表达。参见 [[InnerClass 成员判定与 twisted 分解]]。^[inner-class.md:53-59]
 
-`canonicalize` 采用三阶段算法：先使正实根之和与正虚根之和均占优，再限制到与两个和都正交的简单生成元，最后使实际对合在残余复根子系统中保持正性。返回的生成元按执行顺序排列，依次执行 \(\sigma\leftarrow s\cdot\sigma\cdot\delta(s)\) 将输入传送到规范代表元。`canonicalize_with_generators` 将算法限制在指定的 `active` 生成元内，其第二阶段取 `active` 与上述正交生成元集合的交集。参见 [[Twisted involution 的三阶段规范化]]。^[inner-class.md:61-72]
+`canonicalize` 采用三阶段算法：先使正实根之和与正虚根之和均占优，再限制到与两个和都正交的简单生成元，最后使实际对合在残余复根子系统中保持正性。返回的生成元按执行顺序排列，依次执行 $\sigma\leftarrow s\cdot\sigma\cdot\delta(s)$ 将输入传送到规范代表元。`canonicalize_with_generators` 将算法限制在指定的 `active` 生成元内，其第二阶段取 `active` 与上述正交生成元集合的交集。参见 [[Twisted involution 的三阶段规范化]]。^[inner-class.md:61-72]
 
 `canonical_involution_expr` 输出 twisted involution 的 Weyl 部分的约化 twisted-involution 表达式，并按**外部生成元编号**选取字典序最小者。普通条目 `s` 表示 cross，即左乘 `s`；按位取反条目 `!s` 表示由 `s` 作 twisted conjugation。实现每步按外部生成元升序选取第一个 descent，再通过 `hasTwistedCommutation` 区分两种操作。调用方必须保证输入是当前内类某个 twisted involution 的 Weyl 部分；循环终止依赖这一前提下每步降低 twisted length。参见 [[Twisted involution 的规范约化表达式]]。^[inner-class.md:74-85]
 

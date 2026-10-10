@@ -26,7 +26,7 @@ promptModifiers:
 
 ## Weyl 词条目：先检查负号，再收窄
 
-`check_weyl_word` 对每个条目先调用 `as_integer`。负数触发 `Negative integer where unsigned is required`；随后，若无法收窄到 `u64`，触发 `Integer value to big for conversion`；成功收窄后，若条目 \(i \ge r\)，则触发 `Illegal Weyl word entry {i} (should be <{r})`，其中 \(r\) 为半单秩。详见 [[Weyl 词条目的有序校验]]。^[atlas-core-domain-seams.md:96-102]
+`check_weyl_word` 对每个条目先调用 `as_integer`。负数触发 `Negative integer where unsigned is required`；随后，若无法收窄到 `u64`，触发 `Integer value to big for conversion`；成功收窄后，若条目 $i \ge r$，则触发 `Illegal Weyl word entry {i} (should be <{r})`，其中 $r$ 为半单秩。详见 [[Weyl 词条目的有序校验]]。^[atlas-core-domain-seams.md:96-102]
 
 转换错误中的 `to big` 是源码中的原有措辞，与别处的 `too big` 写法并存。该助手由 `validate` 的词校验路径调用，调用位置为 `domain_builtins.rs:10106`；源码注释引用 `atlas-types.w:2344-2359`。^[atlas-core-domain-seams.md:96-102]
 

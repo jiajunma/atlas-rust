@@ -40,7 +40,7 @@ aliases:
 
 ## 商类表示与加倍
 
-`RestrictedWeight` 是商格 \(X^*/\ker(1-\theta)\) 中的不透明元素，以 \((1-\theta)(weight)\) 的坐标编码等价类。这是商格到像格的单射表示，不能将编码直接当作环境权坐标。例如，split A1 中 \(\alpha\) 的类编码为 \(2\alpha\)，但它并不等于 \(2\alpha\) 的类。^[layout-restricted-roots.md:50-53]
+`RestrictedWeight` 是商格 $X^*/\ker(1-\theta)$ 中的不透明元素，以 $(1-\theta)(weight)$ 的坐标编码等价类。这是商格到像格的单射表示，不能将编码直接当作环境权坐标。例如，split A1 中 $\alpha$ 的类编码为 $2\alpha$，但它并不等于 $2\alpha$ 的类。^[layout-restricted-roots.md:50-53]
 
 `restrict` 使用逐坐标 `checked_sub` 计算限制编码；私有方法 `doubled` 仅供 `is_multipliable` 使用，通过逐坐标 `checked_mul(2)` 加倍编码。可乘性判定由此针对二倍商类是否仍属于限制根集合。^[layout-restricted-roots.md:53-62]
 
@@ -48,13 +48,13 @@ aliases:
 
 `RestrictedRootSystem::build` 先检查 datum 一致性与格秩，不匹配时分别产生 `DatumMismatch` 与 `RankMismatch`。随后按根系枚举序遍历，跳过限制为零的根，将其余根按 `RestrictedWeight` 键聚合成纤维。限制根从 `BTreeMap` 收集，按编码坐标的字典序升序排列；`root(weight)` 使用二分查找。^[layout-restricted-roots.md:57-62]
 
-系统的 `rank` 取自对合的 `anti_invariant_rank`，即 \(-1\) 特征空间的秩，而非纤维数量，参见 [[对合的反不变秩]]。限制根模块使用 `RootInvolutionData::involution()`，与内类布局模块互不调用，且构造时不接收预算；相关接口差异见 [[内类布局与限制根系的接口边界]]。^[layout-restricted-roots.md:59-60, layout-restricted-roots.md:68-72]
+系统的 `rank` 取自对合的 `anti_invariant_rank`，即 $-1$ 特征空间的秩，而非纤维数量，参见 [[对合的反不变秩]]。限制根模块使用 `RootInvolutionData::involution()`，与内类布局模块互不调用，且构造时不接收预算；相关接口差异见 [[内类布局与限制根系的接口边界]]。^[layout-restricted-roots.md:59-60, layout-restricted-roots.md:68-72]
 
 ## 测试锚点
 
-split A1 的测试给出秩为 1、两个限制根，且 \(\alpha\) 的纤维重数为 1、不可乘。compact A1 的测试确认没有限制根。^[layout-restricted-roots.md:64-66]
+split A1 的测试给出秩为 1、两个限制根，且 $\alpha$ 的纤维重数为 1、不可乘。compact A1 的测试确认没有限制根。^[layout-restricted-roots.md:64-66]
 
-A2 在对合矩阵 \(\begin{pmatrix}0&-1\\-1&0\end{pmatrix}\) 下的测试给出秩为 1，且 \(\lambda\) 的纤维重数为 2、可乘。这是来源明确记录的可乘实例。^[layout-restricted-roots.md:64-66]
+A2 在对合矩阵 $\begin{pmatrix}0&-1\\-1&0\end{pmatrix}$ 下的测试给出秩为 1，且 $\lambda$ 的纤维重数为 2、可乘。这是来源明确记录的可乘实例。^[layout-restricted-roots.md:64-66]
 
 ## 证据边界
 

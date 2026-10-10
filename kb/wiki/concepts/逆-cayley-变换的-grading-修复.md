@@ -49,7 +49,7 @@ grading offset 由调用方选定。`TitsCoset` 的来源门控要求完整 inne
 
 ## 修复流程
 
-首先执行裸的 `sigma_inv_mult`：反射左 torus 部分，并在左乘增加 Weyl 长度时加上 \(m_\alpha\)。随后处理源处模约化可能遗忘的 grading 信息。^[tits-element.md:54-57]
+首先执行裸的 `sigma_inv_mult`：反射左 torus 部分，并在左乘增加 Weyl 长度时加上 $m_\alpha$。随后处理源处模约化可能遗忘的 grading 信息。^[tits-element.md:54-57]
 
 若重构根为紧根，实现使用**第一个与该根配对非平凡的源模空间基向量**进行修复。这里使用的是源 involution 的模空间；若不存在这样的基向量，则报告 `TitsCosetInvariantViolation`。^[tits-element.md:28-30, tits-element.md:54-58]
 

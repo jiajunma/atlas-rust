@@ -43,9 +43,9 @@ provenanceState: extracted
 
 ## 对偶变换规则
 
-设块大小为 \(N\)，原元素编号为 \(z\)，长度为 \(\ell(z)\)，并令 \(\mathrm{max\_len}=\ell(N-1)\)。对偶化后的编号为 \(z'=N-1-z\)，`x`、`y` 坐标互换，长度变为 \(\mathrm{max\_len}-\ell(z)\)。每个下降状态通过 `BlockDescent::dual` 映射，相关状态分类见 [[BlockDescent 八值状态体系]]。^[partial-common-block.md:85-90]
+设块大小为 $N$，原元素编号为 $z$，长度为 $\ell(z)$，并令 $\mathrm{max\_len}=\ell(N-1)$。对偶化后的编号为 $z'=N-1-z$，`x`、`y` 坐标互换，长度变为 $\mathrm{max\_len}-\ell(z)$。每个下降状态通过 `BlockDescent::dual` 映射，相关状态分类见 [[BlockDescent 八值状态体系]]。^[partial-common-block.md:85-90]
 
-每条有定义的 cross/Cayley 链，其目标编号 \(c\) 映为 \(N-1-c\)；Cayley 第二像仅在第一像有定义时映射。部分块中离开区间的未定义链保持未定义，对偶变换不会补齐这些链接。^[partial-common-block.md:89-95]
+每条有定义的 cross/Cayley 链，其目标编号 $c$ 映为 $N-1-c$；Cayley 第二像仅在第一像有定义时映射。部分块中离开区间的未定义链保持未定义，对偶变换不会补齐这些链接。^[partial-common-block.md:89-95]
 
 ## 部分块中的链接语义
 

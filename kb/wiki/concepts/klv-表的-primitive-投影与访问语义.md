@@ -38,19 +38,19 @@ provenanceState: extracted
 
 # KLV 表的 primitive 投影与访问语义
 
-KLV 表按列存储多项式 \(P_{x,y}\)。`kl_pol(x, y)` 先通过 `primitive_index_of` 将 `x` 投影到列 \(y\) 的 descent set 所对应的 primitive 索引位置，再返回多项式池索引。因此，块元素下标、列内 primitive 位置与多项式池索引是不同的索引层次。^[kl-polynomial-table.md:76-79, kl-polynomial-table.md:89-93]
+KLV 表按列存储多项式 $P_{x,y}$。`kl_pol(x, y)` 先通过 `primitive_index_of` 将 `x` 投影到列 $y$ 的 descent set 所对应的 primitive 索引位置，再返回多项式池索引。因此，块元素下标、列内 primitive 位置与多项式池索引是不同的索引层次。^[kl-polynomial-table.md:76-79, kl-polynomial-table.md:89-93]
 
 ## 列布局与池索引
 
-列 \(y\) 按 primitive-index 位置保存池索引，调用方通过 `pool()` 取回多项式本体。[[KLV 多项式去重池]]按多项式内容去重，约定索引 0 为零多项式、索引 1 为常数 1。μ-系数另存为非零的 `MuPair { x, coef }`；相关布局见 [[KLV 表的逐列存储与句柄设计]]。^[kl-polynomial-table.md:68-85]
+列 $y$ 按 primitive-index 位置保存池索引，调用方通过 `pool()` 取回多项式本体。[[KLV 多项式去重池]]按多项式内容去重，约定索引 0 为零多项式、索引 1 为常数 1。μ-系数另存为非零的 `MuPair { x, coef }`；相关布局见 [[KLV 表的逐列存储与句柄设计]]。^[kl-polynomial-table.md:68-85]
 
-`holes[y] == true` 表示列 \(y\) 尚未计算。计算一列时，`fill_kl_column` 先准备该列 descent set 的 primitive 索引，再选择递归路径。`fill(limit)` 计算 `[0, limit)` 内的列，`limit == 0` 表示全部填满，且跳过已填充列，形成[[KLV 表的幂等逐列填充算法]]。^[kl-polynomial-table.md:76-79, kl-polynomial-table.md:101-110]
+`holes[y] == true` 表示列 $y$ 尚未计算。计算一列时，`fill_kl_column` 先准备该列 descent set 的 primitive 索引，再选择递归路径。`fill(limit)` 计算 `[0, limit)` 内的列，`limit == 0` 表示全部填满，且跳过已填充列，形成[[KLV 表的幂等逐列填充算法]]。^[kl-polynomial-table.md:76-79, kl-polynomial-table.md:101-110]
 
 ## `kl_pol(x, y)` 的边界规则
 
 `kl_pol(x, y)` 对普通的 `x` 越界或不存在的列 `y` 报错。特殊哨兵 `UndefBlock`，即 `x == support.size()`，则映射到原语计数，具有单独的处理约定。^[kl-polynomial-table.md:89-93]
 
-当投影位置超出列长时，访问器返回恒等项或零项。这一边界包含 \(\ell(x)\geq\ell(y)\) 与 primitivisation 失败的情形：若 `x` 恰好投影到 `y` 自身，则返回 \(P_{y,y}=1\) 对应的池索引 1；否则返回零多项式对应的池索引 0。恒等项的判定依据是投影结果是否为 `y` 自身。^[kl-polynomial-table.md:89-93]
+当投影位置超出列长时，访问器返回恒等项或零项。这一边界包含 $\ell(x)\geq\ell(y)$ 与 primitivisation 失败的情形：若 `x` 恰好投影到 `y` 自身，则返回 $P_{y,y}=1$ 对应的池索引 1；否则返回零多项式对应的池索引 0。恒等项的判定依据是投影结果是否为 `y` 自身。^[kl-polynomial-table.md:89-93]
 
 ## μ 查询与非零位图
 

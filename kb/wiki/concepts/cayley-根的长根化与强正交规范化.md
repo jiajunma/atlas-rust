@@ -45,7 +45,7 @@ Cayley 根的长根化是 `CayleyCrossDecomposition::build` 的后处理步骤�
 
 ## 正交检查与长根化
 
-`ensure_pairwise_orthogonal` 要求任意两个根在两个方向上的 bracket 均为零。随后，`long_orthogonalize` 处理和仍为根的正交短根对，即来源所称的 B2 对。对于这样的根对 \(\alpha,\beta\)，算法以长根 \(\alpha+\beta\) 与 \(\alpha-\beta\) 替换它们；差也必须为根，否则触发 `"B2 pair"` 不变量错误。^[cayley-cross.md:46-48]
+`ensure_pairwise_orthogonal` 要求任意两个根在两个方向上的 bracket 均为零。随后，`long_orthogonalize` 处理和仍为根的正交短根对，即来源所称的 B2 对。对于这样的根对 $\alpha,\beta$，算法以长根 $\alpha+\beta$ 与 $\alpha-\beta$ 替换它们；差也必须为根，否则触发 `"B2 pair"` 不变量错误。^[cayley-cross.md:46-48]
 
 源码给出的终止性理由是：每次替换都严格增加长根数。替换完成后，算法逐根调用 `positive_form` 取正，再按升序排序。来源仅转述这一终止性论述，未作独立验证。^[cayley-cross.md:48-50, cayley-cross.md:95-96]
 

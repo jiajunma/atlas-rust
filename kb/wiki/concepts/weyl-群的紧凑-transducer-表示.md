@@ -43,7 +43,7 @@ Weyl 群的紧凑 Transducer 表示采用 du Cloux / van Leeuwen 的抛物子商
 
 ## 元素表示与容量边界
 
-群元素类型为 `WeylElt = [u8; WEYL_MAX_RANK]`，数组第 \(i\) 项索引抛物子商 \(W_{i-1}\backslash W_i\) 的极小陪集代表元。它对应 C++ 的 `std::array<unsigned char, RANK_MAX>`；在枚举和 twisted scan 中，这一元素表示无需堆分配。^[weyl-transducer.md:19-22, weyl-transducer.md:28-30]
+群元素类型为 `WeylElt = [u8; WEYL_MAX_RANK]`，数组第 $i$ 项索引抛物子商 $W_{i-1}\backslash W_i$ 的极小陪集代表元。它对应 C++ 的 `std::array<unsigned char, RANK_MAX>`；在枚举和 twisted scan 中，这一元素表示无需堆分配。^[weyl-transducer.md:19-22, weyl-transducer.md:28-30]
 
 `WEYL_MAX_RANK = 32` 是**表示上界**，不是元素枚举预算；例如 complex rank 6 使用 12 个 pieces。模块还定义 `Generator = usize`、`EltPiece = u16`，这些类型与 `WeylElt` 均为 `pub(crate)`。`UNDEF_PIECE` 和 `UNDEF_GEN` 均取 `u16::MAX`，用作转移表哨兵。参见 [[WeylElt 的固定数组与容量边界]]。^[weyl-transducer.md:28-33]
 
@@ -53,7 +53,7 @@ Weyl 群的紧凑 Transducer 表示采用 du Cloux / van Leeuwen 的抛物子商
 
 `CompactWeyl::new(cartan)` 的构造分为三步：分类 Dynkin 图，反转 B/C/D 型以得到内部生成元顺序，再为每个内部生成元构造转移器。`d_out()` 将内部编号映射为外部编号，`piece_offset(i)` 将 piece 的局部字母转换为全局内部编号。参见 [[CompactWeyl 构造与生成元编号映射]]。^[weyl-transducer.md:46-49]
 
-`coxeter_entry(letter, i, j)` 根据连通分型的类型字母与 Bourbaki 序生成元返回 Coxeter 矩阵项。它先交换下标使 \(a\le b\)：非 D/E 型按距离 \(b-a\) 分派，对角项为 1，距离至少为 2 时为 2，相邻项按类型取 3、4 或 6；B/C 型的 \((0,1)\) 与 F 型的 \((1,2)\) 取 4，G 型相邻项取 6。D/E 型按分叉规则处理。参见 [[Coxeter 矩阵的分型查表]]。^[weyl-transducer.md:37-40]
+`coxeter_entry(letter, i, j)` 根据连通分型的类型字母与 Bourbaki 序生成元返回 Coxeter 矩阵项。它先交换下标使 $a\le b$：非 D/E 型按距离 $b-a$ 分派，对角项为 1，距离至少为 2 时为 2，相邻项按类型取 3、4 或 6；B/C 型的 $(0,1)$ 与 F 型的 $(1,2)$ 取 4，G 型相邻项取 6。D/E 型按分叉规则处理。参见 [[Coxeter 矩阵的分型查表]]。^[weyl-transducer.md:37-40]
 
 ## 规范词与根置换
 
@@ -63,7 +63,7 @@ Weyl 群的紧凑 Transducer 表示采用 du Cloux / van Leeuwen 的抛物子商
 
 ## 效率说明与证据边界
 
-来源将逐生成元转移器实现的乘法描述为 \(O(\mathrm{length})\)，并转述模块文档的 E6 示例：对于含 51840 个元素的群，这种表示的整群枚举比矩阵表示便宜得多。这是文档说明，来源没有据此给出实测性能结论。^[weyl-transducer.md:19-24]
+来源将逐生成元转移器实现的乘法描述为 $O(\mathrm{length})$，并转述模块文档的 E6 示例：对于含 51840 个元素的群，这种表示的整群枚举比矩阵表示便宜得多。这是文档说明，来源没有据此给出实测性能结论。^[weyl-transducer.md:19-24]
 
 来源属于结构性源码阅读，所读 `weyl_transducer.rs` 字节来自 dirty 工作区，绑定快照 `snapshots/2026-10-03-weyl-transducer.json`，SHA-256 为 `4bb3e72b293e6fa9f4709c996bdef388a14ec3cb81ddce2b61d85acea2718783`。模块正确性属于其自身的 [[HPC 验收证据链]]，包括 capacity gate 等；本来源不重述或扩展这些结论。^[weyl-transducer.md:9-15]
 

@@ -43,7 +43,7 @@ provenanceState: extracted
 
 ## 修复对象与测试隔离
 
-对完整存储的有限根集 \(R\subseteq\mathbb Z^d\) 和 \(\alpha\in R\)，ladder bottom 集为 \(B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}\)。若所有已存坐标均为 `i32`，精确整数差的某个坐标却超出其表示范围，该差必不属于已存集合。因此，此处成员查询应返回 `false`，相应的 \(\beta\) 应进入 bottom 集。详见 [[Root ladder bottom 集与固定宽度成员查询]]。^[root-ladder-overflow-repair.md:41-49]
+对完整存储的有限根集 $R\subseteq\mathbb Z^d$ 和 $\alpha\in R$，ladder bottom 集为 $B_\alpha=\{\beta\in R\mid\beta-\alpha\notin R\}$。若所有已存坐标均为 `i32`，精确整数差的某个坐标却超出其表示范围，该差必不属于已存集合。因此，此处成员查询应返回 `false`，相应的 $\beta$ 应进入 bottom 集。详见 [[Root ladder bottom 集与固定宽度成员查询]]。^[root-ladder-overflow-repair.md:41-49]
 
 生产修复只调整 `build_ladder_bottoms` 的两次成员查询：减法成功时沿用原有查找，仅将 `StructureError::ArithmeticOverflow` 解释为非成员，分配失败及其他错误继续传播。root 与 coroot 查询独立执行，前者溢出不会跳过后者。该规则不允许 wrapping/saturating 算术，也不适用于一般向量减法、反射或构造输入验证。参见 [[Rust ladder 成员查询的选择性溢出处理]]。^[root-ladder-overflow-repair.md:51-53, root-ladder-overflow-repair.md:74-83]
 
@@ -86,7 +86,7 @@ AFTER-v3 job `3875239` 最终状态为 `COMPLETED 0:0`。独立检查记录 `tes
 
 账本叙述覆盖原版接受全部 11 个 case 的 22 条记录、root 与 coroot 两条 kernel 回归通过、两个 crate 完整套件通过、Rust 完整流与历史原版捕获一致，以及三条 tests-first 回归在修复前确实失败。接受范围仅限 A1+中心环面坐标边界 fixture；完整 Rust 套件提供回归守卫，不是 oracle 证明。^[root-ladder-overflow-repair.md:124-130]
 
-这些证据不证明一般 root system 或 KGB 正确性，不覆盖更高 rank、KLV、unitarity、Hodge、associated cycle 或 AV-ann，也不构成性能、内存或并行验收。修复使过去提前失败的极值输入完成 \(O(|R|^2)\) 表构造，可能使用更多时间；性能或内存结论仍需受控测量。^[root-ladder-overflow-repair.md:85-88, root-ladder-overflow-repair.md:127-143]
+这些证据不证明一般 root system 或 KGB 正确性，不覆盖更高 rank、KLV、unitarity、Hodge、associated cycle 或 AV-ann，也不构成性能、内存或并行验收。修复使过去提前失败的极值输入完成 $O(|R|^2)$ 表构造，可能使用更多时间；性能或内存结论仍需受控测量。^[root-ladder-overflow-repair.md:85-88, root-ladder-overflow-repair.md:127-143]
 
 ## Sources
 

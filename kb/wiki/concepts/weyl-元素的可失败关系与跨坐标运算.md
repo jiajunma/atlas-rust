@@ -63,7 +63,7 @@ A1 的原版捕获确认了两类相反差异：cold canonical-dual 历史中，
 
 来源记录 AFTER-v5 job `3900050` 以 `COMPLETED 0:0` 完成，修复以生产提交 `690c2b92` 落地。cold_dual 完全字节相等；prewarmed_dual 在 stdout、退出码与有序 error summary 层面一致。验收记录为 `math_weyl_context_core_after_v5_acceptance_2026_10_06.json`，接受范围仍限于 A1 语义，不授予缓存、性能、内存、高 rank 或更广数学 release。^[weyl-context-identity-and-sharing.md:63-74]
 
-A1 的跨 dual 乘法只有 \(s_0s_0=1\)，无法发现生成元重编号错误或直接复合 foreign root permutation 的问题。既有 rebind fixture 仍由 `wc_alias` 保持旧 RootDatum 存活，也未证明仅靠保存的 WeylElt 就能维持 datum 生命周期。^[weyl-context-identity-and-sharing.md:313-318]
+A1 的跨 dual 乘法只有 $s_0s_0=1$，无法发现生成元重编号错误或直接复合 foreign root permutation 的问题。既有 rebind fixture 仍由 `wc_alias` 保持旧 RootDatum 存活，也未证明仅靠保存的 WeylElt 就能维持 datum 生命周期。^[weyl-context-identity-and-sharing.md:313-318]
 
 后续仍需覆盖非对称 G2、B2/C2、两个乘法操作数顺序、inner-class dual construction、`no_value` relations 和独立生命周期见证。来源截至 2026-10-09 的状态是：G2 gate 已冻结并彩排，等待隧道恢复后提交；后续见证仍为 provisional fixture。这些属于 [[Weyl 语义回归的递进验证门禁]]，不能由 A1 的通过结果替代。^[weyl-context-identity-and-sharing.md:320-330]
 

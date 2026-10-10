@@ -42,7 +42,7 @@ provenanceState: extracted
 
 ## 数组坐标的含义
 
-该表示采用 du Cloux / van Leeuwen 的 transducer（parabolic-subquotient）方法。数组第 \(i\) 项索引抛物子商 \(W_{i-1}\backslash W_i\) 的极小陪集代表元；乘法通过各生成元的 transducer 完成，来源将其复杂度描述为 \(O(\mathrm{length})\)。^[weyl-transducer.md:19-24]
+该表示采用 du Cloux / van Leeuwen 的 transducer（parabolic-subquotient）方法。数组第 $i$ 项索引抛物子商 $W_{i-1}\backslash W_i$ 的极小陪集代表元；乘法通过各生成元的 transducer 完成，来源将其复杂度描述为 $O(\mathrm{length})$。^[weyl-transducer.md:19-24]
 
 ## 表示容量与枚举预算
 

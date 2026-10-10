@@ -38,13 +38,13 @@ tags:
 
 ## 模二归约与负坐标
 
-对每个 simple-imaginary 根 \(\alpha\)，`m_alpha` 取余根 \(\alpha^\vee\) 在环境纤维中的模二像。负奇数必须保留为非零位；B2 测试以余根坐标 \((2,-1)\) 归约为 \((0,1)\) 为锚点。^[grading.md:47-51]
+对每个 simple-imaginary 根 $\alpha$，`m_alpha` 取余根 $\alpha^\vee$ 在环境纤维中的模二像。负奇数必须保留为非零位；B2 测试以余根坐标 $(2,-1)$ 归约为 $(0,1)$ 为锚点。^[grading.md:47-51]
 
 同一收集流程还生成 `simple_mod_two`，用 `*coordinate % 2 != 0` 提取单根坐标的奇性位，该判断包含负奇数。两类数据的来源应明确区分：`simple_mod_two` 来自根坐标，`m_alpha` 来自余根在纤维中的像。相关位向量表示见 [[F₂ 上的位打包向量（ModTwoVector）]]。^[grading.md:47-51]
 
 ## 伴随投影与来源绑定
 
-伴随投影满足 \(\Pi(y)_j=\langle\alpha_j,y\rangle\)，所得坐标向量正是 bracket 向量。伴随 `m_alpha` 通过该投影获得，使配对计算保留在投影的单一实现中。^[grading.md:47-49]
+伴随投影满足 $\Pi(y)_j=\langle\alpha_j,y\rangle$，所得坐标向量正是 bracket 向量。伴随 `m_alpha` 通过该投影获得，使配对计算保留在投影的单一实现中。^[grading.md:47-49]
 
 `CartanGradingData::build` 刻意不接收独立的环境纤维参数，而是使用 `AdjointCartanFiber::ambient_fiber` 构建 `m_alpha`。值相等不足以表达纤维同一性，因此必须使用伴随映射下降得到验证时的确切来源。参见 [[CartanGradingData 与纤维来源一致性]]。^[grading.md:40-45]
 
@@ -54,7 +54,7 @@ tags:
 
 `Grading` 的第 `i` 位对应所属模型的 simple-imaginary 根列表第 `i` 项，置位表示 noncompact。环境纤维与伴随纤维的模二坐标则索引全 datum 的格坐标或 simple roots。在 A2 恒等对合等情形中，这些向量维数相同，维数检查无法区分其语义，必须依靠类型。参见 [[Grading 的位向量类型纪律]]。^[grading.md:17-27]
 
-quasisplit 规范化令零伴随纤维元素的 `base_grading` 全为一；其余元素的 grading 对 canonical ambient representative 逐根配对并取 `!dot`，即全一基点与配对值的 XOR。`grading_shifts[i]` 则由伴随基代表与各单根奇性向量的 \(\mathbf F_2\) 配对构成。参见 [[Quasisplit 规范化与 grading 的仿射线性求值]]。^[grading.md:35-38, grading.md:47-51]
+quasisplit 规范化令零伴随纤维元素的 `base_grading` 全为一；其余元素的 grading 对 canonical ambient representative 逐根配对并取 `!dot`，即全一基点与配对值的 XOR。`grading_shifts[i]` 则由伴随基代表与各单根奇性向量的 $\mathbf F_2$ 配对构成。参见 [[Quasisplit 规范化与 grading 的仿射线性求值]]。^[grading.md:35-38, grading.md:47-51]
 
 ## 测试锚点与证据边界
 

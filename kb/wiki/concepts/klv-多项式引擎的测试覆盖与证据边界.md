@@ -38,15 +38,15 @@ provenanceState: extracted
 
 # KLV 多项式引擎的测试覆盖与证据边界
 
-`kl_polynomial.rs` 的测试覆盖集中于四个局部测试：池种子序号、乘以 \(1+q\)、在 \(q=-1\) 处求值及移位减法。来源材料仅对测试与实现进行了结构性阅读，未执行构建、测试或原版运行；这些测试锚点不代表本次运行通过，也不构成数学验收证据。^[kl-polynomial-table.md:118-123, kl-polynomial-table.md:135-135]
+`kl_polynomial.rs` 的测试覆盖集中于四个局部测试：池种子序号、乘以 $1+q$、在 $q=-1$ 处求值及移位减法。来源材料仅对测试与实现进行了结构性阅读，未执行构建、测试或原版运行；这些测试锚点不代表本次运行通过，也不构成数学验收证据。^[kl-polynomial-table.md:118-123, kl-polynomial-table.md:135-135]
 
 ## 已有测试锚点
 
 [[KLV 多项式去重池]]的种子测试检查 `get(0)` 为零多项式、`get(1).as_slice() == &[1]`，对应索引 0 表示零、索引 1 表示常数一的初始化约定。种子序号测试不覆盖 `match_pol` 的内容去重路径，后者被来源明确列为未测试面。^[kl-polynomial-table.md:68-72, kl-polynomial-table.md:118-123]
 
-`shift` 测试验证 \((1+2q)(1+q)=1+3q+2q^2\)，检验该接口乘以 \(1+q\) 的语义。`sub_shifted` 测试验证 \((1+q)-q\cdot1=1\)，覆盖移位减法的一个单项用例；该运算用于 KLV 递归中的 μ-修正。^[kl-polynomial-table.md:34-38, kl-polynomial-table.md:118-121]
+`shift` 测试验证 $(1+2q)(1+q)=1+3q+2q^2$，检验该接口乘以 $1+q$ 的语义。`sub_shifted` 测试验证 $(1+q)-q\cdot1=1$，覆盖移位减法的一个单项用例；该运算用于 KLV 递归中的 μ-修正。^[kl-polynomial-table.md:34-38, kl-polynomial-table.md:118-121]
 
-`evaluate_at_minus_one()` 测试检查系数向量 `[1,−1,2]` 在 \(q=-1\) 处的求值为 4，以及 \((1+q)^2\) 的求值为 0，直接检验系数交错求和行为。^[kl-polynomial-table.md:46-47, kl-polynomial-table.md:120-121]
+`evaluate_at_minus_one()` 测试检查系数向量 `[1,−1,2]` 在 $q=-1$ 处的求值为 4，以及 $(1+q)^2$ 的求值为 0，直接检验系数交错求和行为。^[kl-polynomial-table.md:46-47, kl-polynomial-table.md:120-121]
 
 ## 未覆盖的接口与错误分支
 

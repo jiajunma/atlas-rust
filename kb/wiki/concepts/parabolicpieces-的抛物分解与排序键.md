@@ -39,7 +39,7 @@ tags:
 
 ## 抛物分解与键结构
 
-`ParabolicPieces::key` 返回按 internal-level 顺序排列的 piece 索引列表，对应唯一分解 \(w=w_1\cdots w_n\)。来源将 \(w_i\) 描述为右陪集 \(W_{i-1}.w\) 的最小代表元；比较这些列表的字典序，即复现上游 Weyl 元素的排序规则。^[weyl-layer.md:100-104]
+`ParabolicPieces::key` 返回按 internal-level 顺序排列的 piece 索引列表，对应唯一分解 $w=w_1\cdots w_n$。来源将 $w_i$ 描述为右陪集 $W_{i-1}.w$ 的最小代表元；比较这些列表的字典序，即复现上游 Weyl 元素的排序规则。^[weyl-layer.md:100-104]
 
 ## 内部生成元顺序
 

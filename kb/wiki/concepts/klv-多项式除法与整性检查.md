@@ -37,7 +37,7 @@ aliases:
 
 # KLV 多项式除法与整性检查
 
-`KlPol` 提供两种除法操作：`divide_by_2()` 检查系数能否被 2 整除；`quotient_by_1_plus_q(bound)` 通过合成除法恢复乘以 \(1+q\) 前的商，并按次数界截断。两者均采用 `Result` 接口，但只有前者具有实际的整性错误分支，后者函数体恒返回 `Ok`。^[kl-polynomial-table.md:41-45, kl-polynomial-table.md:50-58]
+`KlPol` 提供两种除法操作：`divide_by_2()` 检查系数能否被 2 整除；`quotient_by_1_plus_q(bound)` 通过合成除法恢复乘以 $1+q$ 前的商，并按次数界截断。两者均采用 `Result` 接口，但只有前者具有实际的整性错误分支，后者函数体恒返回 `Ok`。^[kl-polynomial-table.md:41-45, kl-polynomial-table.md:50-58]
 
 ## 表示基础
 
@@ -47,9 +47,9 @@ aliases:
 
 `divide_by_2()` 用于 KLV 算法中预期恰好整除的情形。任一系数为奇数时，操作返回 `StructureError::RepInvariantViolation`，诊断文本为 `"KL polynomial parity"`。来源将其对应到上游 `kl.cpp:702` 的 `safeDivide(2)`。^[kl-polynomial-table.md:41-43]
 
-## 除以 \(1+q\)：合成除法与次数截断
+## 除以 $1+q$：合成除法与次数截断
 
-`quotient_by_1_plus_q(bound)` 通过系数的交错部分和恢复 \((1+q)P\) 的商，并截断到给定次数界。来源将其对应到上游 `kl.cpp:711`；它属于 KLV 递归与 μ-修正所需的多项式运算集。^[kl-polynomial-table.md:29-45]
+`quotient_by_1_plus_q(bound)` 通过系数的交错部分和恢复 $(1+q)P$ 的商，并截断到给定次数界。来源将其对应到上游 `kl.cpp:711`；它属于 KLV 递归与 μ-修正所需的多项式运算集。^[kl-polynomial-table.md:29-45]
 
 该函数体恒返回 `Ok`，保留 `Result` 仅为对齐上游 `safe_quotient_by_1_plus_q` 的调用形态。因此，不能将其返回成功视为执行了可失败的整性检查。^[kl-polynomial-table.md:57-58]
 
@@ -59,7 +59,7 @@ aliases:
 
 ## 测试与证据范围
 
-来源记录的四个测试锚点覆盖池种子序号、`shift` 展开、\(q=-1\) 求值和 `sub_shifted` 单项运算。`divide_by_2` 的错误分支与 `quotient_by_1_plus_q` 均被列为未覆盖面，相关说明见 [[KLV 多项式引擎的测试覆盖与证据边界]]。^[kl-polynomial-table.md:118-123]
+来源记录的四个测试锚点覆盖池种子序号、`shift` 展开、$q=-1$ 求值和 `sub_shifted` 单项运算。`divide_by_2` 的错误分支与 `quotient_by_1_plus_q` 均被列为未覆盖面，相关说明见 [[KLV 多项式引擎的测试覆盖与证据边界]]。^[kl-polynomial-table.md:118-123]
 
 本页依据结构性源码阅读材料。来源未执行构建、测试或原版运行，不含数学验收、性能或并行结论；KLV 计算正确性属于独立的 HPC 证据链。上游位置转述自源码注释，未独立重读上游，可能随版本演进而漂移。^[kl-polynomial-table.md:9-17, kl-polynomial-table.md:130-135]
 

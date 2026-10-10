@@ -40,7 +40,7 @@ promptModifiers:
 
 ## 根分类与子系统单根
 
-对于根 \(\alpha\)，分类按固定顺序进行：若 \(\theta(\alpha)=\alpha\)，则为 `Imaginary`（虚根）；否则若 \(\theta(\alpha)=-\alpha\)，则为 `Real`（实根）；其余为 `Complex`（复根）。负根通过逐坐标 `checked_neg` 计算。^[involution-types.md:91-92]
+对于根 $\alpha$，分类按固定顺序进行：若 $\theta(\alpha)=\alpha$，则为 `Imaginary`（虚根）；否则若 $\theta(\alpha)=-\alpha$，则为 `Real`（实根）；其余为 `Complex`（复根）。负根通过逐坐标 `checked_neg` 计算。^[involution-types.md:91-92]
 
 `subsystem_simple_roots` 分别计算虚根与实根子系统的单根。它选取该类中简单坐标全非负的根，继承原根系的正系，并按 `RootId` 升序处理候选；候选若可表示为集合内另一成员与某正坐标向量的差，则跳过，否则入选。输出仍按 `RootId` 升序排列，具体顺序有测试锚定。^[involution-types.md:94-97]
 
@@ -52,15 +52,15 @@ promptModifiers:
 
 ## 与扭曲对合的关系
 
-[[扭曲对合（TwistedInvolution）]]构造 \(w\theta\) 时，先在两个格上以 \(w\) 在左、\(\theta\) 在右合成矩阵，再通过 `LatticeInvolution::new` 重新验证对合与配对保持，最后通过 `RootInvolutionData::new` 验证根置换和余根运输。^[involution-types.md:108-112]
+[[扭曲对合（TwistedInvolution）]]构造 $w\theta$ 时，先在两个格上以 $w$ 在左、$\theta$ 在右合成矩阵，再通过 `LatticeInvolution::new` 重新验证对合与配对保持，最后通过 `RootInvolutionData::new` 验证根置换和余根运输。^[involution-types.md:108-112]
 
-这一构造层只建立 \((w\theta)^2=1\) 的根论条件。[[扭曲对合的 Cayley/Cross 分解|Cayley/cross 分解]]由 `CayleyCrossDecomposition` 负责，规范化由 `InnerClass::canonicalize` 负责，均不属于本层。^[involution-types.md:104-106]
+这一构造层只建立 $(w\theta)^2=1$ 的根论条件。[[扭曲对合的 Cayley/Cross 分解|Cayley/cross 分解]]由 `CayleyCrossDecomposition` 负责，规范化由 `InnerClass::canonicalize` 负责，均不属于本层。^[involution-types.md:104-106]
 
 ## 测试锚点与证据边界
 
 A2 上的负反对角对合得到 2 个实根、4 个复根、0 个虚根，实根子系统单根为 `[id_of([1,1])]`。恒等对合将全部根分类为虚根，虚根子系统单根按枚举顺序为 `[id_of([0,1]), id_of([1,0])]`。^[involution-types.md:123-125]
 
-配对保持但不置换根的测试使用矩阵 \(W=\begin{pmatrix}-1&0\\1&1\end{pmatrix}\)、\(C=\begin{pmatrix}-1&1\\0&1\end{pmatrix}\)。它们能通过 `LatticeInvolution::new`，却在根对合构造中返回 `SimpleRootImageNotRoot { simple_root: 0 }`；余根运输错误另有正、负单根案例，均锚定 `SimpleCorootImageMismatch`。^[involution-types.md:126-129]
+配对保持但不置换根的测试使用矩阵 $W=\begin{pmatrix}-1&0\\1&1\end{pmatrix}$、$C=\begin{pmatrix}-1&1\\0&1\end{pmatrix}$。它们能通过 `LatticeInvolution::new`，却在根对合构造中返回 `SimpleRootImageNotRoot { simple_root: 0 }`；余根运输错误另有正、负单根案例，均锚定 `SimpleCorootImageMismatch`。^[involution-types.md:126-129]
 
 `image()`、`kind()` 的越界 `None` 行为尚无测试覆盖。私有辅助函数的潜在 panic 路径仅属阅读推断，其裸下标索引依赖调用点的前置方阵及秩检查。^[involution-types.md:138-143]
 

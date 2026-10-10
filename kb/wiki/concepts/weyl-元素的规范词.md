@@ -42,7 +42,7 @@ Weyl 元素的规范词由 `canonical_word(external_word)` 计算。输入可以
 
 ## 表示基础
 
-[[Weyl 群的紧凑 Transducer 表示]]采用 du Cloux / van Leeuwen 的抛物子商表示。一个 Weyl 元素存储为固定栈数组 `[u8; WEYL_MAX_RANK]`，第 \(i\) 项索引抛物子商 \(W_{i-1}\backslash W_i\) 的极小陪集代表元。规范词由这些 piece 各自选定的词按序拼接而成。^[weyl-transducer.md:19-22, weyl-transducer.md:53-55]
+[[Weyl 群的紧凑 Transducer 表示]]采用 du Cloux / van Leeuwen 的抛物子商表示。一个 Weyl 元素存储为固定栈数组 `[u8; WEYL_MAX_RANK]`，第 $i$ 项索引抛物子商 $W_{i-1}\backslash W_i$ 的极小陪集代表元。规范词由这些 piece 各自选定的词按序拼接而成。^[weyl-transducer.md:19-22, weyl-transducer.md:53-55]
 
 ## 构造过程与编号
 
