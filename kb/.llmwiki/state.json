@@ -927,10 +927,9 @@
         "weyl-元素兼容性与跨坐标词重放",
         "实形属主约束下的多项式系数契约",
         "根数据的-weyl-身份与弱驻留机制",
-        "领域值的结构等值与属主身份",
-        "领域内建调用的所有权派发与打印侧通道"
+        "领域值的结构等值与属主身份"
       ],
-      "compiledAt": "2026-10-10T01:47:58.971Z"
+      "compiledAt": "2026-10-10T01:55:23.668Z"
     },
     "atlas-core-domain-construction.md": {
       "hash": "d70fe7e4d84d85c790b634f206c8a16532ba3b5c2475f5e53e090f6a1b083773",
@@ -1017,16 +1016,13 @@
       "compiledAt": "2026-10-10T01:35:59.452Z"
     },
     "atlas-core-domain-seams.md": {
-      "hash": "0b1cb87c2c2997db94715ef590d5cd627e3b07f88680058a3b01666406c75801",
+      "hash": "c7b90c93907cfa5fef28429633debf03b444a32eeee72e62aa50dd73077755e4",
       "concepts": [
         "alcove-根格顶点双重移植的语义漂移风险",
         "bareiss-行列式与余子式伴随矩阵构造",
-        "weyl-元素兼容性与跨坐标词重放",
-        "weyl-词与单生成元的整数校验差异",
-        "显式根数据矩阵适配与空维保留",
-        "领域值提取器与隐式-lietype-转换"
+        "矩阵提取的方阵校验与诊断分流"
       ],
-      "compiledAt": "2026-10-10T01:47:51.041Z"
+      "compiledAt": "2026-10-10T01:55:19.664Z"
     },
     "atlas-core-completions.md": {
       "hash": "a13340b64a87d93df6c1cd7242321331423a8f6e868bd3170356bf7ae9f2b559",

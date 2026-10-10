@@ -2138,3 +2138,22 @@ real-weyl 各 1 页）。
 refresh --stale 重编译 4 源、18 候选（含新页《折叠累加初值的算法语义》
 与改写后的歧义页——现以更正后的结论开篇），逐页核读后全部批准。
 最终：621 concepts / 78 sources / Fresh / 0 待审 / 零红链（984 名）。
+## [2026-10-10T01:53:34Z] compile | 2 source(s) → 0 page(s)
+- Sources: atlas-core-domain-seams.md, atlas-core-domain-values.md
+
+
+## 2026年10月10日 root_vertex_simple 双重移植逐行对账
+
+完成 domain-seams 包记录的漂移风险核对：`domain_builtins.rs:6002` 与
+`alcove.rs:643` 两份 `root_vertex_simple` **算法逐步等价**（转置构造
+逐元相同、剔除首个 label-1 墙、重试顺序与数值一致、整性判据相同、
+累加数学相同）。四处差异中三处为已知（错误通道、预算纪律、bracket
+失败处理——后者实际不可达：两侧调用点只传同一分量的已枚举根）；
+**新发现第四处**：domain 版 `coefficient as i32` 截断 + 普通 `*`/`+`
+累加（溢出静默回绕出错误顶点），alcove 版 checked 累加 + 逐坐标
+try_from。定性为潜在健壮性缺口而非已证实错误（系数来自子 Cartan 逆乘
+小整数，无溢出输入实例）；列为后续 HPC 探针候选（需构造输入），不构成
+修复授权。包已更新，refresh 产生 8 候选（含改写后的双重移植页与新页
+《矩阵提取的方阵校验与诊断分流》）；双重移植页的共享算法句曾把
+`inverse_cartan` 误用于 alcove 侧（其助手实为 `rational_inverse`），
+按规则 5 改稿后批准。最终：622 concepts / 78 sources / Fresh / 0 待审。

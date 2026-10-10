@@ -69,14 +69,23 @@ ingestedAt: 2026-10-10T09:00:00Z
   component`。系数乘根向量累加进结果。
 - **同一上游函数的两份移植并存**：`atlas-real-group/alcove.rs:643` 另有
   一个 `root_vertex_simple`（引 `alcoves.cpp:347-412`，行号区间与本文件
-  注释略有出入，两处都是源码注释转述，未独立重读上游）。算法对齐：
-  转置构造逐元相同（两边都是 `bracket(gen[j], gen[i])` 置于 [i][j]），
-  label-1 重试等价（本文件省略 `index > chosen` 是因为 `first_one`
-  已是第一个 label-1 墙）。差异三处，记为漂移风险：错误通道
-  （`Result<_, String>` vs `StructureError`）、预算纪律（无 vs
+  注释略有出入，两处都是源码注释转述，未独立重读上游）。
+  **完整逐行对账（2026-10-10）**：算法逐步等价——转置构造逐元相同
+  （两边都是 `bracket(gen[j], gen[i])` 置于 [i][j]）、剔除首个 label-1
+  墙、重试语义相同（alcove.rs 预生成 attempts 列表，本文件惰性
+  `try_vertex(None)` 后逐列 `Some(column)`，顺序与数值一致）、整性判据
+  相同（每个分子坐标被分母整除）、累加数学相同（系数×根坐标求和）。
+  差异四处，前三处为已知记录，第四处为本次新发现：
+  错误通道（`Result<_, String>` vs `StructureError`）、预算纪律（无 vs
   `try_reserve_exact`）、bracket 失败处理（`unwrap_or(0)` 静默置零 vs
-  `?` 传播）。本文件版的唯一调用方是派发臂 `"alcove_root_vertex"`
-  （13275/13315）。
+  `?` 传播；两侧调用点都只传同一分量的已枚举根，实际不可达）、
+  **溢出纪律**：本文件版用 `coefficient as i32` 截断窄化并以普通
+  `*`/`+` 累加（溢出时静默回绕出错误顶点），alcove.rs 版用
+  `checked_mul`/`checked_add` 再累加、逐坐标 `i32::try_from` 收窄。
+  第四处是潜在的健壮性缺口而非已证实的错误结果：系数来自子 Cartan
+  逆乘以小整数墙取值，目前没有展现出溢出的输入；若可达，正确行为是
+  报错而非回绕。列为后续 HPC 探针候选（需构造输入），不构成修复授权。
+  本文件版的唯一调用方是派发臂 `"alcove_root_vertex"`（13275/13315）。
 
 ## Weyl 词/生成元校验与值冻结（9606–9723）
 
