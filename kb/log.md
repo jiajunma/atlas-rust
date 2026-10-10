@@ -2170,3 +2170,17 @@ try_from。定性为潜在健壮性缺口而非已证实错误（系数来自子
 `Some`（秩不符走 Err），唯一调用点 264 行的 `if let Some` 恒取分支，
 Option 层为两端均无强制的残留。包体已补精确行号与定性；refresh 产生
 5 候选（两页携带新内容），核读后全部批准。622 页 Fresh 不变。
+## [2026-10-10T02:07:49Z] compile | 1 source(s) → 0 page(s)
+- Sources: lattice-types.md
+
+
+## 2026年10月10日 dot_coroot 诊断字段反转的定性闭合
+
+复核 lattice-types 包"均属实并保留"的备注：`dot_coroot` 的
+`RankMismatch` 确为 `expected: coroot.rank(), actual: self.rank()`，
+与本文件 `pair`/`combine`/`apply_matrix` 的接收方惯例相反（当前 HEAD
+逐行确认）。补全定性：`RankMismatch` 渲染为
+`expected {expected}, got {actual}`，反转会把两值互换进诊断措辞；
+纯措辞层、无数学后果——合法调用点两侧秩均等于格秩，该错误仅是
+腐败态守卫。包备注已补此句；refresh 5 候选核读后全部批准。622 页
+Fresh 不变。

@@ -61,7 +61,10 @@ domain boundary 处转换，而不是改变每个根系矩阵条目的表示。`
 复核备注（2026-10-06 重读标记，均属实并保留）：
 
 - `dot_coroot` 的 `RankMismatch` 字段顺序是 `expected: coroot.rank(),
-  actual: self.rank()`，与 `pair`/`combine` 的惯例相反；
+  actual: self.rank()`，与 `pair`/`combine` 的惯例相反（2026-10-10 补充
+  定性：`RankMismatch` 渲染为 `expected {expected}, got {actual}`，故该
+  反转把两值互换进诊断措辞；纯措辞层，无数学后果——每个合法调用点两侧
+  秩都等于格秩，此错误仅是腐败态守卫）；
 - `apply_matrix` 行长失配也报 `actual: matrix.len()`（与 compose_matrices
   的填报怪癖一族）；
 - `new` 里 `i64::try_from(gcd)`/`checked_div` 两个溢出口在当前不变量下
