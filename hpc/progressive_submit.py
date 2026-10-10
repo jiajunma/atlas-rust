@@ -955,6 +955,11 @@ def _validate_predecessor_state_descriptor(value, campaign):
         + status + ".json"
         for status in ("prepared", "sealed", "published")
     }
+    after_v5_scoped_campaign_files = {
+        ".atlas-stage-creation-weyl-context-core-after-v5-"
+        + status + ".json"
+        for status in ("prepared", "sealed", "published")
+    }
     required_campaign_files = (
         legacy_campaign_files | v2_scoped_campaign_files
         | v3_scoped_campaign_files | v4_scoped_campaign_files
@@ -964,6 +969,7 @@ def _validate_predecessor_state_descriptor(value, campaign):
         | before_v3_scoped_campaign_files | before_v4_scoped_campaign_files
         | after_v1_scoped_campaign_files | after_v2_scoped_campaign_files
         | after_v3_scoped_campaign_files | after_v4_scoped_campaign_files
+        | after_v5_scoped_campaign_files
         | predecessor_scoped_campaign_files
     )
     failure_pattern = re.compile(
