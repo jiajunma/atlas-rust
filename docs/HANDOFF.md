@@ -1,13 +1,14 @@
 # Atlas-Rust handoff - 2026-08-01 (handoff to next coding agent)
 
-**2026-10-10 status pointer**: the G2-v1 capture is fully prepared
-(byte-frozen payload + verified fixtures + runbook in §G2-V1 SUBMISSION) and
-BLOCKED on the SSH tunnel (`majj@10.26.14.64` connection timed out for >1
-day; retry cron fires hourly at :23).  The wiki review sweep is complete
-(536 concept pages, Fresh, zero pending candidates, zero red links;
-§"Wiki review sweep COMPLETE").  The three-commit owner-content sweep
-incident is recorded below (§"Uncommitted-owner-content sweeps"); the
-owner's remaining pending files stay untouched.
+**2026-10-10 status pointer**: G2-v1 (3917366) and G2-v2 (3917866) are both
+FINAL FAILED on harness defects with zero Atlas executed (immutable evidence
+committed); the corrected **G2-v3 capture is SUBMITTED as job 3918882**
+(SUBMITTED_NOT_VERIFIED; §"G2-V2 FINAL FAILED + G2-V3 SUBMISSION").  The
+wiki review sweep is complete (536 concept pages, Fresh, zero pending
+candidates, zero red links; §"Wiki review sweep COMPLETE").  The
+three-commit owner-content sweep incident is recorded below
+(§"Uncommitted-owner-content sweeps"); the owner's remaining pending files
+stay untouched.
 
 ## CURRENT: Weyl repair landed as production commit 690c2b92 — 2026-10-06
 
@@ -373,6 +374,58 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
      same shape.  Any genuine DIFFERED marker → hard rule 7 first (regression
      with the preserved input and an independently justified expectation),
      then G2's own BEFORE/AFTER chain; never repair from the Rust output.
+
+### G2-V2 FINAL FAILED + G2-V3 SUBMISSION — 2026-10-10, job 3918882 SUBMITTED_NOT_VERIFIED
+
+**G2-v1 (3917366) is FINAL FAILED** (3m01s): harness input gap — the stage
+never installed `tests/math/generics/weyl_context_core_catalog.json`, which
+the retained A1-contract checker reads (`test_exact_catalog_and_fixture_
+hashes`).  Zero Cargo/Atlas/math ran.  Immutable failure evidence
+`tests/reference/hpc/math_weyl_context_g2_v1_failure_2026_10_10.json`
+(sha `c03088f6…`, tree-sha field corrected to the validator's canonical
+algorithm in `01be8273`).
+
+**G2-v2 (3917866) is FINAL FAILED** on cu014: harness — the synthetic
+creation suite's pin-schema literal stayed at `atlas-weyl-context-g2-pin-v1`
+while the validator required v2; the driver stopped at the first checker
+command (test-campaign-stage-creation: 32 tests, 55 failures + 39 errors,
+all "stage-creation pin descriptor changed").  Zero Cargo/Atlas/math ran.
+Failure evidence `…/math_weyl_context_g2_v2_failure_2026_10_10.json`
+(`fb6ccfed…`), submission record `…_v2_submission_….json` (`49197c27…`).
+Both v1/v2 stages are immutable; do not resubmit under their names.
+
+**G2-v3 migration** (commit `a8fea139` + evidence-files commit `27be35f6`)
+fixed, beyond the pin-schema literal, a chain of latent migration gaps the
+v2 run never reached (it died in the first suite): the creation fixture's
+predecessor pin/out file names and its 25-entry off-by-one lineage indices
+(lineage is 26 with g2-v2), the missing g2-v1/g2-v2 entries in
+`required_history`, the capture suite's predecessor pins (after-v5 values
+from the v1 era: 24-record ledger, job 3900050, 198-file tree), the
+unregistered `G2_V1_PREDECESSOR_STATE` in the allowlist's exact assignment
+set, and the duplicate module-level `PREDECESSOR_STAGE`/`PREDECESSOR_RECORD`
+assignments left by the v1→v2 migration (stale after-v5 literals at the
+original site plus rebinds; now single canonical assignments rebound to
+G2_V2_*).  Lesson: **when a validator fails on the first suite, every later
+suite's pinned literals are unverified — sweep the whole payload for the old
+generation's values, not just the reported failure point.**
+
+**G2-v3 SUBMITTED 2026-10-10**: pre-submission reconciliation found queue =
+only the unrelated e6-graph job 3904926 (PD DependencyNeverSatisfied), no
+g2-v3 accounting row, stage path absent, ledger 26 records sha `00fec701…`.
+Payload rebuilt from committed HEAD `27be35f6` (69 inputs, manifest
+`b9292c55…` identical to the sentinel-rehearsed bytes), transported (tar
+`e009b653…`), remote-verified 69/69 hashes + 0444 modes, invoked once:
+**job 3918882**, pin `5038a6c3…`, stage_creation `96da7310…`,
+`queue_before=["3904926"]`.  Post-checks green: ledger now **27 records**
+(`bf9de72c…`, last = g2-v3/3918882 SUBMITTED), stage topology complete,
+override inputs 0444/single-link, job RUNNING on cu001 when observed; the
+local `/tmp` payload and transport tar were removed (durable copies: remote
+stage + embedded record).  Submission record
+`tests/reference/hpc/math_weyl_context_g2_v3_submission_2026_10_10.json`
+(sha `e338a1e9…`, embeds the durable submission.json `578db485…`).
+Status **SUBMITTED_NOT_VERIFIED**: no resubmit, no sibling stage, no
+acceptance claim before FINAL independent inspection (the G2-V1 section's
+pre-staged checklist applies; ledger count is now 27).
 
 ### AGENTS.md audit (2026-10-09, tunnel-down maintenance)
 
