@@ -2199,3 +2199,16 @@ Fresh 不变。
 调用方契约仅剩 `lookup` 文档已注明的 same-cardinality 外来根系元素
 （跨根系同形置换可撞键，根数匹配是唯一结构性防线）。包已更新；
 refresh 8 候选核读全部批准。622 页 Fresh 不变。
+## [2026-10-10T02:22:39Z] compile | 3 source(s) → 0 page(s)
+- Sources: twisted-involution-trio.md, involution-types.md, cayley-cross.md
+
+
+## 2026年10月10日 compose_matrices 填报怪癖核实与锐化
+
+确认 twisted-involution-trio 包的「actual 恒报 right.len()」怪癖（当前
+HEAD 逐行核实），并锐化：三个形状条件（右行数不符/左 ragged/右 ragged）
+共享一个 `if`；当右侧行数正确但 ragged 时，消息呈 `expected N, got N`
+的自矛盾形态。定性：诊断内容怪癖——错误种类正确，失真在字段内容；
+合法调用点只传同秩方阵，守卫仅对腐败/误用态可达，无数学影响。
+refresh 10 候选（含新页《矩阵复合形状错误的诊断字段失真》）核读批准。
+623 页 Fresh。

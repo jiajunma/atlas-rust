@@ -30,7 +30,11 @@ distinguished 矩阵）；④ `LatticeInvolution::new` → `RootInvolutionData::
 
 `compose_matrices`（`pub(crate)`，被 global_tits 等复用）：i128 checked
 累加 + `i32::try_from` 收窄；**怪癖**：形状不符时 `RankMismatch.actual`
-恒报 `right.len()`，无论实际哪行 ragged。
+恒报 `right.len()`，无论实际哪行 ragged（2026-10-10 核实并锐化：三个
+形状条件——右行数不符、左 ragged、右 ragged——共享一个 `if`；当右侧
+行数正确但 ragged 时，消息读作 `expected N, got N` 的自矛盾形态。属诊断
+内容怪癖：错误种类仍正确；合法调用点只传同秩方阵，该守卫仅对腐败/误用
+态可达，无数学影响）；
 
 测试 4 个：A1 反射平移（Real 根数 2）；A2 阶 3 元 `s0·s1` 被拒
 （`InvalidInvolution`）；同 rank 不同 datum（A2 vs B2）→ `DatumMismatch`；

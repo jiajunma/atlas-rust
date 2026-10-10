@@ -351,16 +351,12 @@
     "cayley-cross.md": {
       "hash": "0e5779035378026f3a24545a7605e9b5cb2ecea2e745f31e19b3415c101769a9",
       "concepts": [
-        "cayley-根的长根化与强正交规范化",
-        "cayleycross-的下降剥离算法",
-        "利用饱和核与模二秩计算整对合分类",
         "对偶分量群的-fiber-rank",
         "扭曲对合的-cayleycross-分解",
-        "整对合分类的预算门与检查顺序",
-        "整对合的-compactcomplexsplit-因子计数",
-        "整数对合的-compactcomplexsplit-分类"
+        "整对合分类中的奇偶区分",
+        "整对合的-compactcomplexsplit-因子计数"
       ],
-      "compiledAt": "2026-10-10T01:27:55.052Z"
+      "compiledAt": "2026-10-10T02:23:53.965Z"
     },
     "locator.md": {
       "hash": "f1ccba5dc6076638c94d883fabdf5fbff2452fbe317fa553bc2580b64f36eb65",
@@ -510,16 +506,11 @@
     "involution-types.md": {
       "hash": "582246dd07b0e95233c4fffb4685ee4ebfdaaa27cd8e26bd6282aaf33b1f8ed3",
       "concepts": [
-        "对合下的虚根实根与复根分类",
-        "对合的反不变秩",
         "扭曲对合twistedinvolution",
         "根对合数据rootinvolutiondata",
-        "继承正系中的子系统单根提取",
-        "对合类型的分层构造验证与错误优先级",
-        "格对合latticeinvolution",
-        "扭对合与-weyl-平移"
+        "格对合latticeinvolution"
       ],
-      "compiledAt": "2026-10-10T01:34:02.267Z"
+      "compiledAt": "2026-10-10T02:24:02.122Z"
     },
     "real-form-labels-order.md": {
       "hash": "23534d503b31ab5876183a779647baa79498517f9e7d1c0c3326bb765cd22625",
@@ -533,20 +524,14 @@
       "compiledAt": "2026-10-10T02:02:36.688Z"
     },
     "twisted-involution-trio.md": {
-      "hash": "b783154e20d31474660cc2dc9bfde380b9a2f64d780f96350452b0fa1220d53c",
+      "hash": "96a2428a5de67062bfd3d37b5271c93fb406cf50053ca071cb9cc21761b8299f",
       "concepts": [
-        "cartan-纤维秩与-dualpi0",
-        "对合分类的资源预算与验证顺序",
-        "扭对合与-weyl-平移",
-        "整数对合的-compactcomplexsplit-分类",
-        "根论工具的整数算术与失败语义",
+        "对合类型的分层构造验证与错误优先级",
+        "整对合的-compactcomplexsplit-因子计数",
         "环境根反射字的共享约定",
-        "利用饱和核与模二秩计算整对合分类",
-        "整对合分类的预算门与检查顺序",
-        "对偶分量群的-fiber-rank",
-        "整对合的-compactcomplexsplit-因子计数"
+        "矩阵复合形状错误的诊断字段失真"
       ],
-      "compiledAt": "2026-10-10T01:32:12.689Z"
+      "compiledAt": "2026-10-10T02:24:09.892Z"
     },
     "grading.md": {
       "hash": "cc137b42a2e7fe897eb4d519b6864c70ebb88d74ea395e51297591b7134a2991",
