@@ -82,10 +82,18 @@ fn rational_inverse(&[Vec<i64>]) -> Result<Option<(Vec<Vec<i64>>, i64)>, Structu
    单用 `numerator_ref` 会把负的 alcove 中心变正（signed-rational 教训的
    落点之一）。
 5. **-θ 不动子空间校验**（alcoves.cpp:317-321：修正可能不落在参数连续坐标
-   所在的 -θ 不动子空间）：`theta = rc.theta(z)?`，逐行验证
-   `theta.weight_matrix()` 与 `centered_gamma - gamma` 的乘积为零，否则
-   `RepInvariantViolation { invariant: "alcove correction lies outside the
-   -theta fixed subspace" }`。
+   所在的 -θ 不动子空间）：`theta = rc.theta(z)?`，逐行计算并验证
+   **`(I+θ)·num(Δ) = 0`**（Δ = `centered_gamma - gamma`，在分子坐标上）：
+   `try_fold` 的初始值是 `difference.numerator()[row]`，再逐项累加
+   `θ[row][j]·Δ[j]`，所以总量是 `((I+θ)Δ)[row]` 而非裸的 `(θΔ)[row]`；
+   分母为正，故分子条件与 Δ 本身等价。这正是错误文本所命名的条件：
+   (I+θ)Δ=0 ⟺ θΔ=−Δ ⟺ Δ 在 θ 的 (−1)-特征空间 = −θ 的不动子空间；
+   连续坐标（环面因子侧）恰落在该特征空间，因此 alcove 内的居中修正
+   不得离开它。否则 `RepInvariantViolation { invariant: "alcove
+   correction lies outside the -theta fixed subspace" }`。
+   **更正记录（2026-10-10）**：本包此前把该检查写成「θ·Δ 的乘积为零」，
+   漏读了 `try_fold` 的非零初始项；核对源码后确认实现与错误命名一致，
+   无缺陷。教训：fold 的 init 项属于语义本体，阅读时不得省略。
 6. `rc.sr_gamma(z.x(), &lambda_rho, &centered_gamma)` 收尾。
 
 ## denominator_exceeds_alcove_bound

@@ -107,6 +107,10 @@ explanation. Hashes identify bytes; they do not prove those bytes correct.
    source-based inference and HPC-verified results. Preserve LaTeX, code blocks,
    exceptions and limitations. Split long materials by topic; do not accept
    truncated formulas, hypotheses or algorithm steps as complete evidence.
+   When transcribing a fold/reducer, the initial accumulator value is part of
+   the semantics (2026-10-10 lesson: `try_fold(difference[row], …)` computes
+   `(I+θ)Δ`, not `θΔ` — a packet that dropped the init term mis-described the
+   alcove `-theta fixed subspace` check until the code was re-read).
 3. Run `./kb/llmwiki compile --review --instructions AGENTS.md` from the repo
    root. The launcher resolves the instructions file inside kb/. Pass these
    instructions on every generation; an AGENTS.md filename alone is not enough

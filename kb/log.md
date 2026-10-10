@@ -2119,3 +2119,22 @@ real-weyl 各 1 页）。
 
 最终 `llmwiki status`：615 concepts / 78 sources / Fresh / 0 待审；
 全库扫描（973 个索引名）零红链。编辑性复审，不构成数学验收。
+## [2026-10-10T01:45:33Z] compile | 4 source(s) → 0 page(s)
+- Sources: alcove.md, atlas-core-domain-seams.md, atlas-core-domain-values.md, weyl-context-identity-and-sharing.md
+
+
+## 2026年10月10日 alcove 校验更正：fold 初值是语义本体
+
+复审新增的 alcove 页面时核实一处数学内容更正：包的旧文把
+`alcove_center` 的「−θ 不动子空间校验」写成 θ·Δ=0；对照源码，
+`try_fold` 的初始值是 `difference.numerator()[row]`，实际检查是
+**(I+θ)·num(Δ)=0**（分母为正，等价于 Δ 本身满足 (I+θ)Δ=0 ⟺ θΔ=−Δ），
+恰为 −θ 不动子空间（θ 的 (−1)-特征空间）——实现与错误命名一致，
+无缺陷。旧描述漏读了 fold 的非零初始项。已更正 `alcove.md` 第 5 步
+并记录教训；`kb/AGENTS.md` 包编写规则增补「fold/reducer 的初始累加值
+属于语义本体」。这不是 Rust 计算错误（代码始终正确），不触发硬规则 7
+的回归测试要求；属阅读转述层更正。
+
+refresh --stale 重编译 4 源、18 候选（含新页《折叠累加初值的算法语义》
+与改写后的歧义页——现以更正后的结论开篇），逐页核读后全部批准。
+最终：621 concepts / 78 sources / Fresh / 0 待审 / 零红链（984 名）。

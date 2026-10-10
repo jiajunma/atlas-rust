@@ -21,23 +21,12 @@
     "weyl-context-identity-and-sharing.md": {
       "hash": "6d155018197b21f11ec920b78f9b0ed0d6920b65024d3165cb1b3f37c9aa8101",
       "concepts": [
-        "dual-预热历史与-weyl-群兼容性",
-        "innerclass-对偶构造与生命周期保持",
-        "rootdatum-弱驻留与规范活对象身份",
-        "rust-weyl-内核与抽象群的无环所有权模型",
-        "weyl-上下文共享的性能与内存证据边界",
-        "weyl-元素的可失败关系与跨坐标运算",
-        "weyl-语义回归的递进验证门禁",
-        "仅成功发布的惰性初始化",
-        "canonical-dual-的转置根数据与-g2-预热见证",
-        "hpc-阶段迁移的标签与前驱绑定",
-        "差分诊断的有序错误摘要契约",
-        "整树验收清单与生产落地一致性",
-        "源码预测与原版捕获的证据分离",
-        "语言层-weyl-元素的紧凑表示迁移边界",
-        "canonical-dual-与-dualtag-的根编号差异"
+        "a1-恒等乘积对生成元编号错误的遮蔽",
+        "b2c2-的跨类型-canonical-dual-见证",
+        "weyl-内核强缓存的驻留内存权衡",
+        "weyl-属主生命周期的可观察性与内部验证"
       ],
-      "compiledAt": "2026-10-10T01:14:09.086Z"
+      "compiledAt": "2026-10-10T01:47:27.557Z"
     },
     "weyl-layer.md": {
       "hash": "f191efdf47a94419e570f515af23d2ead935b1cc76e644fd037f17959351cc60",
@@ -622,20 +611,13 @@
       "compiledAt": "2026-10-10T01:36:23.536Z"
     },
     "alcove.md": {
-      "hash": "8fe7c97ed1f57157aa0c0a8cf956736228a0edd0093318d6d523acad24e3f630",
+      "hash": "4b9855feef8aef3666c182707ed67711d906f3c1b83467b4c2200e3a35c3b379",
       "concepts": [
-        "alcove-分母界守卫",
-        "alcove-墙集与整值墙选择",
-        "alcove-根格顶点与基本-alcove-约化",
-        "alcove-算法中的精确有理线性代数",
-        "alcove-重心计算与标准参数重建",
-        "墙分量的本原-coroot-关系",
-        "墙连通分量与重心分数约束",
-        "根编号与负根镜像排序",
         "alcove-修正的负对合不动子空间校验歧义",
-        "alcove-算法的测试覆盖与失败边界"
+        "alcove-边界求值中的负根约定与朴素下取整",
+        "折叠累加初值的算法语义"
       ],
-      "compiledAt": "2026-10-10T01:01:36.313Z"
+      "compiledAt": "2026-10-10T01:47:39.339Z"
     },
     "layout-restricted-roots.md": {
       "hash": "b952ec75bec9047bf4c68267126a429161bd6c6bd16d57b6a1d79e340950d78b",
@@ -941,17 +923,14 @@
     "atlas-core-domain-values.md": {
       "hash": "095720e96102e5ab1fb47dca42f32f1eaeaa4c7837c41b6504180e2558b299e6",
       "concepts": [
-        "split-系数算术与零因子筛选",
+        "dual-预热历史与-weyl-群兼容性",
         "weyl-元素兼容性与跨坐标词重放",
-        "可失败重试的惰性身份初始化",
         "实形属主约束下的多项式系数契约",
         "根数据的-weyl-身份与弱驻留机制",
         "领域值的结构等值与属主身份",
-        "领域内建调用的所有权派发与打印侧通道",
-        "dual-预热历史与-weyl-群兼容性",
-        "weyl-词条目的有序校验"
+        "领域内建调用的所有权派发与打印侧通道"
       ],
-      "compiledAt": "2026-10-10T01:37:12.311Z"
+      "compiledAt": "2026-10-10T01:47:58.971Z"
     },
     "atlas-core-domain-construction.md": {
       "hash": "d70fe7e4d84d85c790b634f206c8a16532ba3b5c2475f5e53e090f6a1b083773",
@@ -1042,15 +1021,12 @@
       "concepts": [
         "alcove-根格顶点双重移植的语义漂移风险",
         "bareiss-行列式与余子式伴随矩阵构造",
+        "weyl-元素兼容性与跨坐标词重放",
         "weyl-词与单生成元的整数校验差异",
         "显式根数据矩阵适配与空维保留",
-        "领域值提取器与隐式-lietype-转换",
-        "weyl-元素值的规范词冻结",
-        "实形式生成元下标的校验契约",
-        "alcove-根格顶点与基本-alcove-约化",
-        "weyl-元素兼容性与跨坐标词重放"
+        "领域值提取器与隐式-lietype-转换"
       ],
-      "compiledAt": "2026-10-10T01:37:08.296Z"
+      "compiledAt": "2026-10-10T01:47:51.041Z"
     },
     "atlas-core-completions.md": {
       "hash": "a13340b64a87d93df6c1cd7242321331423a8f6e868bd3170356bf7ae9f2b559",

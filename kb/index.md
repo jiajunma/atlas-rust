@@ -94,4 +94,4 @@
 - [来源索引](sources/index.md)、[变更日志](log.md)
 - [主题模板](templates/topic.md)、[设计决策模板](templates/decision.md)
 
-上表现已覆盖全部 78 个来源包（615 页概念 wiki 见 [MOC](wiki/MOC.md)，Fresh 无待审候选）。页面均为结构性阅读记录，不代表数学验收；验收以 HPC 门与 append-only 账本为准。
+上表现已覆盖全部 78 个来源包（621 页概念 wiki 见 [MOC](wiki/MOC.md)，Fresh 无待审候选）。页面均为结构性阅读记录，不代表数学验收；验收以 HPC 门与 append-only 账本为准。

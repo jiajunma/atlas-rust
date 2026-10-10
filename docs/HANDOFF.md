@@ -591,6 +591,23 @@ this round.  Final: **615 concepts / 78 sources / Fresh / 0 pending /
 zero red links (973 indexed names)**; logged in `kb/log.md` 2026-10-10.
 Editorial only — not mathematical acceptance.
 
+Follow-up 5 (2026-10-10, alcove check correction): reviewing the new alcove
+pages surfaced a genuine content correction in the `alcove.md` packet: the
+"-theta fixed subspace" check in `alcove_center` was mis-described as
+θ·Δ=0.  Re-reading `crates/atlas-real-group/src/alcove.rs:106-123` shows the
+`try_fold` accumulator starts at `difference.numerator()[row]`, so the check
+computes **(I+θ)·num(Δ)=0** — exactly the (−1)-eigenspace condition the
+error text names.  The implementation was always correct; the packet's
+reading dropped the fold's initial term.  Packet step 5 corrected with the
+lesson recorded ("a fold's initial accumulator is part of the semantics"),
+and kb/AGENTS.md's packet-authoring rule 2 gained the same note.  Not a
+Rust calculation error (no wrong result ever produced), so hard rule 7's
+regression gate does not apply — this is a reading-level correction.
+`refresh --stale` recompiled 4 sources → 18 candidates (incl. the new page
+《折叠累加初值的算法语义》 and the corrected ambiguity page, now led by the
+resolution), all read and approved.  Wiki: **621 concepts / 78 sources /
+Fresh / 0 pending / zero red links (984 names)**.
+
 ### Upstream HEAD moved (2026-10-09, read-only finding)
 
 A fresh `git ls-remote` at 2026-10-09T13:14:20Z resolves upstream
