@@ -4252,12 +4252,13 @@ G2_RECORD = {
 
 LIFECYCLE = {
     "stage": STAGE_NAME,
-    "predecessor_stage": "weyl-context-core-before-v4",
+    "predecessor_stage": "weyl-context-core-after-v5",
     "changed_input_reasons": [
         (
-            "Preserve the accepted FINAL job 3886748 (tests-first A1 BEFORE) "
-            "as the immutable direct predecessor and bind its exact report, "
-            "tree, twenty-four-record ledger and independent inspection."
+            "Preserve the accepted FINAL job 3900050 (AFTER-v5, the A1-bounded "
+            "Weyl owner/dual repair gate) as the immutable direct predecessor "
+            "and bind its exact report, tree, twenty-four-record ledger and "
+            "independent inspection."
         ),
         (
             "Advance the case set from the A1 cold/prewarmed pair to the G2 "
