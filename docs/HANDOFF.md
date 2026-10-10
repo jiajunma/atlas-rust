@@ -608,6 +608,22 @@ regression gate does not apply — this is a reading-level correction.
 resolution), all read and approved.  Wiki: **621 concepts / 78 sources /
 Fresh / 0 pending / zero red links (984 names)**.
 
+Follow-up 6 (2026-10-10, dual-port reconciliation): the recorded
+`root_vertex_simple` drift risk (domain_builtins.rs:6002 vs
+alcove.rs:643) was closed by a full line-by-line comparison: the two ports
+are algorithmically step-equivalent; three known differences stand (error
+channel, budget discipline, bracket-failure handling — practically
+unreachable: both callers pass enumerated same-component roots).  One NEW
+finding: the domain copy narrows with `coefficient as i32` and accumulates
+with plain `*`/`+` — on overflow it would silently wrap to a wrong vertex,
+where alcove.rs uses checked arithmetic and per-coordinate `try_from`.
+This is a **latent robustness gap, not a demonstrated wrong result** (the
+coefficients are sub-Cartan-inverse entries times small wall integers; no
+overflow-exhibiting input is known).  Queued as a future HPC probe
+candidate requiring a constructed input; no repair authorized.  Recorded
+in kb/log.md and the domain-seams packet; refresh approved (622 pages,
+Fresh).
+
 ### Upstream HEAD moved (2026-10-09, read-only finding)
 
 A fresh `git ls-remote` at 2026-10-09T13:14:20Z resolves upstream
