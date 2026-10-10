@@ -33,10 +33,10 @@ from progressive_submit import (
 )
 
 
-STAGE_NAME = "weyl-context-g2-v2"
-PIN_NAME = "weyl-context-g2-v2-pin.json"
-PIN_SCHEMA = "atlas-weyl-context-g2-pin-v2"
-STAGE_LOCK = ".weyl-context-g2-v2-stage.lock"
+STAGE_NAME = "weyl-context-g2-v3"
+PIN_NAME = "weyl-context-g2-v3-pin.json"
+PIN_SCHEMA = "atlas-weyl-context-g2-pin-v3"
+STAGE_LOCK = ".weyl-context-g2-v3-stage.lock"
 SBATCH = "hpc/math_weyl_context_core_capture.sbatch"
 
 # The predecessor G2-v1 stage FAILED on a harness input gap and is immutable;
@@ -59,6 +59,12 @@ CATALOG_PATH = "tests/math/generics/weyl_context_g2_catalog.json"
 CORE_CATALOG_PATH = "tests/math/generics/weyl_context_core_catalog.json"
 G2_V1_FAILURE_EVIDENCE_PATH = (
     "tests/reference/hpc/math_weyl_context_g2_v1_failure_2026_10_10.json"
+)
+G2_V2_FAILURE_EVIDENCE_PATH = (
+    "tests/reference/hpc/math_weyl_context_g2_v2_failure_2026_10_10.json"
+)
+G2_V2_SUBMISSION_EVIDENCE_PATH = (
+    "tests/reference/hpc/math_weyl_context_g2_v2_submission_2026_10_10.json"
 )
 CATALOG_SHA256 = (
     "179d47814aa7526753f2a6dcdff9b23def9a09cbcabe5f96ec9d24dd2bef3bbd"
@@ -3126,22 +3132,6 @@ BEFORE_V4_PREDECESSOR = {
 }
 BEFORE_V4_PREDECESSOR_REFERENCE = BEFORE_V4_PREDECESSOR
 
-PREDECESSOR_STAGE = (
-    "/public/home/majj/atlas-rust-campaign-20260930/"
-    "stages/weyl-context-core-after-v5"
-)
-PREDECESSOR_RECORD = {
-    "stage": PREDECESSOR_STAGE,
-    "script": "hpc/math_weyl_context_core_after.sbatch",
-    "queue_before": [],
-    "status": "SUBMITTED",
-    "max_outstanding": 10,
-    "job": "3900050",
-    "pin_sha256":
-        "d13190716f1996cc71c068bbf9589beec0553749c4d805fb3e02894cb83ff4d2",
-    "stage_creation_sha256":
-        "c968e621a0265026999c0962b321e5c253f0fa68a5cf8fb6191a10de42e4cc98",
-}
 PREDECESSOR_CAMPAIGN_FILES = BEFORE_V4_PREDECESSOR_CAMPAIGN_FILES | {
     ".atlas-stage-creation-weyl-context-core-after-v1-prepared.json": {
         "sha256":
@@ -3233,6 +3223,21 @@ PREDECESSOR_CAMPAIGN_FILES = BEFORE_V4_PREDECESSOR_CAMPAIGN_FILES | {
             "2106bd9a46016615e5c1059cef2edfb3b8989e437c5f44716ef01eaa8d3eb7aa",
         "bytes": 668, "mode": "0444", "nlink": 1,
     },
+    ".atlas-stage-creation-weyl-context-g2-v2-prepared.json": {
+        "sha256":
+            "0ac01c94ba4df0ed44b5af1ca77b63f25ffbba710cc78a711b9829240b7d4ccd",
+        "bytes": 28312, "mode": "0444", "nlink": 1,
+    },
+    ".atlas-stage-creation-weyl-context-g2-v2-sealed.json": {
+        "sha256":
+            "0be96fa5e4bfe97cf350947202ee2f1721efead0ae2260f8a1f2c660af716b5d",
+        "bytes": 580, "mode": "0444", "nlink": 1,
+    },
+    ".atlas-stage-creation-weyl-context-g2-v2-published.json": {
+        "sha256":
+            "a084eb32b6f563419d95d93773338693926cf0d68615534f7cd061b58d93bd03",
+        "bytes": 668, "mode": "0444", "nlink": 1,
+    },
 }
 # --- G2-v2: the immutable failed G2-v1 harness stage is the direct
 # predecessor (input gap: the stage never installed the core catalog the
@@ -3253,12 +3258,9 @@ G2_V1_PREDECESSOR_RECORD = {
     "stage_creation_sha256":
         "bfa2e43a1e2ae9b37184f3e3cec26481991f150656b5ad3485ee7e8e96a99467",
 }
-PREDECESSOR_STAGE = G2_V1_PREDECESSOR_STAGE
-PREDECESSOR_RECORD = G2_V1_PREDECESSOR_RECORD
-
 G2_V1_PREDECESSOR_STATE = {
     "schema": "atlas-stage-creation-predecessor-v14",
-    "stage": PREDECESSOR_STAGE,
+    "stage": G2_V1_PREDECESSOR_STAGE,
     "stage_device": 3431958692,
     "stage_inode": 162130670829726024,
     "stage_tree_sha256":
@@ -3266,7 +3268,7 @@ G2_V1_PREDECESSOR_STATE = {
     "stage_tree_files": 150,
     "stage_tree_directories": 18,
     "stage_tree_bytes": 4981671,
-    "record": PREDECESSOR_RECORD,
+    "record": G2_V1_PREDECESSOR_RECORD,
     "campaign_files": PREDECESSOR_CAMPAIGN_FILES,
     "stage_files": {
         ".atlas-stage-creation-transaction.json": {
@@ -3317,7 +3319,7 @@ G2_V1_PREDECESSOR_STATE = {
     },
 }
 G2_V1_PREDECESSOR = {
-    "stage": PREDECESSOR_STAGE,
+    "stage": G2_V1_PREDECESSOR_STAGE,
     "job": "3917366",
     "pin_sha256":
         "36cb2c383462f0ffcad31866d7d26de4392c24c78fac5b48698a2bb85617b718",
@@ -3364,8 +3366,137 @@ G2_V1_PREDECESSOR = {
     "campaign_ledger_records": 25,
 }
 
-PREDECESSOR_STATE = G2_V1_PREDECESSOR_STATE
-PREDECESSOR = G2_V1_PREDECESSOR
+# --- G2-v3: the immutable failed G2-v2 harness stage (stale pin schema in the
+# synthetic creation suite) is the direct predecessor.  Zero Cargo/Atlas/math
+# ran in v2 either. ---
+G2_V2_PREDECESSOR_STAGE = (
+    "/public/home/majj/atlas-rust-campaign-20260930/"
+    "stages/weyl-context-g2-v2"
+)
+G2_V2_PREDECESSOR_RECORD = {
+    "stage": G2_V2_PREDECESSOR_STAGE,
+    "script": "hpc/math_weyl_context_core_capture.sbatch",
+    "queue_before": ["3904926"],
+    "status": "SUBMITTED",
+    "max_outstanding": 10,
+    "job": "3917866",
+    "pin_sha256":
+        "35364c302ef19bf55687ed6b4dabac30d170a0e41329e7e384424af9565dc78e",
+    "stage_creation_sha256":
+        "b02431a1de5c6c64c65b9be5d5d820319d7b270888592e8520563bb40a511557",
+}
+G2_V2_PREDECESSOR_STATE = {
+    "schema": "atlas-stage-creation-predecessor-v14",
+    "stage": G2_V2_PREDECESSOR_STAGE,
+    "stage_device": 3431958692,
+    "stage_inode": 162130670829739142,
+    "stage_tree_sha256":
+        "b202a31a18c7af99b5f2bd984165845d37a17b91ce57c63d0e2e79ee4b302bf4",
+    "stage_tree_files": 150,
+    "stage_tree_directories": 19,
+    "stage_tree_bytes": 5202230,
+    "record": G2_V2_PREDECESSOR_RECORD,
+    "campaign_files": PREDECESSOR_CAMPAIGN_FILES,
+    "stage_files": {
+        ".atlas-stage-creation-transaction.json": {
+            "sha256":
+                "8ded77cbd612b8e299893417cfb252687bc35d109e14ddb97947bf01864d8861",
+            "bytes": 327, "mode": "0444", "nlink": 1,
+        },
+        ".atlas-stage-creation.json": {
+            "sha256":
+                "b02431a1de5c6c64c65b9be5d5d820319d7b270888592e8520563bb40a511557",
+            "bytes": 28541, "mode": "0444", "nlink": 1,
+        },
+        "weyl-context-g2-v2-pin.json": {
+            "sha256":
+                "35364c302ef19bf55687ed6b4dabac30d170a0e41329e7e384424af9565dc78e",
+            "bytes": 21598, "mode": "0444", "nlink": 1,
+        },
+        "submission-intent.json": {
+            "sha256":
+                "f464c74399df7d0b3c431eac1f393508adbf1c6a1dbfd085fb2ec039d70f3f16",
+            "bytes": 435, "mode": "0444", "nlink": 1,
+        },
+        "submission.json": {
+            "sha256":
+                "54d92f294d964c94880bbd0517c215b723e9bc9c6a9b26a5d350d0c9b9b69de6",
+            "bytes": 13427, "mode": "0444", "nlink": 1,
+        },
+        "overrides/overrides.json": {
+            "sha256":
+                "70fa22256179116f0b3a6c5a04307edcc0d76e10a9ae32000e3221301f24c2a8",
+            "bytes": 8518, "mode": "0444", "nlink": 1,
+        },
+        "results/3917866/report.json": {
+            "sha256":
+                "5ff939ff2413c4198c299c2278e466c1b0247ac78c93873d47a6ba20b260ab0a",
+            "bytes": 54720, "mode": "0444", "nlink": 1,
+        },
+        "results/3917866/report.sha256": {
+            "sha256":
+                "3344fc7e2a2544b9dd9280154883cefba9b0cd3d5704e2c3a1c72c67a86041fe",
+            "bytes": 65, "mode": "0444", "nlink": 1,
+        },
+        "weyl-context-g2-v2-3917866.out": {
+            "sha256":
+                "66306e3ad725806e912b9e572f20a1231e8b259ea13199e38e632f54c045d9b3",
+            "bytes": 121, "mode": "0644", "nlink": 1,
+        },
+    },
+}
+G2_V2_PREDECESSOR = {
+    "stage": G2_V2_PREDECESSOR_STAGE,
+    "job": "3917866",
+    "pin_sha256":
+        "35364c302ef19bf55687ed6b4dabac30d170a0e41329e7e384424af9565dc78e",
+    "stage_creation_sha256":
+        "b02431a1de5c6c64c65b9be5d5d820319d7b270888592e8520563bb40a511557",
+    "stage_creation_contract_sha256":
+        "eaba70bd93d8a0e4eefcb287914f06fd78228d3c1b13e5477ac5df1edb2c3b38",
+    "stage_creation_transaction_sha256":
+        "8ded77cbd612b8e299893417cfb252687bc35d109e14ddb97947bf01864d8861",
+    "override_manifest_sha256":
+        "70fa22256179116f0b3a6c5a04307edcc0d76e10a9ae32000e3221301f24c2a8",
+    "submission_intent_sha256":
+        "f464c74399df7d0b3c431eac1f393508adbf1c6a1dbfd085fb2ec039d70f3f16",
+    "submission_receipt_sha256":
+        "54d92f294d964c94880bbd0517c215b723e9bc9c6a9b26a5d350d0c9b9b69de6",
+    "report_sha256":
+        "5ff939ff2413c4198c299c2278e466c1b0247ac78c93873d47a6ba20b260ab0a",
+    "report_bytes": 54720,
+    "result_evidence": {
+        "file": (
+            "tests/reference/hpc/"
+            "math_weyl_context_g2_v2_failure_2026_10_10.json"
+        ),
+        "sha256":
+            "fb6ccfedae79ce57e5396c3c1fa61bb559961d20d1d34cbcb1db4852e6db848d",
+        "bytes": 2896,
+    },
+    "submission_evidence": {
+        "file": (
+            "tests/reference/hpc/"
+            "math_weyl_context_g2_v2_submission_2026_10_10.json"
+        ),
+        "sha256":
+            "49197c279cbd9aa2eff71fdbe78457e4d5126cc5e3cdab68a26e7c1fe302e575",
+        "bytes": 14541,
+    },
+    "stage_tree_sha256":
+        "b202a31a18c7af99b5f2bd984165845d37a17b91ce57c63d0e2e79ee4b302bf4",
+    "stage_tree_files": 150,
+    "stage_tree_directories": 19,
+    "stage_tree_bytes": 5202230,
+    "campaign_ledger_sha256":
+        "00fec7012adfea285d3bf3e00a60d39b5fa4566d9607bbe1a2920aa825ff2efe",
+    "campaign_ledger_records": 26,
+}
+
+PREDECESSOR_STAGE = G2_V2_PREDECESSOR_STAGE
+PREDECESSOR_RECORD = G2_V2_PREDECESSOR_RECORD
+PREDECESSOR_STATE = G2_V2_PREDECESSOR_STATE
+PREDECESSOR = G2_V2_PREDECESSOR
 PREDECESSOR_REFERENCE = PREDECESSOR
 
 # --- After-chain historical evidence (ported from the retired after launcher; values verified against the committed records and the HPC-validated after stager) ---
@@ -4124,7 +4255,7 @@ FROZEN_LAUNCHER_HASHES = {
     "hpc/math_ladder_boundary_index.py":
         "29eb6392458aa0d856ca88a1fba6d5eefc4e265f2e5ec5a5ba1ba41bdcf11c31",
     "hpc/math_weyl_context_core_capture.py":
-        "84a8767b573bab21f49265fd9de87811262bb2b3c5ec27b89a3d9fe4a84fa0e6",
+        "28efc5944dcdda4aeadb5d8f95343011722cec0c4ca189718d29d4198f58f9f4",
     "hpc/stage_weyl_context_core_after.py":
         "adb7cecdd287ced4e5cad597a78cee2d96933511b6185093032844f02be9b75e",
     "hpc/math_weyl_context_core_after.py":
@@ -4333,8 +4464,26 @@ G2_RECORD = {
 
 LIFECYCLE = {
     "stage": STAGE_NAME,
-    "predecessor_stage": "weyl-context-g2-v1",
+    "predecessor_stage": "weyl-context-g2-v2",
     "changed_input_reasons": [
+        (
+            "Preserve the FINAL FAILED G2-v2 job 3917866 (harness: a stale "
+            "pin-schema literal in the synthetic creation suite; zero "
+            "Cargo/Atlas/math ran) as the immutable direct predecessor and "
+            "bind its exact report, tree, twenty-six-record ledger and "
+            "failure evidence."
+        ),
+        (
+            "Fix the missed pin-schema literal in test_campaign_stage_"
+            "creation.py, its stale predecessor fixture (g2-v2 pin/out "
+            "names, 25-entry lineage, record index) and required_history, "
+            "the stale predecessor pins in test_math_weyl_context_core_"
+            "capture.py (26-record ledger, job 3917866, 150-file tree), "
+            "the unregistered G2_V1_PREDECESSOR_STATE/G2_V2_* assignments "
+            "in the allowlist, and add the v2 failure plus submission "
+            "evidence; the remaining inputs are byte-identical to the v2 "
+            "payload (the v1 core-catalog fix stays)."
+        ),
         (
             "Preserve the FINAL FAILED G2-v1 job 3917366 (harness input gap: "
             "the stage never installed the core catalog that the retained "
@@ -4417,6 +4566,8 @@ STAGE_INPUT_NAMES = {
     CORE_CATALOG_PATH,
     REGRESSION_CATALOG_PATH,
     G2_V1_FAILURE_EVIDENCE_PATH,
+    G2_V2_FAILURE_EVIDENCE_PATH,
+    G2_V2_SUBMISSION_EVIDENCE_PATH,
     "tests/math/generics/weyl_context_core_cold_dual.atlas",
     "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout",
     "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr",
@@ -4527,7 +4678,7 @@ ALLOWED_STAGE_FILES = (
     STAGE_CREATION_MARKER, STAGE_CREATION_RECEIPT, STAGE_LOCK, PIN_NAME,
     "submission-intent.json", "submission.json",
 )
-SLURM_OUTPUT_PATTERN = r"weyl-context-g2-v2-[0-9]+\.out\Z"
+SLURM_OUTPUT_PATTERN = r"weyl-context-g2-v3-[0-9]+\.out\Z"
 
 
 def strict_json_loads(raw):
@@ -8077,6 +8228,11 @@ G2_V1_FAILURE_EVIDENCE = {
 
 def validate_g2_v1_failure(root, inputs):
     """Bind the immutable G2-v1 harness failure: the missing core catalog."""
+    # The module-level PREDECESSOR names now name the failed g2-v2 stage;
+    # rebind locally to the frozen g2-v1 identity (the before-v4 precedent).
+    PREDECESSOR = G2_V1_PREDECESSOR
+    PREDECESSOR_STAGE = G2_V1_PREDECESSOR_STAGE
+    PREDECESSOR_STATE = G2_V1_PREDECESSOR_STATE
     reference = G2_V1_FAILURE_EVIDENCE
     if inputs.get(reference["file"]) != reference["sha256"]:
         raise ValueError("Weyl G2-v1 failure evidence hash changed")
@@ -8116,6 +8272,57 @@ def validate_g2_v1_failure(root, inputs):
             or ledger.get("sha256")
                != PREDECESSOR["campaign_ledger_sha256"]):
         raise ValueError("Weyl G2-v1 failure evidence changed")
+    return copy.deepcopy(value)
+
+
+G2_V2_FAILURE_EVIDENCE = {
+    "file": G2_V2_FAILURE_EVIDENCE_PATH,
+    "sha256":
+        "fb6ccfedae79ce57e5396c3c1fa61bb559961d20d1d34cbcb1db4852e6db848d",
+}
+
+
+def validate_g2_v2_failure(root, inputs):
+    """Bind the immutable G2-v2 harness failure: the stale pin schema."""
+    reference = G2_V2_FAILURE_EVIDENCE
+    if inputs.get(reference["file"]) != reference["sha256"]:
+        raise ValueError("Weyl G2-v2 failure evidence hash changed")
+    value = load_relative_json(
+        root, reference["file"], reference["sha256"], mode=0o444, nlink=1)
+    report = value.get("report") if isinstance(value, dict) else None
+    gate = value.get("failed_gate") if isinstance(value, dict) else None
+    no_math = value.get("no_mathematical_content") \
+        if isinstance(value, dict) else None
+    tree = value.get("stage_state_at_failure") \
+        if isinstance(value, dict) else None
+    ledger = value.get("campaign_ledger_after") \
+        if isinstance(value, dict) else None
+    if (not isinstance(value, dict)
+            or value.get("schema") != "atlas-weyl-context-g2-failure-v2"
+            or value.get("status") != (
+                "FINAL_FAILED_HARNESS_STALE_PIN_SCHEMA_IN_SYNTHETIC_"
+                "CREATION_SUITE")
+            or value.get("job") != PREDECESSOR["job"]
+            or value.get("stage") != PREDECESSOR_STAGE
+            or not isinstance(report, dict)
+            or report.get("sha256") != PREDECESSOR["report_sha256"]
+            or value.get("slurm_out_sha256")
+               != PREDECESSOR_STATE["stage_files"][
+                   "weyl-context-g2-v2-3917866.out"]["sha256"]
+            or not isinstance(gate, dict)
+            or gate.get("suite") != "test-campaign-stage-creation"
+            or not isinstance(no_math, dict)
+            or no_math.get("invocations") != "[] (zero Atlas invocations)"
+            or no_math.get("cargo_builds") != 0
+            or not isinstance(tree, dict)
+            or tree.get("stage_tree_sha256")
+               != PREDECESSOR_STATE["stage_tree_sha256"]
+            or not isinstance(ledger, dict)
+            or ledger.get("records")
+               != PREDECESSOR["campaign_ledger_records"]
+            or ledger.get("sha256")
+               != PREDECESSOR["campaign_ledger_sha256"]):
+        raise ValueError("Weyl G2-v2 failure evidence changed")
     return copy.deepcopy(value)
 
 
@@ -8577,7 +8784,7 @@ def confirmed_record(root, pin, repair_intent=False, expected_job=None):
                     or set(attempt) != uncertain_keys
                     or intent != attempt):
                 raise ValueError(
-                    "running BEFORE does not match the exact nineteenth intent")
+                    "running BEFORE does not match the exact twenty-seventh intent")
             record = dict(attempt, status="SUBMITTED", job=expected_job)
             repaired_history = history[:-1] + [record]
             candidate = validate_campaign_history(
@@ -8690,6 +8897,7 @@ def run_enabled(payload_root, overrides_sha256):
     validate_after_v4_failure(payload_root / "overrides", manifest)
     validate_after_v5_result(payload_root / "overrides", manifest)
     validate_g2_v1_failure(payload_root / "overrides", manifest)
+    validate_g2_v2_failure(payload_root / "overrides", manifest)
     g2_manifest = validate_g2_inputs(
         payload_root / "overrides", manifest, source_manifest)
     validate_catalog(payload_root / "overrides", manifest)
@@ -8742,6 +8950,7 @@ def run_enabled(payload_root, overrides_sha256):
         validate_after_v4_failure(root, manifest)
         validate_after_v5_result(root, manifest)
         validate_g2_v1_failure(root, manifest)
+        validate_g2_v2_failure(root, manifest)
         if validate_g2_inputs(root, manifest, installed_source_manifest) \
                 != g2_manifest:
             raise ValueError("installed G2 capture source manifest changed")

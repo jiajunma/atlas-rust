@@ -142,10 +142,10 @@ if ACTIVE_CAMPAIGN != _ACTIVE_CAMPAIGN:
 SUBMISSION_ENABLED = True
 EXPECTED_STAGE = (
     "/public/home/majj/atlas-rust-campaign-20260930/stages/"
-    "weyl-context-g2-v2"
+    "weyl-context-g2-v3"
 )
 
-REPORT_SCHEMA = "atlas-weyl-context-g2-v2"
+REPORT_SCHEMA = "atlas-weyl-context-g2-v3"
 SUCCESS_STATUS = "WEYL_CONTEXT_G2_CAPTURE_COMPLETE"
 INCOMPLETE_STATUS = "WEYL_CONTEXT_G2_INCOMPLETE"
 HARNESS_FAILURE = "WEYL_CONTEXT_G2_HARNESS_FAILURE"
@@ -1881,7 +1881,7 @@ def main():
             raise ValueError("published catalog artifact identity changed")
 
         campaign = campaign_stage(root)
-        with ephemeral_job_workspace(out, "weyl-g2-v2") as work:
+        with ephemeral_job_workspace(out, "weyl-g2-v3") as work:
             (work / "tmp").mkdir(mode=0o700)
             env = command_environment(dict(os.environ), work)
             report["environment"] = validate_environment_record(env)

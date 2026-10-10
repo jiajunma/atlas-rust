@@ -206,10 +206,10 @@ WEYL_EXECUTION_SOURCE_SHA256 = {
     ),
 }
 WEYL_CAPTURE_DRIVER_SHA256 = (
-    "84a8767b573bab21f49265fd9de87811262bb2b3c5ec27b89a3d9fe4a84fa0e6"
+    "28efc5944dcdda4aeadb5d8f95343011722cec0c4ca189718d29d4198f58f9f4"
 )
 WEYL_CAPTURE_STAGER_SHA256 = (
-    "106f17cd95b8d48fce4dbf3e39dd465e5578369f3385390357c621cb6a64690c"
+    "ec389762da709c3c48d561a2915a9b61e3837a9d0ebb99d5dddc337bb7435f16"
 )
 WEYL_AFTER_STAGER_SHA256 = (
     "adb7cecdd287ced4e5cad597a78cee2d96933511b6185093032844f02be9b75e"
@@ -462,6 +462,10 @@ WEYL_CAPTURE_STAGER_ASSIGNMENTS = {
     "CORE_CATALOG_PATH", "G2_V1_FAILURE_EVIDENCE",
     "G2_V1_FAILURE_EVIDENCE_PATH", "G2_V1_PREDECESSOR",
     "G2_V1_PREDECESSOR_RECORD", "G2_V1_PREDECESSOR_STAGE",
+    "G2_V1_PREDECESSOR_STATE", "G2_V2_FAILURE_EVIDENCE",
+    "G2_V2_FAILURE_EVIDENCE_PATH", "G2_V2_PREDECESSOR",
+    "G2_V2_PREDECESSOR_RECORD", "G2_V2_PREDECESSOR_STAGE",
+    "G2_V2_PREDECESSOR_STATE", "G2_V2_SUBMISSION_EVIDENCE_PATH",
 }
 WEYL_CAPTURE_DRIVER_ASSIGNMENTS = {
     "_ACTIVE_CAMPAIGN", "LEGACY_PATH_OPEN_ATTEMPTS", "SUBMISSION_ENABLED",
@@ -1029,11 +1033,11 @@ def exact_weyl_core_contract(tree, filename):
                 getattr(tree, "_source_text", "").encode("utf-8")
             ).hexdigest() == WEYL_CAPTURE_STAGER_SHA256
             and literal_assignment(tree, "STAGE_NAME")
-            == "weyl-context-g2-v2"
+            == "weyl-context-g2-v3"
             and literal_assignment(tree, "PIN_NAME")
-            == "weyl-context-g2-v2-pin.json"
+            == "weyl-context-g2-v3-pin.json"
             and literal_assignment(tree, "PIN_SCHEMA")
-            == "atlas-weyl-context-g2-pin-v2"
+            == "atlas-weyl-context-g2-pin-v3"
             and literal_assignment(tree, "SBATCH")
             == "hpc/math_weyl_context_core_capture.sbatch"
             and literal_assignment(tree, "EXPECTED_TEST_COUNTS") == {
@@ -1107,7 +1111,7 @@ def exact_weyl_core_contract(tree, filename):
                     "29eb6392458aa0d856ca88a1fba6d5eefc4e265f2e5ec5a5ba1ba41bdcf11c31"
                 ),
                 "hpc/math_weyl_context_core_capture.py": (
-                    "84a8767b573bab21f49265fd9de87811262bb2b3c5ec27b89a3d9fe4a84fa0e6"
+                    "28efc5944dcdda4aeadb5d8f95343011722cec0c4ca189718d29d4198f58f9f4"
                 ),
                 "hpc/stage_weyl_context_core_after.py": (
                     "adb7cecdd287ced4e5cad597a78cee2d96933511b6185093032844f02be9b75e"
@@ -1147,10 +1151,10 @@ def exact_weyl_core_contract(tree, filename):
             and literal_assignment(tree, "EXPECTED_STAGE")
             == (
                 "/public/home/majj/atlas-rust-campaign-20260930/stages/"
-                "weyl-context-g2-v2"
+                "weyl-context-g2-v3"
             )
             and literal_assignment(tree, "REPORT_SCHEMA")
-            == "atlas-weyl-context-g2-v2"
+            == "atlas-weyl-context-g2-v3"
             and literal_assignment(tree, "CHECKER_PYTHON")
             == "/public/software/anaconda/anaconda3-2022.5/bin/python3.9"
             and literal_assignment(tree, "SUCCESS_STATUS")
