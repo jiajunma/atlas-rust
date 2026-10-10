@@ -59,8 +59,8 @@ PRIOR_FAILURE_KEYS = {
     "destination", "contract_sha256", "transaction",
 }
 SCRIPT_PATH = "hpc/math_weyl_context_core_capture.sbatch"
-PIN_PATH = "weyl-context-g2-v1-pin.json"
-PREDECESSOR_STAGE_NAME = "weyl-context-core-after-v5"
+PIN_PATH = "weyl-context-g2-v2-pin.json"
+PREDECESSOR_STAGE_NAME = "weyl-context-g2-v1"
 PREDECESSOR_LINEAGE = (
     ("weyl-parent-seal-v1", "3872554"),
     ("ladder-boundary-before-v2", "3872594"),
@@ -85,7 +85,8 @@ PREDECESSOR_LINEAGE = (
     ("weyl-context-core-after-v2", "3890580"),
     ("weyl-context-core-after-v3", "3899303"),
     ("weyl-context-core-after-v4", "3899885"),
-    (PREDECESSOR_STAGE_NAME, "3900050"),
+    ("weyl-context-core-after-v5", "3900050"),
+    (PREDECESSOR_STAGE_NAME, "3917366"),
 )
 
 
@@ -261,6 +262,12 @@ class CampaignStageCreation(unittest.TestCase):
                 b'{"after_v4":"published"}\n',
             ".atlas-stage-creation-weyl-context-core-after-v5-prepared.json":
                 b'{"after_v5":"prepared"}\n',
+            ".atlas-stage-creation-weyl-context-g2-v1-prepared.json":
+                b'{"g2_v1":"prepared"}\n',
+            ".atlas-stage-creation-weyl-context-g2-v1-sealed.json":
+                b'{"g2_v1":"sealed"}\n',
+            ".atlas-stage-creation-weyl-context-g2-v1-published.json":
+                b'{"g2_v1":"published"}\n',
             ".atlas-stage-creation-weyl-context-core-after-v5-sealed.json":
                 b'{"after_v5":"sealed"}\n',
             ".atlas-stage-creation-weyl-context-core-after-v5-published.json":
@@ -699,7 +706,7 @@ class CampaignStageCreation(unittest.TestCase):
                     campaign, payload, contract)
                 receipt = validate_stage_creation(
                     stage, receipt_sha, contract)
-            self.assertEqual(stage.name, "weyl-context-g2-v1")
+            self.assertEqual(stage.name, "weyl-context-g2-v2")
             self.assertEqual(receipt["contract"]["predecessor_state"],
                              descriptor)
             self.assertEqual(

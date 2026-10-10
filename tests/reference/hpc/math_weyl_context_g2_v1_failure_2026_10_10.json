@@ -1,0 +1,54 @@
+{
+ "campaign_ledger_after": {
+  "records": 25,
+  "sha256": "dfa0dbde19bc5d49f7a2f99855f34c8f0ef84775e51bd8c85563ce1e3922b38d"
+ },
+ "date": "2026-10-10",
+ "failed_gate": {
+  "error": "FileNotFoundError: stages/weyl-context-g2-v1/tests/math/generics/weyl_context_core_catalog.json",
+  "missing_input": "tests/math/generics/weyl_context_core_catalog.json (sha256 7fb77fecda841962cb98bdeddbdba58df46d673e076f87f2087cd234e2f1a717, 1283 bytes, tracked at fd8cb003)",
+  "root_cause": "the 9f0be600 G2 migration kept the contract test that reads tests/math/generics/weyl_context_core_catalog.json from the stage tree but dropped that file from STAGE_INPUT_NAMES; the stage never installed it",
+  "suite": "test-weyl-context-core-contract",
+  "test": "test_exact_catalog_and_fixture_hashes"
+ },
+ "final_state": "FAILED 1:0 (batch) after 3m01s on cu001; extern step COMPLETED",
+ "job": "3917366",
+ "lesson": "payload input lists must be audited against every file the checker suites read from the stage tree, not only against the driver's own reads; the missing input was one read by a retained A1-contract checker (test_exact_catalog_and_fixture_hashes) that the G2 migration left wired while dropping the file from STAGE_INPUT_NAMES",
+ "no_mathematical_content": {
+  "cargo_builds": 0,
+  "complete": false,
+  "invocations": "[] (zero Atlas invocations)",
+  "note": "the failure occurred in the checker phase before any Cargo build, Atlas process or capture; this is a harness/input failure, not a mathematical result, and grants no evidence about the G2 witness"
+ },
+ "report": {
+  "bytes": 55477,
+  "commands_note": "checker suites ran: test-campaign-stage-creation 32 OK (162.9s), test-progressive-submit 17 OK (0.8s), test-weyl-context-core-contract FAILED (errors=1) at test_exact_catalog_and_fixture_hashes",
+  "node": "cu001",
+  "path": "results/3917366/report.json",
+  "sha256": "162c7e4c1fd407241cfaf071d68d806a900946ee96b7b46bc2633fff6484de59",
+  "status_field": "WEYL_CONTEXT_HARNESS_FAILURE placeholder",
+  "status_field_actual": "WEYL_CONTEXT_G2_HARNESS_FAILURE"
+ },
+ "report_sha256_file": {
+  "bytes": 65,
+  "path": "results/3917366/report.sha256",
+  "sha256": "3b5d0e0da5b39d6c76db5780adf39b8ec56bf633035589821e647da2d4771ac7"
+ },
+ "schema": "atlas-weyl-context-g2-failure-v1",
+ "slurm_out_sha256": "738800afc9a6934310383ff90ae175511a7859aafedeceaa98c5b168c45b976f",
+ "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-g2-v1",
+ "stage_state_at_failure": {
+  "stage_device": 3431958692,
+  "stage_inode": 162130670829726024,
+  "stage_tree_bytes": 4981671,
+  "stage_tree_directories": 18,
+  "stage_tree_files": 150,
+  "stage_tree_sha256": "e7ee384b8da7a63a10c0e375f359b6071ec2e8ec89eb1a385cee44e5b49e24bd"
+ },
+ "status": "FINAL_FAILED_HARNESS_INPUT_GAP_MISSING_CORE_CATALOG_IN_STAGE_INPUTS",
+ "submission_record": {
+  "bytes": 14543,
+  "file": "tests/reference/hpc/math_weyl_context_g2_v1_submission_2026_10_10.json",
+  "sha256": "1029b7946f39e901180b5801147f3146461cdf7d03942ef29c78dee21d222edf"
+ }
+}

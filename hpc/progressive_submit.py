@@ -21,7 +21,7 @@ import campaign_workspace
 from campaign_workspace import submission_scope
 
 
-ACTIVE_STAGE_NAME = "weyl-context-g2-v1"
+ACTIVE_STAGE_NAME = "weyl-context-g2-v2"
 STAGE_CREATION_CONTRACT_SCHEMA = "atlas-stage-creation-contract-v14"
 STAGE_CREATION_PREDECESSOR_SCHEMA = \
     "atlas-stage-creation-predecessor-v14"
@@ -70,6 +70,7 @@ EXPECTED_PREDECESSOR_LINEAGE = (
     ("weyl-context-core-after-v3", "3899303"),
     ("weyl-context-core-after-v4", "3899885"),
     ("weyl-context-core-after-v5", "3900050"),
+    ("weyl-context-g2-v1", "3917366"),
 )
 
 
@@ -1033,7 +1034,7 @@ def _validate_creation_contract(contract, campaign):
             or set(pin) != {"path", "schema", "stage_creation_key"}
             or pin.get("path") != ACTIVE_STAGE_NAME + "-pin.json"
             or pin.get("schema")
-               != "atlas-weyl-context-g2-pin-v1"
+               != "atlas-weyl-context-g2-pin-v2"
             or pin.get("stage_creation_key") != "stage_creation"):
         raise ValueError("stage-creation pin descriptor changed")
     _safe_relative(pin["path"])

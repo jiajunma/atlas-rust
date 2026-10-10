@@ -835,18 +835,18 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
     def test_stage_identity_catalog_and_test_counts_are_exact(self):
         self.assertEqual(driver.STAGE_NAME, stager.STAGE_NAME)
         self.assertEqual(driver.STAGE_NAME,
-                         "weyl-context-g2-v1")
+                         "weyl-context-g2-v2")
         self.assertEqual(driver.PIN_NAME, stager.PIN_NAME)
         self.assertEqual(driver.PIN_NAME,
-                         "weyl-context-g2-v1-pin.json")
+                         "weyl-context-g2-v2-pin.json")
         self.assertEqual(driver.PIN_SCHEMA, stager.PIN_SCHEMA)
         self.assertEqual(driver.PIN_SCHEMA,
-                         "atlas-weyl-context-g2-pin-v1")
+                         "atlas-weyl-context-g2-pin-v2")
         self.assertEqual(driver.SBATCH, stager.SBATCH)
         self.assertEqual(driver.CATALOG_PATH, stager.CATALOG_PATH)
         self.assertEqual(driver.CATALOG_SHA256, stager.CATALOG_SHA256)
         self.assertEqual(driver.REPORT_SCHEMA,
-                         "atlas-weyl-context-g2-v1")
+                         "atlas-weyl-context-g2-v2")
         self.assertEqual(driver.SUCCESS_STATUS,
                          "WEYL_CONTEXT_G2_CAPTURE_COMPLETE")
         self.assertEqual(driver.EXPECTED_TEST_COUNTS,
@@ -1485,7 +1485,7 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
             provenance = value["provenance"]
             provenance["campaign_record"]["stage"] = (
                 "/public/home/majj/atlas-rust-campaign-20990101/stages/"
-                "weyl-context-g2-v1"
+                "weyl-context-g2-v2"
             )
             provenance["submission_receipt"] = stager.submission_receipt(
                 provenance["campaign_record"], value["pin"])
@@ -3936,9 +3936,9 @@ class WeylContextCoreCaptureTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         raw = (root / stager.SBATCH).read_text()
         self.assertIn("#!/bin/bash -p", raw)
-        self.assertIn("#SBATCH --job-name=atlas-weyl-g2-v1", raw)
+        self.assertIn("#SBATCH --job-name=atlas-weyl-g2-v2", raw)
         self.assertIn(
-            "#SBATCH --output=weyl-context-g2-v1-%j.out", raw)
+            "#SBATCH --output=weyl-context-g2-v2-%j.out", raw)
         self.assertIn("#SBATCH --nodes=1", raw)
         self.assertIn("#SBATCH --ntasks=1", raw)
         self.assertIn("#SBATCH --cpus-per-task=2", raw)
