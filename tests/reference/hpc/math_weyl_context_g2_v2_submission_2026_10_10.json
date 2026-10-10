@@ -1,0 +1,260 @@
+{
+ "campaign_ledger_records_after": 26,
+ "campaign_ledger_sha256_after": "00fec7012adfea285d3bf3e00a60d39b5fa4566d9607bbe1a2920aa825ff2efe",
+ "durable_submission_json": {
+  "acceptance_eligible": false,
+  "accepted_source": {
+   "final_files": 1561,
+   "final_hashes": {
+    "crates/atlas-core/src/session.rs": "cef588d9afc7fcd513ee1660758b229a8767c252adacdec7feea9737675de6aa",
+    "crates/atlas-real-group/src/root_system.rs": "cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9"
+   },
+   "inspection": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_2026_10_01.json",
+    "sha256": "a459fa08117ff8a721181d349467ebdd9267e798cd25b5bcb1380996c2d15e15"
+   },
+   "job": "3875239",
+   "oracle": {
+    "binary_sha256": "d4f0f3dc3a82102529aa2ec562db0601e99b368dee25d5539ca52dae2fd37a5a",
+    "commit": "7e1b958c7aa9456769cc9cf09ac1542814b4800a"
+   },
+   "parent_files": 1558,
+   "parent_source_manifest_sha256": "b027eee2efe72d0f8a20848f99cd6368c29e3884ce9be16a2e7b5c63577dd0da",
+   "patches": {
+    "hpc/patches/ladder_boundary_fix.patch": "cada2e341bfba80ee587acb966413ce8cb6297593d6394b93890e02cdd730e75",
+    "hpc/patches/ladder_boundary_tests.patch": "69676d60b16591851570f58bc62ddc3bfe3a80b0ec6dad64a8eff36a9f777ca9"
+   },
+   "report": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_report_2026_10_01.json",
+    "sha256": "771fc790dd4340f408235e50c3f6eee754ebe4c850cbad36d4af4f902a24627c"
+   },
+   "review": {
+    "file": "tests/reference/hpc/math_ladder_boundary_after_v3_index_review_2026_10_01.json",
+    "sha256": "3c0eed61cc5bf6af809096da73ac4bf1d8217b5cc81954a2e8000e5da44f9b58"
+   },
+   "sealed_fixture_hashes": {
+    "tests/math/generics/root_ladder_coordinate_boundary.atlas": "dc88d6606ae855b618dcf12589ecde82edcbe482873a94bcff1001163691ec65",
+    "tests/math/generics/root_ladder_coordinate_boundary.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/math/generics/root_ladder_coordinate_boundary.oracle.stdout": "3a7fdade43c46cf4f3048b52cf81f282db060012951ee559296f017f7d3eab80"
+   },
+   "source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+   "tests_only_hashes": {
+    "crates/atlas-core/src/session.rs": "cef588d9afc7fcd513ee1660758b229a8767c252adacdec7feea9737675de6aa",
+    "crates/atlas-real-group/src/root_system.rs": "109076ec05cf25e532fc7a951af0cbf5a725efefb318d35c2172a4528fd999f7"
+   }
+  },
+  "atlas_processes": 4,
+  "cache_gate_released": false,
+  "cargo_builds": 1,
+  "cargo_test_commands": 3,
+  "catalog": {
+   "cases": [
+    {
+     "file": "weyl_context_g2_cold_dual.atlas",
+     "fixture_sha256": "70c3e09e3678d149f46d844d2a47c3024050452a1383116784e577d953fa8c50",
+     "id": "weyl_context_g2_cold_dual",
+     "input_bytes": 2025,
+     "input_sha256": "9ea25f2d0f38c79d439d210ee2e467f10b74891b0593e71bd2aad440f3b82e51",
+     "intent": "accept",
+     "order": [
+      "oracle",
+      "rust"
+     ],
+     "timeout_seconds": 45
+    },
+    {
+     "file": "weyl_context_g2_prewarmed_dual.atlas",
+     "fixture_sha256": "06d3816d4636f2d25d46f96f1efa5417c598c4b6511d42f37d2fec61c8e05921",
+     "id": "weyl_context_g2_prewarmed_dual",
+     "input_bytes": 1561,
+     "input_sha256": "3907ff5b0deb8ffde2ef2b12d20b0132b3831b98674e42bdb62d67a47fcba44f",
+     "intent": "reject",
+     "order": [
+      "rust",
+      "oracle"
+     ],
+     "timeout_seconds": 45
+    }
+   ],
+   "file": "tests/math/generics/weyl_context_g2_catalog.json",
+   "fresh_processes": 4,
+   "sha256": "179d47814aa7526753f2a6dcdff9b23def9a09cbcabe5f96ec9d24dd2bef3bbd"
+  },
+  "fresh_processes": 4,
+  "g2": {
+   "fixture_bytes": {
+    "tests/math/generics/weyl_context_g2_cold_dual.atlas": 1928,
+    "tests/math/generics/weyl_context_g2_prewarmed_dual.atlas": 1454
+   },
+   "fixture_hashes": {
+    "tests/math/generics/weyl_context_g2_cold_dual.atlas": "70c3e09e3678d149f46d844d2a47c3024050452a1383116784e577d953fa8c50",
+    "tests/math/generics/weyl_context_g2_prewarmed_dual.atlas": "06d3816d4636f2d25d46f96f1efa5417c598c4b6511d42f37d2fec61c8e05921"
+   },
+   "repair_patches": {
+    "hpc/patches/weyl_context_core_repair.patch": "1ad07e8fedf17162c8282c168d423b7f3dfcfb6e847b0d883b4fb8497dea59f7"
+   },
+   "repaired_source": {
+    "files": 1567,
+    "parent_files": 1567,
+    "parent_source_manifest_sha256": "55f807cadb712377cbf6c0c79250b1d5e739e9757290a24209a086f89632850f",
+    "source_manifest_sha256": "84a3fbfd977c61807fb9da5ef2295ed3057ab1e44c8466958f75e04d94ec78fd"
+   },
+   "repaired_source_hashes": {
+    "crates/atlas-core/src/domain_builtins.rs": "e6987e7cfc76674665184085cf639e2eb549ad9d7201bdb9c4f06419a39e6de5",
+    "crates/atlas-core/src/domain_builtins/weyl_subgroup.rs": "86d52b4f7228b300ad7ed0a38c526fd14f14003dfa034e4edf4f0e0102c63780",
+    "crates/atlas-core/src/typed.rs": "614975c5e2d49357b4d9ffff80145a6c69db2fd5aeef23f033faf03f594acc95"
+   },
+   "source": {
+    "files": 1569,
+    "parent_files": 1567,
+    "parent_source_manifest_sha256": "84a3fbfd977c61807fb9da5ef2295ed3057ab1e44c8466958f75e04d94ec78fd",
+    "source_manifest_sha256": "dff0e90d2830ba3e5dfd95cee950ba47f7683a20fe829c43850ee77095ca34bd"
+   }
+  },
+  "job": "3917866",
+  "lifecycle": {
+   "changed_input_reasons": [
+    "Preserve the FINAL FAILED G2-v1 job 3917366 (harness input gap: the stage never installed the core catalog that the retained A1-contract checker reads; zero Cargo/Atlas/math ran) as the immutable direct predecessor and bind its exact report, tree, twenty-five-record ledger and failure evidence.",
+    "Add the missing input tests/math/generics/weyl_context_core_catalog.json (the 9f0be600 migration kept the checker that reads it while dropping it from the input list) plus the v1 failure evidence file; all other inputs are byte-identical to the v1 payload.",
+    "The A1-bounded Weyl owner/dual repair gate after-v5 (accepted FINAL job 3900050) remains the mathematical predecessor, bound through the preserved v1 stage's own after-v5 descriptor.",
+    "Advance the case set from the A1 cold/prewarmed pair to the G2 asymmetric-interface pair (noncommuting words, order-6 braid relation, both dual directions, prewarmed-numbering incompatibility) with provisional source-derived predictions; the A1 cases stay pinned in the contract as historical evidence.",
+    "Build the exact accepted after-v5 production tree (parent seal, two ladder patches, regression patch, repair patch, six A1 fixtures and goldens; 1567 files, manifest 84a3fbfd\u2026) and add only the two G2 fixtures, for a 1569-file G2 source manifest.",
+    "Run four fresh original/Rust CLI captures under the capture classifier (complete regardless of prediction match), the 632-test inventory, the passing A1 regressions and the retained ladder control; release no mathematical, cache, rank or performance gate."
+   ],
+   "predecessor_stage": "weyl-context-g2-v1",
+   "retention_class": "ACTIVE_GATE_COMPACT",
+   "retirement_condition": "FINAL independent inspection, focused commit and push, zero live or uncertain job ownership, verified campaign-CAS closure, and separate explicit exact-path deletion authorization.",
+   "stage": "weyl-context-g2-v2"
+  },
+  "math_gate_released": false,
+  "max_outstanding": 10,
+  "parent_seal_object": {
+   "bytes": 12488095,
+   "role": "weyl-parent-seal",
+   "schema": "atlas-campaign-blob-v1",
+   "sha256": "db67234c0d67dbd6a6f0327386dd113b6093d25a46569710c33dfc8bc482cdcb"
+  },
+  "performance_gate_released": false,
+  "pin_sha256": "35364c302ef19bf55687ed6b4dabac30d170a0e41329e7e384424af9565dc78e",
+  "predecessor": {
+   "campaign_ledger_records": 25,
+   "campaign_ledger_sha256": "dfa0dbde19bc5d49f7a2f99855f34c8f0ef84775e51bd8c85563ce1e3922b38d",
+   "job": "3917366",
+   "override_manifest_sha256": "d7c293aa74f9489bbd3e77de18731647bcda55f03a097a7635083faec3e7c7e3",
+   "pin_sha256": "36cb2c383462f0ffcad31866d7d26de4392c24c78fac5b48698a2bb85617b718",
+   "report_bytes": 55477,
+   "report_sha256": "162c7e4c1fd407241cfaf071d68d806a900946ee96b7b46bc2633fff6484de59",
+   "result_evidence": {
+    "bytes": 3031,
+    "file": "tests/reference/hpc/math_weyl_context_g2_v1_failure_2026_10_10.json",
+    "sha256": "c03088f615643e3703a39ee2cdaabd53db1d6291a9fee0dc8f912d35aba86e4b"
+   },
+   "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-g2-v1",
+   "stage_creation_contract_sha256": "6fcd0157a95a68e9489d7a72d80d5c346a798d015ff42eae2439df9bf1be77f0",
+   "stage_creation_sha256": "bfa2e43a1e2ae9b37184f3e3cec26481991f150656b5ad3485ee7e8e96a99467",
+   "stage_creation_transaction_sha256": "a71117312e20fff342f593a92dc0231effad696525545c101b3791c07dfdcef7",
+   "stage_tree_bytes": 4981671,
+   "stage_tree_directories": 18,
+   "stage_tree_files": 150,
+   "stage_tree_sha256": "498358ceb030150424eef6cc7d6662b24736b92be6f68f42ea7638371042f5b0",
+   "submission_evidence": {
+    "bytes": 14543,
+    "file": "tests/reference/hpc/math_weyl_context_g2_v1_submission_2026_10_10.json",
+    "sha256": "1029b7946f39e901180b5801147f3146461cdf7d03942ef29c78dee21d222edf"
+   },
+   "submission_intent_sha256": "a0fb74ef8051ec24847711d0bf75cfcc966fb91c23b62bbd922036708c409209",
+   "submission_receipt_sha256": "e0262a9437c913076f2698dbf0ed14e8214a73cbf3028993f5bf09be5d073547"
+  },
+  "queue_before": [
+   "3904926"
+  ],
+  "rank_gate_released": false,
+  "regression": {
+   "catalog": {
+    "bytes": 5208,
+    "file": "tests/math/generics/weyl_context_core_regression_catalog.json",
+    "sha256": "6a9f960753bcd2afb575cb5207d4310f21a5694505d02a83f4e4142211eaa634"
+   },
+   "expected_inventory": 632,
+   "fixture_bytes": {
+    "tests/math/generics/weyl_context_core_cold_dual.atlas": 1815,
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr": 0,
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout": 911,
+    "tests/math/generics/weyl_context_core_prewarmed_dual.atlas": 1275,
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr": 501,
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout": 572
+   },
+   "fixture_hashes": {
+    "tests/math/generics/weyl_context_core_cold_dual.atlas": "4eff8fa08f8490e242f07282125b83cde1daf24a875fe8df4dc7e73e75a0ae99",
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/math/generics/weyl_context_core_cold_dual.oracle.stdout": "7a614e47b75469c441e774cbe46769dcd769c5cc0a2a31cf1868ff9b59a780dc",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.atlas": "f13d704175f702b966790bf82e56c837dd80a594f0dc2dcd0d6b81ba281799a2",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stderr": "ef4404d85f7252a611f9f4e4a5205fe6bbac2c66f48b7378a30a8053f986e157",
+    "tests/math/generics/weyl_context_core_prewarmed_dual.oracle.stdout": "5074aab3290d4ae404bb7abb0b24ccc99036f616abec518c6479e59ec2db021f"
+   },
+   "inspection": {
+    "bytes": 11902,
+    "file": "tests/reference/hpc/math_weyl_context_core_capture_v8_inspection_2026_10_02.json",
+    "sha256": "b2c7f4ece709df3506c3224a57abad896f3ecfcd6625fea97731619f629e1da3"
+   },
+   "patches": {
+    "hpc/patches/weyl_context_core_regressions.patch": "ccd3009892dbeae2f146dff9924efa6d6bede3dca910d026c8f3ab3e1b4c49cf"
+   },
+   "retained_control": "session::tests::root_ladder_coordinate_boundary_original",
+   "selector_tests": [
+    "session::tests::weyl_context_core_cold_dual_original",
+    "session::tests::weyl_context_core_prewarmed_dual_original"
+   ],
+   "source": {
+    "files": 1567,
+    "parent_files": 1561,
+    "parent_source_manifest_sha256": "d2a6367379432c1ed09b90c903a072cfce0fb463349032100dd644db7c3fc213",
+    "source_manifest_sha256": "55f807cadb712377cbf6c0c79250b1d5e739e9757290a24209a086f89632850f"
+   },
+   "source_hashes": {
+    "crates/atlas-core/src/session.rs": "969cdb27ccae61ca4fe3e36219801037d475517bee3614fead553024818307e7",
+    "crates/atlas-real-group/src/root_system.rs": "cc6a1764e1c2425f7de8b4c27ca34a8bdc855c764d6db2a6ab9d6092e7b8cfe9"
+   }
+  },
+  "retired_stager_object": {
+   "bytes": 311925,
+   "role": "retired-stager-bundle",
+   "schema": "atlas-campaign-blob-v1",
+   "sha256": "550b1330ec8806d1343d50d6ceb8488f89eb03546f6bb37c538cb5cd460e9b09"
+  },
+  "schema": "atlas-weyl-context-g2-submission-v1",
+  "scope": "G2 Weyl owner/dual capture on the accepted repaired production tree: two G2 fixtures with provisional source predictions, four fresh original/Rust CLI processes, the 632-test inventory, the passing A1 regressions and one retained ladder control. No mathematical, cache, performance, parallel, rank or index release.",
+  "script": "hpc/math_weyl_context_core_capture.sbatch",
+  "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-g2-v2",
+  "stage_creation_sha256": "b02431a1de5c6c64c65b9be5d5d820319d7b270888592e8520563bb40a511557",
+  "status": "SUBMITTED_NOT_VERIFIED",
+  "storage_policy": "One existing-campaign child. Expanded source, Cargo target, materialized binaries and scripts are job-local and disposable.",
+  "test_counts": {
+   "test-campaign-stage-creation": 32,
+   "test-math-weyl-context-core-capture": 28,
+   "test-progressive-submit": 17,
+   "test-stager-allowlist": 7,
+   "test-weyl-context-core-contract": 24,
+   "test-weyl-context-core-regression-contract": 21
+  }
+ },
+ "instruction": "Do not resubmit under this stage name, no sibling stage; see the v3 changed-input successor.",
+ "job": "3917866",
+ "notes": [
+  "v2 added the missing core-catalog input and the v1 failure evidence; the v2 job then FAILED in the first checker suite on a stale pin schema literal in the synthetic creation suite (see math_weyl_context_g2_v2_failure_2026_10_10.json). Zero Atlas/Cargo/math ran in v2."
+ ],
+ "overrides_sha256": "70fa22256179116f0b3a6c5a04307edcc0d76e10a9ae32000e3221301f24c2a8",
+ "pin_sha256": "35364c302ef19bf55687ed6b4dabac30d170a0e41329e7e384424af9565dc78e",
+ "predecessor": "weyl-context-g2-v1 (job 3917366, FINAL FAILED harness input gap, immutable)",
+ "queue_before": [
+  "3904926"
+ ],
+ "queue_before_note": "3904926 is the unrelated e6-graph-merge job, not this campaign",
+ "recorded_at_utc": "2026-10-10T06:35:00Z",
+ "schema": "atlas-weyl-context-g2-submission-record-v1",
+ "stage": "weyl-context-g2-v2",
+ "stage_creation_sha256": "b02431a1de5c6c64c65b9be5d5d820319d7b270888592e8520563bb40a511557",
+ "status": "SUBMITTED_NOT_VERIFIED",
+ "submission_json_sha256": "54d92f294d964c94880bbd0517c215b723e9bc9c6a9b26a5d350d0c9b9b69de6",
+ "transport_tar_sha256": "1a41a4999e8978850c171357caa939543e9272d7fe0075f4787688446302933b"
+}

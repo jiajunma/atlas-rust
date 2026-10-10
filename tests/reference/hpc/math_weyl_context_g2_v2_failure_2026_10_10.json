@@ -1,0 +1,51 @@
+{
+ "campaign_ledger_after": {
+  "records": 26,
+  "sha256": "00fec7012adfea285d3bf3e00a60d39b5fa4566d9607bbe1a2920aa825ff2efe"
+ },
+ "date": "2026-10-10",
+ "failed_gate": {
+  "error": "ValueError: stage-creation pin descriptor changed (at _validate_creation_contract)",
+  "missed_site": "hpc/test_campaign_stage_creation.py pin schema literal (validator requires atlas-weyl-context-g2-pin-v2)",
+  "root_cause": "the v2 migration updated ACTIVE_STAGE_NAME/PIN_NAME/PIN_SCHEMA in the stager, progressive_submit and the driver's sbatch, and the pin path in test_campaign_stage_creation.py, but missed the synthetic contract builder's pin schema literal 'atlas-weyl-context-g2-pin-v1' (two places); every create_fixed_stage call in the suite then failed the pin descriptor check",
+  "suite": "test-campaign-stage-creation"
+ },
+ "final_state": "FAILED 1:0 on cu014; extern step COMPLETED",
+ "job": "3917866",
+ "lesson": "the v1->v2 migration traced the hash-pinned names but missed a plain string literal in the synthetic contract builder; when a validator's pinned values change, grep the WHOLE payload for the old literal, not only the names found in the previous failure",
+ "no_mathematical_content": {
+  "cargo_builds": 0,
+  "complete": false,
+  "invocations": "[] (zero Atlas invocations)",
+  "note": "the v2 failure occurred in the first checker suite before any Cargo build, Atlas process or capture; a harness/test failure, not a mathematical result; grants no evidence about the G2 witness"
+ },
+ "report": {
+  "bytes": 54720,
+  "commands_note": "commands list empty: the driver stopped at the first failed checker command (test-campaign-stage-creation: 32 tests, 55 failures + 39 errors, all 'stage-creation pin descriptor changed'); no other suite ran",
+  "node": "cu014",
+  "path": "results/3917866/report.json",
+  "sha256": "5ff939ff2413c4198c299c2278e466c1b0247ac78c93873d47a6ba20b260ab0a",
+  "status_field": "WEYL_CONTEXT_G2_HARNESS_FAILURE"
+ },
+ "report_sha256_file": {
+  "bytes": 65,
+  "path": "results/3917866/report.sha256",
+  "sha256": "3344fc7e2a2544b9dd9280154883cefba9b0cd3d5704e2c3a1c72c67a86041fe"
+ },
+ "schema": "atlas-weyl-context-g2-failure-v2",
+ "slurm_out_sha256": "66306e3ad725806e912b9e572f20a1231e8b259ea13199e38e632f54c045d9b3",
+ "stage": "/public/home/majj/atlas-rust-campaign-20260930/stages/weyl-context-g2-v2",
+ "stage_state_at_failure": {
+  "stage_device": 3431958692,
+  "stage_inode": 162130670829739142,
+  "stage_tree_bytes": 5202230,
+  "stage_tree_directories": 19,
+  "stage_tree_files": 150,
+  "stage_tree_sha256": "b202a31a18c7af99b5f2bd984165845d37a17b91ce57c63d0e2e79ee4b302bf4"
+ },
+ "status": "FINAL_FAILED_HARNESS_STALE_PIN_SCHEMA_IN_SYNTHETIC_CREATION_SUITE",
+ "submission_record": {
+  "file": "tests/reference/hpc/math_weyl_context_g2_v2_submission_2026_10_10.json",
+  "note": "written at v2 FINAL collection; sha recorded in the v3 stager binding"
+ }
+}
