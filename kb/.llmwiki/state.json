@@ -530,18 +530,15 @@
       "compiledAt": "2026-10-10T01:34:02.267Z"
     },
     "real-form-labels-order.md": {
-      "hash": "1941572ec78b4058b4475f8b18beb2e7db1ca04960779cf6140d72d0d0270013",
+      "hash": "23534d503b31ab5876183a779647baa79498517f9e7d1c0c3326bb765cd22625",
       "concepts": [
-        "cayley-回拉与模二-grading-求解",
         "specialgrading-的分区代表与位集编码",
         "twist-fixed-生成元的有序基校验",
-        "局部标签到外部编号的类型组合",
         "弱实形式的外部编号与严格排序",
         "弱实形式的局部到全局标签映射",
-        "虚根上的基-grading-扩展",
         "非紧虚根正交集的深度计算"
       ],
-      "compiledAt": "2026-10-10T01:37:00.481Z"
+      "compiledAt": "2026-10-10T02:02:36.688Z"
     },
     "twisted-involution-trio.md": {
       "hash": "b783154e20d31474660cc2dc9bfde380b9a2f64d780f96350452b0fa1220d53c",

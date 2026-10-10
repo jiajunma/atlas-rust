@@ -2157,3 +2157,16 @@ try_from。定性为潜在健壮性缺口而非已证实错误（系数来自子
 《矩阵提取的方阵校验与诊断分流》）；双重移植页的共享算法句曾把
 `inverse_cartan` 误用于 alcove 侧（其助手实为 `rational_inverse`），
 按规则 5 改稿后批准。最终：622 concepts / 78 sources / Fresh / 0 待审。
+## [2026-10-10T02:01:48Z] compile | 1 source(s) → 0 page(s)
+- Sources: real-form-labels-order.md
+
+
+## 2026年10月10日 real_form_order 两处源码观察的精确核实
+
+对照源码确认 real-form-labels-order 包的两处清理候选（均非缺陷）：
+`DepthTables::build` 的零效果空转循环定位于 real_form_order.rs:182-185
+（`let _ = slot; let _ = value;` 双弃绑，真正的列和累加紧随其后）；
+`weight_sum`（454-466）的 `Result<Option<Weight>, _>` 每个 Ok 路径都是
+`Some`（秩不符走 Err），唯一调用点 264 行的 `if let Some` 恒取分支，
+Option 层为两端均无强制的残留。包体已补精确行号与定性；refresh 产生
+5 候选（两页携带新内容），核读后全部批准。622 页 Fresh 不变。

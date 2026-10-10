@@ -178,7 +178,7 @@
 - **[[tokencursor-单-token-前瞻|TokenCursor 单 Token 前瞻]]** — TokenCursor 通过 peek 与 bump 提供单 token 前瞻，并缓存词法错误以保证前瞻和消费观察到相同结果。
 - **[[torus-部分的模二矩阵传输|Torus 部分的模二矩阵传输]]** — 实现以对合记录中 WeylAction 的模二矩阵传输替代上游 push_across 与 pull_across 的词遍历，但来源不提供性能验证。
 - **[[transducer-转移表编码|Transducer 转移表编码]]** — 每个抛物子商对应一个 Transducer，平铺表中 entry<size 表示 shift，entry≥size 表示 transduction，输出生成元由 entry−size 解码。
-- **[[twist-fixed-生成元的有序基校验|twist-fixed 生成元的有序基校验]]** — verified_generator_map 校验 twist-fixed 简单生成元与伴随 fiber 的维数及实际有序基对应关系，并拒绝下标至少为 127 的生成元。
+- **[[twist-fixed-生成元的有序基校验|twist-fixed 生成元的有序基校验]]** — verified_generator_map 校验固定简单生成元与伴随 fiber 的维数及实际有序基对应关系，并拒绝下标至少为 127 的生成元。
 - **[[twisted-cross-action-的-bfs-轨道构建|Twisted cross-action 的 BFS 轨道构建]]** — 以 s_g·w·s_twist(g) 生成邻居，通过前向根置换去重并保存 cross_links；简单反射预先构造，Cayley/Cross 分解按 Cartan 类计算。
 - **[[twisted-involution-枚举与共轭轨道分区|Twisted involution 枚举与共轭轨道分区]]** — 稳定的 twisted involution 列表与带成员查询的完整共轭分区职责不同，classes 是分区的薄封装，轨道代表元不保证 Atlas-canonical，结果不能直接视为 Cartan classes。
 - **[[twisted-involution-的三阶段规范化|Twisted involution 的三阶段规范化]]** — canonicalize 依次优势化正实根与正虚根之和、选取共同正交生成元并保持残余复子系统正性；受限版本将残余生成元与 active 取交。
@@ -404,8 +404,8 @@
 - **[[弱实形式归因的来源与整性门控|弱实形式归因的来源与整性门控]]** — 归因依次校验秩、分类来源、datum、双矩阵分解及代表元身份，并在提取虚根 grading 前要求投影与每个单根的配对均为整数。
 - **[[弱实形式的-cartan-集与唯一-most-split-类|弱实形式的 Cartan 集与唯一 most-split 类]]** — 弱实形式数量来自 fundamental partition，每个形式关联按编号升序排列的 Cartan 集及唯一的 most-split 类。
 - **[[弱实形式的伴随-cartan-纤维轨道划分|弱实形式的伴随 Cartan 纤维轨道划分]]** — WeakRealFormPartition 将伴随 Cartan fiber 划分为 W_im 轨道，保存类表及确定性代表元，标签与强实层由其他结构承担。
-- **[[弱实形式的外部编号与严格排序|弱实形式的外部编号与严格排序]]** — ExternalFormOrder 按 depth 与 specialGrading 位集严格排序建立编号双射，拒绝并列且要求 quasisplit 居末；compact 居首仅为文档声明。
-- **[[弱实形式的局部到全局标签映射|弱实形式的局部到全局标签映射]]** — RealFormLabels 按序校验来源、对合与分解，将逐 Cartan 的局部弱实类映射到 fundamental 分区编号，并要求首标签为 quasisplit 类。
+- **[[弱实形式的外部编号与严格排序|弱实形式的外部编号与严格排序]]** — ExternalFormOrder 按 depth 与 specialGrading 位集建立严格排序双射，拒绝并列并要求 quasisplit 居末；compact 居首仅为文档声明。
+- **[[弱实形式的局部到全局标签映射|弱实形式的局部到全局标签映射]]** — RealFormLabels 经来源与对合校验、Cayley 回拉及模二求解，将逐 Cartan 局部类映射到 fundamental 分区，并要求首标签为 quasisplit 类。
 - **[[强代表下降到基本纤维|强代表下降到基本纤维]]** — 按外部生成元顺序选择首个左下降，实根执行逆 Cayley，其余执行 based twisted 共轭，直至 Weyl 部分为恒等并归约。
 - **[[强实分类打印的折行处理|强实分类打印的折行处理]]** — 来源将 print_strong_real 描述为移植 output::printStrongReal 并结合 ioutils::foldLine 折行，但未提供字节兼容性验收。
 - **[[强实分类打印视图-strongrealclassprint|强实分类打印视图 StrongRealClassPrint]]** — 打印视图提供提升到 fundamental fiber 后的平方类号、非负模分母平方分子及按轨道分划顺序排列的外部实形式编号；上游对应关系仅转述自源码注释。
@@ -608,7 +608,7 @@
 - **[[限制根的可乘性ismultipliable|限制根的可乘性（is_multipliable）]]** — 通过二倍限制权类是否仍为限制根判定可乘性；A2 测试提供可乘锚点，但来源未验收其与 BC 型非约化根系的关系。
 - **[[限制根系的纤维聚合与有序查询|限制根系的纤维聚合与有序查询]]** — 校验 datum 与格秩后，跳过限制为零的根并按限制权聚合纤维，以坐标字典序存储和二分查询，rank 取对合的反不变秩。
 - **[[陪集树到-weyl-词的转换|陪集树到 Weyl 词的转换]]** — convert_to_words 沿陪集树展开，将每步反射词左乘到父段条目上，并与子群见证序及词对权的作用约定配对。
-- **[[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]** — DepthTables 按固定正虚根顺序贪心选取极大正交非紧根集，移除非正交候选，并翻转与选中根正交但和仍为根的候选紧性。
+- **[[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]** — DepthTables 按固定正虚根顺序贪心选择极大正交非紧根集，移除非正交候选，并翻转与所选根正交但和仍为根的候选紧性。
 - **[[顶层会话事件的输出规则|顶层会话事件的输出规则]]** — 非 void 值添加 Value: 前缀，报告按包含深度每层缩进两空格，原始字节报告通过字节保留路径输出。
 - **[[领域值提取器与隐式-lietype-转换|领域值提取器与隐式 LieType 转换]]** — 共享提取器接受 LieType 或解析字符串，并将无法收窄为 usize 的整数报告为非负机器整数要求。
 - **[[领域值的结构等值与属主身份|领域值的结构等值与属主身份]]** — 领域值按变体定义结构等值，实形结构比较与属主指针身份分离，而 Weyl 元素另须满足抽象群身份约束。
@@ -625,4 +625,4 @@
 - **[[饱和整数核saturatedkernel|饱和整数核（saturated_kernel）]]** — 预算检查后以行列混合约化跟踪幺模右因子 V，取零对角元对应的 V 列构造完整整数核，不采用有理行约化后通分的方法。
 - **[[高度受限的块形变|高度受限的块形变]]** — block_deformation_to_height 返回高度界内按逆块序排列的形变项及已消费项标志，并以填充完整 KL 表替代上游 plug_hole 优化。
 
-_622 pages | Generated 2026-10-10T01:55:24.797Z_
+_622 pages | Generated 2026-10-10T02:02:37.718Z_

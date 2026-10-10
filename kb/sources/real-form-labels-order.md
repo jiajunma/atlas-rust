@@ -62,8 +62,13 @@ twist-fixed 简单生成元上的无符号位集（生成元 0 = 最低位）比
 闸门 `"integral imaginary-simple coordinates"`）。`depth` 为贪心极大正交集：
 选取保持 `positive_imaginary` 顺序的首个 noncompact 根；与其不正交的候选
 被移出 noncompact；正交但其和仍为根的候选（非单 lace 型的短根对）被
-**翻转** compactness。（该函数含一段无效果的空转循环——死代码观察，已记录
-待清理评估。）
+**翻转** compactness。两处源码观察（2026-10-10 对照源码确认，均为清理
+候选而非缺陷）：`DepthTables::build` 在 182–185 行有一段零效果空转循环
+（`for (slot, value) in column.iter().enumerate() { let _ = slot; let _ =
+value; }`，紧随其后才是真正的列和累加）；`weight_sum`（454–466）返回
+`Result<Option<Weight>, _>`，但每个 Ok 路径都是 `Some`（秩不符走 Err），
+唯一调用点（264 行）的 `if let Some(sum)` 恒取该分支——Option 层是残留，
+两端均无强制。
 
 `verified_generator_map`：twist-fixed 简单生成元（升序）与伴随 fiber 维数
 必须相等；逐位校验**实际有序基**（非抽象双射——`special_grading_key` 按此

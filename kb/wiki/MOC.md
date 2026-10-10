@@ -193,7 +193,6 @@
 - [[grading-shifts-的忠实性不变量|Grading shifts 的忠实性不变量]]
 - [[grading-的位向量类型纪律|Grading 的位向量类型纪律]]
 - [[quasisplit-规范化与-grading-的仿射线性求值|Quasisplit 规范化与 grading 的仿射线性求值]]
-- [[specialgrading-的分区代表与位集编码|specialGrading 的分区代表与位集编码]]
 - [[代表元级弱实形式归因|代表元级弱实形式归因]]
 - [[最小环面部分的-grading-轨道搜索|最小环面部分的 grading 轨道搜索]]
 - [[基于位掩码的-wim-轨道枚举|基于位掩码的 W_im 轨道枚举]]
@@ -846,6 +845,7 @@
 ## 分级
 
 - [[specialgrading-的-bourbaki-序拉回与因子切片|specialGrading 的 Bourbaki 序拉回与因子切片]]
+- [[specialgrading-的分区代表与位集编码|specialGrading 的分区代表与位集编码]]
 - [[titscoset-的-grading-offset-与完整-inner-class-门控|TitsCoset 的 grading offset 与完整 inner-class 门控]]
 - [[分级打印中的置换回拉|分级打印中的置换回拉]]
 - [[虚根的-noncompact-grading|虚根的 noncompact grading]]
@@ -1214,6 +1214,10 @@
 - [[自定义实形的种子与上下文构造|自定义实形的种子与上下文构造]]
 - [[规范实形的编号映射与弱缓存|规范实形的编号映射与弱缓存]]
 
+## 实形式排序
+
+- [[specialgrading-的分区代表与位集编码|specialGrading 的分区代表与位集编码]]
+
 ## 实现边界
 
 - [[实-weyl-层的移植范围与刻意省略|实 Weyl 层的移植范围与刻意省略]]
@@ -1579,6 +1583,7 @@
 - [[parabolicpieces-的抛物分解与排序键|ParabolicPieces 的抛物分解与排序键]]
 - [[tau-packet-与-kgb-元素编号标准化|tau packet 与 KGB 元素编号标准化]]
 - [[反射子群轨道的稳定排序规则|反射子群轨道的稳定排序规则]]
+- [[弱实形式的外部编号与严格排序|弱实形式的外部编号与严格排序]]
 - [[根子集的非正交连通分量及顺序|根子集的非正交连通分量及顺序]]
 - [[根系正性判定与环境坐标排序的分离|根系正性判定与环境坐标排序的分离]]
 - [[根编号与负根镜像排序|根编号与负根镜像排序]]
@@ -1753,6 +1758,10 @@
 
 - [[文件输入的有损-utf-8-解码|文件输入的有损 UTF-8 解码]]
 
+## 有序基
+
+- [[twist-fixed-生成元的有序基校验|twist-fixed 生成元的有序基校验]]
+
 ## 有序查询
 
 - [[限制根系的纤维聚合与有序查询|限制根系的纤维聚合与有序查询]]
@@ -1818,7 +1827,6 @@
 - [[ambient-映射的子商下降验证|Ambient 映射的子商下降验证]]
 - [[basedrootdatum带基根数据与构造不变量|BasedRootDatum：带基根数据与构造不变量]]
 - [[kgb-构造的前置门控与不变量|KGB 构造的前置门控与不变量]]
-- [[twist-fixed-生成元的有序基校验|twist-fixed 生成元的有序基校验]]
 - [[伴随-cartan-纤维的构建与下降验证|伴随 Cartan 纤维的构建与下降验证]]
 - [[实-weyl-群与块稳定子的构造|实 Weyl 群与块稳定子的构造]]
 
@@ -1998,6 +2006,7 @@
 - [[基本纤维与平方类播种|基本纤维与平方类播种]]
 - [[对偶分量群的-fiber-rank|对偶分量群的 fiber rank]]
 - [[平方类编号与换基不变量|平方类编号与换基不变量]]
+- [[弱实形式的局部到全局标签映射|弱实形式的局部到全局标签映射]]
 - [[挠部分打包与-involution-图像基|挠部分打包与 involution 图像基]]
 - [[整对合的-compactcomplexsplit-因子计数|整对合的 compact、complex、split 因子计数]]
 - [[整数基的模-2-归约|整数基的模 2 归约]]
@@ -2552,6 +2561,7 @@
 ## 虚根
 
 - [[虚根的-noncompact-grading|虚根的 noncompact grading]]
+- [[非紧虚根正交集的深度计算|非紧虚根正交集的深度计算]]
 
 ## 行列式
 
@@ -2946,6 +2956,7 @@
 - [[cartan-矩阵输入契约与连通分量划分|Cartan 矩阵输入契约与连通分量划分]]
 - [[cartan-类型识别的输入校验边界|Cartan 类型识别的输入校验边界]]
 - [[realformseed-的构建门控与自定义种子|RealFormSeed 的构建门控与自定义种子]]
+- [[twist-fixed-生成元的有序基校验|twist-fixed 生成元的有序基校验]]
 - [[weyl-词与单生成元的整数校验差异|Weyl 词与单生成元的整数校验差异]]
 - [[weyl-词条目的有序校验|Weyl 词条目的有序校验]]
 - [[原型-rootdatum-的构造校验与配对约定|原型 RootDatum 的构造校验与配对约定]]
