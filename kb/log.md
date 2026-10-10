@@ -2184,3 +2184,18 @@ Option 层为两端均无强制的残留。包体已补精确行号与定性；r
 纯措辞层、无数学后果——合法调用点两侧秩均等于格秩，该错误仅是
 腐败态守卫。包备注已补此句；refresh 5 候选核读后全部批准。622 页
 Fresh 不变。
+## [2026-10-10T02:14:59Z] compile | 2 source(s) → 0 page(s)
+- Sources: involution-table.md, real-projection.md
+
+
+## 2026年10月10日 involution 表静默覆盖观察的数学闭合
+
+核对 involution-table 包的「种子插入无碰撞检查」阅读观察并升级为精确
+结论：`index_by_permutation.insert`（541 行）确无碰撞检查，但**静默
+覆盖在表自身不变量下数学上不可达**：键是 Weyl 因子 w 的完整根置换
+（忠实决定 w），固定 δ 后 w 唯一决定 θ=wδ；同一内类的 Cartan 轨道是
+两两不交的扭曲共轭类，故不同 add_cartan 的键集合不交；同类重复由
+入口幂等检查拦下，同一 BFS 内重复先撞 273 行 lookup。真正保留的
+调用方契约仅剩 `lookup` 文档已注明的 same-cardinality 外来根系元素
+（跨根系同形置换可撞键，根数匹配是唯一结构性防线）。包已更新；
+refresh 8 候选核读全部批准。622 页 Fresh 不变。

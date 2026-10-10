@@ -57,8 +57,14 @@ involutions.cpp:242-243）；每访问一个节点推入一条 `cross_links`（�
 `cross` 是存储直查）。`push_record` 里，`(1+θ)ρ` 以 `(2ρ + θ·2ρ)/2` 计算
 （奇坐标报 `"theta rho parity"`）；传送的投影先 `check_against` 本记录新鲜
 推导的 θ 再采用（边数学对账），种子处则 `RealProjection::build`。
-**种子插入 `index_by_permutation` 无碰撞检查**——`BTreeMap::insert` 同键
-静默覆盖，依赖不同 Cartan 轨道键不重叠的调用纪律（阅读观察）。
+`push_record` 里，`index_by_permutation.insert(key, id)`（541 行）是裸
+`BTreeMap::insert`，无碰撞检查。**2026-10-10 核对结论：静默覆盖在表的
+自身不变量下数学上不可达**——键是 Weyl 因子 `w` 的完整根置换，而根置换
+忠实决定 `w`，`w` 又经固定的 `δ` 唯一决定 `θ=wδ`；同一内类的 Cartan
+轨道是扭曲共轭类，两两不交，因此不同 `add_cartan` 的键集合不交；同类
+内重复添加被顶部幂等检查拦下，同一 BFS 内的重复则先撞 273 行的 lookup。
+真正保留的调用方契约只有一条：`lookup` 文档已注明的 same-cardinality
+外来根系元素（跨根系的同形置换可能撞键；根数匹配是唯一结构性防线）。
 条目上限是包含式（`records.len() == max_involutions` 即拒，
 `InvolutionTableResourceLimit { resource: "involutions" }`）。
 

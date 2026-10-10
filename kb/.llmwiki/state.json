@@ -103,27 +103,19 @@
         "图像坐标计算与提升映射",
         "图像基接口的维度与算术安全边界",
         "图像基的典范播种与轨道传送纪律",
-        "图像基算法的测试锚点与证据范围",
         "对合的-1θx-图像基对",
-        "幺模矩阵求逆与分解自校验",
         "整数列阶梯归约与带符号-gcd-扫描"
       ],
-      "compiledAt": "2026-10-10T01:27:59.239Z"
+      "compiledAt": "2026-10-10T02:16:44.078Z"
     },
     "involution-table.md": {
-      "hash": "488dd2c5d92e8488036332003b1a5d7ff18cf8f3951612727dd2a46b0ff72d38",
+      "hash": "16f327cd5a796ff253eaa786f475af11fc0de8848a2ebe78848f08363f998b59",
       "concepts": [
-        "cartan-轨道的幂等添加与容量约束",
-        "cayley-邻居查询与向上封闭-cartan-集合",
-        "involution-表的测试锚点与证据边界",
-        "twisted-cross-action-的-bfs-轨道构建",
-        "twisted-involution-表与-cartan-轨道存储",
         "twisted-involution-记录的数学不变量",
         "前向根置换索引及其调用方契约",
-        "实投影像基的播种与路径依赖传送",
         "图像基的典范播种与轨道传送纪律"
       ],
-      "compiledAt": "2026-10-10T01:20:32.105Z"
+      "compiledAt": "2026-10-10T02:16:36.185Z"
     },
     "rep-context.md": {
       "hash": "a3c53655939825a0af3f4777d0fcca6b59c793901c2684ae9ef9564d8502f23c",
