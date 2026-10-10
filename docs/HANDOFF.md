@@ -210,7 +210,36 @@ Harvested constants for the migration (all locally verified):
   `041aad85` is `26bbe5e6…`; driver `354086e7…` (after-pair retired:
   `adb7cecdd…`/`20c57dd7…`).
 
-### G2-V1 SUBMISSION — BLOCKED on the tunnel (2026-10-09)
+### G2-V1 SUBMISSION — **SUBMITTED 2026-10-10** as job 3917366 (was BLOCKED on the tunnel 2026-10-09)
+
+**SUBMITTED**: tunnel recovered; the runbook below executed with two
+interposed corrections.  Invocation 1 failed at `_read_override_manifest`
+because the first tar transport lost the 0444 modes (no remote state
+created); invocation 2 failed at `_validate_creation_contract` on a latent
+migration bug: the 9f0be600 G2 migration advanced PREDECESSOR_STATE/
+PREDECESSOR_STAGE/PREDECESSOR_RECORD to after-v5 (job 3900050) but left
+`LIFECYCLE.predecessor_stage` at `weyl-context-core-before-v4` — never
+exercised before because the tunnel dropped the first pre-fix attempt and
+the sentinel rehearsal boundary precedes `create_fixed_stage` (lesson:
+**extend the rehearsal boundary past contract validation**).  Zero remote
+state from both failures (stage absent, ledger 24 records, no sacct row —
+verified twice).  Source fix committed as `3061190e` (LIFECYCLE now names
+after-v5 with corrected narrative); the payload was rebuilt from it as
+manifest `d7c293aa…` (only the stager bytes changed; all other 64 inputs
+byte-identical), re-rehearsed to the boundary, transported (tar
+`e998145a…`, 65/65 remote hash-verified), and invoked once: **job
+3917366**, pin `36cb2c38…`, stage_creation `bfa2e43a…`, `queue_before=
+["3904926"]` (the unrelated e6-graph-merge job, not this campaign).
+Post-checks green: stage inputs 0444/single-link (the live `.stage.lock`
+is lifecycle machinery, not an input), `.incoming` empty, ledger now **25
+records** (`dfa0dbde…`, last = 3917366 SUBMITTED), `.out` present, job
+RUNNING on cu001 when observed; transport dir removed.  Submission record
+`tests/reference/hpc/math_weyl_context_g2_v1_submission_2026_10_10.json`
+(sha `1029b794…`).  Status **SUBMITTED_NOT_VERIFIED**: do not resubmit,
+no sibling stage, no acceptance claim before FINAL independent inspection
+(pre-staged checklist below).
+
+*Frozen runbook (kept for the record — executed 2026-10-10):*
 
 Payload is built and pre-flight-clean; the SSH tunnel dropped before the
 remote reconciliation (`Connection timed out` twice, ~2026-10-09).  State:
