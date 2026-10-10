@@ -2212,3 +2212,19 @@ HEAD 逐行核实），并锐化：三个形状条件（右行数不符/左 ragg
 合法调用点只传同秩方阵，守卫仅对腐败/误用态可达，无数学影响。
 refresh 10 候选（含新页《矩阵复合形状错误的诊断字段失真》）核读批准。
 623 页 Fresh。
+## [2026-10-10T02:32:14Z] compile | 2 source(s) → 0 page(s)
+- Sources: twisted-involution-trio.md, cayley-cross.md
+
+
+## 2026年10月10日 两处核实：diagonalise 簿记 + reflection_word 终止性
+
+- matreduc 包的 diagonalise 簿记逐行复核**无需更正**：覆盖赋值
+  （`row_minus = flip`）、交替 ^=、退出后 `row_minus ^= flip` 的两种
+  退出分析、pull_back_columns 置换符号、diagonal[0] 取负均与源码一致
+  （源码注释自带 matreduc.cpp:201 的折叠分析）。
+- twisted-involution-trio 包的「reflection_word 无迭代上限」核实为
+  安全：初值 s_α(2ρ) 与中间量都在有限轨道 W·(2ρ) 内，每步
+  ⟨s_i v, ρ̌⟩ = ⟨v,ρ̌⟩ + |⟨v,α̌_i⟩| 严格递增（用 ⟨α_i,ρ̌⟩=1），整数值
+  严格递增且有上界，必然终止；wrapping 算术风险保持为独立记录。
+  包已补论证；refresh 7 候选（含新页《环境根反射字的有限轨道终止性
+  论证》）核读批准。624 页 Fresh。

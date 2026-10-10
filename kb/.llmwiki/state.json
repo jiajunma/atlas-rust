@@ -351,12 +351,12 @@
     "cayley-cross.md": {
       "hash": "0e5779035378026f3a24545a7605e9b5cb2ecea2e745f31e19b3415c101769a9",
       "concepts": [
+        "cayleycross-剥离预算的逻辑步计数",
         "对偶分量群的-fiber-rank",
         "扭曲对合的-cayleycross-分解",
-        "整对合分类中的奇偶区分",
-        "整对合的-compactcomplexsplit-因子计数"
+        "整数对合的-compactcomplexsplit-分类"
       ],
-      "compiledAt": "2026-10-10T02:23:53.965Z"
+      "compiledAt": "2026-10-10T02:33:47.205Z"
     },
     "locator.md": {
       "hash": "f1ccba5dc6076638c94d883fabdf5fbff2452fbe317fa553bc2580b64f36eb65",
@@ -524,14 +524,13 @@
       "compiledAt": "2026-10-10T02:02:36.688Z"
     },
     "twisted-involution-trio.md": {
-      "hash": "96a2428a5de67062bfd3d37b5271c93fb406cf50053ca071cb9cc21761b8299f",
+      "hash": "3e31993b18beb21307fc75f3bd4a7fbd15fa36d2311b9ed2718c8baa5375e56f",
       "concepts": [
-        "对合类型的分层构造验证与错误优先级",
-        "整对合的-compactcomplexsplit-因子计数",
-        "环境根反射字的共享约定",
+        "对合分类的资源预算与验证顺序",
+        "环境根反射字的有限轨道终止性论证",
         "矩阵复合形状错误的诊断字段失真"
       ],
-      "compiledAt": "2026-10-10T02:24:09.892Z"
+      "compiledAt": "2026-10-10T02:33:55.269Z"
     },
     "grading.md": {
       "hash": "cc137b42a2e7fe897eb4d519b6864c70ebb88d74ea395e51297591b7134a2991",
