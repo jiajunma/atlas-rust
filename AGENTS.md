@@ -469,6 +469,13 @@ their existing HPC rules and submission gates still apply.
 
 ## Working conventions (user directives, 2026-08-04)
 
+**Branch lifecycle, 2026-10-10 (user directive):** unfinished work lives on
+the codex/* task branch; once a unit of work is finished (verified, reported,
+handed off), merge it to `main` — main is the finished-work line. The 2026-10-10
+fast-forward of `main` from `05625c5d` to the codex branch tip is the first
+such merge; keep `main` fast-forwardable or use a reviewed merge, never
+force-push it.
+
 **Priority override, 2026-09-30:** Fix the large performance gap first,
 starting with small rank. Pause new mathematical coverage/rank expansion;
 retain existing complete original-backed results as regression gates.
