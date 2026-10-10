@@ -308,6 +308,16 @@ Self-contained resumption runbook (when `ssh majj@10.26.14.64` answers):
   upstream delta analysis.  All drafted witness fixtures are now
   re-verified against the pre-registration records.
 
+  Re-drill 2026-10-10 (payload integrity at HEAD `67d57f56`): all 65
+  `STAGE_INPUT_NAMES` were resolved from the stager source (handling
+  implicit string concatenation and the `*_PATH` constants) and every one
+  is a tracked blob, byte-identical between `041aad85` and HEAD.  The
+  earlier "MISSING" reading for the cold-dual stderr golden was an
+  artifact of its zero-byte content (`e69de29b`, matching the frozen
+  `e3b0c442…b855` sha); the file is tracked at both commits.  The frozen
+  manifest sha `bcc09dbc…` therefore remains valid at HEAD, and the
+  runbook's step-1 rebuild will produce byte-identical payload bytes.
+
   Pre-staged FINAL inspection checklist (for the collection turn):
   1. Scheduler/report integrity first: FINAL status via sacct; report SHA
      recorded; durable stage inputs 0444/single-link (excluding results/),
